@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>insys 그룹 업무 자동화 시스템 — 임직원 검토용</title>
+<style>
+  :root {
+    --bg: #f7f8fa;
+    --card: #ffffff;
+    --border: #e2e6ea;
+    --text: #1a1a2e;
+    --sub: #555577;
+    --accent: #1C3557;
+    --accent2: #2D6A9F;
+    --new: #E24B4A;
+    --moved: #185FA5;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: '맑은 고딕', 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+    background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.6; }
+
+  /* 헤더 */
+  .top-bar { background: var(--accent); color: #fff; padding: 18px 32px;
+    display: flex; align-items: center; justify-content: space-between; }
+  .top-bar h1 { font-size: 18px; font-weight: 700; }
+  .top-bar .meta { font-size: 13px; opacity: .8; text-align: right; }
+
+  /* 안내 배너 */
+  .banner { background: #FFF8E1; border-left: 5px solid #F9A825;
+    padding: 14px 24px; margin: 20px 32px; border-radius: 6px; }
+  .banner strong { color: #B35A00; }
+  .banner p { font-size: 14px; color: #555; margin-top: 4px; }
+
+  /* 조직 요약 */
+  .org-wrap { display: flex; gap: 12px; margin: 0 32px 20px; flex-wrap: wrap; }
+  .org-box { background: var(--card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 16px; flex: 1; min-width: 200px; }
+  .org-box h3 { font-size: 13px; color: var(--sub); margin-bottom: 6px; }
+  .org-box .tags { display: flex; flex-wrap: wrap; gap: 5px; }
+  .tag { font-size: 12px; padding: 3px 10px; border-radius: 12px; font-weight: 500; }
+  .tag-teal { background: #E1F5EE; color: #085041; border: 1px solid #0F6E56; }
+  .tag-pur  { background: #EEEDFE; color: #3C3489; border: 1px solid #534AB7; }
+
+  /* 섹션 */
+  .section { margin: 0 32px 24px; }
+  .section-title { font-size: 16px; font-weight: 700; color: var(--accent);
+    border-left: 5px solid var(--accent2); padding: 6px 14px;
+    background: #EEF4FB; border-radius: 0 8px 8px 0; margin-bottom: 12px; }
+
+  /* 부서 컨테이너 */
+  .dept { border-radius: 12px; padding: 16px; margin-bottom: 16px; border: 1.5px dashed; }
+  .dept-mgmt { border-color: #534AB7; background: #fdfcff; }
+  .dept-strat { border-color: #0F6E56; background: #fdfffe; }
+  .dept-fact  { border-color: #854F0B; background: #fffcf7; }
+  .dept-trade { border-color: #185FA5; background: #f7fbff; }
+  .dept-it    { border-color: #888780; background: #fafafa; }
+  .dept-title { font-size: 14px; font-weight: 700; margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .dept-title span { font-size: 12px; font-weight: 400; color: var(--sub); }
+
+  /* 모듈 */
+  .mod { border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; border: 1px solid; }
+  .mod:last-child { margin-bottom: 0; }
+  .mod-title { font-size: 13px; font-weight: 700; margin-bottom: 8px;
+    color: var(--sub); display: flex; align-items: center; gap: 6px; }
+
+  /* 박스 그리드 */
+  .grid { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 6px; }
+  .grid:last-child { margin-bottom: 0; }
+  .box { border-radius: 8px; padding: 9px 11px; font-size: 13px; font-weight: 600;
+    border: 1px solid; flex: 1; min-width: 120px; line-height: 1.5;
+    cursor: default; position: relative; }
+  .box sub { font-size: 11px; font-weight: 400; display: block;
+    margin-top: 4px; line-height: 1.4; opacity: .88; }
+
+
+  /* 박스 색상 */
+  .c-pur { background:#EEEDFE; border-color:#534AB7; color:#3C3489; }
+  .c-pay { background:#FAECE7; border-color:#993C1D; color:#712B13; }
+  .c-tax { background:#FAEEDA; border-color:#854F0B; color:#633806; }
+  .c-buy { background:#EAF3DE; border-color:#3B6D11; color:#27500A; }
+  .c-gen { background:#E6F1FB; border-color:#185FA5; color:#0C447C; }
+  .c-teal { background:#E1F5EE; border-color:#0F6E56; color:#085041; }
+  .c-qlt { background:#f0f4e3; border-color:#6b7c2e; color:#3d4a15; }
+  .c-leg { background:#FBEAF0; border-color:#993556; color:#72243E; }
+  .c-prp { background:#FBEAF0; border-color:#993556; color:#72243E; }
+  .c-mfg { background:#FAEEDA; border-color:#854F0B; color:#633806; }
+  .c-trd { background:#E6F1FB; border-color:#185FA5; color:#0C447C; }
+  .c-bot { background:#EEEDFE; border-color:#7F77DD; color:#26215C; }
+  .c-red { background:#FCEBEB; border-color:#A32D2D; color:#791F1F; }
+  .c-gray { background:#F1EFE8; border-color:#888780; color:#2C2C2A; }
+
+  /* 모듈 배경 */
+  .m-pur { background:#f7f6ff; border-color:#AFA9EC; }
+  .m-pay { background:#fef6f3; border-color:#F0997B; }
+  .m-tax { background:#fef8f0; border-color:#EF9F27; }
+  .m-buy { background:#f4f9ec; border-color:#97C459; }
+  .m-gen { background:#f0f7fd; border-color:#85B7EB; }
+  .m-qlt { background:#f5f8e8; border-color:#a0b040; }
+  .m-leg { background:#fdf3f7; border-color:#ED93B1; }
+  .m-teal { background:#f0faf6; border-color:#5DCAA5; }
+  .m-prp { background:#fdf3f7; border-color:#ED93B1; }
+  .m-mfg { background:#fef8f0; border-color:#EF9F27; }
+  .m-trd { background:#f0f7fd; border-color:#85B7EB; }
+  .m-bot { background:#f3f0ff; border-color:#7F77DD; }
+  .m-gray { background:#f7f6f4; border-color:#D3D1C7; }
+
+  /* 검토 폼 */
+  .review-section { margin: 0 32px 32px; }
+  .review-card { background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 20px; }
+  .review-card h3 { font-size: 14px; font-weight: 700; color: var(--accent); margin-bottom: 14px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group label { font-size: 13px; font-weight: 600; color: var(--sub); }
+  .form-group input, .form-group select, .form-group textarea {
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 8px 10px; font-family: inherit; font-size: 13px; color: var(--text);
+    background: #fafafa; }
+  .form-group textarea { resize: vertical; min-height: 80px; }
+  .form-full { grid-column: 1 / -1; }
+  .btn-submit { margin-top: 14px; background: var(--accent); color: #fff;
+    border: none; border-radius: 8px; padding: 10px 28px; font-size: 13px;
+    font-weight: 700; cursor: pointer; font-family: inherit; }
+  .btn-submit:hover { background: var(--accent2); }
+
+
+  /* 범례 */
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin: 0 32px 16px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 16px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 13px; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+
+  /* 푸터 */
+  .footer { background: var(--accent); color: rgba(255,255,255,.7);
+    text-align: center; padding: 16px; font-size: 13px; margin-top: 20px; }
+
+  @media print {
+    .banner, .review-section { display: none; }
+    .dept { break-inside: avoid; }
+  }
+  @media (max-width: 600px) {
+    .top-bar, .section, .org-wrap, .legend, .review-section { margin-left: 12px; margin-right: 12px; }
+    .form-grid { grid-template-columns: 1fr; }
+    .box { min-width: 90px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 상단 헤더 -->
+<div class="top-bar">
+  <h1>insys 그룹 — 사내 업무 자동화 시스템 전체 기능 목록</h1>
+  <div class="meta">임직원 검토용 (내부 배포)<br>2026년 4월</div>
+</div>
+
+<!-- 안내 배너 -->
+<div class="banner">
+  <strong>임직원 여러분께</strong>
+  <p>아래는 insys 그룹 전체 업무 자동화 시스템의 기능 목록입니다. 각 모듈을 검토하시고,
+  <strong>누락된 기능, 수정이 필요한 항목, 우선순위 조정 의견</strong>을 하단 검토 의견란에 작성해 주세요.
+검토 후 의견을 하단 양식에 작성해 주시면 반영하겠습니다.</p>
+</div>
+
+<!-- 범례 -->
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#EEEDFE;border:1px solid #534AB7"></div>인사·HR</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#FAECE7;border:1px solid #993C1D"></div>급여</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#FAEEDA;border:1px solid #854F0B"></div>세무·회계</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#EAF3DE;border:1px solid #3B6D11"></div>구매</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#E6F1FB;border:1px solid #185FA5"></div>총무</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#f0f4e3;border:1px solid #6b7c2e"></div>품질·안전</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#FBEAF0;border:1px solid #993556"></div>법무·건물</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#E1F5EE;border:1px solid #0F6E56"></div>전략기획</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#EEEDFE;border:1px solid #7F77DD"></div>챗봇·IT</div>
+</div>
+
+<!-- 조직 요약 -->
+<div class="org-wrap">
+  <div class="org-box">
+    <h3>(주)인시스 직영 4개 사업장</h3>
+    <div class="tags">
+      <span class="tag tag-teal">본사 HQ</span>
+      <span class="tag tag-teal">이천공장</span>
+      <span class="tag tag-teal">창원공장</span>
+      <span class="tag tag-teal">제주지사</span>
+    </div>
+  </div>
+  <div class="org-box">
+    <h3>계열사 7개 법인</h3>
+    <div class="tags">
+      <span class="tag tag-pur">(주)파인</span>
+      <span class="tag tag-pur">(주)이레</span>
+      <span class="tag tag-pur">(주)챈스</span>
+      <span class="tag tag-pur">(주)코어시스템</span>
+      <span class="tag tag-pur">인텍코리아 안산</span>
+      <span class="tag tag-pur">우리스틸산업</span>
+      <span class="tag tag-pur">(주)바른엔피엘자산대부</span>
+    </div>
+  </div>
+  <div class="org-box">
+    <h3>플랫폼 방향</h3>
+    <div class="tags">
+      <span class="tag" style="background:#EEF4FB;border:1px solid #2D6A9F;color:#0C447C">메타 기반 플랫폼</span>
+      <span class="tag" style="background:#EEF4FB;border:1px solid #2D6A9F;color:#0C447C">Claude Code</span>
+      <span class="tag" style="background:#EEF4FB;border:1px solid #2D6A9F;color:#0C447C">AWS 서울 리전</span>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<div class="section">
+<div class="section-title">경영지원실</div>
+
+<!-- 1. 인사 -->
+<div class="dept dept-mgmt">
+<div class="dept-title" style="color:#3C3489">인사 관리 (HR) <span>· 전 계열사 통합 또는 개별</span></div>
+<div class="mod m-pur">
+  <div class="mod-title">기본 인사</div>
+  <div class="grid">
+    <div class="box c-pur">임직원 인사기록<sub>입사·이력·자격·평가 이력 통합</sub></div>
+    <div class="box c-pur">채용 관리<sub>공고·지원·면접·합격 통보 자동화</sub></div>
+    <div class="box c-pur">근로계약서 자동생성<sub>유형별 템플릿·전자서명·PDF</sub></div>
+    <div class="box c-pur">인사발령·이동<sub>승진·직책변경·부서이동 이력</sub></div>
+  </div>
+  <div class="grid">
+    <div class="box c-pur">연차·휴가 관리<sub>자동 발생·사용·잔여 실시간</sub></div>
+    <div class="box c-pur">인사평가<sub>KPI·평가 입력·결과 통보</sub></div>
+    <div class="box c-pur">퇴직·퇴사 처리<sub>퇴직금·서류·4대보험 상실 자동화</sub></div>
+    <div class="box c-pur">교육·훈련 관리<sub>법정 교육 이수현황·만료 알림</sub></div>
+  </div>
+</div>
+</div>
+
+<!-- 2. 근무이력 DB -->
+<div class="dept dept-mgmt">
+<div class="dept-title" style="color:#3C3489">현장직·파견 근로자 근무이력 통합 DB</div>
+<div class="mod m-pur" style="border:1.5px solid #E24B4A">
+  <div class="mod-title">과거 이력 통합 관리</div>
+  <div class="grid">
+    <div class="box c-pur">근무이력 통합 DB<sub>현장직·파견·관리직 전체 이력</sub></div>
+    <div class="box c-pur">엑셀 업로드 → DB 자동변환<sub>과거 엑셀 업로드 시 자동 파싱·저장</sub></div>
+    <div class="box c-pur">중복 자동검증·병합<sub>동일인 중복 감지·사업장별 이력 연결</sub></div>
+    <div class="box c-pur">유형별 이력 구분조회<sub>현장직·파견·관리직·계약직 필터</sub></div>
+  </div>
+  <div class="grid">
+    <div class="box c-pur">파견 근무이력 관리<sub>고객사별 기간·직무·재파견 가능 판단</sub></div>
+    <div class="box c-pur">사업장 이동이력<sub>사업장 간 이동 전체 추적</sub></div>
+    <div class="box c-pur">자격증·기술 이력<sub>보유 자격증·만료알림·갱신</sub></div>
+    <div class="box c-pur">과거 급여이력 조회<sub>전 사업장·전 기간 급여이력</sub></div>
+  </div>
+</div>
+</div>
+
+<!-- 3. 급여 -->
+<div class="dept dept-mgmt">
+<div class="dept-title" style="color:#712B13">급여 관리 (Payroll) <span>· 관리직·현장직 분리 처리</span></div>
+<div class="mod m-pay">
+  <div class="mod-title">출퇴근 기록</div>
+  <div class="grid">
+    <div class="box c-pay">관리직 출퇴근<sub>앱·웹 체크인·카드리더기</sub></div>
+    <div class="box c-pay">현장직 출퇴근<sub>Firebase GPS 앱 운영 중 (2개 사업장)<br>→ AWS RDS 동기화 브리지</sub></div>
+    <div class="box c-pay">이상 기록 처리<sub>GPS 범위 이탈·관리자 알림·수동 보정</sub></div>
+  </div>
+</div>
+<div class="mod m-pay">
+  <div class="mod-title">급여 산출·지급</div>
+  <div class="grid">
+    <div class="box c-pay">관리직 급여산출<sub>월급제·연장·야근·연차수당</sub></div>
+    <div class="box c-pay">현장직 급여산출<sub>시급·일급·실근로시간·주휴수당</sub></div>
+    <div class="box c-pay">공제 자동계산<sub>4대보험·소득세·지방세</sub></div>
+    <div class="box c-pay">급여 확정·승인<sub>담당자 검토→관리자 최종 승인</sub></div>
+  </div>
+  <div class="grid">
+    <div class="box c-pay">급여명세서 발송<sub>PDF·카카오 알림톡·이메일</sub></div>
+    <div class="box c-pay">급여 계좌이체<sub>은행 API 연동·이체내역 자동 저장</sub></div>
+    <div class="box c-pay">4대보험 EDI 신고<sub>취득·상실·보수월액 자동 신고</sub></div>
+  </div>
+</div>
+</div>
+
+<!-- 4. 세무·회계 -->
+<div class="dept dept-mgmt">
+<div class="dept-title" style="color:#633806">세무 · 회계 (Tax &amp; Accounting) <span>· 계열사별 독립 또는 통합</span></div>
+<div class="mod m-tax">
+  <div class="mod-title">계산서 발행</div>
+  <div class="grid">
+    <div class="box c-tax">거래처 마스터<sub>사업자번호·업종 자동조회</sub></div>
+    <div class="box c-tax">과세유형 자동판정<sub>과세 10%·면세·영세율 0%</sub></div>
+    <div class="box c-tax">매출계산서 발행<sub>전자서명·홈택스 e-세로 API</sub></div>
+    <div class="box c-tax">매입계산서 수취<sub>홈택스 자동수집·매입장 기록</sub></div>
+  </div>
+</div>
+<div class="mod m-tax">
+  <div class="mod-title">집계·손익·결산</div>
+  <div class="grid">
+    <div class="box c-tax">매출처별 집계<sub>거래처별·과세·면세 구분 합계</sub></div>
+    <div class="box c-tax">거래처별 매입집계<sub>공급업체별 매입액·비용 분류</sub></div>
+    <div class="box c-tax">계열사별 손익<sub>매출-매입-인건비=영업이익 자동</sub></div>
+    <div class="box c-tax">전표 자동생성<sub>계산서 저장 시 전표 동시 생성</sub></div>
+  </div>
+  <div class="grid">
+    <div class="box c-tax">예산·자금흐름 관리<sub>부서별 예산대비·일별 자금현황</sub></div>
+    <div class="box c-tax">부가세 신고자료<sub>분기·반기 자동생성·마감 알림</sub></div>
+    <div class="box c-tax">월별·연간 결산<sub>자동마감·재무제표 생성</sub></div>
+    <div class="box c-tax">세무사 외부공유<sub>임시 링크·유효기간·원본 DB 미노출</sub></div>
+  </div>
+</div>
+</div>
+
+<!-- 5. 구매 -->
+<div class="dept dept-mgmt">
+<div class="dept-title" style="color:#27500A">구매 관리 (Purchasing)</div>
+<div class="mod m-buy">
+  <div class="mod-title">구매 요청·승인</div>
+  <div class="grid">
+    <div class="box c-buy">구매요청서<sub>부서별 요청·품목·수량·예산 입력</sub></div>
+    <div class="box c-buy">승인 워크플로우<sub>금액별 결재선 자동지정·모바일 승인</sub></div>
+    <div class="box c-buy">공급업체 관리<sub>등록·평가·블랙리스트</sub></div>
+    <div class="box c-buy">견적비교·발주<sub>다수업체 비교·발주서 자동생성</sub></div>
+  </div>
+</div>
+<div class="mod m-buy">
+  <div class="mod-title">입고·재고·정산</div>
+  <div class="grid">
+    <div class="box c-buy">입고·검수<sub>발주대비 수량확인·불량처리</sub></div>
+    <div class="box c-buy">재고 관리<sub>품목별 현황·최소재고 알림</sub></div>
+    <div class="box c-buy">대금지급·정산<sub>매입계산서 자동연동·지급 스케줄</sub></div>
+    <div class="box c-buy">구매실적 분석<sub>품목별·공급업체별 집계</sub></div>
+  </div>
+</div>
+</div>
+
+<!-- 6. 총무 -->
+<div class="dept dept-mgmt">
+<div class="dept-title" style="color:#0C447C">총무 관리 (General Affairs)</div>
+<div class="mod m-gen">
+  <div class="mod-title">자산·시설·차량</div>
+  <div class="grid">
+    <div class="box c-gen">고정자산 관리<sub>취득·감가상각·처분 자동계산</sub></div>
+    <div class="box c-gen">사무용품·비품<sub>재고·불출신청·자동발주</sub></div>
+    <div class="box c-gen">시설·설비 유지보수<sub>점검일정·수리이력·비용</sub></div>
+    <div class="box c-gen">차량 관리<sub>배차·주행·보험·정비</sub></div>
+  </div>
+</div>
+<div class="mod m-gen">
+  <div class="mod-title">문서·계약·규정</div>
+  <div class="grid">
+    <div class="box c-gen">전자결재·문서관리<sub>기안·승인·보관·검색 자동화</sub></div>
+    <div class="box c-gen">계약서 관리<sub>작성·전자서명·만료알림·갱신</sub></div>
+    <div class="box c-gen">사규·규정 관리<sub>버전관리·공지·열람확인</sub></div>
+    <div class="box c-gen">인장·직인 관리<sub>사용신청·승인·이력기록</sub></div>
+  </div>
+</div>
+<div class="mod m-gen">
+  <div class="mod-title">복리후생·보안·리스크</div>
+  <div class="grid">
+    <div class="box c-gen">복리후생 관리<sub>식대·경조금·건강검진</sub></div>
+    <div class="box c-gen">회의실·행사 관리<sub>예약·일정공유·비용처리</sub></div>
+    <div class="box c-gen">경비·보안 관리<sub>출입통제·CCTV·외부인 방문 기록</sub></div>
+    <div class="box c-gen">리스크 관리<sub>경영리스크 등록·모니터링·대응</sub></div>
+  </div>
+</div>
+</div>
+
+<!-- 7. 품질·안전 -->
+<div class="dept dept-mgmt">
+<div class="dept-title" style="color:#3d4a15">품질 · 안전 관리 (Quality &amp; Safety)</div>
+<div class="mod m-qlt">
+  <div class="mod-title">ISO 인증 관리</div>
+  <div class="grid">
+    <div class="box c-qlt">ISO 9001 품질경영<sub>문서관리·버전이력·심사대응</sub></div>
+    <div class="box c-qlt">ISO 14001 환경경영<sub>환경측면 등록·법규준수 현황</sub></div>
+    <div class="box c-qlt">ISO 45001 안전보건<sub>위험성평가·재해예방·법정보고</sub></div>
+    <div class="box c-qlt">인증 현황 대시보드<sub>전 계열사 인증만료·갱신 알림</sub></div>
+  </div>
+</div>
+<div class="mod m-qlt">
+  <div class="mod-title">심사·부적합·현장안전</div>
+  <div class="grid">
+    <div class="box c-qlt">내부심사 관리<sub>일정자동생성·체크리스트·결과</sub></div>
+    <div class="box c-qlt">부적합·시정조치(CAR)<sub>발생→원인→조치→완료확인</sub></div>
+    <div class="box c-qlt">HACCP 위생점검<sub>박스세척 사업장 CCP 모니터링</sub></div>
+    <div class="box c-qlt">고객 클레임 처리<sub>접수→원인→회신→재발방지</sub></div>
+  </div>
+  <div class="grid">
+    <div class="box c-qlt">현장 안전점검<sub>사업장별 일일·월별 체크리스트</sub></div>
+    <div class="box c-qlt">산업재해 관리<sub>발생보고→처리→고용부 신고</sub></div>
+    <div class="box c-qlt">안전교육 이수관리<sub>법정 대상자·이수현황·미이수 알림</sub></div>
+    <div class="box c-qlt">위험성 평가<sub>작업별 위험등록·개선·재평가 주기</sub></div>
+  </div>
+</div>
+</div>
+
+<!-- 8. 법무 -->
+<div class="dept dept-mgmt">
+<div class="dept-title" style="color:#72243E">법무 · 컴플라이언스 (Legal)</div>
+<div class="mod m-leg">
+  <div class="grid">
+    <div class="box c-leg">법인등기·주주관리<sub>10개 법인 등기변경 알림</sub></div>
+    <div class="box c-leg">인허가·면허 관리<sub>만료일 알림·갱신 처리</sub></div>
+    <div class="box c-leg">개인정보 컴플라이언스<sub>동의·처리현황·파기 스케줄</sub></div>
+    <div class="box c-leg">소송·분쟁 관리<sub>사건이력·기일알림·비용추적</sub></div>
+  </div>
+</div>
+</div>
+
+<!-- 9. 건물 임대 -->
+<div class="dept dept-mgmt">
+<div class="dept-title" style="color:#72243E">건물 임대 관리 — 경영지원실 담당</div>
+<div class="mod m-prp">
+  <div class="grid">
+    <div class="box c-prp">건물 자산등록<sub>소유건물 목록·면적·공시지가</sub></div>
+    <div class="box c-prp">임대차 계약관리<sub>계약·만료알림·갱신·해지</sub></div>
+    <div class="box c-prp">임대료 청구·수납<sub>월별 자동청구·미납알림·수납확인</sub></div>
+    <div class="box c-prp">관리비·임대수익 분석<sub>공용관리비 자동산출·수익집계</sub></div>
+  </div>
+</div>
+</div>
+
+<!-- 10. 계열사 경영지원 -->
+<div class="dept dept-mgmt">
+<div class="dept-title" style="color:#085041">계열사 경영지원 통합</div>
+<div class="mod m-teal">
+  <div class="grid">
+    <div class="box c-teal">계열사 인사·급여<sub>각 법인 독립처리·본사 통합조회</sub></div>
+    <div class="box c-teal">계열사 세무·회계<sub>스키마 분리·계열사별 손익</sub></div>
+    <div class="box c-teal">계열사 공동구매<sub>구매력 집중·단가협상·공동발주</sub></div>
+    <div class="box c-teal">계열사 품질·ISO<sub>인증현황·심사일정 통합관리</sub></div>
+    <div class="box c-teal">(주)바른엔피엘자산대부<sub>자산관리·담보물 매입판매·기본 현황 등록</sub></div>
+  </div>
+</div>
+</div>
+
+</div><!-- /경영지원실 -->
+
+<!-- ════════════════════════════════════════ -->
+<div class="section">
+<div class="section-title">전략기획실</div>
+
+<!-- 11. 인재·인력 -->
+<div class="dept dept-strat">
+<div class="dept-title" style="color:#085041">인재 써칭 · 인력공급 관리</div>
+<div class="mod m-teal">
+  <div class="grid">
+    <div class="box c-teal">인재 써칭·매칭<sub>후보자 DB·고객사 요건 매칭</sub></div>
+    <div class="box c-teal">인력공급 계약·배치<sub>파견계약·배치현황·교체관리</sub></div>
+    <div class="box c-teal">상주인력 관리<sub>고객사별 상주인원·근태·평가</sub></div>
+    <div class="box c-teal">용역 정산·청구<sub>파견시간·단가·청구서 자동생성</sub></div>
+  </div>
+  <div class="grid">
+    <div class="box c-teal">계열사 인력관리<sub>파인·이레·코어시스템 파견현황</sub></div>
+    <div class="box c-teal">인력수급 예측<sub>계절별·사업장별 수요 예측</sub></div>
+    <div class="box c-teal">파견 자격·교육이력<sub>근무이력 DB 연동·배치가능 판단</sub></div>
+  </div>
+</div>
+</div>
+
+<!-- 12. 마케팅 -->
+<div class="dept dept-strat">
+<div class="dept-title" style="color:#085041">마케팅 · 홍보</div>
+<div class="mod m-teal">
+  <div class="grid">
+    <div class="box c-teal">SNS 자동화<sub>예약발행·채널별 관리·성과분석</sub></div>
+    <div class="box c-teal">캠페인 관리<sub>기획·집행·ROI 측정</sub></div>
+    <div class="box c-teal">고객사 CRM<sub>고객DB·영업기회·계약이력</sub></div>
+    <div class="box c-teal">콘텐츠 제작·관리<sub>소재 라이브러리·승인·배포</sub></div>
+  </div>
+</div>
+</div>
+
+<!-- 13. 홈페이지 -->
+<div class="dept dept-strat">
+<div class="dept-title" style="color:#085041">홈페이지 · 디지털 채널</div>
+<div class="mod m-teal">
+  <div class="grid">
+    <div class="box c-teal">홈페이지 CMS<sub>콘텐츠·공지·채용공고 관리</sub></div>
+    <div class="box c-teal">고객 요청 접수<sub>문의·견적요청·처리·답변 자동화</sub></div>
+    <div class="box c-teal">SEO·방문자 분석<sub>검색순위·유입경로·전환율</sub></div>
+    <div class="box c-teal">온라인 입주·분양 문의<sub>건물 임대·분양 온라인 상담 연동</sub></div>
+  </div>
+</div>
+</div>
+
+<!-- 14. 건물 분양·영업 -->
+<div class="dept dept-strat">
+<div class="dept-title" style="color:#72243E">건물 분양 · 영업 — 전략기획실 담당</div>
+<div class="mod m-prp">
+  <div class="grid">
+    <div class="box c-prp">분양 물건 등록·관리<sub>호실별 면적·가격·조건·현황</sub></div>
+    <div class="box c-prp">분양 고객 상담 CRM<sub>상담이력·진행단계·계약가능성</sub></div>
+    <div class="box c-prp">분양 계약·납부 스케줄<sub>전자서명·계약금·중도금·잔금 알림</sub></div>
+    <div class="box c-prp">분양 마케팅·실적<sub>광고집행·계약건수·미분양·수익</sub></div>
+  </div>
+  <div class="grid">
+    <div class="box c-prp">소유권 이전 관리<sub>등기일정·서류·법무사 연동</sub></div>
+    <div class="box c-prp">임대→분양 전환<sub>임차인 우선분양·전환조건</sub></div>
+  </div>
+</div>
+</div>
+
+<!-- 15. 건물 유지관리 -->
+<div class="dept dept-strat">
+<div class="dept-title" style="color:#72243E">건물 유지관리 — 전략기획실 담당</div>
+<div class="mod m-prp">
+  <div class="grid">
+    <div class="box c-prp">시설 점검·이력<sub>건물별 정기점검 일정·수선이력</sub></div>
+    <div class="box c-prp">수선 요청·업체 발주<sub>입주자 요청→업체발주→완료확인</sub></div>
+    <div class="box c-prp">보험·재산세 관리<sub>보험만료·재산세 납부일정 알림</sub></div>
+    <div class="box c-prp">공실·입주 현황<sub>호실별 입주·공실 실시간 현황</sub></div>
+  </div>
+</div>
+</div>
+
+</div><!-- /전략기획실 -->
+
+<!-- ════════════════════════════════════════ -->
+<div class="section">
+<div class="section-title">생산 · 현장 관리 — 이천·창원·코어시스템·인텍코리아 안산</div>
+<div class="dept dept-fact">
+<div class="mod m-mfg">
+  <div class="grid">
+    <div class="box c-mfg">생산계획·작업지시<sub>수주기반·공정별 지시 자동생성</sub></div>
+    <div class="box c-mfg">공정실적·설비보전<sub>투입량·불량·가동률·예방점검</sub></div>
+    <div class="box c-mfg">원자재·납품·출하<sub>재고현황·자동발주·출하검사</sub></div>
+    <div class="box c-mfg">작업환경·에너지<sub>유해물질 측정·전기·수도 모니터링</sub></div>
+  </div>
+</div>
+</div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<div class="section">
+<div class="section-title">(주)챈스 수출입 관리</div>
+<div class="dept dept-trade">
+<div class="mod m-trd">
+  <div class="grid">
+    <div class="box c-trd">수출입 오더·통관<sub>오더접수·선적·HS코드·관세사 연동</sub></div>
+    <div class="box c-trd">무역서류 자동생성<sub>인보이스·패킹리스트·B/L·C/O</sub></div>
+    <div class="box c-trd">외화·환율·L/C<sub>외화입출금·환차손익·신용장 관리</sub></div>
+    <div class="box c-trd">실적분석·FTA<sub>품목별·국가별·환급·무역보험</sub></div>
+  </div>
+</div>
+</div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<div class="section">
+<div class="section-title">IT · 시스템 관리 + 부서별 챗봇 빌더</div>
+<div class="dept dept-it">
+
+<div class="mod m-gray">
+  <div class="mod-title">IT 인프라·보안</div>
+  <div class="grid">
+    <div class="box c-gray">IT 자산관리<sub>PC·서버·소프트웨어 라이선스</sub></div>
+    <div class="box c-gray">IT 헬프데스크<sub>장애접수·처리·SLA 관리</sub></div>
+    <div class="box c-gray">정보보안 관리<sub>보안정책·취약점·침해사고 대응</sub></div>
+    <div class="box c-red">AI 차단·DLP<sub>외부AI 업로드 금지·데이터 유출방지</sub></div>
+  </div>
+</div>
+
+<div class="mod m-bot" style="border:1.5px solid #7F77DD">
+  <div class="mod-title" style="color:#3C3489">부서별 자체 챗봇 빌더</div>
+  <div class="grid">
+    <div class="box c-bot">챗봇 빌더 플랫폼<sub>관리자가 직접 챗봇 생성·배포 (코딩 불필요)</sub></div>
+    <div class="box c-bot">지식베이스 연결<sub>사내 DB·문서·규정 연동·권한 범위 내만 조회</sub></div>
+    <div class="box c-bot">시나리오·워크플로우<sub>질문-응답 흐름 직접 설계·조건분기 설정</sub></div>
+    <div class="box c-bot">채널 연동<sub>카카오·슬랙·웹·모바일 앱 배포</sub></div>
+  </div>
+  <div class="grid">
+    <div class="box c-bot">경영지원실 챗봇<sub>급여·연차·휴가 자동 답변</sub></div>
+    <div class="box c-bot">전략기획실 챗봇<sub>인력요청·배치현황 자동 답변</sub></div>
+    <div class="box c-bot">현장 챗봇<sub>작업지시·안전점검·출퇴근 확인</sub></div>
+    <div class="box c-bot">경영자 챗봇<sub>원하는 지표를 말로 물어보면 즉시 조회</sub></div>
+  </div>
+</div>
+
+</div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<div class="section">
+<div class="section-title">경영자 셀프 분석 대시보드</div>
+<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 16px">
+  <div style="font-size:12px;color:var(--sub);margin-bottom:8px">코딩 없이 조건 직접 설정 · 전 계열사 또는 개별 선택 · 기간·항목 자유 필터</div>
+  <div class="grid">
+    <div class="box c-tax">매출·손익<sub>전 계열사 합산 또는 개별</sub></div>
+    <div class="box c-pay">인사·급여<sub>전 계열사 인원·급여총액</sub></div>
+    <div class="box c-prp">건물 임대·분양<sub>공실률·임대수익·분양현황</sub></div>
+    <div class="box c-teal">인력공급<sub>배치인원·공급율·용역매출</sub></div>
+    <div class="box c-mfg">생산·현장<sub>가동률·납기준수율</sub></div>
+    <div class="box c-trd">수출입<sub>오더·통관·외화</sub></div>
+    <div class="box c-qlt">품질·ISO<sub>인증만료·클레임·부적합</sub></div>
+  </div>
+</div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- 검토 의견 폼 -->
+<div class="review-section">
+<div class="section-title" style="margin: 0 0 12px;">검토 의견 제출</div>
+<div class="review-card">
+  <h3>위 기능 목록을 검토하신 후 의견을 제출해 주세요</h3>
+  <p style="font-size:14px;color:#555;margin-bottom:18px;line-height:1.7">
+    누락된 기능, 수정이 필요한 항목, 담당 부서 조정 의견, 우선순위 등을 자유롭게 작성해 주시면
+    취합 후 시스템 개발에 반영하겠습니다.
+  </p>
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <a id="form-link-btn" href="https://docs.google.com/forms/d/e/1FAIpQLSd8FsVC67bbLMnmdedh02Ti1I9D71vdRz-a94kAxYZyrOOSgw/viewform?usp=header" target="_blank"
+      style="display:inline-flex;align-items:center;justify-content:center;gap:10px;
+             background:#1C3557;color:#fff;text-decoration:none;
+             border-radius:8px;padding:14px 32px;font-size:15px;font-weight:700;
+             font-family:inherit;width:fit-content">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      검토 의견 작성하기 (구글 폼)
+    </a>
+    <div style="background:#E1F5EE;border:1px solid #0F6E56;border-radius:8px;
+                padding:12px 16px;font-size:13px;color:#085041;line-height:1.6">
+      제출하신 의견은 구글 시트에 자동 저장되며, 취합 후 시스템 개발팀에 전달됩니다.
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="footer">
+  (주)인시스 그룹  |  사내 업무 자동화 시스템 임직원 검토용  |  내부 배포 — 외부 유출 금지
+</div>
+
+
+</body>
+</html>
