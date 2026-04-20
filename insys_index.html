@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>인시스 그룹 | 사업검토서 대시보드</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1f2937;
+    --border: #30363d;
+    --accent: #e8a020;
+    --accent2: #c47b10;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --danger: #f85149;
+    --success: #3fb950;
+    --tag-bg: #1f2937;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 64px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .logo-mark {
+    width: 36px; height: 36px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 14px; color: #000;
+    letter-spacing: -0.5px;
+  }
+  .logo-text { font-size: 15px; font-weight: 500; letter-spacing: -0.3px; }
+  .logo-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
+
+  .header-right { display: flex; align-items: center; gap: 16px; }
+  .btn-add {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 18px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s;
+  }
+  .btn-add:hover { background: var(--accent2); }
+
+  /* ── LAYOUT ── */
+  .container { max-width: 1200px; margin: 0 auto; padding: 40px 24px; }
+
+  /* ── STATS ── */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 40px; }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+  }
+  .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .stat-value { font-size: 28px; font-weight: 700; color: var(--text); }
+  .stat-value.accent { color: var(--accent); }
+
+  /* ── FILTER ── */
+  .filter-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+  .filter-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+  .filter-btn.active, .filter-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(232,160,32,0.08);
+  }
+  .search-box {
+    margin-left: auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 14px;
+    color: var(--text);
+    font-size: 13px;
+    font-family: inherit;
+    width: 220px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .search-box:focus { border-color: var(--accent); }
+  .search-box::placeholder { color: var(--muted); }
+
+  /* ── CARDS GRID ── */
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    transition: border-color 0.2s, transform 0.2s;
+    animation: fadeIn 0.35s ease both;
+  }
+  .card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  @keyframes fadeIn { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
+
+  .card-header {
+    padding: 20px 20px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .card-title { font-size: 15px; font-weight: 600; line-height: 1.4; flex: 1; }
+  .card-body { padding: 16px 20px; }
+  .card-desc { font-size: 13px; color: var(--muted); line-height: 1.7; min-height: 44px; }
+  .card-footer {
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .card-date { font-size: 11px; color: var(--muted); }
+  .card-actions { display: flex; gap: 8px; }
+
+  .tag {
+    display: inline-block;
+    background: var(--tag-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 11px;
+    color: var(--muted);
+    padding: 2px 8px;
+    margin-bottom: 10px;
+  }
+  .tag.done { background: rgba(63,185,80,0.1); border-color: var(--success); color: var(--success); }
+  .tag.pending { background: rgba(232,160,32,0.1); border-color: var(--accent); color: var(--accent); }
+
+  .btn-open, .btn-del {
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+  .btn-open {
+    background: rgba(232,160,32,0.15);
+    color: var(--accent);
+    border: 1px solid rgba(232,160,32,0.3);
+  }
+  .btn-open:hover { background: rgba(232,160,32,0.25); }
+  .btn-del {
+    background: rgba(248,81,73,0.12);
+    color: var(--danger);
+    border: 1px solid rgba(248,81,73,0.25);
+  }
+  .btn-del:hover { background: rgba(248,81,73,0.22); }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1000;
+    opacity: 0; pointer-events: none; transition: opacity 0.2s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: auto; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 520px;
+    padding: 32px;
+    transform: translateY(10px);
+    transition: transform 0.2s;
+  }
+  .modal-overlay.open .modal { transform: translateY(0); }
+  .modal h2 { font-size: 18px; font-weight: 700; margin-bottom: 24px; }
+
+  .form-group { margin-bottom: 18px; }
+  .form-group label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; font-weight: 500; }
+  .form-group input, .form-group textarea, .form-group select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 13px;
+    padding: 10px 14px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .form-group input:focus, .form-group textarea:focus, .form-group select:focus { border-color: var(--accent); }
+  .form-group textarea { resize: vertical; min-height: 80px; }
+  .form-group select option { background: var(--surface); }
+
+  .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+  .btn-cancel {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 9px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .btn-save {
+    background: var(--accent);
+    border: none;
+    color: #000;
+    padding: 9px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  /* ── CONFIRM MODAL ── */
+  .confirm-modal {
+    max-width: 380px;
+    text-align: center;
+  }
+  .confirm-modal p { color: var(--muted); font-size: 14px; margin-top: 8px; margin-bottom: 24px; }
+
+  /* ── EMPTY STATE ── */
+  .empty {
+    text-align: center;
+    padding: 80px 20px;
+    color: var(--muted);
+  }
+  .empty-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.4; }
+
+  /* ── GITHUB GUIDE ── */
+  .guide-box {
+    margin-top: 40px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+  }
+  .guide-box h3 { font-size: 13px; color: var(--muted); margin-bottom: 12px; font-weight: 500; letter-spacing: 0.5px; }
+  .guide-box code {
+    display: block;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-size: 12px;
+    color: var(--accent);
+    line-height: 1.8;
+    font-family: 'Courier New', monospace;
+    white-space: pre;
+  }
+
+  @media (max-width: 640px) {
+    header { padding: 0 16px; }
+    .container { padding: 24px 16px; }
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .cards { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">IS</div>
+    <div>
+      <div class="logo-text">인시스 그룹</div>
+      <div class="logo-sub">사업검토서 대시보드</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <button class="btn-add" onclick="openModal()">+ 항목 추가</button>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- 통계 -->
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-label">전체 검토서</div>
+      <div class="stat-value accent" id="stat-total">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">검토 중</div>
+      <div class="stat-value" id="stat-pending">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">완료</div>
+      <div class="stat-value" id="stat-done">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">최근 추가</div>
+      <div class="stat-value" id="stat-recent" style="font-size:13px; padding-top:6px;">—</div>
+    </div>
+  </div>
+
+  <!-- 필터 -->
+  <div class="filter-row">
+    <button class="filter-btn active" onclick="setFilter('all', this)">전체</button>
+    <button class="filter-btn" onclick="setFilter('pending', this)">검토 중</button>
+    <button class="filter-btn" onclick="setFilter('done', this)">완료</button>
+    <input class="search-box" type="text" placeholder="제목 · 설명 검색..." oninput="renderCards()" id="search">
+  </div>
+
+  <!-- 카드 목록 -->
+  <div class="cards" id="cards"></div>
+
+  <!-- GitHub 업로드 가이드 -->
+  <div class="guide-box">
+    <h3>📁 GITHUB 업로드 방법 (이 파일을 리포지토리에 올리면 자동 반영)</h3>
+    <code>1. 이 파일(index.html)을 수정 후 저장
+2. GitHub Desktop 또는 아래 명령어로 업로드:
+
+   git add index.html
+   git commit -m "사업검토서 항목 업데이트"
+   git push origin main
+
+3. 새 검토서 HTML 파일은 같은 리포지토리에 올린 후
+   '항목 추가'에서 GitHub Pages URL을 링크로 입력</code>
+  </div>
+
+</div>
+
+<!-- 추가/수정 모달 -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h2 id="modal-title">검토서 항목 추가</h2>
+    <div class="form-group">
+      <label>제목 *</label>
+      <input type="text" id="f-title" placeholder="예: 파크골프장 사업계획서">
+    </div>
+    <div class="form-group">
+      <label>링크 (GitHub Pages URL) *</label>
+      <input type="text" id="f-url" placeholder="https://insys-hq.github.io/Insys-review/파일명.html">
+    </div>
+    <div class="form-group">
+      <label>업로드 날짜</label>
+      <input type="date" id="f-date">
+    </div>
+    <div class="form-group">
+      <label>내용 설명</label>
+      <textarea id="f-desc" placeholder="이 검토서의 주요 내용을 간략히 설명하세요."></textarea>
+    </div>
+    <div class="form-group">
+      <label>상태</label>
+      <select id="f-status">
+        <option value="pending">검토 중</option>
+        <option value="done">완료</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal()">취소</button>
+      <button class="btn-save" onclick="saveItem()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 삭제 확인 모달 -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal confirm-modal">
+    <h2>삭제하시겠습니까?</h2>
+    <p>이 항목을 삭제하면 복구할 수 없습니다.</p>
+    <div class="modal-footer" style="justify-content:center">
+      <button class="btn-cancel" onclick="closeConfirm()">취소</button>
+      <button class="btn-save" style="background:var(--danger)" onclick="confirmDelete()">삭제</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── 초기 데이터 (현재 리포지토리 파일 기반) ──
+const DEFAULT_ITEMS = [
+  {
+    id: 1,
+    title: "ERP 시스템 기능 명세서",
+    url: "https://insys-hq.github.io/Insys-review/erp_spec.html",
+    date: "2026-04-13",
+    desc: "메타데이터 기반 글로벌 SaaS ERP 플랫폼 기능 요구사항 및 메뉴 구조 정의",
+    status: "pending"
+  },
+  {
+    id: 2,
+    title: "인시스 랩 (Lab) 소개",
+    url: "https://insys-hq.github.io/Insys-review/insys_lab.html",
+    date: "2026-04-20",
+    desc: "인시스 그룹 내부 R&D 및 기술 연구소 현황 소개 페이지",
+    status: "pending"
+  },
+  {
+    id: 3,
+    title: "ERP 메뉴 검토서",
+    url: "https://insys-hq.github.io/Insys-review/insys_erp_menu_review.html",
+    date: "2026-04-13",
+    desc: "ERP 메뉴 체계 및 화면 구성 검토 자료",
+    status: "pending"
+  },
+  {
+    id: 4,
+    title: "제주 사업장 현황",
+    url: "https://insys-hq.github.io/Insys-review/jeju.html",
+    date: "2026-04-15",
+    desc: "제주 아라이동 사업장 관련 업무 현황 및 검토 내용",
+    status: "pending"
+  },
+  {
+    id: 5,
+    title: "제주 0415 검토서",
+    url: "https://insys-hq.github.io/Insys-review/jeju0415.html",
+    date: "2026-04-15",
+    desc: "제주 사업장 4월 15일자 현장 점검 및 검토 보고",
+    status: "pending"
+  },
+  {
+    id: 6,
+    title: "전주 사업장 현황",
+    url: "https://insys-hq.github.io/Insys-review/jeonju",
+    date: "2026-04-15",
+    desc: "㈜코어시스템(전주공장) 사업장 현황 및 검토 자료",
+    status: "pending"
+  },
+  {
+    id: 7,
+    title: "김해 사업 검토서",
+    url: "https://insys-hq.github.io/Insys-review/kimhae.html",
+    date: "2026-04-20",
+    desc: "김해 지역 사업 관련 검토 및 분석 보고서",
+    status: "pending"
+  },
+  {
+    id: 8,
+    title: "실버마켓 시장 조사",
+    url: "https://insys-hq.github.io/Insys-review/silver_market_study.html",
+    date: "2026-04-15",
+    desc: "고령화 시장(실버마켓) 진출 관련 시장 조사 및 사업 가능성 검토",
+    status: "pending"
+  }
+];
+
+let items = [];
+let editId = null;
+let deleteId = null;
+let currentFilter = 'all';
+
+function load() {
+  try {
+    const saved = localStorage.getItem('insys_reviews');
+    items = saved ? JSON.parse(saved) : DEFAULT_ITEMS;
+  } catch { items = DEFAULT_ITEMS; }
+  renderCards();
+  updateStats();
+}
+
+function save() {
+  localStorage.setItem('insys_reviews', JSON.stringify(items));
+}
+
+function updateStats() {
+  const total = items.length;
+  const done = items.filter(i => i.status === 'done').length;
+  const pending = total - done;
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-pending').textContent = pending;
+  document.getElementById('stat-done').textContent = done;
+
+  if (items.length > 0) {
+    const latest = [...items].sort((a,b) => (b.date||'').localeCompare(a.date||''))[0];
+    document.getElementById('stat-recent').textContent = latest.title.length > 12 ? latest.title.slice(0,12)+'…' : latest.title;
+  }
+}
+
+function renderCards() {
+  const q = document.getElementById('search').value.toLowerCase();
+  let filtered = items.filter(i => {
+    if (currentFilter === 'pending' && i.status !== 'pending') return false;
+    if (currentFilter === 'done' && i.status !== 'done') return false;
+    if (q && !i.title.toLowerCase().includes(q) && !i.desc.toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  const el = document.getElementById('cards');
+  if (filtered.length === 0) {
+    el.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">📋</div><div>항목이 없습니다.<br>오른쪽 상단 [+ 항목 추가]를 눌러 추가하세요.</div></div>`;
+    return;
+  }
+
+  el.innerHTML = filtered.map(item => `
+    <div class="card" id="card-${item.id}">
+      <div class="card-header">
+        <div class="card-title">${esc(item.title)}</div>
+        <span class="tag ${item.status}">${item.status === 'done' ? '완료' : '검토 중'}</span>
+      </div>
+      <div class="card-body">
+        <div class="card-desc">${esc(item.desc) || '<span style="opacity:0.4">설명 없음</span>'}</div>
+      </div>
+      <div class="card-footer">
+        <div class="card-date">📅 ${item.date || '날짜 미입력'}</div>
+        <div class="card-actions">
+          <button class="btn-open" onclick="window.open('${esc(item.url)}','_blank')">열기</button>
+          <button class="btn-open" style="background:rgba(139,148,158,0.1);color:var(--muted);border-color:rgba(139,148,158,0.2)" onclick="editItem(${item.id})">수정</button>
+          <button class="btn-del" onclick="askDelete(${item.id})">삭제</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── 필터 ──
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderCards();
+}
+
+// ── 모달 ──
+function openModal(id) {
+  editId = id || null;
+  document.getElementById('modal-title').textContent = id ? '검토서 항목 수정' : '검토서 항목 추가';
+  if (id) {
+    const item = items.find(i => i.id === id);
+    document.getElementById('f-title').value = item.title;
+    document.getElementById('f-url').value = item.url;
+    document.getElementById('f-date').value = item.date;
+    document.getElementById('f-desc').value = item.desc;
+    document.getElementById('f-status').value = item.status;
+  } else {
+    document.getElementById('f-title').value = '';
+    document.getElementById('f-url').value = 'https://insys-hq.github.io/Insys-review/';
+    document.getElementById('f-date').value = new Date().toISOString().slice(0,10);
+    document.getElementById('f-desc').value = '';
+    document.getElementById('f-status').value = 'pending';
+  }
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+
+function editItem(id) { openModal(id); }
+
+function saveItem() {
+  const title = document.getElementById('f-title').value.trim();
+  const url = document.getElementById('f-url').value.trim();
+  if (!title || !url) { alert('제목과 링크는 필수입니다.'); return; }
+
+  const data = {
+    title,
+    url,
+    date: document.getElementById('f-date').value,
+    desc: document.getElementById('f-desc').value.trim(),
+    status: document.getElementById('f-status').value,
+  };
+
+  if (editId) {
+    const idx = items.findIndex(i => i.id === editId);
+    items[idx] = { ...items[idx], ...data };
+  } else {
+    data.id = Date.now();
+    items.unshift(data);
+  }
+
+  save();
+  renderCards();
+  updateStats();
+  closeModal();
+}
+
+// ── 삭제 ──
+function askDelete(id) {
+  deleteId = id;
+  document.getElementById('confirm-modal').classList.add('open');
+}
+function closeConfirm() { document.getElementById('confirm-modal').classList.remove('open'); }
+function confirmDelete() {
+  items = items.filter(i => i.id !== deleteId);
+  save();
+  renderCards();
+  updateStats();
+  closeConfirm();
+}
+
+// 오버레이 클릭 닫기
+document.getElementById('modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+document.getElementById('confirm-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeConfirm();
+});
+
+load();
+</script>
+</body>
+</html>
