@@ -1,0 +1,1287 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>인시스 전주공장 이전 프로젝트</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap');
+
+:root {
+  --bg:      #f0f4fa;
+  --sfc:     #ffffff;
+  --sfc2:    #e6edf8;
+  --sfc3:    #f7faff;
+  --bdr:     #c4cfe4;
+  --bdr2:    #dde5f4;
+  --acc:     #1a56c4;
+  --acc2:    #b84500;
+  --acc3:    #0a7a48;
+  --txt:     #0f172a;
+  --txt2:    #2c3a56;
+  --txt3:    #546080;
+  --font:    'Malgun Gothic','맑은 고딕','Noto Sans KR',sans-serif;
+}
+
+* { box-sizing:border-box; margin:0; padding:0; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--txt);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+/* ── HEADER ── */
+.hdr {
+  background: linear-gradient(135deg,#d6e6f8 0%,#bdd2f2 60%,#d6e6f8 100%);
+  border-bottom: 2px solid var(--bdr);
+  padding: 30px 32px 24px;
+}
+.hdr-inner { max-width: 1400px; margin: 0 auto; }
+.hdr-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(26,86,196,.10); border: 1px solid rgba(26,86,196,.28);
+  border-radius: 4px; padding: 3px 11px;
+  font-family: var(--font); font-size: 12px;
+  color: var(--acc); letter-spacing: .06em; margin-bottom: 10px;
+}
+.hdr-badge::before { content:'▶'; font-size:8px; }
+h1 { font-size: clamp(20px,3vw,30px); font-weight:900; color:var(--txt); letter-spacing:-.02em; margin-bottom:5px; }
+h1 span { color: var(--acc); }
+.hdr-meta { font-size:13px; color:var(--txt2); display:flex; flex-wrap:wrap; gap:16px; margin-top:8px; }
+.hdr-meta span { display:flex; align-items:center; gap:5px; }
+.hdr-meta span::before { content:''; width:5px; height:5px; background:var(--acc); border-radius:50%; flex-shrink:0; }
+
+/* ── MAIN ── */
+.main { max-width:1400px; margin:0 auto; padding:24px 32px; }
+
+/* ── SECTION LABEL ── */
+.sec-lbl {
+  font-family: var(--font); font-size:12px; font-weight:700;
+  letter-spacing:.11em; color:var(--acc); text-transform:uppercase;
+  display:flex; align-items:center; gap:10px; margin-bottom:14px;
+}
+.sec-lbl::after { content:''; flex:1; height:1px; background:var(--bdr); }
+
+/* ── INFO BOX ── */
+.ibox {
+  background:#eef4ff; border:1px solid #b6cef0; border-left:4px solid var(--acc);
+  border-radius:6px; padding:14px 18px; margin-bottom:18px;
+  font-size:13px; line-height:1.9; color:var(--txt2);
+}
+.ibox strong { color:var(--txt); }
+.ibox .warn { color:#92400e; background:#fef3c7; border-radius:3px; padding:1px 6px; font-weight:700; }
+
+/* ── KEY DATES ── */
+.kd-wrap { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:22px; }
+.kd-item {
+  background:var(--sfc); border:1px solid var(--bdr); border-radius:6px;
+  padding:8px 14px; display:flex; align-items:center; gap:10px;
+}
+.kd-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.kd-lbl { font-size:12px; color:var(--txt2); line-height:1.3; }
+.kd-val { font-family:var(--font); font-size:12px; font-weight:700; color:var(--txt); }
+
+/* ── GANTT WRAP — PC 전체화면 기준, 가로 스크롤 없이 표시 */
+.gantt-wrap {
+  background:var(--sfc); border:1px solid var(--bdr);
+  border-radius:8px; padding:18px 18px 14px; margin-bottom:20px;
+  overflow-x:auto;
+}
+.gantt-title {
+  font-size:13px; font-weight:700; color:var(--txt2); margin-bottom:14px;
+}
+.gantt {
+  width:100%; border-collapse:collapse;
+  table-layout: fixed;
+}
+/* 열 너비 — 라벨 고정, 나머지 균등 */
+.gantt col.c-lbl  { width:150px; min-width:150px; }
+.gantt col.c-week { width:calc((100% - 150px) / 9); min-width:72px; }
+
+.gantt thead th {
+  font-family:var(--font); font-size:11px; font-weight:700;
+  color:var(--txt2); background:var(--sfc2);
+  text-align:center; padding:7px 2px; border:1px solid var(--bdr);
+  line-height:1.4; word-break:keep-all;
+}
+.gantt thead th.rl { text-align:left; padding-left:8px; font-size:12px; }
+
+.gantt tbody td {
+  font-family:var(--font); font-size:9px;
+  border:1px solid var(--bdr2);
+  padding:2px 2px; vertical-align:middle; height:30px;
+}
+.gantt tbody td.rl {
+  font-size:11px; font-weight:700; color:var(--txt2);
+  background:var(--sfc3); padding:4px 8px;
+  white-space:nowrap; border-color:var(--bdr);
+}
+.gantt tbody td.sub {
+  font-size:10px; font-weight:400; color:var(--txt3);
+  background:var(--sfc3); padding:4px 8px 4px 20px;
+  white-space:nowrap; border-color:var(--bdr);
+}
+.gantt tbody tr:hover td { background:#f0f7ff; }
+.gantt tbody tr:hover td.rl,
+.gantt tbody tr:hover td.sub { background:#e4eff9; }
+.blk { background:#f8fafc !important; }
+
+/* 간트 바 — 폰트 맑은고딕 9px 이상 */
+.gbar {
+  display:flex; align-items:center; justify-content:center;
+  height:22px; border-radius:3px;
+  font-family:var(--font); font-size:9px; font-weight:700;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:0 4px;
+  line-height:1.1;
+}
+/* 줄바꿈 허용 바 — 내용이 길어도 셀 안에 표시 */
+.gbar.wrap {
+  height:auto; min-height:22px; white-space:normal;
+  text-align:center; word-break:keep-all; padding:3px 3px; line-height:1.25;
+}
+.gb-blue   { background:#dbeafe; color:#1e3a8a; border:1px solid #93c5fd; }
+.gb-sky    { background:#e0f2fe; color:#075985; border:1px solid #7dd3fc; }
+.gb-orange { background:#ffedd5; color:#7c2d12; border:1px solid #fb923c; }
+.gb-red    { background:#fee2e2; color:#7f1d1d; border:1px solid #f87171; }
+.gb-yellow { background:#fef9c3; color:#713f12; border:1px solid #facc15; }
+.gb-green  { background:#dcfce7; color:#14532d; border:1px solid #4ade80; }
+.gb-purple { background:#fdf4ff; color:#6b21a8; border:1px solid #d8b4fe; }
+.gb-teal   { background:#ccfbf1; color:#134e4a; border:1px solid #2dd4bf; }
+.gb-gray   { background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; }
+.gb-note   { background:#fdf4ff; color:#6b21a8; border:1px solid #d8b4fe; }
+
+/* span 2칸 */
+.gantt td[colspan] { border-color:var(--bdr2); }
+
+/* ── WEEK CARDS — 5열 고정, PC 전체화면 기준 */
+.wc-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 22px;
+}
+.wc {
+  background:var(--sfc); border:1px solid var(--bdr); border-radius:8px;
+  padding:13px; position:relative; overflow:hidden; min-width:0;
+}
+.wc::before { content:''; position:absolute; top:0; left:0; right:0; height:4px; }
+.wc.c0::before { background:var(--acc); }
+.wc.c1::before { background:var(--acc2); }
+.wc.c2::before { background:#d97706; }
+.wc.c3::before { background:var(--acc3); }
+.wc.c4::before { background:#0369a1; }
+.wc-num   { font-size:11px; font-weight:700; color:var(--txt3); letter-spacing:.06em; margin-bottom:4px; word-break:break-all; }
+.wc-title { font-size:13px; font-weight:700; color:var(--txt); margin-bottom:2px; word-break:keep-all; }
+.wc-date  { font-size:11px; color:var(--txt3); margin-bottom:8px; }
+.wc-list  { list-style:none; display:flex; flex-direction:column; gap:4px; }
+.wc-list li { font-size:12px; color:var(--txt2); display:flex; align-items:flex-start; gap:5px; line-height:1.5; word-break:keep-all; }
+.wc-list li::before { content:'—'; color:var(--txt3); flex-shrink:0; margin-top:1px; }
+.wc-list li.hl { font-weight:700; color:var(--txt); }
+
+/* ── CHECKLIST ── */
+.phase-block { background:var(--sfc); border:1px solid var(--bdr); border-radius:8px; margin-bottom:10px; overflow:hidden; }
+.phase-hdr {
+  padding:12px 18px; background:var(--sfc2); border-bottom:1px solid var(--bdr);
+  display:flex; align-items:center; gap:10px; cursor:pointer; user-select:none;
+}
+.phase-hdr:hover { background:#dce8f8; }
+.ph-num {
+  font-family:var(--font); font-size:11px; font-weight:700;
+  background:rgba(26,86,196,.12); color:var(--acc); border:1px solid rgba(26,86,196,.25);
+  border-radius:3px; padding:2px 8px; flex-shrink:0; letter-spacing:.04em;
+}
+.ph-title  { font-size:13px; font-weight:700; color:var(--txt); flex:1; }
+.ph-timing { font-size:11px; color:var(--txt3); flex-shrink:0; }
+.ph-tog    { font-size:12px; color:var(--txt3); flex-shrink:0; transition:transform .2s; }
+.ph-tog.open { transform:rotate(180deg); }
+.phase-body.collapsed { display:none; }
+
+.cl-tbl { width:100%; border-collapse:collapse; }
+.cl-tbl thead th {
+  font-family:var(--font); font-size:12px; font-weight:700;
+  color:var(--txt2); background:var(--sfc3);
+  text-align:left; padding:9px 13px; border-bottom:2px solid var(--bdr); white-space:nowrap;
+}
+.cl-tbl tbody td { font-size:13px; color:var(--txt2); padding:10px 13px; border-bottom:1px solid var(--bdr2); vertical-align:top; }
+.cl-tbl tbody tr:last-child td { border-bottom:none; }
+.cl-tbl tbody tr:hover td { background:#f5f8ff; }
+.td-no    { font-family:var(--font); font-size:12px; color:var(--txt3); white-space:nowrap; width:54px; }
+.td-title { font-size:14px; font-weight:700; color:var(--txt); display:block; margin-bottom:4px; }
+.td-det   { font-size:13px; color:var(--txt2); line-height:1.75; }
+.td-det em { font-style:normal; color:#78350f; background:#fef3c7; border-radius:3px; padding:1px 5px; }
+.td-pri   { white-space:nowrap; width:64px; text-align:center; }
+.td-asgn  { font-size:13px; color:var(--txt2); white-space:nowrap; width:74px; }
+.td-chk   { width:42px; text-align:center; }
+.td-chk input[type=checkbox] { width:16px; height:16px; accent-color:var(--acc3); cursor:pointer; }
+
+.badge { display:inline-block; font-family:var(--font); font-size:11px; font-weight:700; padding:2px 8px; border-radius:3px; letter-spacing:.03em; white-space:nowrap; }
+.b-urg { background:#fee2e2; color:#7f1d1d; border:1px solid #fca5a5; }
+.b-hi  { background:#ffedd5; color:#7c2d12; border:1px solid #fb923c; }
+.b-mid { background:#fef9c3; color:#713f12; border:1px solid #facc15; }
+.b-lo  { background:#dcfce7; color:#14532d; border:1px solid #4ade80; }
+
+.tr-new td { background:#fff8f5; }
+.tr-new td:first-child { border-left:3px solid var(--acc2); padding-left:10px; }
+
+.footer {
+  border-top:1px solid var(--bdr); padding:20px 32px;
+  text-align:center; font-family:var(--font); font-size:12px; color:var(--txt3); line-height:2;
+}
+
+@media (max-width:1100px) {
+  .wc-grid { grid-template-columns: repeat(3,1fr); }
+}
+@media (max-width:700px) {
+  .wc-grid { grid-template-columns: repeat(2,1fr); }
+  .main { padding:16px; }
+  .hdr  { padding:20px 16px; }
+}
+
+/* ── PDF 내보내기 버튼 ── */
+#pdf-bar {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+#btn-pdf {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: var(--acc);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 22px;
+  font-family: var(--font);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(26,86,196,.35);
+  transition: background .15s, box-shadow .15s, transform .1s;
+  letter-spacing: .02em;
+}
+#btn-pdf:hover  { background:#1346a8; box-shadow:0 6px 20px rgba(26,86,196,.45); transform:translateY(-1px); }
+#btn-pdf:active { transform:translateY(0); }
+#btn-pdf svg    { flex-shrink:0; }
+#pdf-hint {
+  font-family: var(--font);
+  font-size: 11px;
+  color: #fff;
+  background: rgba(15,23,42,.72);
+  border-radius: 5px;
+  padding: 5px 10px;
+  white-space: nowrap;
+  display: none;
+}
+#btn-pdf:hover ~ #pdf-hint,
+#pdf-hint:hover { display: block; }
+
+/* ── A4 인쇄 스타일 ── */
+@media print {
+  /* 기본 리셋 */
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+  /* 고정 요소 숨김 */
+  #pdf-bar { display:none !important; }
+
+  /* 페이지 설정 — A4 세로 */
+  @page {
+    size: A4 portrait;
+    margin: 12mm 10mm 12mm 10mm;
+  }
+
+  body {
+    background: #fff !important;
+    font-size: 11px !important;
+    line-height: 1.5 !important;
+  }
+
+  /* 헤더 */
+  .hdr {
+    padding: 12px 16px 10px !important;
+    break-inside: avoid;
+  }
+  h1 { font-size: 18px !important; }
+  .hdr-meta { font-size: 11px !important; }
+
+  /* 메인 여백 */
+  .main { padding: 10px 0 !important; max-width: 100% !important; }
+
+  /* 정보 박스 */
+  .ibox { font-size: 10px !important; padding: 8px 12px !important; break-inside: avoid; }
+
+  /* 주요 일자 */
+  .kd-wrap { gap:5px !important; margin-bottom:12px !important; }
+  .kd-item { padding:5px 10px !important; }
+  .kd-lbl  { font-size:10px !important; }
+  .kd-val  { font-size:10px !important; }
+
+  /* 간트 — 폰트 유지, 컴팩트 */
+  .gantt-wrap { padding:10px !important; margin-bottom:12px !important; overflow:visible !important; }
+  .gantt-title { font-size:11px !important; margin-bottom:8px !important; }
+  .gantt thead th { font-size:9px !important; padding:4px 2px !important; }
+  .gantt tbody td { height:22px !important; font-size:9px !important; }
+  .gantt tbody td.rl { font-size:10px !important; padding:2px 6px !important; }
+  .gantt tbody td.sub { font-size:9px !important; }
+  .gbar, .gbar.wrap { font-size:8px !important; min-height:16px !important; height:auto !important; padding:2px 3px !important; }
+
+  /* 마일스톤 카드 — 5열 유지 */
+  .wc-grid { grid-template-columns:repeat(5,1fr) !important; gap:5px !important; margin-bottom:12px !important; break-inside:avoid; }
+  .wc { padding:8px !important; }
+  .wc-num   { font-size:9px !important; }
+  .wc-title { font-size:11px !important; }
+  .wc-date  { font-size:9px !important; margin-bottom:5px !important; }
+  .wc-list li { font-size:10px !important; }
+
+  /* 체크리스트 */
+  .phase-block { break-inside:avoid; margin-bottom:6px !important; }
+  .phase-hdr { padding:7px 12px !important; }
+  .ph-num    { font-size:9px !important; }
+  .ph-title  { font-size:11px !important; }
+  .ph-timing { font-size:9px !important; }
+  /* 모든 phase body 펼쳐서 인쇄 */
+  .phase-body.collapsed { display:table !important; }
+  .cl-tbl thead th { font-size:10px !important; padding:5px 8px !important; }
+  .cl-tbl tbody td  { font-size:10px !important; padding:5px 8px !important; }
+  .td-title { font-size:11px !important; }
+  .td-det   { font-size:10px !important; }
+  .badge    { font-size:9px !important; padding:1px 5px !important; }
+
+  /* 섹션 레이블 */
+  .sec-lbl { font-size:10px !important; margin-bottom:8px !important; }
+
+  /* 푸터 */
+  .footer { font-size:9px !important; padding:10px 16px !important; }
+
+  /* 페이지 나눔 */
+  .gantt-wrap  { page-break-after: always; }
+  .wc-grid     { page-break-after: avoid; }
+  .phase-block { page-break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══ HEADER ══ -->
+<div class="hdr">
+  <div class="hdr-inner">
+    <div class="hdr-badge">INSYS PROJECT — JEONJU FACTORY RELOCATION v6.1</div>
+    <h1>인시스 전주공장 <span>이전 마스터플랜</span></h1>
+    <div class="hdr-meta">
+      <span>이전지: 친환경 복합산업단지 (5km 이내)</span>
+      <span>목표 완료: 2025년 7월 중순</span>
+      <span>핵심 고객사: 셰플러 코리아 전주공장</span>
+      <span>폐수: 전량 외부위탁</span>
+      <span>자동세척: 도색완료~세척기이전 전까지 기존공장 가동</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MAIN ══ -->
+<div class="main">
+
+<!-- ─── 섹션1: 전체 일정 ─── -->
+<div class="sec-lbl">전체 프로젝트 일정</div>
+
+<div class="ibox">
+  <strong>📋 확정된 일정 조건 (v6.0 — 2025.04 기준)</strong><br>
+  ① 신규 공장(A·B동) 현 입주업체 명도 기한 → <strong>6월 말</strong>.<br>
+  ② 명도 완료 즉시 <strong>A·B동 바닥 도색(에폭시) 착수</strong> — 도색 기간 <span class="warn">1주 가능 여부 4/23 도색업체 방문 후 확정</span>.<br>
+  ③ <strong>바닥 건조 완료 전까지 설비 반입·렉 설치·건조실 설치 등 일체 불가</strong>. 건조 완료 후 즉시 착수.<br>
+  ④ <strong>기존 전주공장 자동세척기</strong>는 신규 공장 바닥 도색 완료 시점까지 계속 가동 → 도색 완료 확인 후 세척기 이전 착수.<br>
+  ⑤ <strong>신규 공장 외부 도색·간판</strong>은 세척장 정상 운영 이후 병행 가능 (작업 지장 없음).<br>
+  ⑥ <strong>사무동(1~4층) 내부 수리</strong>는 세척장 정상 운영 확인 이후 진행.<br>
+  ⑦ 세척기 정상 가동 목표 → <strong>7월 2주차 (7/14 전후)</strong>.<br>
+  ⑧ <strong>4/22</strong> 세척기 이전업체 방문·협의·견적 / <strong>4/23 오전</strong> 도색업체 방문·견적·1주 가능 여부 확인 / <strong>4/22~23</strong> 인시스 실무자 현장 방문·일정 최종 협의.
+</div>
+
+<!-- 주요 일자 -->
+<div class="kd-wrap">
+  <div class="kd-item"><div class="kd-dot" style="background:#1a56c4"></div><div><div class="kd-lbl">세척기 이전업체 방문·협의</div><div class="kd-val">04/22 (화)</div></div></div>
+  <div class="kd-item"><div class="kd-dot" style="background:#1a56c4"></div><div><div class="kd-lbl">도색업체 방문·견적·기간 확정</div><div class="kd-val">04/23 (수) 오전</div></div></div>
+  <div class="kd-item"><div class="kd-dot" style="background:#1a56c4"></div><div><div class="kd-lbl">실무자 전주 현장 방문·일정 협의</div><div class="kd-val">04/22 ~ 23</div></div></div>
+  <div class="kd-item"><div class="kd-dot" style="background:#b84500"></div><div><div class="kd-lbl">신규 공장 명도 완료 기한</div><div class="kd-val">6월 말</div></div></div>
+  <div class="kd-item"><div class="kd-dot" style="background:#d97706"></div><div><div class="kd-lbl">바닥 도색 착수 (명도 직후)</div><div class="kd-val">7월 1주 초</div></div></div>
+  <div class="kd-item"><div class="kd-dot" style="background:#d97706"></div><div><div class="kd-lbl">도색 기간 (4/23 협의 후 확정)</div><div class="kd-val">1주 예정</div></div></div>
+  <div class="kd-item"><div class="kd-dot" style="background:#0a7a48"></div><div><div class="kd-lbl">세척기 이전 착수 (도색 완료 후)</div><div class="kd-val">7월 1주 말</div></div></div>
+  <div class="kd-item"><div class="kd-dot" style="background:#0a7a48"></div><div><div class="kd-lbl">세척기 정상 가동 목표</div><div class="kd-val">7월 2주차 (7/14~)</div></div></div>
+  <div class="kd-item"><div class="kd-dot" style="background:#0369a1"></div><div><div class="kd-lbl">외부 도색·사무동 수리</div><div class="kd-val">세척장 정상 가동 이후</div></div></div>
+</div>
+
+<!-- ══ GANTT ══ -->
+<div class="gantt-wrap">
+  <div class="gantt-title">▶ 주차별 GANTT 차트 (2025년 4월 ~ 8월) — 맑은고딕, PC 전체화면 기준</div>
+  <table class="gantt">
+    <colgroup>
+      <col class="c-lbl">
+      <col class="c-week"><col class="c-week"><col class="c-week">
+      <col class="c-week"><col class="c-week"><col class="c-week">
+      <col class="c-week"><col class="c-week"><col class="c-week">
+    </colgroup>
+    <thead>
+      <tr>
+        <th class="rl">항목</th>
+        <th>4월<br>3~4주</th>
+        <th>5월<br>1~2주</th>
+        <th>5월<br>3~4주</th>
+        <th>6월<br>1~2주</th>
+        <th>6월<br>3~4주<br><span style="font-size:9px;font-weight:400">명도→</span></th>
+        <th>7월<br>1주<br><span style="font-size:9px;font-weight:400">도색</span></th>
+        <th>7월<br>2주<br><span style="font-size:9px;font-weight:400">설비이전</span></th>
+        <th>7월<br>3~4주</th>
+        <th>8월~</th>
+      </tr>
+    </thead>
+    <tbody>
+
+      <!-- 업체 협의 -->
+      <tr>
+        <td class="rl">견적·업체 협의</td>
+        <td><div class="gbar gb-blue wrap">4/22~23<br>방문·협의</div></td>
+        <td><div class="gbar gb-blue wrap">계약<br>확정</div></td>
+        <td class="blk"></td><td class="blk"></td><td class="blk"></td>
+        <td class="blk"></td><td class="blk"></td><td class="blk"></td><td class="blk"></td>
+      </tr>
+
+      <!-- 입주허가 -->
+      <tr>
+        <td class="rl">입주허가·인허가</td>
+        <td><div class="gbar gb-red wrap">긴급<br>착수</div></td>
+        <td><div class="gbar gb-red wrap">서류<br>제출</div></td>
+        <td><div class="gbar gb-orange wrap">승인<br>대기</div></td>
+        <td><div class="gbar gb-orange wrap">승인<br>완료↗</div></td>
+        <td class="blk"></td><td class="blk"></td><td class="blk"></td><td class="blk"></td><td class="blk"></td>
+      </tr>
+
+      <!-- 기존공장 자동세척 가동 -->
+      <tr>
+        <td class="rl" style="color:#0a7a48;font-weight:700;">기존공장 자동세척 가동</td>
+        <td class="blk"></td>
+        <td><div class="gbar gb-teal wrap">자동<br>세척중</div></td>
+        <td><div class="gbar gb-teal wrap">자동<br>세척중</div></td>
+        <td><div class="gbar gb-teal wrap">자동<br>세척중</div></td>
+        <td><div class="gbar gb-teal wrap">자동<br>세척중</div></td>
+        <td><div class="gbar gb-teal wrap">도색완료<br>→중단</div></td>
+        <td class="blk"></td><td class="blk"></td><td class="blk"></td>
+      </tr>
+
+      <!-- 수작업 보조 -->
+      <tr>
+        <td class="rl" style="font-size:10px;">└ 수작업 보조 (필요시)</td>
+        <td class="blk"></td>
+        <td><div class="gbar gb-orange wrap">준비</div></td>
+        <td><div class="gbar gb-orange wrap">보조<br>운영</div></td>
+        <td><div class="gbar gb-orange wrap">보조<br>운영</div></td>
+        <td><div class="gbar gb-orange wrap">보조<br>운영</div></td>
+        <td><div class="gbar gb-orange wrap">보조<br>운영</div></td>
+        <td class="blk"></td><td class="blk"></td><td class="blk"></td>
+      </tr>
+
+      <!-- 셰플러 납기 협의 -->
+      <tr>
+        <td class="rl">셰플러 납기 협의</td>
+        <td><div class="gbar gb-sky wrap">사전<br>파악</div></td>
+        <td><div class="gbar gb-sky wrap">일정<br>조율</div></td>
+        <td class="blk"></td><td class="blk"></td><td class="blk"></td>
+        <td class="blk"></td><td class="blk"></td><td class="blk"></td><td class="blk"></td>
+      </tr>
+
+      <!-- 명도 -->
+      <tr>
+        <td class="rl">현 입주업체 명도</td>
+        <td class="blk"></td><td class="blk"></td><td class="blk"></td>
+        <td class="blk"></td>
+        <td><div class="gbar gb-red wrap">명도<br>진행<br>→6말</div></td>
+        <td class="blk"></td><td class="blk"></td><td class="blk"></td><td class="blk"></td>
+      </tr>
+
+      <!-- 바닥 도색 -->
+      <tr>
+        <td class="rl">A·B동 바닥 에폭시 도색</td>
+        <td class="blk"></td><td class="blk"></td><td class="blk"></td>
+        <td class="blk"></td><td class="blk"></td>
+        <td><div class="gbar gb-yellow wrap">도색<br>1주<br>(건조포함)</div></td>
+        <td class="blk"></td><td class="blk"></td><td class="blk"></td>
+      </tr>
+
+      <!-- 건조실 설계 -->
+      <tr>
+        <td class="rl" style="font-size:10px;">건조실 설계·자재 발주</td>
+        <td class="blk"></td><td class="blk"></td>
+        <td class="blk"></td>
+        <td><div class="gbar gb-yellow wrap">설계</div></td>
+        <td><div class="gbar gb-yellow wrap">자재<br>발주</div></td>
+        <td class="blk"></td><td class="blk"></td><td class="blk"></td><td class="blk"></td>
+      </tr>
+
+      <!-- 설비 이전 -->
+      <tr>
+        <td class="rl" style="color:#b84500;font-weight:700;">설비 이전·세팅 (순서엄수)</td>
+        <td class="blk"></td><td class="blk"></td><td class="blk"></td>
+        <td class="blk"></td><td class="blk"></td><td class="blk"></td>
+        <td><div class="gbar gb-orange wrap">렉→덕트<br>→보일러<br>→세척기</div></td>
+        <td class="blk"></td><td class="blk"></td>
+      </tr>
+
+      <!-- 건조실 설치 -->
+      <tr>
+        <td class="rl" style="font-size:10px;">건조실 설치</td>
+        <td class="blk"></td><td class="blk"></td><td class="blk"></td>
+        <td class="blk"></td><td class="blk"></td><td class="blk"></td>
+        <td><div class="gbar gb-yellow wrap">설치<br>(건조후)</div></td>
+        <td class="blk"></td><td class="blk"></td>
+      </tr>
+
+      <!-- 세척기 시운전·정상가동 -->
+      <tr>
+        <td class="rl" style="color:#0a7a48;font-weight:700;">세척기 시운전·정상 가동</td>
+        <td class="blk"></td><td class="blk"></td><td class="blk"></td>
+        <td class="blk"></td><td class="blk"></td><td class="blk"></td>
+        <td><div class="gbar gb-green wrap">시운전<br>품질검증</div></td>
+        <td><div class="gbar gb-green wrap">✔ 정상<br>가동</div></td>
+        <td class="blk"></td>
+      </tr>
+
+      <!-- 외부 도색·간판 (세척장 가동 후) -->
+      <tr>
+        <td class="rl" style="font-size:10px;color:#0369a1;">외부 도색·간판 ①세척장 후</td>
+        <td class="blk"></td><td class="blk"></td><td class="blk"></td>
+        <td class="blk"></td><td class="blk"></td><td class="blk"></td>
+        <td class="blk"></td>
+        <td><div class="gbar gb-blue wrap">외벽<br>도색</div></td>
+        <td><div class="gbar gb-blue wrap">간판<br>설치</div></td>
+      </tr>
+
+      <!-- 사무동 내부 수리 (세척장 가동 후) -->
+      <tr>
+        <td class="rl" style="font-size:10px;color:#0369a1;">사무동(1~4층) 내부 수리 ②</td>
+        <td class="blk"></td><td class="blk"></td><td class="blk"></td>
+        <td class="blk"></td><td class="blk"></td><td class="blk"></td>
+        <td class="blk"></td>
+        <td><div class="gbar gb-purple wrap">계획·<br>발주</div></td>
+        <td><div class="gbar gb-purple wrap">수리<br>진행</div></td>
+      </tr>
+
+      <!-- 공장등록·행정 -->
+      <tr>
+        <td class="rl">공장등록·행정</td>
+        <td class="blk"></td><td class="blk"></td><td class="blk"></td>
+        <td><div class="gbar gb-sky wrap">준비</div></td>
+        <td><div class="gbar gb-sky wrap">신청</div></td>
+        <td><div class="gbar gb-sky wrap">처리중</div></td>
+        <td class="blk"></td>
+        <td><div class="gbar gb-green wrap">등록<br>완료</div></td>
+        <td class="blk"></td>
+      </tr>
+
+    </tbody>
+  </table>
+</div><!-- /gantt-wrap -->
+
+<!-- 마일스톤 카드 — 5열 고정, PC에서 전체 보임 -->
+<div class="wc-grid">
+  <div class="wc c0">
+    <div class="wc-num">NOW — W0</div>
+    <div class="wc-title">즉시 착수</div>
+    <div class="wc-date">04/22 ~ 04/30</div>
+    <ul class="wc-list">
+      <li class="hl">4/22 세척기 이전업체 현장 방문·협의·견적</li>
+      <li class="hl">4/23 도색업체 방문·1주 가능 여부 확인</li>
+      <li class="hl">4/22~23 실무자 전주 현장·일정 확정</li>
+      <li>수전 용량 확인 (부족 시 즉시 증설 신청)</li>
+      <li>이천공장 도색 색상코드 현장 확인</li>
+      <li>공단 관리기관 사전 상담</li>
+      <li>셰플러 거래 증빙 서류 준비</li>
+    </ul>
+  </div>
+  <div class="wc c1">
+    <div class="wc-num">W1 ~ W9</div>
+    <div class="wc-title">인허가·자동세척 가동</div>
+    <div class="wc-date">05/01 ~ 06/30</div>
+    <ul class="wc-list">
+      <li class="hl">기존 전주공장 자동세척기 계속 가동</li>
+      <li>입주허가 신청·서류 제출·승인</li>
+      <li>소방·환경·가스 인허가 인수</li>
+      <li>셰플러 납기 일정 파악·충돌 방지</li>
+      <li>건조실 설계·자재 발주 (6월 중)</li>
+      <li>공장등록 신청 서류 준비</li>
+      <li class="hl">6월 말 명도 완료 확인</li>
+    </ul>
+  </div>
+  <div class="wc c2">
+    <div class="wc-num">W10</div>
+    <div class="wc-title">바닥 도색·세척기 이전 준비</div>
+    <div class="wc-date">7/1 ~ 7/7</div>
+    <ul class="wc-list">
+      <li class="hl">A·B동 에폭시 바닥 도색 (1주)</li>
+      <li class="hl">도색 완료 확인 → 세척기 이전 착수</li>
+      <li class="hl">기존공장 자동세척기 가동 중단</li>
+      <li>건조 완료 전 설비 반입 절대 금지</li>
+      <li>이전 차량·지게차·인력 최종 확정</li>
+    </ul>
+  </div>
+  <div class="wc c3">
+    <div class="wc-num">W11</div>
+    <div class="wc-title">설비 이전·세팅 (순서 엄수)</div>
+    <div class="wc-date">7/8 ~ 7/14</div>
+    <ul class="wc-list">
+      <li class="hl">중량 렉 이전·설치</li>
+      <li class="hl">배기 덕트 설치</li>
+      <li class="hl">미우라 보일러 이전·시운전</li>
+      <li class="hl">가스 탱크 이전 (가스안전공사 검사)</li>
+      <li class="hl">세척기 이전·재설치·시운전</li>
+      <li>건조실 설치</li>
+    </ul>
+  </div>
+  <div class="wc c4">
+    <div class="wc-num">W12 ~ (세척장 정상가동 후)</div>
+    <div class="wc-title">정상 가동 + 추가 공사</div>
+    <div class="wc-date">7/14 이후</div>
+    <ul class="wc-list">
+      <li class="hl">세척기 품질 검증 합격 → 정상 가동</li>
+      <li class="hl">외부 도색·간판 설치 (병행 가능)</li>
+      <li class="hl">사무동(1~4층) 내부 수리 착수</li>
+      <li>공장등록 명의 신규 등록</li>
+      <li>사업자 주소·보험 변경</li>
+      <li>셰플러 등 고객사 이전 완료 통보</li>
+    </ul>
+  </div>
+</div>
+
+<!-- 입주 전략 -->
+<div class="ibox" style="margin-bottom:18px;">
+  <strong>▶ 입주 허가 전략 (우선순위 순)</strong><br>
+  ① <strong>[최우선]</strong> 셰플러 코리아 전주공장 = 인근 핵심 고객사 → 지역 내 전후방산업 연관 효과 조항 적용 — 납품 계약서·거래 실적 증빙 자료 제출<br>
+  ② <strong>[병행]</strong> 폐수 전량 외부위탁 → 물환경보전법 시행령 제33조2호 환경 제한 예외 적용<br>
+  ③ <strong>[최후 수단]</strong> ①②로 불가 시에만 CNC 머신 임시 확보 검토 <span class="warn">(반드시 관리기관 사전 협의 필수 — 단독 진행 금지)</span>
+</div>
+
+<!-- ─── 섹션2: 체크리스트 ─── -->
+<div class="sec-lbl" style="margin-top:8px">세부 체크리스트</div>
+
+<!-- PHASE 0 -->
+<div class="phase-block">
+  <div class="phase-hdr" onclick="tog(this)">
+    <span class="ph-num">PHASE 0</span>
+    <span class="ph-title">즉시 착수 — 업체 방문·협의·일정 확정 ⚡ 신규</span>
+    <span class="ph-timing">4/22 ~ 4/30</span>
+    <span class="ph-tog open">▼</span>
+  </div>
+  <div class="phase-body">
+    <table class="cl-tbl">
+      <thead><tr><th>NO</th><th>항목</th><th>상세 내용·주의사항</th><th>우선순위</th><th>담당</th><th>완료</th></tr></thead>
+      <tbody>
+        <tr class="tr-new">
+          <td class="td-no">0-1</td>
+          <td><span class="td-title">세척기 이전업체 현장 방문·협의·견적</span>
+          <div class="td-det">4/22(화) 세척기 이전 전문업체 현장 방문 — 세척기 사양·반출입 동선 확인, 이전 일정·비용 견적 수령<br><em>※ 신규공장 바닥 도색 완료 후 이전 착수 가능 일자 및 시운전 완료 예상일 반드시 확인</em></div></td>
+          <td class="td-pri"><span class="badge b-urg">긴급</span></td>
+          <td class="td-asgn">대표</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr class="tr-new">
+          <td class="td-no">0-2</td>
+          <td><span class="td-title">도색업체 현장 방문·견적·기간 확정</span>
+          <div class="td-det">4/23(수) 오전 도색업체 현장 방문 — A·B동 바닥(에폭시) + 외벽 면적·상태 확인, <strong>도색 기간 1주 가능 여부 확인</strong> 후 일정 확정<br><em>※ 이천공장 색상코드 지참 / 건조 완료 예상일 확인 — 자동세척기 중단 및 설비 이전 일정의 기준점</em></div></td>
+          <td class="td-pri"><span class="badge b-urg">긴급</span></td>
+          <td class="td-asgn">현장</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr class="tr-new">
+          <td class="td-no">0-3</td>
+          <td><span class="td-title">인시스 실무자 전주 현장 방문·일정 최종 협의</span>
+          <div class="td-det">4/22~23 인시스 실무자 신·구 전주공장 현장 방문 — 업체 방문 결과 공유, 명도 기한·바닥 건조 기간·자동세척기 중단 시점 감안하여 세부 일정 최종 확정<br><em>※ 협의 결과 체크리스트 반영 후 전 담당자 공유</em></div></td>
+          <td class="td-pri"><span class="badge b-urg">긴급</span></td>
+          <td class="td-asgn">대표</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr class="tr-new">
+          <td class="td-no">0-4</td>
+          <td><span class="td-title">이전 공장 수전 용량 확인</span>
+          <div class="td-det">한전 계약 전력량 확인 (수전 설비 명판 또는 한전 고객센터) — 세척기·보일러·온풍기·컴프레서 합산 필요 용량 비교<br><em>※ 부족 시 즉시 증설 신청 — 처리 기간 2~3개월 소요</em></div></td>
+          <td class="td-pri"><span class="badge b-urg">긴급</span></td>
+          <td class="td-asgn">전기업체</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr class="tr-new">
+          <td class="td-no">0-5</td>
+          <td><span class="td-title">이천공장 도색 색상코드 현장 확인·문서화</span>
+          <div class="td-det">내·외부 색상코드(RAL/KS번호), 도료 종류, 광택·마감 방식 이천공장 현장 기록<br><em>※ 사진 + 색상코드 문서화 → 도색업체(4/23)에 전달</em></div></td>
+          <td class="td-pri"><span class="badge b-hi">높음</span></td>
+          <td class="td-asgn">현장</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- PHASE 1 -->
+<div class="phase-block">
+  <div class="phase-hdr" onclick="tog(this)">
+    <span class="ph-num">PHASE 1</span>
+    <span class="ph-title">입주 전략 수립·인허가 준비</span>
+    <span class="ph-timing">즉시 착수 — 5~6월</span>
+    <span class="ph-tog open">▼</span>
+  </div>
+  <div class="phase-body">
+    <table class="cl-tbl">
+      <thead><tr><th>NO</th><th>항목</th><th>상세 내용·주의사항</th><th>우선순위</th><th>담당</th><th>완료</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="td-no">1-1</td>
+          <td><span class="td-title">입주 가능 전략 우선순위 결정</span>
+          <div class="td-det">①전후방산업 조항 ②폐수전량위탁 예외 ③세척업 코드 직접 해당 여부 순으로 검토 — 공단 관리기관 상담 결과에 따라 확정</div></td>
+          <td class="td-pri"><span class="badge b-urg">긴급</span></td>
+          <td class="td-asgn">대표</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">1-2</td>
+          <td><span class="td-title">[전략①] 셰플러 전후방산업 연관 효과 입증</span>
+          <div class="td-det">셰플러 코리아 전주공장 = 인근 핵심 고객사 → 지역 내 전후방산업 연관 효과 근거 적용<br><em>※ 관리기관이 필요하다고 인정하는 경우 입주 업종 추가 가능 조항 활용</em></div></td>
+          <td class="td-pri"><span class="badge b-urg">긴급</span></td>
+          <td class="td-asgn">대표</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">1-3</td>
+          <td><span class="td-title">셰플러 거래 증빙 서류 준비</span>
+          <div class="td-det">납품 계약서, 거래 실적 확인서, 발주서 등 일체 준비<br><em>※ 공단 관리기관 제출용 — 거래 규모·기간·의존도 클수록 설득력 높음</em></div></td>
+          <td class="td-pri"><span class="badge b-urg">긴급</span></td>
+          <td class="td-asgn">총무</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">1-4</td>
+          <td><span class="td-title">[전략②] 폐수 전량 외부위탁 예외 조항 병행 적용</span>
+          <div class="td-det">물환경보전법 시행령 제33조2호 — 폐수 전량 위탁처리 시 환경 규제 입주 제한 예외<br><em>※ 위탁처리 업체 계약서를 전략①과 함께 제출 시 허가 가능성 대폭 상승</em></div></td>
+          <td class="td-pri"><span class="badge b-urg">긴급</span></td>
+          <td class="td-asgn">총무</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">1-5</td>
+          <td><span class="td-title">공단 관리기관 사전 상담 (비공개)</span>
+          <div class="td-det">전략①②를 근거로 관리기관 담당자와 비공식 사전 상담 — 입주 허가 가능 여부 타진<br><em>※ 상담 전 셰플러 증빙·폐수위탁 계획서 지참 필수 / 상담 내용 메모 보관</em></div></td>
+          <td class="td-pri"><span class="badge b-urg">긴급</span></td>
+          <td class="td-asgn">대표</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">1-6</td>
+          <td><span class="td-title">[전략③] CNC 머신 임시 확보 검토 (최후 수단)</span>
+          <div class="td-det">전략①②로 입주 허가 불가 판정 시에만 검토 — 베어링 가공용 CNC 임대 또는 리스<br><em>※ 공단 관리기관과 사전 협의 없이 단독 진행 금지 — 입주 취소 리스크</em></div></td>
+          <td class="td-pri"><span class="badge b-mid">중간</span></td>
+          <td class="td-asgn">대표</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">1-7</td>
+          <td><span class="td-title">공장등록 명의 변경 절차 확인</span>
+          <div class="td-det">기존 업체 공장등록 말소 후 인시스 명의 신규 등록<br><em>※ 등록 업종 코드 기재 방법이 핵심 — 관리기관 협의 결과 반영</em></div></td>
+          <td class="td-pri"><span class="badge b-urg">긴급</span></td>
+          <td class="td-asgn">담당자</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">1-8</td>
+          <td><span class="td-title">소방·환경·가스 인허가 현황 인수</span>
+          <div class="td-det">기존 공장 소방완비증명서, 환경 배출시설 신고 현황, 가스 사용 신고 서류 일체 인수<br><em>※ 명의 변경 또는 신규 신고 필요 항목 목록화</em></div></td>
+          <td class="td-pri"><span class="badge b-hi">높음</span></td>
+          <td class="td-asgn">담당자</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">1-9</td>
+          <td><span class="td-title">전력 증설 신청 (용량 부족 시에만)</span>
+          <div class="td-det">0-4 확인 결과 기존 수전 용량 부족 시에만 한전에 증설 신청<br><em>※ 증설 처리 기간 최소 2~3개월 — 부족 판정 즉시 신청 필수</em></div></td>
+          <td class="td-pri"><span class="badge b-urg">긴급</span></td>
+          <td class="td-asgn">전기업체</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- PHASE 2 -->
+<div class="phase-block">
+  <div class="phase-hdr" onclick="tog(this)">
+    <span class="ph-num">PHASE 2</span>
+    <span class="ph-title">납품 연속성 확보 — 자동세척 지속 + 수작업 보조</span>
+    <span class="ph-timing">5월 ~ 도색 완료 시까지</span>
+    <span class="ph-tog open">▼</span>
+  </div>
+  <div class="phase-body">
+    <table class="cl-tbl">
+      <thead><tr><th>NO</th><th>항목</th><th>상세 내용·주의사항</th><th>우선순위</th><th>담당</th><th>완료</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="td-no">2-1</td>
+          <td><span class="td-title">기존 전주공장 자동세척기 계속 가동 계획</span>
+          <div class="td-det">신규 공장 바닥 도색 완료 시점까지 기존 공장 자동세척기 계속 운영 — 세척 물량·납기 정상 유지<br><em>※ 도색 완료 확인 → 세척기 이전 착수 → 기존공장 가동 중단 순으로 진행</em></div></td>
+          <td class="td-pri"><span class="badge b-urg">긴급</span></td>
+          <td class="td-asgn">대표</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">2-2</td>
+          <td><span class="td-title">수작업 세척 도구·소모품 확보 (보조용)</span>
+          <div class="td-det">세척기 이전 기간 중 보조 수단으로 수작업 장비 일체 준비 (브러시·고압 호스·세제·임시 물탱크·건조대)<br><em>※ 세척기 이전 시작 1주 전 입고 완료</em></div></td>
+          <td class="td-pri"><span class="badge b-hi">높음</span></td>
+          <td class="td-asgn">현장</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">2-3</td>
+          <td><span class="td-title">셰플러 납기 일정 확인 및 조율</span>
+          <div class="td-det">이전 기간 중 셰플러 납기 일정 사전 파악 — 물량 급증 시기와 이전 일정 충돌 여부 확인<br><em>※ 납기 지연 가능성 있을 경우 셰플러 담당자에게 선제적으로 통보·협의</em></div></td>
+          <td class="td-pri"><span class="badge b-urg">긴급</span></td>
+          <td class="td-asgn">영업</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">2-4</td>
+          <td><span class="td-title">세척기 가동 중단~재가동 기간 최소화</span>
+          <div class="td-det">자동세척기 가동 중단 시점(도색 완료 후) ~ 신규 공장 시운전 합격 시점을 최대한 단축<br><em>※ 이 공백 기간 중 수작업으로 납품 커버 — 길어질수록 품질·인력 리스크 증가</em></div></td>
+          <td class="td-pri"><span class="badge b-urg">긴급</span></td>
+          <td class="td-asgn">대표</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- PHASE 3 -->
+<div class="phase-block">
+  <div class="phase-hdr" onclick="tog(this)">
+    <span class="ph-num">PHASE 3</span>
+    <span class="ph-title">신규 공장 인프라 점검·공사 계획 (사전 준비)</span>
+    <span class="ph-timing">명도 후 즉시 / 도색 착수 전</span>
+    <span class="ph-tog">▼</span>
+  </div>
+  <div class="phase-body collapsed">
+    <table class="cl-tbl">
+      <thead><tr><th>NO</th><th>항목</th><th>상세 내용·주의사항</th><th>우선순위</th><th>담당</th><th>완료</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="td-no">3-1</td>
+          <td><span class="td-title">중량 렉 바닥 하중 확인</span>
+          <div class="td-det">렉 설치 예정 위치 슬라브 하중(kg/㎡) 실측<br><em>※ 보강 필요 시 도색 전에 공사 일정 반영</em></div></td>
+          <td class="td-pri"><span class="badge b-hi">높음</span></td>
+          <td class="td-asgn">시공업체</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">3-2</td>
+          <td><span class="td-title">배기 덕트 경로 설계</span>
+          <div class="td-det">세척기·보일러 배기 연결 경로 설계 및 대기환경보전법 적합 여부 확인<br><em>※ 외부 배출구 위치 공단 관리기관과 사전 협의</em></div></td>
+          <td class="td-pri"><span class="badge b-hi">높음</span></td>
+          <td class="td-asgn">시공업체</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">3-3</td>
+          <td><span class="td-title">폐수 탱크 위치 재설계</span>
+          <div class="td-det">외부 위탁처리 수거 동선 고려한 탱크 설치 위치 결정<br><em>※ 위탁업체 수거 차량 진입 동선 현장 확인 필수</em></div></td>
+          <td class="td-pri"><span class="badge b-hi">높음</span></td>
+          <td class="td-asgn">시공업체</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">3-4</td>
+          <td><span class="td-title">내부 바닥 도색 착수 확정 (A·B동)</span>
+          <div class="td-det">에폭시 코팅 사양 결정 — 이천공장 동일 색상코드 적용<br><em>※ 4/23 도색업체와 1주 완료 가능 여부 확인 후 착수 일자 확정 / 건조 완료 전 설비 반입 절대 금지</em></div></td>
+          <td class="td-pri"><span class="badge b-urg">긴급</span></td>
+          <td class="td-asgn">시공업체</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">3-5</td>
+          <td><span class="td-title">외부 도색 계획 (세척장 가동 후 시공)</span>
+          <div class="td-det">외벽 도색 이천공장 동일 색상·마감으로 적용 — 세척장 정상 운영 이후 시공 (내부 작업 지장 없음)<br><em>※ 기존 페인트 상태 확인 후 프라이머 필요 여부 판단 / 발주는 사전에 진행</em></div></td>
+          <td class="td-pri"><span class="badge b-mid">중간</span></td>
+          <td class="td-asgn">시공업체</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">3-6</td>
+          <td><span class="td-title">간판 계획 수립 (세척장 가동 후 설치)</span>
+          <div class="td-det">기존 전주공장 간판 이전 가능 여부 확인 — 불가 시 이천공장 디자인·규격 기준 신규 제작<br><em>※ 설치는 세척장 정상 운영 이후 진행 / 제작 발주는 사전 완료</em></div></td>
+          <td class="td-pri"><span class="badge b-mid">중간</span></td>
+          <td class="td-asgn">총무</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">3-7</td>
+          <td><span class="td-title">건조실 설계·자재 발주 (사전 준비)</span>
+          <div class="td-det">세척 후 건조를 위한 건조실 위치·규격 결정 및 설계 — 자재 6월 중 발주<br><em>※ 설치는 바닥 도색 건조 완료 후 착수 / 설계와 자재 발주는 사전에 반드시 완료</em></div></td>
+          <td class="td-pri"><span class="badge b-hi">높음</span></td>
+          <td class="td-asgn">시공업체</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">3-8</td>
+          <td><span class="td-title">사무동(1~4층) 내부 수리 계획 (세척장 가동 후 착수)</span>
+          <div class="td-det">사무동 내부 수리 범위·비용 사전 파악 — 실제 공사는 세척장 정상 운영 확인 이후 착수<br><em>※ 설계·견적·자재 발주는 세척장 가동 전에 완료하여 즉시 착수 가능하도록 준비</em></div></td>
+          <td class="td-pri"><span class="badge b-mid">중간</span></td>
+          <td class="td-asgn">시공업체</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">3-9</td>
+          <td><span class="td-title">에어 배관·압축기 점검</span>
+          <div class="td-det">세척 공정용 에어라인 재배관 필요 여부 확인 및 누기 테스트</div></td>
+          <td class="td-pri"><span class="badge b-mid">중간</span></td>
+          <td class="td-asgn">내부/업체</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- PHASE 4 -->
+<div class="phase-block">
+  <div class="phase-hdr" onclick="tog(this)">
+    <span class="ph-num">PHASE 4</span>
+    <span class="ph-title">이전 물류 준비</span>
+    <span class="ph-timing">6월 중까지 완료</span>
+    <span class="ph-tog">▼</span>
+  </div>
+  <div class="phase-body collapsed">
+    <table class="cl-tbl">
+      <thead><tr><th>NO</th><th>항목</th><th>상세 내용·주의사항</th><th>우선순위</th><th>담당</th><th>완료</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="td-no">4-1</td>
+          <td><span class="td-title">이전 상세 일정표 확정</span>
+          <div class="td-det">바닥 도색 완료·건조 시점 기준 역산 — 설비 이전 순서: 렉 → 배기덕트 → 보일러 → 가스탱크 → 세척기 → 폐수탱크 → 온풍기<br><em>※ 0-3 실무자 협의 및 4/23 도색업체 방문 결과 반영</em></div></td>
+          <td class="td-pri"><span class="badge b-urg">긴급</span></td>
+          <td class="td-asgn">대표</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">4-2</td>
+          <td><span class="td-title">이전 차량 수배</span>
+          <div class="td-det">이전 거리 5km 이내 — 당일 왕복 가능, 5톤/11톤 트럭 필요 대수 및 운행 횟수 산정<br><em>※ 렉·보일러 등 중량물은 중량물 전용 차량 별도 수배</em></div></td>
+          <td class="td-pri"><span class="badge b-hi">높음</span></td>
+          <td class="td-asgn">현장</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">4-3</td>
+          <td><span class="td-title">지게차 확보</span>
+          <div class="td-det">신규 공장 지게차 진입 가능 여부 확인 (출입구 높이·폭·바닥 하중)<br><em>※ 보유 지게차 이전 또는 렌탈 여부 결정 — 이전 당일 현장 상주 필수</em></div></td>
+          <td class="td-pri"><span class="badge b-hi">높음</span></td>
+          <td class="td-asgn">현장</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">4-4</td>
+          <td><span class="td-title">이전 당일 인력 배치 계획</span>
+          <div class="td-det">상·하차 인력, 지게차 기사, 각 설비 전문업체 기사 동시 투입 계획 수립<br><em>※ 보일러·세척기는 전문업체 기사 반드시 동행 — 임의 이전 금지</em></div></td>
+          <td class="td-pri"><span class="badge b-hi">높음</span></td>
+          <td class="td-asgn">현장</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">4-5</td>
+          <td><span class="td-title">이전 전 재고·자재 목록 작성</span>
+          <div class="td-det">공구·소모품·포장재·세제·선반류 등 전 품목 목록화 후 신규 공장 배치 계획 수립<br><em>※ 이전 후 목록 대조하여 누락 여부 최종 확인</em></div></td>
+          <td class="td-pri"><span class="badge b-mid">중간</span></td>
+          <td class="td-asgn">현장</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- PHASE 5 -->
+<div class="phase-block">
+  <div class="phase-hdr" onclick="tog(this)">
+    <span class="ph-num">PHASE 5</span>
+    <span class="ph-title">설비 이전 실행 — 바닥 건조 완료 후 착수, 순서 엄수</span>
+    <span class="ph-timing">7월 1주 말 ~ (건조 완료 후)</span>
+    <span class="ph-tog">▼</span>
+  </div>
+  <div class="phase-body collapsed">
+    <table class="cl-tbl">
+      <thead><tr><th>NO</th><th>항목</th><th>상세 내용·주의사항</th><th>우선순위</th><th>담당</th><th>완료</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="td-no">5-1</td>
+          <td><span class="td-title">중량 렉 해체·이전·재설치</span>
+          <div class="td-det">기존 공장 렉 해체 → 트럭 상차 → 5km 이동 → 신규 공장 반입·조립<br><em>※ 앵커볼트 고정, 수평 확인, 완료 사진 기록 보관</em></div></td>
+          <td class="td-pri"><span class="badge b-hi">높음</span></td>
+          <td class="td-asgn">시공업체</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">5-2</td>
+          <td><span class="td-title">배기 덕트 설치</span>
+          <div class="td-det">신규 공장 배기 덕트 설치 및 연결, 기밀 테스트 실시<br><em>※ 외부 배출구 위치 최종 확인 후 시공</em></div></td>
+          <td class="td-pri"><span class="badge b-hi">높음</span></td>
+          <td class="td-asgn">시공업체</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">5-3</td>
+          <td><span class="td-title">미우라 보일러 이전</span>
+          <div class="td-det">보일러 전문업체 분리·운반·재설치 — 가스 배관 연결 및 시운전<br><em>※ 가스안전공사 안전검사 완료 후 사용 (검사 전 가동 절대 불가)</em></div></td>
+          <td class="td-pri"><span class="badge b-hi">높음</span></td>
+          <td class="td-asgn">보일러업체</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">5-4</td>
+          <td><span class="td-title">가스 탱크 이전</span>
+          <div class="td-det">LPG 탱크 이전 시 가스안전공사 신고 및 검사 선행<br><em>※ 도시가스 전환 시 해당 공급사 별도 협의</em></div></td>
+          <td class="td-pri"><span class="badge b-hi">높음</span></td>
+          <td class="td-asgn">가스업체</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">5-5</td>
+          <td><span class="td-title">세척기 이전 및 재설치 ⭐ 핵심 마일스톤</span>
+          <div class="td-det">세척기 제조사 또는 전문업체 분리·운반·재설치 — 배관·전기 연결 후 시운전<br><em>※ 품질 테스트 합격 시 정상 가동 선언 — 이 시점이 핵심 마일스톤</em></div></td>
+          <td class="td-pri"><span class="badge b-urg">긴급</span></td>
+          <td class="td-asgn">세척기업체</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">5-6</td>
+          <td><span class="td-title">건조실 설치 (바닥 건조 완료 후)</span>
+          <div class="td-det">사전 완료된 설계·발주 자재 기준으로 건조실 설치<br><em>※ 바닥 에폭시 건조 완료 확인 후 착수</em></div></td>
+          <td class="td-pri"><span class="badge b-hi">높음</span></td>
+          <td class="td-asgn">시공업체</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">5-7</td>
+          <td><span class="td-title">폐수 탱크 이전</span>
+          <div class="td-det">기존 탱크 잔수 처리·세척 후 이전 또는 신규 설치<br><em>※ 위탁업체 첫 수거 일정 사전 예약</em></div></td>
+          <td class="td-pri"><span class="badge b-mid">중간</span></td>
+          <td class="td-asgn">업체협의</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">5-8</td>
+          <td><span class="td-title">온풍기 이동</span>
+          <div class="td-det">효율적 난방 동선 고려한 위치 재결정 후 이전 설치<br><em>※ 전기 배선 연결 확인 및 시운전</em></div></td>
+          <td class="td-pri"><span class="badge b-mid">중간</span></td>
+          <td class="td-asgn">전기업체</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">5-9</td>
+          <td><span class="td-title">전력선 최종 점검 및 추가 공사</span>
+          <div class="td-det">분전반·차단기·접지 최종 점검, 누전차단기 동작 테스트<br><em>※ 전기안전관리자 확인서 수령</em></div></td>
+          <td class="td-pri"><span class="badge b-hi">높음</span></td>
+          <td class="td-asgn">전기업체</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">5-10</td>
+          <td><span class="td-title">기타 잡자재 이전</span>
+          <div class="td-det">사전 작성 목록 기준 전 품목 이전 및 배치 — 목록 대조 누락 확인</div></td>
+          <td class="td-pri"><span class="badge b-lo">낮음</span></td>
+          <td class="td-asgn">내부</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- PHASE 6 -->
+<div class="phase-block">
+  <div class="phase-hdr" onclick="tog(this)">
+    <span class="ph-num">PHASE 6</span>
+    <span class="ph-title">세척장 정상 가동 이후 — 외부 도색·사무동 수리 (병행 가능)</span>
+    <span class="ph-timing">7월 2주차 이후 (세척장 정상 가동 후)</span>
+    <span class="ph-tog">▼</span>
+  </div>
+  <div class="phase-body collapsed">
+    <table class="cl-tbl">
+      <thead><tr><th>NO</th><th>항목</th><th>상세 내용·주의사항</th><th>우선순위</th><th>담당</th><th>완료</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="td-no">6-1</td>
+          <td><span class="td-title">외부 외벽 도색 (세척장 운영 중 병행)</span>
+          <div class="td-det">이천공장 동일 색상·마감으로 외벽 전체 도색 — 세척장 내부 작업 지장 없으므로 세척장 가동 후 즉시 착수 가능<br><em>※ 기존 페인트 부착 상태 확인, 필요 시 프라이머 선시공</em></div></td>
+          <td class="td-pri"><span class="badge b-hi">높음</span></td>
+          <td class="td-asgn">시공업체</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">6-2</td>
+          <td><span class="td-title">간판 이전 또는 신규 설치 (세척장 운영 중 병행)</span>
+          <div class="td-det">기존 전주공장 간판 재활용 가능 시 이전, 불가 시 이천공장 디자인 기준 신규 제작·설치<br><em>※ 설치 위치·야간 조명 여부 결정 / 사전 제작 발주 완료 후 즉시 설치</em></div></td>
+          <td class="td-pri"><span class="badge b-mid">중간</span></td>
+          <td class="td-asgn">업체</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">6-3</td>
+          <td><span class="td-title">내부 바닥 에폭시 도색 잔여 구역</span>
+          <div class="td-det">중량 렉 설치 완료 후 잔여 구역 에폭시 코팅 — 이천공장 동일 색상 적용<br><em>※ 색상코드 시공업체에 문서로 전달, 샘플 확인 후 본시공</em></div></td>
+          <td class="td-pri"><span class="badge b-hi">높음</span></td>
+          <td class="td-asgn">시공업체</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">6-4</td>
+          <td><span class="td-title">사무동(1~4층) 내부 수리 착수</span>
+          <div class="td-det">세척장 정상 운영 확인 후 사무동 내부 수리 착수 — 사전 준비된 설계·견적·자재 기준으로 진행<br><em>※ 세척장 운영에 지장 없는 범위 내 일정 조율</em></div></td>
+          <td class="td-pri"><span class="badge b-mid">중간</span></td>
+          <td class="td-asgn">시공업체</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- PHASE 7 -->
+<div class="phase-block">
+  <div class="phase-hdr" onclick="tog(this)">
+    <span class="ph-num">PHASE 7</span>
+    <span class="ph-title">공장등록·행정·사업 재개</span>
+    <span class="ph-timing">7월 2주차 ~</span>
+    <span class="ph-tog">▼</span>
+  </div>
+  <div class="phase-body collapsed">
+    <table class="cl-tbl">
+      <thead><tr><th>NO</th><th>항목</th><th>상세 내용·주의사항</th><th>우선순위</th><th>담당</th><th>완료</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="td-no">7-1</td>
+          <td><span class="td-title">공장등록 명의 변경 또는 신규 등록</span>
+          <div class="td-det">기존 업체 공장등록 말소 확인 후 인시스 명의 신규 등록 신청<br><em>※ 등록 업종 코드는 관리기관 협의 결과 반영 — 등록증 수령 후 사업 개시</em></div></td>
+          <td class="td-pri"><span class="badge b-urg">긴급</span></td>
+          <td class="td-asgn">대표/담당</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">7-2</td>
+          <td><span class="td-title">폐수 위탁처리 계약 최종 확인</span>
+          <div class="td-det">위탁업체 계약서 완료, 첫 수거 일정 확정<br><em>※ 계약서 공단 관리기관 제출 (요구 시)</em></div></td>
+          <td class="td-pri"><span class="badge b-urg">긴급</span></td>
+          <td class="td-asgn">총무</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">7-3</td>
+          <td><span class="td-title">소방·안전 최종 점검</span>
+          <div class="td-det">소방시설 작동 확인, 비상구·소화기 배치 최종 점검<br><em>※ 소방서 완비증명서 수령</em></div></td>
+          <td class="td-pri"><span class="badge b-hi">높음</span></td>
+          <td class="td-asgn">담당자</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">7-4</td>
+          <td><span class="td-title">세척기 재가동 및 품질 검증 ⭐ 핵심 완료</span>
+          <div class="td-det">전체 시운전 후 셰플러 납품 기준 세척 품질 충족 여부 확인<br><em>※ 합격 시 정상 가동 선언, 불합격 시 즉시 조치 후 재검증</em></div></td>
+          <td class="td-pri"><span class="badge b-urg">긴급</span></td>
+          <td class="td-asgn">현장</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">7-5</td>
+          <td><span class="td-title">사업자 등록 주소 변경</span>
+          <div class="td-det">세무서 사업자 주소 변경 신고 및 각종 허가증·인증서 주소 일괄 변경</div></td>
+          <td class="td-pri"><span class="badge b-hi">높음</span></td>
+          <td class="td-asgn">총무</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">7-6</td>
+          <td><span class="td-title">각종 보험 주소 변경</span>
+          <div class="td-det">화재·산재·시설물배상책임보험 주소 변경 및 신규 공장 기준 보험료 재산정</div></td>
+          <td class="td-pri"><span class="badge b-mid">중간</span></td>
+          <td class="td-asgn">총무</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">7-7</td>
+          <td><span class="td-title">셰플러 등 고객사 이전 완료 공식 통보</span>
+          <div class="td-det">신규 공장 주소·연락처·정상 가동 사실 고객사 공식 안내<br><em>※ 납품 일정 정상화 확인</em></div></td>
+          <td class="td-pri"><span class="badge b-hi">높음</span></td>
+          <td class="td-asgn">영업</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td class="td-no">7-8</td>
+          <td><span class="td-title">이전 완료 최종 확인</span>
+          <div class="td-det">체크리스트 전 항목 완료 확인, 미완료 항목 후속 일정 수립<br><em>※ 담당자별 완료 서명 후 파일 보관</em></div></td>
+          <td class="td-pri"><span class="badge b-mid">중간</span></td>
+          <td class="td-asgn">대표</td>
+          <td class="td-chk"><input type="checkbox"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<div class="footer">
+  인시스 전주공장 이전 프로젝트 v6.1 &nbsp;│&nbsp; 법적 근거: 산업집적활성화 및 공장설립에 관한 법률 / 물환경보전법 시행령 제33조2호 / 전주 친환경 복합산업단지 관리기본계획<br>
+  ① 외부 도색·간판: 세척장 정상 가동 후 병행 시공 &nbsp;│&nbsp; ② 사무동(1~4층) 수리: 세척장 정상 운영 확인 후 착수<br>
+  ⚠ 바닥 도색 1주 가능 여부 → <strong>4/23 도색업체 방문 후 확정</strong> &nbsp;│&nbsp; 완료 시 ☑ 체크 후 담당자 확인
+</div>
+
+<!-- ══ PDF 내보내기 버튼 ══ -->
+<div id="pdf-bar">
+  <button id="btn-pdf" onclick="exportPDF()">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="12" y1="11" x2="12" y2="17"/>
+      <polyline points="9 14 12 17 15 14"/>
+    </svg>
+    A4 PDF 내보내기
+  </button>
+  <div id="pdf-hint">브라우저 인쇄 창 → 대상: PDF로 저장</div>
+</div>
+
+<script>
+function tog(h) {
+  var b = h.nextElementSibling;
+  var a = h.querySelector('.ph-tog');
+  if (b.classList.contains('collapsed')) {
+    b.classList.remove('collapsed'); a.classList.add('open');
+  } else {
+    b.classList.add('collapsed'); a.classList.remove('open');
+  }
+}
+
+function exportPDF() {
+  /* 인쇄 전: 접혀 있는 phase body 모두 펼치기 */
+  var collapsed = document.querySelectorAll('.phase-body.collapsed');
+  var togBtns   = document.querySelectorAll('.ph-tog');
+  collapsed.forEach(function(el) { el.classList.remove('collapsed'); });
+  togBtns.forEach(function(el)   { el.classList.add('open'); });
+
+  /* 잠시 후 인쇄 다이얼로그 열기 */
+  setTimeout(function() {
+    window.print();
+    /* 인쇄 후 원래 상태 복원은 하지 않음 — 사용자가 직접 다시 접을 수 있음 */
+  }, 300);
+}
+</script>
+</body>
+</html>
