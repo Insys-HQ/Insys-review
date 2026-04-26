@@ -3,7 +3,7 @@
   신촌공장 재고관리 시스템 (Sinchon Factory WMS)
 ================================================================================
   파일명  : shinchon.html
-  버전    : v2.3
+  버전    : v2.4
   작성일  : 2026-04-26
   수정일  : 2026-04-26
 
@@ -17,6 +17,8 @@
                     tx:#f0f6ff / tx2:#b0cce8 / tx3:#7aaac8 으로 상향
                     카드 헤더·테이블·사이드바·KPI 서브 모든 텍스트 밝기 개선
   v2.3  2026-04-26  공장명 오류 수정 — 신창공장 → 신촌공장 (전체 6곳)
+  v2.4  2026-04-26  라벨 미리보기 개선 — JsBarcode 라이브러리로 실제 Code128
+                    바코드 생성, 산업용 라벨 디자인으로 전면 재설계
 
   개발환경
   ──────────────────────────────────────────────────────────────────────────────
@@ -43,8 +45,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>신촌공장 재고관리 시스템 v2.3</title>
+<title>신촌공장 재고관리 시스템 v2.4</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js"></script>
 <style>
 /* ── 맑은 고딕 우선 폰트 스택 ── */
 @font-face{font-family:'MalgunGothic';src:local('맑은 고딕'),local('Malgun Gothic')}
@@ -186,19 +189,74 @@ body{background:var(--bg);color:var(--tx);font-size:12px;display:flex;flex-direc
 .bg{background:transparent;color:var(--tx2);border:1px solid var(--bd2)}.bg:hover{border-color:var(--a1);color:var(--a1)}
 .brow{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;flex-shrink:0}
 
-/* ══ 라벨 미리보기 ══ */
-.lp{background:#fff;border-radius:5px;padding:10px;position:relative;flex-shrink:0}
-.li{border:1px solid #ddd;border-radius:3px;padding:8px}
-.lt{font-size:7px;color:#333;font-weight:700;text-align:center;letter-spacing:1px;margin-bottom:6px;font-family:sans-serif}
-.lbc{display:flex;gap:1px;justify-content:center;align-items:flex-end;height:34px;margin-bottom:4px}
-.lbar{background:#111}
-.lcode{font-family:monospace;font-size:7px;color:#333;text-align:center;letter-spacing:2px;margin-bottom:5px}
-.linfo{display:grid;grid-template-columns:1fr 1fr;gap:2px}
-.lf{font-size:6.5px;color:#555;font-family:sans-serif}
-.lf span{font-weight:700;color:#111}
-.lqr{position:absolute;right:14px;bottom:14px;width:36px;height:36px;
-  background:repeating-linear-gradient(0deg,#111 0,#111 2px,transparent 2px,transparent 5px),
-             repeating-linear-gradient(90deg,#111 0,#111 2px,transparent 2px,transparent 5px);opacity:.9}
+/* ══ 라벨 미리보기 — 실제 산업용 라벨 디자인 ══ */
+.lp-wrap{
+  background:#e8e8e8;border-radius:6px;padding:16px;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+/* 실제 라벨 용지 비율 100×70mm 기준 */
+.lp-label{
+  background:#fff;
+  width:320px;height:210px;
+  border:1.5px solid #222;
+  border-radius:3px;
+  display:flex;flex-direction:column;
+  font-family:'MalgunGothic','맑은 고딕','Malgun Gothic',sans-serif;
+  box-shadow:2px 2px 8px rgba(0,0,0,.25);
+  overflow:hidden;position:relative;
+}
+/* 상단 헤더 띠 */
+.lp-head{
+  background:#1a2d46;color:#fff;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:4px 10px;flex-shrink:0;
+}
+.lp-head-title{font-size:9px;font-weight:700;letter-spacing:.5px}
+.lp-head-tag{
+  font-size:8px;font-weight:700;padding:1px 7px;border-radius:3px;
+  background:#00e896;color:#000;
+}
+/* 본문 영역 */
+.lp-body{display:flex;flex:1;overflow:hidden}
+/* 좌측: 정보 필드 */
+.lp-info{
+  width:130px;flex-shrink:0;
+  padding:6px 8px;border-right:1px dashed #ccc;
+  display:flex;flex-direction:column;justify-content:space-around;
+}
+.lp-row{display:flex;flex-direction:column;margin-bottom:3px}
+.lp-key{font-size:6.5px;color:#666;font-weight:700;letter-spacing:.3px;text-transform:uppercase}
+.lp-val{font-size:9px;color:#111;font-weight:600;line-height:1.3;font-family:'Consolas','Courier New',monospace}
+.lp-val.big{font-size:13px;font-weight:700;color:#000}
+/* 우측: 바코드 영역 */
+.lp-bc-area{
+  flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:6px 8px;gap:4px;
+}
+.lp-bc-label{font-size:7px;color:#888;letter-spacing:.3px;text-transform:uppercase;font-weight:700}
+#lbc-svg{max-width:100%;height:auto}
+.lp-matno{font-size:8px;color:#333;font-family:'Consolas','Courier New',monospace;letter-spacing:1px;text-align:center}
+/* QR 영역 */
+.lp-qr-row{display:flex;align-items:center;gap:6px;padding:4px 8px;border-top:1px dashed #ccc;flex-shrink:0}
+.lp-qr-box{width:36px;height:36px;flex-shrink:0}
+#lbc-qr-svg{width:36px;height:36px}
+.lp-qr-info{font-size:7px;color:#444;line-height:1.7;font-family:'MalgunGothic','맑은 고딕',sans-serif}
+/* 하단 절취선 효과 */
+.lp-footer{
+  background:#f5f5f5;border-top:1px solid #ddd;
+  padding:2px 10px;display:flex;justify-content:space-between;align-items:center;
+  flex-shrink:0;
+}
+.lp-footer span{font-size:6.5px;color:#999;font-family:'Consolas','Courier New',monospace}
+/* 라벨 크기 배지 */
+.lp-size-badge{
+  position:absolute;top:0;right:0;
+  background:rgba(0,200,255,.15);border-left:1px solid rgba(0,200,255,.3);border-bottom:1px solid rgba(0,200,255,.3);
+  font-size:7px;color:#00c8ff;padding:1px 5px;border-radius:0 3px 0 4px;
+  font-family:'Consolas','Courier New',monospace;
+}
 
 /* ══ 스캐너 ══ */
 .scanbox{background:var(--bg3);border:2px dashed var(--bd2);border-radius:8px;
@@ -243,7 +301,7 @@ body{background:var(--bg);color:var(--tx);font-size:12px;display:flex;flex-direc
 
 <!-- ══ 헤더 ══ -->
 <div class="hdr">
-  <div class="logo">신촌공장 재고관리 시스템<em>WMS v2.3</em></div>
+  <div class="logo">신촌공장 재고관리 시스템<em>WMS v2.4</em></div>
   <span class="hpill ok">● 정상</span>
   <span class="hpill wa">⚠ 부족 4건</span>
   <span class="hpill ok">DB 연결</span>
@@ -609,25 +667,78 @@ body{background:var(--bg);color:var(--tx);font-size:12px;display:flex;flex-direc
     </div>
     <div class="col2 f1">
       <div class="card" style="flex:0 0 auto">
-        <div class="ch c2">라벨 미리보기 (60×40mm)</div>
-        <div class="lp" id="lpreview">
-          <div class="li">
-            <div class="lt">신촌공장 재고관리 시스템</div>
-            <div class="lbc" id="lbars"></div>
-            <div class="lcode" id="lcodetxt">098519026-0000</div>
-            <div class="linfo">
-              <div class="lf">모델: <span id="li-model">OSD6203</span></div>
-              <div class="lf">규격: <span id="li-spec">AU.6203-B-2Z</span></div>
-              <div class="lf">공급: <span id="li-vendor">찬스(위탁)</span></div>
-              <div class="lf">수량: <span id="li-qty">120,500 PCS</span></div>
-              <div class="lf">입고: <span id="li-date">2026-02-23</span></div>
-              <div class="lf">로트: <span id="li-lot">LOT-20260223</span></div>
-              <div class="lf">위치: <span id="li-loc">B-02-01</span></div>
-              <div class="lf">구분: <span id="li-gubun">입고</span></div>
+        <div class="ch c2">라벨 미리보기</div>
+        <div class="lp-wrap">
+          <div class="lp-label" id="lp-label">
+
+            <!-- 크기 배지 -->
+            <div class="lp-size-badge" id="lp-size-badge">100×70mm</div>
+
+            <!-- 상단 헤더 -->
+            <div class="lp-head">
+              <div class="lp-head-title">신촌공장 재고관리 시스템</div>
+              <div class="lp-head-tag" id="lp-gubun-tag">입고</div>
             </div>
-            <div class="lqr"></div>
-          </div>
-        </div>
+
+            <!-- 본문: 정보 + 바코드 -->
+            <div class="lp-body">
+              <!-- 좌측 정보 -->
+              <div class="lp-info">
+                <div class="lp-row">
+                  <span class="lp-key">모델 / 형번</span>
+                  <span class="lp-val big" id="lp-model">OSD6203</span>
+                </div>
+                <div class="lp-row">
+                  <span class="lp-key">자재규격</span>
+                  <span class="lp-val" id="lp-spec">AU.6203-B-2Z-8105-L6</span>
+                </div>
+                <div class="lp-row">
+                  <span class="lp-key">공급처</span>
+                  <span class="lp-val" id="lp-vendor">찬스(위탁)</span>
+                </div>
+                <div class="lp-row">
+                  <span class="lp-key">수량 (PCS)</span>
+                  <span class="lp-val big" id="lp-qty" style="color:#d44;">120,500</span>
+                </div>
+                <div class="lp-row">
+                  <span class="lp-key">입고일</span>
+                  <span class="lp-val" id="lp-date">2026-02-23</span>
+                </div>
+                <div class="lp-row">
+                  <span class="lp-key">위치코드</span>
+                  <span class="lp-val" id="lp-loc">B-02-01</span>
+                </div>
+              </div>
+
+              <!-- 우측 바코드 -->
+              <div class="lp-bc-area">
+                <div class="lp-bc-label">Code128 바코드</div>
+                <svg id="lbc-svg"></svg>
+                <div class="lp-matno" id="lp-matno">098519026-0000</div>
+              </div>
+            </div>
+
+            <!-- QR + 로트 하단 -->
+            <div class="lp-qr-row">
+              <div class="lp-qr-box">
+                <svg id="lbc-qr-svg"></svg>
+              </div>
+              <div class="lp-qr-info">
+                <div>로트번호: <b id="lp-lot">LOT-20260223-005</b></div>
+                <div>링종류: <b id="lp-ring">선삭링</b> &nbsp;|&nbsp; Type: <b id="lp-type">OSD</b> &nbsp;|&nbsp; 륜: <b id="lp-wheel">B</b></div>
+                <div>출력일시: <b id="lp-printdt">2026-04-26 11:04</b></div>
+              </div>
+            </div>
+
+            <!-- 하단 푸터 -->
+            <div class="lp-footer">
+              <span id="lp-footer-matno">098519026-0000</span>
+              <span>신촌공장 WMS v2.4</span>
+              <span id="lp-seq">SEQ: 0001</span>
+            </div>
+
+          </div><!-- /lp-label -->
+        </div><!-- /lp-wrap -->
         <div id="lmsg" style="margin-top:6px"></div>
       </div>
       <div class="card flex1">
@@ -1060,41 +1171,122 @@ function addSH(d){
 }
 function clrScan(){document.getElementById('sr-card').style.display='none';document.getElementById('sinput').value='';}
 
-// ── 라벨 ───────────────────────────────────────────────
-function mkBars(){
-  const c=document.getElementById('lbars');c.innerHTML='';
-  const p=[3,1,2,1,4,1,2,3,1,2,1,3,2,1,3,1,2,1,4,2,1,3,1,2,3,1,2,1,3,2];
-  p.forEach((h,i)=>{const b=document.createElement('div');b.className='lbar';b.style.cssText=`height:${h*7}px;width:${i%2===0?2.2:1}px`;c.appendChild(b);});
+// ── 라벨 ─────────────────────────────────────────────
+let lblSeq = 1;
+
+function genBarcode(matno){
+  try{
+    JsBarcode('#lbc-svg', matno, {
+      format:'CODE128',
+      width:2,height:46,
+      displayValue:false,
+      margin:2,
+      background:'#ffffff',
+      lineColor:'#000000'
+    });
+  }catch(e){
+    // 오류 시 빈 SVG 유지
+    document.getElementById('lbc-svg').innerHTML='';
+  }
 }
-mkBars();
+
+function genQR(matno){
+  /* QR은 JsBarcode 미지원 — 자재번호 첫 글자 기반 패턴 그리기로 시뮬레이션 */
+  const svg=document.getElementById('lbc-qr-svg');
+  const sz=36, cell=4, n=Math.ceil(sz/cell);
+  // 자재번호 문자코드 합산으로 결정론적 패턴 생성
+  let seed=0;
+  for(let i=0;i<matno.length;i++) seed=(seed*31+matno.charCodeAt(i))&0xffffffff;
+  let rects='';
+  for(let r=0;r<n;r++){
+    for(let c=0;c<n;c++){
+      // 3칸 파인더 패턴 (좌상, 우상, 좌하)
+      const finder=(r<3&&c<3)||(r<3&&c>=n-3)||(r>=n-3&&c<3);
+      const bit=finder?1:((seed^(r*7+c*13)^(r<<c))&1);
+      if(bit) rects+=`<rect x="${c*cell}" y="${r*cell}" width="${cell}" height="${cell}" fill="#000"/>`;
+    }
+  }
+  svg.setAttribute('viewBox',`0 0 ${sz} ${sz}`);
+  svg.setAttribute('width',sz);svg.setAttribute('height',sz);
+  svg.innerHTML=`<rect width="${sz}" height="${sz}" fill="#fff"/>${rects}`;
+}
+
 function uLbl(){
-  const matno=document.getElementById('lmatno').value;
-  document.getElementById('lcodetxt').textContent=matno;
-  document.getElementById('li-model').textContent=document.getElementById('lmodel').value;
-  const sp=document.getElementById('lspec').value;
-  document.getElementById('li-spec').textContent=sp.substring(0,14)+(sp.length>14?'…':'');
-  document.getElementById('li-vendor').textContent=document.getElementById('lvendor').value;
-  const qty=parseInt(document.getElementById('lqty').value)||0;
-  document.getElementById('li-qty').textContent=qty.toLocaleString()+' PCS';
-  document.getElementById('li-date').textContent=document.getElementById('ldate').value;
-  document.getElementById('li-lot').textContent=document.getElementById('llot').value;
-  document.getElementById('li-loc').textContent=document.getElementById('lloc').value;
-  document.getElementById('li-gubun').textContent=document.getElementById('lgubun').value;
-  document.getElementById('lk-matno').textContent=matno;
-  document.getElementById('lk-sql').textContent=matno;
+  const matno  = document.getElementById('lmatno').value.trim()||'000000000-0000';
+  const model  = document.getElementById('lmodel').value;
+  const spec   = document.getElementById('lspec').value;
+  const vendor = document.getElementById('lvendor').value;
+  const qty    = parseInt(document.getElementById('lqty').value)||0;
+  const date   = document.getElementById('ldate').value;
+  const lot    = document.getElementById('llot').value;
+  const loc    = document.getElementById('lloc').value;
+  const gubun  = document.getElementById('lgubun').value;
+  const size   = document.querySelector('#pg-label select:nth-of-type(2)')?.value||'100×70mm';
+
+  // 라벨 정보 갱신
+  document.getElementById('lp-model').textContent   = model;
+  document.getElementById('lp-spec').textContent    = spec;
+  document.getElementById('lp-vendor').textContent  = vendor;
+  document.getElementById('lp-qty').textContent     = qty.toLocaleString();
+  document.getElementById('lp-date').textContent    = date;
+  document.getElementById('lp-loc').textContent     = loc;
+  document.getElementById('lp-lot').textContent     = lot;
+  document.getElementById('lp-matno').textContent   = matno;
+  document.getElementById('lp-footer-matno').textContent = matno;
+  document.getElementById('lp-size-badge').textContent   = size;
+
+  // 구분 태그 색상
+  const tagEl = document.getElementById('lp-gubun-tag');
+  tagEl.textContent = gubun;
+  tagEl.style.background = gubun==='입고'?'#00e896':gubun.includes('재출력')?'#00c8ff':'#ffb800';
+  tagEl.style.color = '#000';
+
+  // 출력일시 갱신
+  const now=new Date();
+  document.getElementById('lp-printdt').textContent =
+    `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} `+
+    `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+  // DB 연동 표시
+  document.getElementById('lk-matno').textContent = matno;
+  document.getElementById('lk-sql').textContent   = matno;
+
+  // 실제 Code128 바코드 생성
+  genBarcode(matno);
+  genQR(matno);
 }
-function prepLbl(){const m=document.getElementById('lmodel');if(m)m.value='OSD6203';uLbl();}
+
+function prepLbl(){
+  const m=document.getElementById('lmodel');
+  if(m) m.value='OSD6203';
+  uLbl();
+}
+
 function prtLbl(){
-  const n=new Date(),ts=[n.getHours(),n.getMinutes()].map(v=>String(v).padStart(2,'0')).join(':');
-  const model=document.getElementById('lmodel').value,qty=parseInt(document.getElementById('lqty').value)||0;
-  const g=document.getElementById('lgubun').value;
-  const cls=g==='입고'?'tg':g.includes('재출력')?'tb':'to';
-  const row=document.createElement('tr');
-  row.innerHTML=`<td style="font-family:var(--mono)">${ts}</td><td>${model}</td><td>${qty.toLocaleString()}</td><td><span class="tag ${cls}">${g}</span></td>`;
+  const now=new Date();
+  const ts=[now.getHours(),now.getMinutes()].map(v=>String(v).padStart(2,'0')).join(':');
+  const model = document.getElementById('lmodel').value;
+  const qty   = parseInt(document.getElementById('lqty').value)||0;
+  const gubun = document.getElementById('lgubun').value;
+  const matno = document.getElementById('lmatno').value;
+
+  // SEQ 번호 업데이트
+  document.getElementById('lp-seq').textContent = `SEQ: ${String(lblSeq).padStart(4,'0')}`;
+  lblSeq++;
+
+  // 출력 이력 추가
+  const cls = gubun==='입고'?'tg':gubun.includes('재출력')?'tb':'to';
+  const row = document.createElement('tr');
+  row.innerHTML=`<td style="font-family:var(--mono)">${ts}</td><td title="${matno}">${model}</td><td>${qty.toLocaleString()}</td><td><span class="tag ${cls}">${gubun}</span></td>`;
   document.getElementById('lhist').prepend(row);
-  document.getElementById('lmsg').innerHTML='<div class="al ok" style="margin-top:4px">✓ 라벨 출력 완료 — '+model+' '+qty.toLocaleString()+'PCS</div>';
-  setTimeout(()=>document.getElementById('lmsg').innerHTML='',3000);
+
+  document.getElementById('lmsg').innerHTML=
+    `<div class="al ok" style="margin-top:4px">✓ 라벨 출력 완료 — ${model} &nbsp;|&nbsp; ${qty.toLocaleString()} PCS &nbsp;|&nbsp; ${matno}</div>`;
+  setTimeout(()=>document.getElementById('lmsg').innerHTML='',4000);
 }
+
+// 초기 바코드 생성 (페이지 로드 시)
+window.addEventListener('load', ()=>{ uLbl(); });
 
 // ── 입고처리 ───────────────────────────────────────────
 function uIb(){
