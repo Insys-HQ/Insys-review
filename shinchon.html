@@ -3,7 +3,7 @@
   신촌공장 재고관리 시스템 (Sinchon Factory WMS)
 ================================================================================
   파일명  : shinchon.html
-  버전    : v2.4
+  버전    : v2.5
   작성일  : 2026-04-26
   수정일  : 2026-04-26
 
@@ -14,11 +14,12 @@
   v2.1  2026-04-26  FHD(1920×1080) 한 화면 최적화, 폰트 맑은 고딕으로 변경,
                     버전 정보 주석 추가
   v2.2  2026-04-26  어두운 배경 가독성 개선 — 폰트 색상 전면 밝게 수정
-                    tx:#f0f6ff / tx2:#b0cce8 / tx3:#7aaac8 으로 상향
-                    카드 헤더·테이블·사이드바·KPI 서브 모든 텍스트 밝기 개선
   v2.3  2026-04-26  공장명 오류 수정 — 신창공장 → 신촌공장 (전체 6곳)
-  v2.4  2026-04-26  라벨 미리보기 개선 — JsBarcode 라이브러리로 실제 Code128
-                    바코드 생성, 산업용 라벨 디자인으로 전면 재설계
+  v2.4  2026-04-26  라벨 미리보기 개선 — JsBarcode Code128 실제 바코드 생성
+  v2.5  2026-04-26  차트 X축 레이블 가시성 전면 개선
+                    — maxRotation:0 제거 → 45도 회전으로 레이블 전부 표시
+                    — X축 하단 padding 확보, 차트 layout padding 추가
+                    — 모든 차트(대시보드·월간·년간·기종별·업체별) 동일 적용
 
   개발환경
   ──────────────────────────────────────────────────────────────────────────────
@@ -45,7 +46,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>신촌공장 재고관리 시스템 v2.4</title>
+<title>신촌공장 재고관리 시스템 v2.5</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js"></script>
 <style>
@@ -301,7 +302,7 @@ body{background:var(--bg);color:var(--tx);font-size:12px;display:flex;flex-direc
 
 <!-- ══ 헤더 ══ -->
 <div class="hdr">
-  <div class="logo">신촌공장 재고관리 시스템<em>WMS v2.4</em></div>
+  <div class="logo">신촌공장 재고관리 시스템<em>WMS v2.5</em></div>
   <span class="hpill ok">● 정상</span>
   <span class="hpill wa">⚠ 부족 4건</span>
   <span class="hpill ok">DB 연결</span>
@@ -733,7 +734,7 @@ body{background:var(--bg);color:var(--tx);font-size:12px;display:flex;flex-direc
             <!-- 하단 푸터 -->
             <div class="lp-footer">
               <span id="lp-footer-matno">098519026-0000</span>
-              <span>신촌공장 WMS v2.4</span>
+              <span>신촌공장 WMS v2.5</span>
               <span id="lp-seq">SEQ: 0001</span>
             </div>
 
@@ -948,10 +949,36 @@ const D={
   ]
 };
 const DOW=['일','월','화','수','목','금','토'];
-const GS={x:{ticks:{color:'#b0cce8',font:{size:8},maxRotation:0},grid:{color:'rgba(46,80,112,.5)'}},
-          y:{ticks:{color:'#b0cce8',font:{size:8},callback:v=>v>=1000?(v/1000).toFixed(0)+'K':v},grid:{color:'rgba(46,80,112,.5)'}}};
-const LP={responsive:true,maintainAspectRatio:false,
-  plugins:{legend:{labels:{color:'#b0cce8',font:{size:9},boxWidth:8,padding:8}}}};
+/* ── 공통 차트 스케일 설정 ──
+   maxRotation:45 — X축 레이블 45도 회전으로 전부 표시
+   padding:8      — 레이블이 잘리지 않도록 하단 여백 확보
+   autoSkip:false — 레이블 자동 생략 금지 */
+const GS={
+  x:{
+    ticks:{
+      color:'#b0cce8',font:{size:9},
+      maxRotation:45,minRotation:30,
+      autoSkip:false,padding:4
+    },
+    grid:{color:'rgba(46,80,112,.5)'}
+  },
+  y:{
+    ticks:{
+      color:'#b0cce8',font:{size:9},
+      callback:v=>v>=1000?(v/1000).toFixed(0)+'K':v,
+      padding:4
+    },
+    grid:{color:'rgba(46,80,112,.5)'}
+  }
+};
+const LP={
+  responsive:true,
+  maintainAspectRatio:false,
+  layout:{padding:{bottom:8}},   /* 레이블 잘림 방지 여백 */
+  plugins:{
+    legend:{labels:{color:'#b0cce8',font:{size:9},boxWidth:8,padding:8}}
+  }
+};
 
 // ── 시계 ─────────────────────────────────────────────
 setInterval(()=>{
@@ -972,10 +999,17 @@ function go(id,el){
 new Chart(document.getElementById('dash-daily'),{type:'bar',
   data:{labels:Array.from({length:28},(_,i)=>i+1),
     datasets:[
-      {label:'입고',data:D.febSelIb,backgroundColor:'rgba(0,232,150,.55)',borderRadius:2,borderSkipped:false},
-      {label:'출고',data:D.febSelOb,backgroundColor:'rgba(255,184,0,.55)',borderRadius:2,borderSkipped:false}
+      {label:'입고',data:D.febSelIb,backgroundColor:'rgba(0,232,150,.6)',borderRadius:2,borderSkipped:false},
+      {label:'출고',data:D.febSelOb,backgroundColor:'rgba(255,184,0,.6)',borderRadius:2,borderSkipped:false}
     ]},
-  options:{...LP,scales:GS,plugins:{...LP.plugins,tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw.toLocaleString()}`}}}}
+  options:{
+    ...LP,
+    scales:{
+      x:{ticks:{color:'#b0cce8',font:{size:9},maxRotation:0,autoSkip:false,padding:4},grid:{color:'rgba(46,80,112,.5)'}},
+      y:{...GS.y}
+    },
+    plugins:{...LP.plugins,tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw.toLocaleString()}`}}}
+  }
 });
 
 function mkHBar(id,items,color){
@@ -1008,14 +1042,22 @@ function uMon(){
     data:{labels:Array.from({length:days},(_,i)=>i+1),datasets:[
       {label:'입고',data:ib.slice(0,days),backgroundColor:'rgba(0,232,150,.6)',borderRadius:2,borderSkipped:false},
       {label:'출고',data:ob.slice(0,days),backgroundColor:'rgba(255,184,0,.6)',borderRadius:2,borderSkipped:false}
-    ]},options:{...LP,scales:GS,plugins:{...LP.plugins,tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw.toLocaleString()}`}}}}
+    ]},
+    options:{
+      ...LP,
+      scales:{
+        x:{ticks:{color:'#b0cce8',font:{size:9},maxRotation:0,autoSkip:false,padding:4},grid:{color:'rgba(46,80,112,.5)'}},
+        y:{...GS.y}
+      },
+      plugins:{...LP.plugins,tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw.toLocaleString()}`}}}
+    }
   });
   const iI=mon===1?800030:1084225,iO=mon===1?1554144:1068600,cI=mon===1?4026459:2983666,cO=mon===1?4282330:2037334;
   if(mV)mV.destroy();
   mV=new Chart(document.getElementById('mon-vendor'),{type:'doughnut',
     data:{labels:['인시스 입고','찬스 입고','인시스 출고','찬스 출고'],
-      datasets:[{data:[iI,cI,iO,cO],backgroundColor:['rgba(0,200,255,.8)','rgba(167,139,250,.8)','rgba(0,232,150,.6)','rgba(255,184,0,.6)'],borderWidth:0}]},
-    options:{...LP,plugins:{...LP.plugins,legend:{position:'bottom',labels:{color:'#6a8aaa',font:{size:9},boxWidth:8,padding:6}},tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw.toLocaleString()}`}}}}
+      datasets:[{data:[iI,cI,iO,cO],backgroundColor:['rgba(0,200,255,.8)','rgba(167,139,250,.8)','rgba(0,232,150,.65)','rgba(255,184,0,.65)'],borderWidth:0}]},
+    options:{...LP,plugins:{...LP.plugins,legend:{position:'bottom',labels:{color:'#b0cce8',font:{size:9},boxWidth:8,padding:8}},tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw.toLocaleString()}`}}}}
   });
   const tb=document.querySelector('#mon-tbl tbody');tb.innerHTML='';
   for(let i=0;i<days;i++){
@@ -1042,35 +1084,59 @@ function initYr(){
     data:{labels:ms.map(m=>m.n),datasets:[
       {label:'입고',data:ms.map(m=>m.ib),backgroundColor:'rgba(0,232,150,.6)',borderRadius:2,borderSkipped:false},
       {label:'출고',data:ms.map(m=>m.ob),backgroundColor:'rgba(255,184,0,.6)',borderRadius:2,borderSkipped:false}
-    ]},options:{...LP,scales:GS,plugins:{...LP.plugins,tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${(c.raw/10000).toFixed(0)}만`}}}}
+    ]},
+    options:{
+      ...LP,
+      scales:{
+        x:{ticks:{color:'#b0cce8',font:{size:10},maxRotation:0,autoSkip:false,padding:4},grid:{color:'rgba(46,80,112,.5)'}},
+        y:{...GS.y}
+      },
+      plugins:{...LP.plugins,tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${(c.raw/10000).toFixed(0)}만`}}}
+    }
   });
   if(window._yA)window._yA.destroy();
   window._yA=new Chart(document.getElementById('yr-amt'),{type:'line',
     data:{labels:ms.map(m=>m.n),datasets:[{label:'재고금액(백만)',data:ms.map(m=>m.a>0?m.a:null),
-      borderColor:'var(--a5)',backgroundColor:'rgba(167,139,250,.1)',tension:.4,fill:true,
-      pointBackgroundColor:'var(--a5)',pointRadius:3,spanGaps:false}]},
-    options:{...LP,scales:{...GS,y:{...GS.y,ticks:{...GS.y.ticks,callback:v=>`${v}백만`}}},
-      plugins:{...LP.plugins,tooltip:{callbacks:{label:c=>`${c.raw}백만원`}}}}
+      borderColor:'#c4b0ff',backgroundColor:'rgba(167,139,250,.15)',tension:.4,fill:true,
+      pointBackgroundColor:'#c4b0ff',pointRadius:4,spanGaps:false}]},
+    options:{
+      ...LP,
+      scales:{
+        x:{ticks:{color:'#b0cce8',font:{size:10},maxRotation:0,autoSkip:false,padding:4},grid:{color:'rgba(46,80,112,.5)'}},
+        y:{...GS.y,ticks:{...GS.y.ticks,callback:v=>`${v}백만`}}
+      },
+      plugins:{...LP.plugins,tooltip:{callbacks:{label:c=>`${c.raw}백만원`}}}
+    }
   });
 }
 
 // ── 기종별 ────────────────────────────────────────────
 function initByM(){
   const lb=D.models.map(d=>d.k);
+  /* 수평 바: indexAxis:'y' → 모델명이 Y축, 값이 X축
+     Y축 ticks autoSkip:false 로 모든 모델명 표시 */
+  const hOpt={
+    indexAxis:'y',
+    ...LP,
+    scales:{
+      x:{ticks:{color:'#b0cce8',font:{size:9},padding:4,callback:v=>v>=1000?(v/1000).toFixed(0)+'K':v},grid:{color:'rgba(46,80,112,.5)'}},
+      y:{ticks:{color:'#b0cce8',font:{size:9},autoSkip:false,padding:4},grid:{color:'rgba(46,80,112,.3)'}}
+    }
+  };
   if(window._mI)window._mI.destroy();
   window._mI=new Chart(document.getElementById('m-ib'),{type:'bar',
     data:{labels:lb,datasets:[
-      {label:'입고',data:D.models.map(d=>d.ib),backgroundColor:'rgba(0,200,255,.7)',borderRadius:2,borderSkipped:false},
-      {label:'출고',data:D.models.map(d=>d.ob),backgroundColor:'rgba(255,184,0,.7)',borderRadius:2,borderSkipped:false}
-    ]},options:{indexAxis:'y',...LP,scales:{...GS,x:{...GS.x,ticks:{...GS.x.ticks,callback:v=>v>=1000?(v/1000).toFixed(0)+'K':v}}},
-      plugins:{...LP.plugins,tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw.toLocaleString()}`}}}}
+      {label:'입고',data:D.models.map(d=>d.ib),backgroundColor:'rgba(0,200,255,.75)',borderRadius:2,borderSkipped:false},
+      {label:'출고',data:D.models.map(d=>d.ob),backgroundColor:'rgba(255,184,0,.75)',borderRadius:2,borderSkipped:false}
+    ]},
+    options:{...hOpt,plugins:{...LP.plugins,tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw.toLocaleString()}`}}}}
   });
   if(window._mS)window._mS.destroy();
   window._mS=new Chart(document.getElementById('m-stk'),{type:'bar',
     data:{labels:lb,datasets:[{label:'현재고',data:D.models.map(d=>d.stk),
-      backgroundColor:D.models.map(d=>d.stk===0?'rgba(255,68,102,.7)':d.stk<50000?'rgba(255,184,0,.7)':'rgba(0,232,150,.7)'),borderRadius:2,borderSkipped:false}]},
-    options:{indexAxis:'y',...LP,scales:{...GS,x:{...GS.x,ticks:{...GS.x.ticks,callback:v=>v>=1000?(v/1000).toFixed(0)+'K':v}}},
-      plugins:{...LP.plugins,legend:{display:false},tooltip:{callbacks:{label:c=>`현재고: ${c.raw.toLocaleString()}`}}}}
+      backgroundColor:D.models.map(d=>d.stk===0?'rgba(255,68,102,.75)':d.stk<50000?'rgba(255,184,0,.75)':'rgba(0,232,150,.75)'),
+      borderRadius:2,borderSkipped:false}]},
+    options:{...hOpt,plugins:{...LP.plugins,legend:{display:false},tooltip:{callbacks:{label:c=>`현재고: ${c.raw.toLocaleString()}`}}}}
   });
   const mx=Math.max(...D.models.map(d=>d.ib));
   document.getElementById('m-body').innerHTML=D.models.map(d=>{
@@ -1083,25 +1149,86 @@ function initByM(){
 function initByV(){
   if(window._vI)window._vI.destroy();
   window._vI=new Chart(document.getElementById('vc-insys'),{type:'bar',
-    data:{labels:['1월 선삭입','1월 선삭출','2월 선삭입','2월 선삭출','1월 연삭입','1월 연삭출','2월 연삭입','2월 연삭출'],
-      datasets:[{label:'인시스',data:[800030,1554144,1084225,1068600,949282,695283,686308,599958],
-        backgroundColor:['rgba(0,200,255,.7)','rgba(255,184,0,.7)','rgba(0,200,255,.9)','rgba(255,184,0,.9)','rgba(0,200,255,.5)','rgba(255,184,0,.5)','rgba(0,200,255,.6)','rgba(255,184,0,.6)'],borderRadius:2,borderSkipped:false}]},
-    options:{...LP,scales:GS,plugins:{...LP.plugins,legend:{display:false},tooltip:{callbacks:{label:c=>c.raw.toLocaleString()}}}}
+    data:{
+      labels:['1월\n선삭입고','1월\n선삭출고','2월\n선삭입고','2월\n선삭출고','1월\n연삭입고','1월\n연삭출고','2월\n연삭입고','2월\n연삭출고'],
+      datasets:[{
+        label:'인시스(0350)',
+        data:[800030,1554144,1084225,1068600,949282,695283,686308,599958],
+        backgroundColor:['rgba(0,200,255,.75)','rgba(255,184,0,.75)','rgba(0,200,255,.95)','rgba(255,184,0,.95)','rgba(0,200,255,.5)','rgba(255,184,0,.5)','rgba(0,200,255,.65)','rgba(255,184,0,.65)'],
+        borderRadius:3,borderSkipped:false
+      }]
+    },
+    options:{
+      ...LP,
+      scales:{
+        x:{
+          ticks:{color:'#b0cce8',font:{size:9},maxRotation:0,autoSkip:false,padding:4},
+          grid:{color:'rgba(46,80,112,.5)'}
+        },
+        y:{...GS.y}
+      },
+      plugins:{
+        ...LP.plugins,
+        legend:{display:false},
+        tooltip:{callbacks:{label:c=>`${c.label.replace('\n',' ')}: ${c.raw.toLocaleString()}`}}
+      }
+    }
   });
+
   if(window._vC)window._vC.destroy();
   window._vC=new Chart(document.getElementById('vc-chance'),{type:'bar',
-    data:{labels:['1월 입고','1월 출고','2월 입고','2월 출고'],
-      datasets:[{label:'찬스',data:[4026459,4282330,2983666,2037334],
-        backgroundColor:['rgba(167,139,250,.8)','rgba(255,68,102,.7)','rgba(167,139,250,.9)','rgba(255,68,102,.8)'],borderRadius:2,borderSkipped:false}]},
-    options:{...LP,scales:GS,plugins:{...LP.plugins,legend:{display:false},tooltip:{callbacks:{label:c=>c.raw.toLocaleString()}}}}
+    data:{
+      labels:['1월\n입고','1월\n출고','2월\n입고','2월\n출고'],
+      datasets:[{
+        label:'찬스(위탁)',
+        data:[4026459,4282330,2983666,2037334],
+        backgroundColor:['rgba(167,139,250,.8)','rgba(255,68,102,.75)','rgba(167,139,250,.95)','rgba(255,68,102,.9)'],
+        borderRadius:3,borderSkipped:false
+      }]
+    },
+    options:{
+      ...LP,
+      scales:{
+        x:{
+          ticks:{color:'#b0cce8',font:{size:9},maxRotation:0,autoSkip:false,padding:4},
+          grid:{color:'rgba(46,80,112,.5)'}
+        },
+        y:{...GS.y}
+      },
+      plugins:{
+        ...LP.plugins,
+        legend:{display:false},
+        tooltip:{callbacks:{label:c=>`${c.label.replace('\n',' ')}: ${c.raw.toLocaleString()}`}}
+      }
+    }
   });
+
   if(window._vP)window._vP.destroy();
   window._vP=new Chart(document.getElementById('vc-price'),{type:'bar',
-    data:{labels:['Haishun','Xingmei','Feining','Yiyang','JW선삭','Kaili연삭','JW연삭'],
-      datasets:[{label:'평균단가(원)',data:[190.6,121.3,166.8,158.2,184.4,303.6,319.9],
-        backgroundColor:['rgba(0,232,150,.7)','rgba(0,200,255,.7)','rgba(255,184,0,.7)','rgba(167,139,250,.7)','rgba(255,184,0,.5)','rgba(255,68,102,.7)','rgba(255,68,102,.5)'],borderRadius:2,borderSkipped:false}]},
-    options:{...LP,scales:{...GS,y:{...GS.y,ticks:{...GS.y.ticks,callback:v=>`${v}원`}}},
-      plugins:{...LP.plugins,legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw}원/PCS`}}}}
+    data:{
+      labels:['Haishun','Xingmei','Feining','Yiyang','JW\n(선삭)','Kaili\n(연삭)','JW\n(연삭)'],
+      datasets:[{
+        label:'평균단가(원/PCS)',
+        data:[190.6,121.3,166.8,158.2,184.4,303.6,319.9],
+        backgroundColor:['rgba(0,232,150,.75)','rgba(0,200,255,.75)','rgba(255,184,0,.75)','rgba(167,139,250,.75)','rgba(255,184,0,.6)','rgba(255,68,102,.75)','rgba(255,68,102,.55)'],
+        borderRadius:3,borderSkipped:false
+      }]
+    },
+    options:{
+      ...LP,
+      scales:{
+        x:{
+          ticks:{color:'#b0cce8',font:{size:9},maxRotation:0,autoSkip:false,padding:4},
+          grid:{color:'rgba(46,80,112,.5)'}
+        },
+        y:{...GS.y,ticks:{...GS.y.ticks,callback:v=>`${v}원`}}
+      },
+      plugins:{
+        ...LP.plugins,
+        legend:{display:false},
+        tooltip:{callbacks:{label:c=>`${c.raw}원/PCS`}}
+      }
+    }
   });
 }
 
