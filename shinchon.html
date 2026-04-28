@@ -3,502 +3,774 @@
   신촌공장 재고관리 시스템 (Sinchon Factory WMS)
 ================================================================================
   파일명  : shinchon.html
-  버전    : v2.5
-  작성일  : 2026-04-26
-  수정일  : 2026-04-26
+  버전    : v3.1
+  작성일  : 2026-04-28
+  수정일  : 2026-04-28
 
   변경이력
-  ──────────────────────────────────────────────────────────────────────────────
-  v1.0  2026-04-20  최초 작성 — 기본 대시보드 구성
-  v2.0  2026-04-25  전체 화면 재구성 (12개 메뉴, 실제 1·2월 데이터 반영)
-  v2.1  2026-04-26  FHD(1920×1080) 한 화면 최적화, 폰트 맑은 고딕으로 변경,
-                    버전 정보 주석 추가
-  v2.2  2026-04-26  어두운 배경 가독성 개선 — 폰트 색상 전면 밝게 수정
-  v2.3  2026-04-26  공장명 오류 수정 — 신창공장 → 신촌공장 (전체 6곳)
-  v2.4  2026-04-26  라벨 미리보기 개선 — JsBarcode Code128 실제 바코드 생성
-  v2.5  2026-04-26  차트 X축 레이블 가시성 전면 개선
-                    — maxRotation:0 제거 → 45도 회전으로 레이블 전부 표시
-                    — X축 하단 padding 확보, 차트 layout padding 추가
-                    — 모든 차트(대시보드·월간·년간·기종별·업체별) 동일 적용
+  ─────────────────────────────────────────────────────────────
+  v1.0~v2.8  2026-04-20~27  초기 구축 및 기능 개선
+  v3.0       2026-04-28     전면 리모델링 (반응형, 큰 폰트, 심플 UI)
+  v3.2       2026-04-28     전체 폰트 맑은 고딕으로 통일
+  v3.6       2026-04-28     장기불용재고 분석 메뉴 추가
+                            — 새 메뉴 ⚠ 불용재고 (사이드바·탭바 더보기 추가)
+                            — 판단기준: 소진예상 개월수 = 현재고 ÷ 월평균출고
+                            — 위험등급: 🔴긴급(12개월초과·출고없음) 🟡주의(6~12개월) 🟢정상
+                            — 회전율 차트 (수평 막대), 등급별 KPI 카드
+                            — 월별 출고추이 비교 (1~4월 실제 데이터 기반)
+                            — 불용재고 예상 금액 집계
+                            — 짙은 배경 위 어두운 폰트 색상 전부 밝게 (tx3→tx2 치환)
+                            — 대시보드: 차트 하단여백 축소, 알림 줄간격 축소
+                            — 대시보드: 재고현황요약 테이블 초소형 패딩
+                            — 월간: 도넛차트 ch200→ch240, 일별내역 max-height 증가
+                            — 기종별: 차트·테이블 패딩 축소, tbl-compact 적용
+                            — 스캐너: 재고현황·스캔이력 tbl-compact 적용
+                            — 라벨이력: tbl-compact 적용
+                            — CSS: .tbl-xs 초소형 (5px), .card-sm 패딩 축소 클래스 추가
+                            — gauge-list gap 12→6px, alert padding 축소
+                            — 카드 크기 360×240 → 420×280px (공간 확대)
+                            — 헤더 폰트 9px → 11px, 태그 10px
+                            — 자재번호 9.5px → 12px (Consolas)
+                            — 형번 16px → 22px (굵게)
+                            — 수량 20px → 28px 빨강 강조
+                            — 공급처 9px → 11px
+                            — 하단 라벨 k:6px→9px, v:8px→11px
+                            — 푸터 6.5px → 9px
+                            — 바코드 영역 height:48→60 확대
+                            — 크기: 360×240px (가로60:세로40 = 3:2 비율)
+                            — 좌측: 자재번호·형번·수량 대형 표시
+                            — 우측: Code128 바코드 + 자재번호 텍스트
+                            — 하단: 규격·공급처·로트·위치·출력정보
+                            — 폰트 크기 전면 가독성 위주로 증가
+                            — 라벨 카드·값 CSS의 하드코딩 폰트 → var(--f)/var(--fm) 치환
+                            — sans-serif/monospace 폴백 → 맑은 고딕 명시 적용
+                            — browserPrint 인쇄 CSS도 동일 폰트 스택 적용
+                            — Consolas 수자·코드 제외, 한글 영역은 전부 맑은 고딕
+                            — 차트 높이 고정: canvas에 max-height 적용,
+                              wrapper에 고정 height 설정하여 무한 확장 방지
+                            — 라벨 미리보기: 40×60mm 비율(가로40:세로60)로 변경,
+                              바코드 잘림 없도록 높이 확보
+                            — 테이블 행 줄간격 축소:
+                              padding 12px→7px (전체 재고·일별 집계)
 
   개발환경
-  ──────────────────────────────────────────────────────────────────────────────
-  언어    : HTML5 / CSS3 / JavaScript (ES6+)
-  라이브러리 : Chart.js 4.4.0 (CDN)
-  해상도  : FHD 1920×1080 최적화
-  폰트    : 맑은 고딕 (Malgun Gothic) → Apple SD Gothic Neo → Noto Sans KR
-
-  데이터 기준
-  ──────────────────────────────────────────────────────────────────────────────
-  원본    : 인시스찬스_입출고_2026년1월.xlsx
-            인시스찬스_입출고_2026년2월.xlsx
-  구성    : 선삭링(인시스·찬스) + 연삭링(인시스·찬스)
-  품목수  : 선삭링 251종 + 연삭링 73종 = 324종
+  ─────────────────────────────────────────────────────────────
+  언어      : HTML5 / CSS3 / JavaScript ES6+
+  라이브러리: Chart.js 4.4.0 / JsBarcode 3.11.6
+  대응 해상도: 모바일 360px / 태블릿 768px / FHD 1920px
+  폰트      : 맑은 고딕 → Apple SD Gothic Neo → Noto Sans KR
+  프린터    : BIXOLON XD5-43t (USB, ZPL II)
 
   담당
-  ──────────────────────────────────────────────────────────────────────────────
-  공장    : 신촌공장 재고관리팀
-  GitHub  : https://github.com/Insys-HQ/Insys-review
+  ─────────────────────────────────────────────────────────────
+  공장  : 신촌공장 재고관리팀
+  GitHub: https://github.com/Insys-HQ/Insys-review
 ================================================================================
 -->
 <!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>신촌공장 재고관리 시스템 v2.5</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
+<title>신촌공장 재고관리 v3.6</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js"></script>
 <style>
-/* ── 맑은 고딕 우선 폰트 스택 ── */
-@font-face{font-family:'MalgunGothic';src:local('맑은 고딕'),local('Malgun Gothic')}
-*{box-sizing:border-box;margin:0;padding:0}
+@font-face{font-family:'MG';src:local('맑은 고딕'),local('Malgun Gothic')}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
-  --bg:#08101e;--bg2:#0d1828;--bg3:#122035;--bg4:#1a2d46;
-  --a1:#00c8ff;--a2:#00e896;--a3:#ffb800;--a4:#ff4466;--a5:#c4b0ff;
-  /* ── 가독성 개선: 어두운 배경에 밝은 폰트 ── */
-  --tx:#f0f6ff;      /* 본문 기본 — 거의 흰색 */
-  --tx2:#b0cce8;     /* 보조 레이블 — 밝은 하늘색 */
-  --tx3:#7aaac8;     /* 서브 설명 — 중간 밝기 */
-  --bd:#1e3a58;--bd2:#2e5070;
-  --fnt:'MalgunGothic','맑은 고딕','Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif;
-  --mono:'Consolas','Courier New',monospace;
-  --hdr:44px;--sb:178px;
+  /* 색상 */
+  --bg:#07111f;--s1:#0d1e30;--s2:#132840;--s3:#1a3254;
+  --c1:#00d4ff;--c2:#00f0a0;--c3:#ffc000;--c4:#ff3d6e;--c5:#b8a0ff;
+  --tx:#eef4ff;--tx2:#b8d4f0;--tx3:#7aaac8;   /* tx2·tx3 모두 밝게 */
+  --bd:#1e3a58;--bd2:#2a4e70;
+  /* 폰트 — 모든 영역 맑은 고딕 우선 */
+  --f:'MG','맑은 고딕','Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif;
+  /* 숫자·코드 전용 — Consolas + 맑은 고딕 한글 보조 */
+  --fm:'Consolas','맑은 고딕','Malgun Gothic','Noto Sans KR',monospace;
+  /* 크기 */
+  --hh:56px;   /* 헤더 높이 */
+  --tbh:64px;  /* 하단 탭바 높이 */
+  --r:10px;    /* 카드 radius */
 }
-html,body{width:100%;height:100%;overflow:hidden;font-family:var(--fnt)}
-body{background:var(--bg);color:var(--tx);font-size:12px;display:flex;flex-direction:column}
 
-/* ══ 헤더 44px ══ */
-.hdr{height:var(--hdr);min-height:var(--hdr);background:var(--bg2);border-bottom:1px solid var(--bd);
-  display:flex;align-items:center;padding:0 16px;gap:12px;flex-shrink:0;position:relative}
+/* ═══ 기본 ═══════════════════════════════════════════════ */
+html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--tx)}
+body{display:flex;flex-direction:column;font-size:15px;line-height:1.5}
+
+/* ═══ 헤더 ═══════════════════════════════════════════════ */
+.hdr{
+  height:var(--hh);min-height:var(--hh);flex-shrink:0;
+  background:var(--s1);border-bottom:1px solid var(--bd);
+  display:flex;align-items:center;padding:0 16px;gap:12px;
+  position:relative;
+}
 .hdr::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;
-  background:linear-gradient(90deg,var(--a1),var(--a2),var(--a3),var(--a4))}
-.logo{font-size:14px;font-weight:700;color:var(--a1);white-space:nowrap;letter-spacing:-.2px}
-.logo em{font-style:normal;font-size:10px;color:var(--tx2);font-weight:400;margin-left:6px}
-.hpill{padding:2px 8px;border-radius:9px;font-size:10px;font-weight:600;border:1px solid}
-.hpill.ok{background:rgba(0,232,150,.08);color:var(--a2);border-color:rgba(0,232,150,.25)}
-.hpill.wa{background:rgba(255,184,0,.08);color:var(--a3);border-color:rgba(255,184,0,.25)}
-.hright{margin-left:auto;display:flex;align-items:center;gap:14px;font-size:11px;color:var(--tx)}
-#clk{font-family:var(--mono);font-size:12px;color:var(--a1)}
-
-/* ══ 레이아웃 ══ */
-.lay{display:flex;flex:1;overflow:hidden;height:calc(100vh - var(--hdr))}
-
-/* ══ 사이드바 178px ══ */
-.sb{width:var(--sb);min-width:var(--sb);background:var(--bg2);border-right:1px solid var(--bd);
-  display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden}
-.sb-sec{padding:10px 12px 3px;font-size:9px;color:var(--tx);letter-spacing:1px;text-transform:uppercase;font-weight:700}
-.sb-it{display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;
-  border-left:2px solid transparent;transition:all .12s;color:var(--tx);font-size:11px;line-height:1.4}
-.sb-it:hover{background:var(--bg3);color:var(--tx)}
-.sb-it.on{background:var(--bg3);color:var(--a1);border-left-color:var(--a1)}
-.sb-ico{width:14px;text-align:center;font-size:12px;flex-shrink:0}
-.sb-bdg{margin-left:auto;background:var(--a4);color:#fff;font-size:8px;font-weight:700;padding:1px 4px;border-radius:7px}
-
-/* ══ 메인 콘텐츠 ══ */
-.main{flex:1;overflow:hidden;background:var(--bg);display:flex;flex-direction:column}
-.pg{display:none;height:100%;overflow:hidden;padding:10px 12px;flex-direction:column;gap:8px}
-.pg.on{display:flex}
-
-/* ══ 카드 ══ */
-.card{background:var(--bg2);border:1px solid var(--bd);border-radius:6px;padding:10px 12px;overflow:hidden}
-.ch{font-size:9px;font-weight:700;color:var(--tx);text-transform:uppercase;letter-spacing:.6px;
-  margin-bottom:8px;display:flex;align-items:center;gap:6px}
-.ch::before{content:'';width:2px;height:10px;border-radius:1px;flex-shrink:0}
-.ch.c1::before{background:var(--a1)}.ch.c2::before{background:var(--a2)}
-.ch.c3::before{background:var(--a3)}.ch.c4::before{background:var(--a4)}.ch.c5::before{background:var(--a5)}
-
-/* ══ KPI 행 ══ */
-.krow{display:grid;gap:8px;flex-shrink:0}
-.k5{grid-template-columns:repeat(5,1fr)}.k4{grid-template-columns:repeat(4,1fr)}
-.k3{grid-template-columns:repeat(3,1fr)}
-.kpi{background:var(--bg2);border:1px solid var(--bd);border-radius:6px;padding:10px 12px;position:relative;overflow:hidden}
-.kpi-t{position:absolute;top:0;left:0;right:0;height:2px}
-.kl{font-size:9px;color:var(--tx);font-weight:700;letter-spacing:.4px;text-transform:uppercase;margin-bottom:5px}
-.kv{font-size:18px;font-weight:700;font-family:var(--mono);line-height:1}
-.ks{font-size:9px;color:var(--tx);margin-top:3px}
-.kg{font-size:10px;font-family:var(--mono);margin-top:3px}
-.up{color:var(--a2)}.dn{color:var(--a4)}.nc{color:var(--tx2)}
-
-/* ══ 그리드 레이아웃 ══ */
-.r{display:flex;gap:8px;flex:1;overflow:hidden;min-height:0}
-.r>.card{flex:1;overflow:hidden;display:flex;flex-direction:column;margin-bottom:0}
-.r>.card canvas{flex:1;min-height:0}
-.col{display:flex;flex-direction:column;gap:8px;overflow:hidden}
-.col>.card{overflow:hidden;display:flex;flex-direction:column}
-.col>.card canvas{flex:1;min-height:0}
-.f1{flex:1;min-width:0}.f2{flex:2;min-width:0}.f3{flex:3;min-width:0}
-
-/* ══ 테이블 ══ */
-.tbl{width:100%;border-collapse:collapse;font-size:10px}
-.tbl th{background:var(--bg3);color:var(--tx);font-weight:700;padding:5px 8px;text-align:left;
-  font-size:9px;letter-spacing:.3px;border-bottom:1px solid var(--bd2);white-space:nowrap}
-.tbl td{padding:5px 8px;border-bottom:1px solid var(--bd);white-space:nowrap;color:var(--tx)}
-.tbl tr:last-child td{border-bottom:none}
-.tbl tr:hover td{background:rgba(255,255,255,.02)}
-.num{font-family:var(--mono);text-align:right}
-.ts{overflow:hidden;display:flex;flex-direction:column}
-.ts table{flex-shrink:0}
-.ts .tbody-scroll{overflow-y:auto;flex:1}
-
-/* ══ 태그 ══ */
-.tag{display:inline-block;padding:1px 6px;border-radius:7px;font-size:9px;font-weight:600}
-.tg{background:rgba(0,232,150,.1);color:var(--a2);border:1px solid rgba(0,232,150,.2)}
-.tb{background:rgba(0,200,255,.1);color:var(--a1);border:1px solid rgba(0,200,255,.2)}
-.to{background:rgba(255,184,0,.1);color:var(--a3);border:1px solid rgba(255,184,0,.2)}
-.tr{background:rgba(255,68,102,.1);color:var(--a4);border:1px solid rgba(255,68,102,.2)}
-.tp{background:rgba(167,139,250,.1);color:var(--a5);border:1px solid rgba(167,139,250,.2)}
-
-/* ══ 게이지 ══ */
-.gw{display:flex;flex-direction:column;gap:5px}
-.gr{display:grid;grid-template-columns:80px 1fr 54px;align-items:center;gap:6px;font-size:10px}
-.gtr{background:var(--bg3);border-radius:3px;height:8px;overflow:hidden}
-.gf{height:100%;border-radius:3px;transition:width .8s}
-
-/* ══ 알림 ══ */
-.al{padding:5px 10px;border-radius:4px;font-size:10px;margin-bottom:4px;border-left:2px solid;display:flex;align-items:center;gap:6px}
-.al.ok{background:rgba(0,232,150,.07);border-color:var(--a2);color:var(--a2)}
-.al.inf{background:rgba(0,200,255,.07);border-color:var(--a1);color:var(--a1)}
-.al.wa{background:rgba(255,184,0,.07);border-color:var(--a3);color:var(--a3)}
-.al.er{background:rgba(255,68,102,.07);border-color:var(--a4);color:var(--a4)}
-
-/* ══ 수평 바 ══ */
-.hbar{display:flex;flex-direction:column;gap:4px;overflow:hidden}
-.hbr{display:flex;align-items:center;gap:6px}
-.hbl{font-size:9px;color:var(--tx);width:88px;flex-shrink:0;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.hbt{flex:1;background:var(--bg3);border-radius:2px;height:8px;overflow:hidden}
-.hbf{height:100%;border-radius:2px;transition:width .8s}
-.hbv{font-family:var(--mono);font-size:9px;color:var(--tx);width:48px;text-align:right;flex-shrink:0}
-
-/* ══ 폼 ══ */
-.fg{display:flex;flex-direction:column;gap:3px}
-.fg label{font-size:9px;color:var(--tx);font-weight:600;letter-spacing:.2px}
-.fg input,.fg select{background:var(--bg3);border:1px solid var(--bd2);border-radius:4px;
-  padding:5px 8px;color:var(--tx);font-family:var(--fnt);font-size:11px;outline:none;transition:border .12s}
-.fg input:focus,.fg select:focus{border-color:var(--a1)}
-.fg select option{background:var(--bg3)}
-.fgrid{display:grid;gap:7px}
-.fg2{grid-template-columns:1fr 1fr}.fg3{grid-template-columns:1fr 1fr 1fr}
-.fg4{grid-template-columns:1fr 1fr 1fr 1fr}
-
-/* ══ 버튼 ══ */
-.btn{padding:6px 13px;border-radius:4px;border:none;cursor:pointer;font-family:var(--fnt);font-size:11px;font-weight:600;transition:all .12s}
-.bp{background:var(--a1);color:#000}.bp:hover{filter:brightness(1.15)}
-.bs{background:var(--a2);color:#000}.bs:hover{filter:brightness(1.1)}
-.bw{background:var(--a3);color:#000}.bw:hover{filter:brightness(1.1)}
-.bd{background:var(--a4);color:#fff}.bd:hover{filter:brightness(1.1)}
-.bg{background:transparent;color:var(--tx2);border:1px solid var(--bd2)}.bg:hover{border-color:var(--a1);color:var(--a1)}
-.brow{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;flex-shrink:0}
-
-/* ══ 라벨 미리보기 — 실제 산업용 라벨 디자인 ══ */
-.lp-wrap{
-  background:#e8e8e8;border-radius:6px;padding:16px;
-  display:flex;align-items:center;justify-content:center;
-  flex-shrink:0;
+  background:linear-gradient(90deg,var(--c1),var(--c2),var(--c3),var(--c4))}
+.hdr-logo{font-size:17px;font-weight:700;color:var(--c1);letter-spacing:-.3px;white-space:nowrap}
+.hdr-logo span{font-size:11px;color:var(--tx2);font-weight:400;margin-left:6px}
+.hdr-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.admin-btn{
+  padding:6px 12px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;
+  border:1px solid var(--bd2);background:var(--s2);color:var(--tx2);transition:all .15s
 }
-/* 실제 라벨 용지 비율 100×70mm 기준 */
-.lp-label{
+.admin-btn.on{background:rgba(255,192,0,.12);border-color:var(--c3);color:var(--c3)}
+#clk{font-family:var(--fm);font-size:14px;color:var(--c1)}
+
+/* ═══ 레이아웃 ═══════════════════════════════════════════ */
+.layout{display:flex;flex:1;overflow:hidden;min-height:0}
+
+/* ─── 사이드바 (태블릿·데스크톱) ─── */
+.sidebar{
+  width:200px;min-width:200px;flex-shrink:0;
+  background:var(--s1);border-right:1px solid var(--bd);
+  display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;
+}
+.sb-group{padding:14px 14px 4px;font-size:11px;color:var(--tx2);
+  letter-spacing:1px;text-transform:uppercase;font-weight:700}
+.sb-item{
+  display:flex;align-items:center;gap:10px;padding:11px 16px;
+  cursor:pointer;border-left:3px solid transparent;
+  transition:all .15s;color:var(--tx2);font-size:14px;font-weight:500;
+}
+.sb-item:hover{background:var(--s2);color:var(--tx)}
+.sb-item.on{background:var(--s2);color:var(--c1);border-left-color:var(--c1)}
+.sb-item .ico{width:20px;text-align:center;font-size:16px;flex-shrink:0}
+
+/* ─── 메인 콘텐츠 ─── */
+.main{flex:1;overflow-y:auto;overflow-x:hidden;padding:16px;
+  padding-bottom:calc(16px + var(--tbh));} /* 모바일 하단 탭 여유 */
+
+/* ─── 하단 탭바 (모바일 전용) ─── */
+.tabbar{
+  display:none;
+  position:fixed;bottom:0;left:0;right:0;
+  height:var(--tbh);background:var(--s1);
+  border-top:1px solid var(--bd);
+  display:grid;grid-template-columns:repeat(5,1fr);z-index:100;
+}
+.tb-item{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;cursor:pointer;color:var(--tx2);font-size:10px;font-weight:600;
+  transition:color .15s;padding:6px 2px;
+}
+.tb-item .tbi{font-size:20px;line-height:1}
+.tb-item.on{color:var(--c1)}
+.tb-more{position:relative}
+.tb-more-menu{
+  display:none;position:absolute;bottom:calc(100% + 4px);right:0;
+  background:var(--s2);border:1px solid var(--bd2);border-radius:var(--r);
+  min-width:160px;overflow:hidden;z-index:200;box-shadow:0 -4px 20px rgba(0,0,0,.5)
+}
+.tb-more-menu.open{display:block}
+.tb-more-menu .tb-m-item{
+  display:flex;align-items:center;gap:10px;padding:13px 16px;
+  cursor:pointer;color:var(--tx2);font-size:14px;border-bottom:1px solid var(--bd);
+}
+.tb-more-menu .tb-m-item:last-child{border:none}
+.tb-more-menu .tb-m-item:hover{background:var(--s3);color:var(--tx)}
+.tb-more-menu .tb-m-item.on{color:var(--c1)}
+
+/* ═══ 페이지 ═════════════════════════════════════════════ */
+.pg{display:none}.pg.on{display:block}
+
+/* ═══ 카드 ══════════════════════════════════════════════ */
+.card{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);
+  padding:16px;margin-bottom:14px}
+.card-title{font-size:13px;font-weight:700;color:var(--tx);
+  text-transform:uppercase;letter-spacing:.6px;margin-bottom:14px;
+  display:flex;align-items:center;gap:8px}
+.card-title::before{content:'';width:3px;height:14px;border-radius:2px;flex-shrink:0}
+.ct1::before{background:var(--c1)}.ct2::before{background:var(--c2)}
+.ct3::before{background:var(--c3)}.ct4::before{background:var(--c4)}
+.ct5::before{background:var(--c5)}
+
+/* ═══ KPI 카드 ═══════════════════════════════════════════ */
+.kpi-grid{display:grid;gap:12px;margin-bottom:14px}
+.kg2{grid-template-columns:1fr 1fr}
+.kg3{grid-template-columns:1fr 1fr 1fr}
+.kg4{grid-template-columns:repeat(4,1fr)}
+.kpi-card{
+  background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);
+  padding:16px;position:relative;overflow:hidden
+}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.kv1::before{background:var(--c1)}.kv2::before{background:var(--c2)}
+.kv3::before{background:var(--c3)}.kv4::before{background:var(--c4)}
+.kv5::before{background:var(--c5)}
+.kpi-lbl{font-size:12px;color:var(--tx2);font-weight:600;margin-bottom:8px}
+.kpi-val{font-size:26px;font-weight:700;font-family:var(--fm);line-height:1}
+.kpi-sub{font-size:12px;color:var(--tx3);margin-top:6px}   /* tx3 이미 밝아짐 */
+.kpi-chg{font-size:13px;font-family:var(--fm);margin-top:4px}
+.up{color:var(--c2)}.dn{color:var(--c4)}.nc{color:var(--tx2)}
+
+/* ═══ 그리드 ═════════════════════════════════════════════ */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
+
+/* ═══ 폼 ════════════════════════════════════════════════ */
+.form-grid{display:grid;gap:12px}
+.fg2{grid-template-columns:1fr 1fr}
+.fg3{grid-template-columns:1fr 1fr 1fr}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:13px;color:var(--tx2);font-weight:600}
+.field label .badge{font-size:10px;color:var(--c3);margin-left:4px}
+.field input,.field select,.field textarea{
+  height:44px;background:var(--s2);border:1px solid var(--bd2);
+  border-radius:8px;padding:0 14px;color:var(--tx);
+  font-family:var(--f);font-size:15px;outline:none;transition:border .15s;
+}
+.field input:focus,.field select:focus{border-color:var(--c1)}
+.field select option{background:var(--s2)}
+.field textarea{height:auto;padding:12px 14px;resize:vertical}
+
+/* ═══ 버튼 ══════════════════════════════════════════════ */
+.btn{
+  height:44px;padding:0 20px;border-radius:8px;border:none;
+  cursor:pointer;font-family:var(--f);font-size:15px;font-weight:600;
+  transition:all .15s;display:inline-flex;align-items:center;gap:8px
+}
+.btn-lg{height:52px;padding:0 28px;font-size:16px}
+.b1{background:var(--c1);color:#000}.b1:hover{filter:brightness(1.1)}
+.b2{background:var(--c2);color:#000}.b2:hover{filter:brightness(1.1)}
+.b3{background:var(--c3);color:#000}.b3:hover{filter:brightness(1.1)}
+.b4{background:var(--c4);color:#fff}.b4:hover{filter:brightness(1.1)}
+.bg{background:transparent;color:var(--tx2);border:1px solid var(--bd2)}
+.bg:hover{border-color:var(--c1);color:var(--c1)}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+
+/* ═══ 테이블 ═════════════════════════════════════════════ */
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:8px;border:1px solid var(--bd)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+thead th{background:var(--s2);color:var(--tx);font-weight:700;
+  padding:12px 14px;text-align:left;font-size:12px;letter-spacing:.4px;
+  border-bottom:1px solid var(--bd2);white-space:nowrap}
+tbody td{padding:12px 14px;border-bottom:1px solid var(--bd);color:var(--tx)}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:rgba(255,255,255,.04)}
+.num{font-family:var(--fm);text-align:right}
+
+/* ═══ 태그/뱃지 ══════════════════════════════════════════ */
+.tag{display:inline-block;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;border:1px solid}
+.tg{background:rgba(0,240,160,.1);color:var(--c2);border-color:rgba(0,240,160,.25)}
+.tb{background:rgba(0,212,255,.1);color:var(--c1);border-color:rgba(0,212,255,.25)}
+.to{background:rgba(255,192,0,.1);color:var(--c3);border-color:rgba(255,192,0,.25)}
+.tr{background:rgba(255,61,110,.1);color:var(--c4);border-color:rgba(255,61,110,.25)}
+.tp{background:rgba(184,160,255,.1);color:var(--c5);border-color:rgba(184,160,255,.25)}
+
+/* ═══ 알림 메시지 ═════════════════════════════════════════ */
+.alert{padding:12px 16px;border-radius:8px;font-size:14px;
+  margin-bottom:8px;border-left:3px solid;display:flex;align-items:flex-start;gap:10px}
+.a-ok{background:rgba(0,240,160,.07);border-color:var(--c2);color:var(--c2)}
+.a-info{background:rgba(0,212,255,.07);border-color:var(--c1);color:var(--c1)}
+.a-warn{background:rgba(255,192,0,.07);border-color:var(--c3);color:var(--c3)}
+.a-err{background:rgba(255,61,110,.07);border-color:var(--c4);color:var(--c4)}
+
+/* ═══ 게이지 ═════════════════════════════════════════════ */
+.gauge-list{display:flex;flex-direction:column;gap:12px}
+.gauge-row{display:flex;align-items:center;gap:12px}
+.gauge-lbl{font-size:14px;color:var(--tx);min-width:100px}
+.gauge-track{flex:1;background:var(--s2);border-radius:6px;height:12px;overflow:hidden}
+.gauge-fill{height:100%;border-radius:6px;transition:width .8s ease}
+.gauge-val{font-family:var(--fm);font-size:14px;min-width:60px;text-align:right;font-weight:700}
+
+/* ═══ 스캐너 ═════════════════════════════════════════════ */
+.scan-area{
+  background:var(--s2);border:2px dashed var(--bd2);border-radius:12px;
+  padding:40px 20px;text-align:center;cursor:pointer;transition:all .2s;
+  position:relative;overflow:hidden;
+}
+.scan-area:hover,.scan-area.act{border-color:var(--c1);background:rgba(0,212,255,.04)}
+.scan-line{position:absolute;left:5%;right:5%;height:2px;
+  background:linear-gradient(90deg,transparent,var(--c1),transparent);
+  opacity:0;}
+.scan-area.act .scan-line{opacity:1;animation:scanAnim 1.5s linear infinite}
+@keyframes scanAnim{0%{top:10%}100%{top:90%}}
+.scan-ico{font-size:48px;color:var(--c1);margin-bottom:10px;display:block}
+.scan-txt{font-size:16px;color:var(--tx)}
+
+
+/* ═══════════════════════════════════════════════════════════
+   라벨 60×40mm 가로형 미리보기 v3.4
+   카드 크기: 420×280px (3:2 비율 유지, 충분한 공간 확보)
+   ─────────────────────────────────────────────────────── */
+.label-wrap{
+  background:#c8c8c8;border-radius:12px;padding:20px;
+  display:flex;justify-content:center;align-items:center;
+  margin-bottom:14px;
+}
+.label-card{
   background:#fff;
-  width:320px;height:210px;
-  border:1.5px solid #222;
-  border-radius:3px;
+  width:420px;height:280px;     /* 420:280 = 3:2, 60mm×40mm 비율 */
+  border:2px solid #222;border-radius:4px;
   display:flex;flex-direction:column;
-  font-family:'MalgunGothic','맑은 고딕','Malgun Gothic',sans-serif;
-  box-shadow:2px 2px 8px rgba(0,0,0,.25);
-  overflow:hidden;position:relative;
+  font-family:'맑은 고딕','Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif;
+  box-shadow:4px 4px 16px rgba(0,0,0,.4);
+  overflow:hidden;flex-shrink:0;
 }
-/* 상단 헤더 띠 */
-.lp-head{
-  background:#1a2d46;color:#fff;
-  display:flex;align-items:center;justify-content:space-between;
-  padding:4px 10px;flex-shrink:0;
+
+/* ─ 헤더: 공장명 + 구분태그 ─ */
+.lbl-head{
+  background:#0d1e30;color:#fff;
+  padding:6px 14px;flex-shrink:0;
+  display:flex;justify-content:space-between;align-items:center;
+  border-bottom:3px solid #00d4ff;
 }
-.lp-head-title{font-size:9px;font-weight:700;letter-spacing:.5px}
-.lp-head-tag{
-  font-size:8px;font-weight:700;padding:1px 7px;border-radius:3px;
-  background:#00e896;color:#000;
+.lbl-head-title{
+  font-size:11px;font-weight:700;letter-spacing:.6px;
+  font-family:'맑은 고딕','Malgun Gothic',sans-serif;
 }
-/* 본문 영역 */
-.lp-body{display:flex;flex:1;overflow:hidden}
-/* 좌측: 정보 필드 */
-.lp-info{
-  width:130px;flex-shrink:0;
-  padding:6px 8px;border-right:1px dashed #ccc;
-  display:flex;flex-direction:column;justify-content:space-around;
+.lbl-tag{
+  font-size:11px;font-weight:700;padding:3px 10px;
+  border-radius:4px;letter-spacing:.3px;
 }
-.lp-row{display:flex;flex-direction:column;margin-bottom:3px}
-.lp-key{font-size:6.5px;color:#666;font-weight:700;letter-spacing:.3px;text-transform:uppercase}
-.lp-val{font-size:9px;color:#111;font-weight:600;line-height:1.3;font-family:'Consolas','Courier New',monospace}
-.lp-val.big{font-size:13px;font-weight:700;color:#000}
-/* 우측: 바코드 영역 */
-.lp-bc-area{
+
+/* ─ 본문: 좌(핵심정보 43%) + 우(바코드 57%) ─ */
+.lbl-body{
+  display:flex;flex:1;overflow:hidden;min-height:0;
+}
+
+/* 좌측 — 핵심 정보, 공간을 균등하게 분배 */
+.lbl-info{
+  width:180px;flex-shrink:0;
+  padding:10px 14px;
+  border-right:1.5px solid #e8e8e8;
+  display:flex;flex-direction:column;
+  justify-content:space-evenly;   /* 균등 배분 */
+  gap:0;
+}
+/* 자재번호 — 코드체, 잘 보이게 */
+.lbl-matno-big{
+  font-size:12px;font-weight:700;color:#111;
+  font-family:'Consolas','맑은 고딕','Malgun Gothic',sans-serif;
+  letter-spacing:.4px;line-height:1.4;
+  background:#f4f8fc;border-radius:3px;
+  padding:2px 5px;
+}
+/* 형번 — 가장 크게 */
+.lbl-model-big{
+  font-size:24px;font-weight:700;color:#0d1e30;
+  font-family:'맑은 고딕','Malgun Gothic',sans-serif;
+  line-height:1;letter-spacing:-.3px;
+}
+/* 수량 + 단위 */
+.lbl-qty-row{
+  display:flex;align-items:baseline;gap:4px;
+}
+.lbl-qty-big{
+  font-size:28px;font-weight:700;color:#cc0000;
+  font-family:'Consolas','맑은 고딕',sans-serif;
+  line-height:1;
+}
+.lbl-qty-unit{
+  font-size:13px;color:#cc0000;font-weight:700;
+  font-family:'맑은 고딕','Malgun Gothic',sans-serif;
+}
+/* 공급처 */
+.lbl-vendor{
+  font-size:11px;color:#444;font-weight:600;
+  font-family:'맑은 고딕','Malgun Gothic',sans-serif;
+  border-left:3px solid #00d4ff;padding-left:6px;
+}
+
+/* 우측 — 바코드, 공간 최대 활용 */
+.lbl-bc{
   flex:1;display:flex;flex-direction:column;
   align-items:center;justify-content:center;
-  padding:6px 8px;gap:4px;
+  padding:8px 10px;gap:4px;min-width:0;
 }
-.lp-bc-label{font-size:7px;color:#888;letter-spacing:.3px;text-transform:uppercase;font-weight:700}
-#lbc-svg{max-width:100%;height:auto}
-.lp-matno{font-size:8px;color:#333;font-family:'Consolas','Courier New',monospace;letter-spacing:1px;text-align:center}
-/* QR 영역 */
-.lp-qr-row{display:flex;align-items:center;gap:6px;padding:4px 8px;border-top:1px dashed #ccc;flex-shrink:0}
-.lp-qr-box{width:36px;height:36px;flex-shrink:0}
-#lbc-qr-svg{width:36px;height:36px}
-.lp-qr-info{font-size:7px;color:#444;line-height:1.7;font-family:'MalgunGothic','맑은 고딕',sans-serif}
-/* 하단 절취선 효과 */
-.lp-footer{
-  background:#f5f5f5;border-top:1px solid #ddd;
-  padding:2px 10px;display:flex;justify-content:space-between;align-items:center;
-  flex-shrink:0;
+.lbl-bc-lbl{
+  font-size:9px;color:#aaa;letter-spacing:.5px;
+  font-family:'맑은 고딕','Malgun Gothic',sans-serif;
+  text-transform:uppercase;
 }
-.lp-footer span{font-size:6.5px;color:#999;font-family:'Consolas','Courier New',monospace}
-/* 라벨 크기 배지 */
-.lp-size-badge{
-  position:absolute;top:0;right:0;
-  background:rgba(0,200,255,.15);border-left:1px solid rgba(0,200,255,.3);border-bottom:1px solid rgba(0,200,255,.3);
-  font-size:7px;color:#00c8ff;padding:1px 5px;border-radius:0 3px 0 4px;
-  font-family:'Consolas','Courier New',monospace;
+.lbl-bc svg{max-width:100%;height:auto;display:block}
+.lbl-bc-no{
+  font-size:10px;color:#333;font-weight:600;
+  font-family:'Consolas','맑은 고딕',sans-serif;
+  letter-spacing:.5px;text-align:center;
 }
 
-/* ══ 스캐너 ══ */
-.scanbox{background:var(--bg3);border:2px dashed var(--bd2);border-radius:8px;
-  padding:20px;text-align:center;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;flex-shrink:0}
-.scanbox:hover,.scanbox.act{border-color:var(--a1);background:rgba(0,200,255,.04)}
-.scanline{position:absolute;left:10%;right:10%;height:2px;
-  background:linear-gradient(90deg,transparent,var(--a1),transparent);opacity:0}
-.scanbox.act .scanline{opacity:1;animation:sc 1.5s linear infinite}
-@keyframes sc{0%{top:15%}100%{top:85%}}
+/* ─ 하단 정보 3열: 규격 / 입고일+위치 / 로트 ─ */
+.lbl-btm{
+  background:#edf2f7;border-top:1.5px solid #d0d8e0;
+  padding:5px 14px;flex-shrink:0;
+  display:grid;grid-template-columns:2fr 2fr 1.5fr;
+  gap:0 12px;
+}
+.lbl-btm-item{display:flex;flex-direction:column;gap:2px}
+.lbl-btm-k{
+  font-size:9px;color:#666;font-weight:700;
+  font-family:'맑은 고딕','Malgun Gothic',sans-serif;
+  text-transform:uppercase;letter-spacing:.4px;
+}
+.lbl-btm-v{
+  font-size:11px;color:#111;font-weight:600;
+  font-family:'Consolas','맑은 고딕','Malgun Gothic',sans-serif;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
 
-/* ══ 스크롤바 ══ */
-::-webkit-scrollbar{width:3px;height:3px}
+/* ─ 푸터: 자재번호 / 출력일시 / SEQ ─ */
+.lbl-footer{
+  background:#d8e4f0;border-top:1.5px solid #bfcfdf;
+  padding:4px 14px;flex-shrink:0;
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:9px;color:#555;font-weight:600;
+  font-family:'Consolas','맑은 고딕','Malgun Gothic',sans-serif;
+}
+.chart-box{position:relative;width:100%}
+.ch160{height:160px}.ch180{height:180px}.ch200{height:200px}.ch220{height:220px}.ch240{height:240px}
+.chart-box canvas{position:absolute;top:0;left:0;width:100%!important;height:100%!important}
+
+/* ═══ 테이블 줄간격 축소 (전체재고·일별집계) ════════════════ */
+.tbl-compact thead th{padding:7px 10px;font-size:11px}
+.tbl-compact tbody td{padding:7px 10px;font-size:13px}
+
+/* ═══ 초소형 테이블 (스캐너·라벨이력·기종별 등) ════════════ */
+.tbl-xs thead th{padding:5px 8px;font-size:11px}
+.tbl-xs tbody td{padding:5px 8px;font-size:13px}
+
+/* ═══ 카드 패딩 축소 ════════════════════════════════════════ */
+.card-sm{padding:10px}
+.card-sm .card-title{margin-bottom:8px}
+
+/* ═══ 초소형 카드 (재고현황요약 등) ════════════════════════ */
+.card-xs{padding:8px}
+.card-xs .card-title{margin-bottom:6px;font-size:11px}
+
+/* ═══ gauge-list 밀도 축소 ══════════════════════════════════ */
+.gauge-list{display:flex;flex-direction:column;gap:6px}  /* 12→6 */
+
+/* ═══ alert 패딩 축소 ═══════════════════════════════════════ */
+.alert{padding:7px 12px;font-size:13px;margin-bottom:5px}
+
+/* ═══ 재고현황요약 전용 초밀도 테이블 ══════════════════════ */
+.tbl-dash thead th{padding:4px 8px;font-size:11px;background:var(--s2);color:var(--tx2)}
+.tbl-dash tbody td{padding:4px 8px;font-size:13px;border-bottom:1px solid var(--bd)}
+.tbl-dash tbody tr:last-child td{border-bottom:none}
+
+.printer-bar{
+  background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);
+  padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;
+  gap:12px;flex-wrap:wrap
+}
+.printer-lbl{font-size:14px;font-weight:700;color:var(--c1);white-space:nowrap}
+.printer-sel{
+  height:40px;background:var(--s2);border:1px solid var(--bd2);border-radius:8px;
+  padding:0 12px;color:var(--tx);font-family:var(--f);font-size:14px;outline:none
+}
+.printer-input{
+  height:40px;background:var(--s2);border:1px solid var(--bd2);border-radius:8px;
+  padding:0 12px;color:var(--tx);font-family:var(--fm);font-size:13px;outline:none
+}
+#pc-status{font-size:13px;font-family:var(--fm);color:var(--tx2)}
+
+/* ═══ 모달 ══════════════════════════════════════════════ */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);
+  z-index:500;align-items:center;justify-content:center;padding:16px}
+.modal-bg.on{display:flex}
+.modal-box{background:var(--s1);border:1px solid var(--bd2);border-radius:12px;
+  padding:24px;width:100%;max-width:440px;max-height:90vh;overflow-y:auto}
+.modal-title{font-size:18px;font-weight:700;color:var(--c1);margin-bottom:16px}
+
+/* ═══ 관리자 전용 필드 ════════════════════════════════════ */
+.admin-only{display:none}
+body.admin .admin-only{display:flex}
+
+/* ═══ 스크롤바 ═══════════════════════════════════════════ */
+::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:2px}
+::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:3px}
 
-/* ══ 모달 ══ */
-.moverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:999;align-items:center;justify-content:center}
-.moverlay.on{display:flex}
-.modal{background:var(--bg2);border:1px solid var(--bd2);border-radius:8px;padding:20px;width:420px;max-width:94vw}
-.mh{font-size:13px;font-weight:700;color:var(--a1);margin-bottom:12px}
-
-/* ══ 년간 그리드 ══ */
-.ygrid{display:grid;grid-template-columns:repeat(12,1fr);gap:4px;flex-shrink:0}
-.mc{background:var(--bg3);border-radius:4px;padding:6px 3px;text-align:center;cursor:pointer;transition:all .12s;border:1px solid transparent}
-.mc:hover,.mc.on{border-color:var(--a1);background:var(--bg4)}
-.mn{font-size:8px;color:var(--tx2);margin-bottom:3px}
-.mv{font-size:9px;font-family:var(--mono);font-weight:600}
-.mb{height:24px;display:flex;align-items:flex-end;justify-content:center;gap:2px;margin-bottom:2px}
-.mb div{width:5px;border-radius:1px 1px 0 0}
-
-/* ══ 플렉스 유틸 ══ */
-.flex1{flex:1;min-height:0;min-width:0;overflow:hidden}
-.row{display:flex;gap:8px;flex:1;min-height:0;overflow:hidden}
-.col2{display:flex;flex-direction:column;gap:8px;flex:1;min-height:0;overflow:hidden}
-.shrink0{flex-shrink:0}
-
-/* ══ 스크롤 가능 테이블 래퍼 ══ */
-.stbl{overflow-y:auto;flex:1;min-height:0}
+/* ═══ 반응형 ══════════════════════════════════════════════
+   모바일: ~767px   사이드바 숨김 + 하단 탭바
+   태블릿: 768~1199px   좁은 사이드바
+   데스크톱: 1200px+   풀 레이아웃
+══════════════════════════════════════════════════════════ */
+@media (max-width:767px){
+  body{font-size:15px}
+  .sidebar{display:none}
+  .tabbar{display:grid}
+  .main{padding:12px;padding-bottom:calc(12px + var(--tbh))}
+  .kpi-grid.kg4{grid-template-columns:1fr 1fr}
+  .kpi-grid.kg3{grid-template-columns:1fr 1fr}
+  .g2,.g3{grid-template-columns:1fr}
+  .form-grid.fg3{grid-template-columns:1fr 1fr}
+  .kpi-val{font-size:22px}
+  .printer-bar{flex-direction:column;align-items:flex-start}
+  .label-card{width:320px;height:213px}
+}
+@media (min-width:768px) and (max-width:1199px){
+  .sidebar{width:56px;min-width:56px}
+  .sb-group{display:none}
+  .sb-item{padding:12px 0;justify-content:center;gap:0}
+  .sb-item span:not(.ico){display:none}
+  .sb-item .ico{width:56px;font-size:20px}
+  .tabbar{display:none}
+  .main{padding-bottom:16px}
+  .kpi-grid.kg4{grid-template-columns:1fr 1fr}
+  .g3{grid-template-columns:1fr 1fr}
+}
+@media (min-width:1200px){
+  .tabbar{display:none}
+  .main{padding-bottom:16px}
+}
 </style>
 </head>
 <body>
 
-<!-- ══ 헤더 ══ -->
+<!-- ═══ 헤더 ════════════════════════════════════════════ -->
 <div class="hdr">
-  <div class="logo">신촌공장 재고관리 시스템<em>WMS v2.5</em></div>
-  <span class="hpill ok">● 정상</span>
-  <span class="hpill wa">⚠ 부족 4건</span>
-  <span class="hpill ok">DB 연결</span>
-  <div class="hright">
-    <span>재고관리팀</span>
+  <div class="hdr-logo">신촌공장 WMS<span>v3.0</span></div>
+  <div class="hdr-right">
+    <div class="admin-btn" id="admin-btn" onclick="toggleAdmin()">현장모드</div>
     <span id="clk">--:--:--</span>
   </div>
 </div>
 
-<!-- ══ 본문 레이아웃 ══ -->
-<div class="lay">
+<!-- ═══ 본문 ════════════════════════════════════════════ -->
+<div class="layout">
 
-<!-- ══ 사이드바 ══ -->
-<div class="sb">
-  <div class="sb-sec">대시보드</div>
-  <div class="sb-it on" onclick="go('dash',this)"><span class="sb-ico">◈</span>종합 현황</div>
-  <div class="sb-it" onclick="go('monthly',this)"><span class="sb-ico">▦</span>월간 입출고</div>
-  <div class="sb-it" onclick="go('yearly',this)"><span class="sb-ico">◻</span>년간 현황</div>
-  <div class="sb-sec">입출고 처리</div>
-  <div class="sb-it" onclick="go('inbound',this)"><span class="sb-ico">↓</span>입고 처리</div>
-  <div class="sb-it" onclick="go('outbound',this)"><span class="sb-ico">↑</span>출하 처리</div>
-  <div class="sb-it" onclick="go('scanner',this)"><span class="sb-ico">⊙</span>스캐너 연동<span class="sb-bdg">USB</span></div>
-  <div class="sb-it" onclick="go('label',this)"><span class="sb-ico">▤</span>라벨 출력</div>
-  <div class="sb-sec">재고 현황</div>
-  <div class="sb-it" onclick="go('stock',this)"><span class="sb-ico">≡</span>전체 재고</div>
-  <div class="sb-it" onclick="go('bymodel',this)"><span class="sb-ico">⊞</span>기종별 현황</div>
-  <div class="sb-it" onclick="go('byvendor',this)"><span class="sb-ico">♦</span>업체별 현황</div>
-  <div class="sb-sec">보고서</div>
-  <div class="sb-it" onclick="go('report',this)"><span class="sb-ico">◷</span>일별 집계</div>
-  <div class="sb-it" onclick="go('request',this)"><span class="sb-ico">✉</span>정보 요청서</div>
-</div>
+<!-- 사이드바 (태블릿·데스크톱) -->
+<nav class="sidebar">
+  <div class="sb-group">현황</div>
+  <div class="sb-item on" onclick="go('dash',this)"><span class="ico">◈</span><span>대시보드</span></div>
+  <div class="sb-item" onclick="go('monthly',this)"><span class="ico">📅</span><span>월간 입출고</span></div>
+  <div class="sb-item" onclick="go('yearly',this)"><span class="ico">📊</span><span>년간 현황</span></div>
+  <div class="sb-group">처리</div>
+  <div class="sb-item" onclick="go('inbound',this)"><span class="ico">⬇</span><span>입고 처리</span></div>
+  <div class="sb-item" onclick="go('outbound',this)"><span class="ico">⬆</span><span>출하 처리</span></div>
+  <div class="sb-item" onclick="go('scanner',this)"><span class="ico">⊙</span><span>스캐너</span></div>
+  <div class="sb-item" onclick="go('label',this)"><span class="ico">🖨</span><span>라벨 출력</span></div>
+  <div class="sb-group">조회</div>
+  <div class="sb-item" onclick="go('stock',this)"><span class="ico">≡</span><span>전체 재고</span></div>
+  <div class="sb-item" onclick="go('bymodel',this)"><span class="ico">⊞</span><span>기종별</span></div>
+  <div class="sb-item" onclick="go('byvendor',this)"><span class="ico">♦</span><span>업체별</span></div>
+  <div class="sb-item" onclick="go('report',this)"><span class="ico">◷</span><span>일별 집계</span></div>
+  <div class="sb-item" onclick="go('deadstock',this)" style="color:var(--c4)"><span class="ico">⚠</span><span>불용재고</span></div>
+</nav>
 
-<!-- ══ 메인 ══ -->
-<div class="main">
+<!-- 메인 콘텐츠 -->
+<main class="main">
 
-<!-- ① 종합 현황 -->
+<!-- ① 대시보드 -->
 <div class="pg on" id="pg-dash">
-  <div class="krow k5 shrink0">
-    <div class="kpi"><div class="kpi-t" style="background:var(--a2)"></div><div class="kl">2월 총입고</div><div class="kv" style="color:var(--a2)">4,754,199</div><div class="ks">선삭+연삭</div><div class="kg dn">▼17.7% vs 1월</div></div>
-    <div class="kpi"><div class="kpi-t" style="background:var(--a3)"></div><div class="kl">2월 총출고</div><div class="kv" style="color:var(--a3)">3,705,892</div><div class="ks">선삭+연삭</div><div class="kg dn">▼43.3% vs 1월</div></div>
-    <div class="kpi"><div class="kpi-t" style="background:var(--a1)"></div><div class="kl">현재고 합계</div><div class="kv" style="color:var(--a1)">10,175,346</div><div class="ks">선삭 8,156K+연삭 2,019K</div><div class="kg up">▲11.7% 증가</div></div>
-    <div class="kpi"><div class="kpi-t" style="background:var(--a5)"></div><div class="kl">재고금액 월말</div><div class="kv" style="color:var(--a5)">15.8억원</div><div class="ks">선삭 11.1억+연삭 4.7억</div><div class="kg up">▲2.2억 증가</div></div>
-    <div class="kpi"><div class="kpi-t" style="background:var(--a4)"></div><div class="kl">재고부족 품목</div><div class="kv" style="color:var(--a4)">4</div><div class="ks">안전재고 미달</div><div class="kg" style="color:var(--a4)">긴급 확인 필요</div></div>
+  <div class="kpi-grid kg4">
+    <div class="kpi-card kv3">
+      <div class="kpi-lbl">4월 총입고 (1~23일)</div>
+      <div class="kpi-val" style="color:var(--c2)">4,947,214</div>
+      <div class="kpi-sub">선삭+연삭 PCS</div>
+      <div class="kpi-chg up">▲ 52.6% vs 3월</div>
+    </div>
+    <div class="kpi-card kv3">
+      <div class="kpi-lbl">4월 총출고 (1~23일)</div>
+      <div class="kpi-val" style="color:var(--c3)">5,227,971</div>
+      <div class="kpi-sub">선삭+연삭 PCS</div>
+      <div class="kpi-chg dn">▼ 4.9% vs 3월</div>
+    </div>
+    <div class="kpi-card kv1">
+      <div class="kpi-lbl">현재고 (4/23 기준)</div>
+      <div class="kpi-val" style="color:var(--c1)">7,762,980</div>
+      <div class="kpi-sub">선삭 6,280K + 연삭 1,483K</div>
+      <div class="kpi-chg dn">▼ 7.3% vs 3월</div>
+    </div>
+    <div class="kpi-card kv4">
+      <div class="kpi-lbl">재고금액 (4/23)</div>
+      <div class="kpi-val" style="color:var(--c5)">12.8억원</div>
+      <div class="kpi-sub">선삭 8.9억 + 연삭 3.9억</div>
+      <div class="kpi-chg dn">▼ 6.9% vs 3월</div>
+    </div>
   </div>
-  <div class="row">
-    <div class="col2 f2">
-      <div class="card flex1">
-        <div class="ch c1">2월 일별 입출고 — 선삭링</div>
-        <canvas id="dash-daily"></canvas>
+
+  <div class="g2">
+    <div class="card card-sm">
+      <div class="card-title ct1">4월 일별 입출고 (선삭링)</div>
+      <div class="chart-box ch160"><canvas id="dash-chart"></canvas></div>
+    </div>
+    <div class="card card-sm">
+      <div class="card-title ct2">공급처별 재고</div>
+      <div class="gauge-list">
+        <div class="gauge-row">
+          <span class="gauge-lbl">인시스/선삭</span>
+          <div class="gauge-track"><div class="gauge-fill" style="width:31%;background:var(--c1)"></div></div>
+          <span class="gauge-val" style="color:var(--c1)">1,939K</span>
+        </div>
+        <div class="gauge-row">
+          <span class="gauge-lbl">찬스/선삭</span>
+          <div class="gauge-track"><div class="gauge-fill" style="width:69%;background:var(--c5)"></div></div>
+          <span class="gauge-val" style="color:var(--c5)">4,341K</span>
+        </div>
+        <div class="gauge-row">
+          <span class="gauge-lbl">인시스/연삭</span>
+          <div class="gauge-track"><div class="gauge-fill" style="width:84%;background:var(--c2)"></div></div>
+          <span class="gauge-val" style="color:var(--c2)">1,249K</span>
+        </div>
+        <div class="gauge-row">
+          <span class="gauge-lbl">찬스/연삭</span>
+          <div class="gauge-track"><div class="gauge-fill" style="width:16%;background:var(--c3)"></div></div>
+          <span class="gauge-val" style="color:var(--c3)">234K</span>
+        </div>
+      </div>
+      <div style="margin-top:8px">
+        <div class="alert a-ok">✓ 찬스 OSD6203 IR 입고 270,000개 — 4/16</div>
+        <div class="alert a-warn">⚠ F-572665 재고 44,200 — 안전재고 미달</div>
+        <div class="alert a-err">✕ 찬스 6200 IR 연삭 재고 소진</div>
       </div>
     </div>
-    <div class="col2 f1">
-      <div class="card" style="flex:0 0 auto">
-        <div class="ch c2">공급처별 재고</div>
-        <div class="gw">
-          <div class="gr"><span style="color:var(--tx2);font-size:9px">인시스/선삭</span><div class="gtr"><div class="gf" style="width:33%;background:var(--a1)"></div></div><span class="num" style="font-size:9px;color:var(--a1)">2,703K</span></div>
-          <div class="gr"><span style="color:var(--tx2);font-size:9px">찬스/선삭</span><div class="gtr"><div class="gf" style="width:67%;background:var(--a5)"></div></div><span class="num" style="font-size:9px;color:var(--a5)">5,454K</span></div>
-          <div class="gr"><span style="color:var(--tx2);font-size:9px">인시스/연삭</span><div class="gtr"><div class="gf" style="width:68%;background:var(--a2)"></div></div><span class="num" style="font-size:9px;color:var(--a2)">1,376K</span></div>
-          <div class="gr"><span style="color:var(--tx2);font-size:9px">찬스/연삭</span><div class="gtr"><div class="gf" style="width:32%;background:var(--a3)"></div></div><span class="num" style="font-size:9px;color:var(--a3)">643K</span></div>
-        </div>
-        <div style="margin-top:8px">
-          <div class="al ok">✓ 찬스 F-679350 입고 163,385개 완료</div>
-          <div class="al inf">→ 인시스 6203 출고 162,000개</div>
-          <div class="al wa">⚠ OSD6203 잔여 120,500 — 바코드 재출력</div>
-          <div class="al er">✕ F-679350 월말재고 0 — 입고 요청</div>
-        </div>
-      </div>
-      <div class="card" style="flex:0 0 auto">
-        <div class="ch c5">재고 현황 요약</div>
-        <table class="tbl">
+  </div>
+
+  <div class="g2">
+    <div class="card card-sm">
+      <div class="card-title ct3">입고 상위 모델 (1~4월)</div>
+      <div id="top-ib-bars"></div>
+    </div>
+    <div class="card card-xs">
+      <div class="card-title ct4">재고 현황 요약</div>
+      <div class="tbl-wrap">
+        <table class="tbl-dash">
           <thead><tr><th>구분</th><th>링</th><th class="num">현재고</th><th>상태</th></tr></thead>
           <tbody>
-            <tr><td>인시스</td><td>선삭</td><td class="num" style="color:var(--a1)">2,702,670</td><td><span class="tag tg">정상</span></td></tr>
-            <tr><td>찬스</td><td>선삭</td><td class="num" style="color:var(--a1)">5,453,903</td><td><span class="tag tg">정상</span></td></tr>
-            <tr><td>인시스</td><td>연삭</td><td class="num" style="color:var(--a2)">1,375,622</td><td><span class="tag tg">정상</span></td></tr>
-            <tr><td>찬스</td><td>연삭</td><td class="num" style="color:var(--a3)">643,151</td><td><span class="tag to">주의</span></td></tr>
+            <tr><td>인시스</td><td>선삭</td><td class="num" style="color:var(--c1)">1,938,758</td><td><span class="tag tg">정상</span></td></tr>
+            <tr><td>찬스</td><td>선삭</td><td class="num" style="color:var(--c1)">4,340,745</td><td><span class="tag tg">정상</span></td></tr>
+            <tr><td>인시스</td><td>연삭</td><td class="num" style="color:var(--c3)">1,248,988</td><td><span class="tag to">주의</span></td></tr>
+            <tr><td>찬스</td><td>연삭</td><td class="num" style="color:var(--c4)">234,489</td><td><span class="tag tr">부족</span></td></tr>
           </tbody>
         </table>
       </div>
     </div>
   </div>
-  <div class="row">
-    <div class="card flex1">
-      <div class="ch c3">입고 상위 모델 (1+2월 합산)</div>
-      <div class="hbar" id="dash-top-ib"></div>
-    </div>
-    <div class="card flex1">
-      <div class="ch c4">출고 상위 모델 (1+2월 합산)</div>
-      <div class="hbar" id="dash-top-ob"></div>
-    </div>
-  </div>
 </div>
 
-<!-- ② 월간 입출고 -->
+<!-- ② 월간 -->
 <div class="pg" id="pg-monthly">
-  <div class="shrink0" style="display:flex;gap:8px;align-items:center">
-    <select id="sel-month" onchange="uMon()" style="background:var(--bg3);border:1px solid var(--bd2);border-radius:4px;padding:5px 8px;color:var(--tx);font-family:var(--fnt);font-size:11px">
-      <option value="1">2026년 1월</option><option value="2" selected>2026년 2월</option>
+  <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+    <select id="sel-month" class="printer-sel" onchange="uMon()">
+      <option value="1">2026년 1월</option>
+      <option value="2">2026년 2월</option>
+      <option value="3">2026년 3월</option>
+      <option value="4" selected>2026년 4월 (1~23일)</option>
     </select>
-    <select id="sel-ring" onchange="uMon()" style="background:var(--bg3);border:1px solid var(--bd2);border-radius:4px;padding:5px 8px;color:var(--tx);font-family:var(--fnt);font-size:11px">
-      <option value="sel">선삭링</option><option value="yel">연삭링</option>
+    <select id="sel-ring" class="printer-sel" onchange="uMon()">
+      <option value="sel">선삭링</option>
+      <option value="yel">연삭링</option>
     </select>
   </div>
-  <div class="krow k4 shrink0" id="mon-kpi"></div>
-  <div class="row">
-    <div class="card f2">
-      <div class="ch c1">일별 입출고 추이</div>
-      <canvas id="mon-chart"></canvas>
+  <div class="kpi-grid kg4" id="mon-kpi"></div>
+  <div class="g2">
+    <div class="card" style="grid-column:1/-1">
+      <div class="card-title ct1">일별 입출고</div>
+      <div class="chart-box ch160"><canvas id="mon-chart"></canvas></div>
     </div>
-    <div class="card f1">
-      <div class="ch c2">공급처별 집계</div>
-      <canvas id="mon-vendor"></canvas>
+  </div>
+  <div class="g2">
+    <div class="card card-sm">
+      <div class="card-title ct2">공급처별 비중</div>
+      <div class="chart-box ch240"><canvas id="mon-donut"></canvas></div>
     </div>
-    <div class="card f1" style="display:flex;flex-direction:column">
-      <div class="ch c3">일별 내역</div>
-      <div class="stbl">
-        <table class="tbl" id="mon-tbl">
-          <thead><tr><th>날짜</th><th>요일</th><th class="num">입고</th><th class="num">출고</th><th class="num">차이</th></tr></thead>
-          <tbody></tbody>
-        </table>
+    <div class="card card-sm">
+      <div class="card-title ct3">일별 내역</div>
+      <div style="max-height:360px;overflow-y:auto">
+        <div class="tbl-wrap">
+          <table id="mon-tbl" class="tbl-xs">
+            <thead><tr><th>날짜</th><th>요일</th><th class="num">입고</th><th class="num">출고</th><th class="num">차이</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ③ 년간 현황 -->
+<!-- ③ 년간 -->
 <div class="pg" id="pg-yearly">
-  <div class="krow k4 shrink0">
-    <div class="kpi"><div class="kpi-t" style="background:var(--a2)"></div><div class="kl">년간 총입고 (1~2월)</div><div class="kv" style="color:var(--a2)">10,529,970</div><div class="ks">선삭+연삭 누계</div></div>
-    <div class="kpi"><div class="kpi-t" style="background:var(--a3)"></div><div class="kl">년간 총출고 (1~2월)</div><div class="kv" style="color:var(--a3)">10,237,649</div><div class="ks">선삭+연삭 누계</div></div>
-    <div class="kpi"><div class="kpi-t" style="background:var(--a1)"></div><div class="kl">현재고 (2월말)</div><div class="kv" style="color:var(--a1)">10,175,346</div><div class="ks">PCS</div></div>
-    <div class="kpi"><div class="kpi-t" style="background:var(--a5)"></div><div class="kl">재고금액 증가</div><div class="kv" style="color:var(--a5)">+2.17억</div><div class="ks">13.6억→15.8억원</div></div>
+  <div class="kpi-grid kg4">
+    <div class="kpi-card kv2"><div class="kpi-lbl">년간 총입고 (1~4월)</div><div class="kpi-val" style="color:var(--c2)">18,920,073</div><div class="kpi-sub">PCS 누계</div></div>
+    <div class="kpi-card kv3"><div class="kpi-lbl">년간 총출고 (1~4월)</div><div class="kpi-val" style="color:var(--c3)">20,966,658</div><div class="kpi-sub">PCS 누계</div></div>
+    <div class="kpi-card kv1"><div class="kpi-lbl">현재고 (4/23)</div><div class="kpi-val" style="color:var(--c1)">7,762,980</div><div class="kpi-sub">PCS</div></div>
+    <div class="kpi-card kv5"><div class="kpi-lbl">재고금액 변화</div><div class="kpi-val" style="color:var(--c5)">-0.84억</div><div class="kpi-sub">13.6억 → 12.8억</div></div>
   </div>
-  <div class="card shrink0">
-    <div class="ch c1">2026년 월별 현황</div>
-    <div class="ygrid" id="ygrid"></div>
+  <div class="card">
+    <div class="card-title ct1">2026년 월별 현황</div>
+    <div id="yr-grid" style="display:grid;grid-template-columns:repeat(12,1fr);gap:6px;margin-bottom:14px"></div>
+    <div class="chart-box ch180"><canvas id="yr-chart"></canvas></div>
   </div>
-  <div class="row">
-    <div class="card flex1"><div class="ch c2">월별 입출고 비교</div><canvas id="yr-chart"></canvas></div>
-    <div class="card flex1"><div class="ch c3">월별 재고금액 추이</div><canvas id="yr-amt"></canvas></div>
+  <div class="card">
+    <div class="card-title ct5">재고금액 추이</div>
+    <div class="chart-box ch160"><canvas id="yr-amt"></canvas></div>
   </div>
 </div>
 
 <!-- ④ 입고 처리 -->
 <div class="pg" id="pg-inbound">
-  <div class="row">
-    <div class="col2 f2">
-      <div class="card" style="flex:1;overflow-y:auto">
-        <div class="ch c2">입고 정보 입력</div>
-        <div class="fgrid fg2">
-          <div class="fg"><label>입고일자</label><input type="date" id="ib-date" value="2026-03-01"></div>
-          <div class="fg"><label>공급처</label><select id="ib-vendor"><option>인시스(0350)</option><option>찬스(위탁)</option></select></div>
-          <div class="fg"><label>링종류</label><select id="ib-ring"><option>선삭링</option><option>연삭링</option></select></div>
-          <div class="fg"><label>대표형번</label><select id="ib-model" onchange="uIb()"><option>OSD6203</option><option>6005</option><option>6004</option><option>F-572665</option><option>6206</option><option>6203</option><option>6200</option></select></div>
-          <div class="fg"><label>자재번호</label><input type="text" id="ib-matno" value="098519026-0000"></div>
-          <div class="fg"><label>자재규격</label><input type="text" id="ib-spec" value="AU.6203-B-2Z-8105-L6"></div>
-          <div class="fg"><label>Type</label><select id="ib-type"><option>ZZ</option><option>OSD</option><option>OP</option><option>AZZ</option></select></div>
-          <div class="fg"><label>륜</label><select id="ib-wheel"><option>A</option><option>B</option></select></div>
-          <div class="fg"><label>입고수량 (PCS)</label><input type="number" id="ib-qty" value="140000" onchange="uIb()"></div>
-          <div class="fg"><label>단가 (원/PCS)</label><input type="number" id="ib-price" value="103" onchange="uIb()"></div>
-          <div class="fg"><label>로트번호</label><input type="text" id="ib-lot" value="LOT-20260301-001"></div>
-          <div class="fg"><label>위치코드</label><input type="text" id="ib-loc" value="A-01-03"></div>
+  <div class="g2">
+    <div>
+      <div class="card">
+        <div class="card-title ct2">입고 정보 입력</div>
+        <div class="form-grid fg2">
+          <div class="field"><label>입고일자</label><input type="date" id="ib-date" value="2026-04-28"></div>
+          <div class="field"><label>공급처</label>
+            <select id="ib-vendor"><option>인시스(0350)</option><option>찬스(위탁)</option></select>
+          </div>
+          <div class="field"><label>링종류</label>
+            <select id="ib-ring"><option>선삭링</option><option>연삭링</option></select>
+          </div>
+          <div class="field"><label>대표형번</label>
+            <select id="ib-model" onchange="uIb()">
+              <option>OSD6203</option><option>6005</option><option>6004</option>
+              <option>F-572665</option><option>F-576917</option><option>F-624888</option>
+              <option>F-679350</option><option>6203</option><option>6200</option>
+            </select>
+          </div>
+          <div class="field"><label>자재번호</label><input type="text" id="ib-matno" value="098515705-0000"></div>
+          <div class="field"><label>자재규격</label><input type="text" id="ib-spec" value="AU.6203-B-2Z-8105-L6"></div>
+          <div class="field"><label>입고수량 (PCS)</label><input type="number" id="ib-qty" value="140000" onchange="uIb()"></div>
+          <div class="field admin-only"><label>단가 (원) <span class="badge">●관리자</span></label><input type="number" id="ib-price" value="103" onchange="uIb()"></div>
+          <div class="field"><label>로트번호</label><input type="text" id="ib-lot" value="LOT-20260428-001"></div>
+          <div class="field"><label>위치코드</label>
+            <select id="ib-loc">
+              <option value="A-01-01">A-01-01</option><option value="A-01-02">A-01-02</option>
+              <option value="A-01-03" selected>A-01-03</option><option value="A-02-01">A-02-01</option>
+              <option value="B-01-01">B-01-01</option><option value="B-01-02">B-01-02</option>
+              <option value="B-02-01">B-02-01</option><option value="C-01-01">C-01-01</option>
+              <option value="D-01-01">D-01-01</option>
+            </select>
+          </div>
         </div>
-        <div class="brow">
-          <button class="btn bs" onclick="doIb()">↓ 입고 등록</button>
-          <button class="btn bp" onclick="go('label',null);prepLbl()">▤ 바코드 출력</button>
-          <button class="btn bg">초기화</button>
+        <div class="btn-row">
+          <button class="btn b2" onclick="doIb()">⬇ 입고 등록</button>
+          <button class="btn b1" onclick="go('label',null);prepLbl()">🖨 바코드 출력</button>
         </div>
-        <div id="ib-msg" style="margin-top:6px"></div>
-      </div>
-      <div class="card" style="flex:0 0 auto">
-        <div class="ch c3">최근 입고 이력</div>
-        <table class="tbl">
-          <thead><tr><th>일자</th><th>모델</th><th>공급처</th><th class="num">수량</th><th>상태</th></tr></thead>
-          <tbody id="ib-hist">
-            <tr><td>02/23</td><td>찬스/F-679350</td><td>찬스</td><td class="num">163,385</td><td><span class="tag tg">완료</span></td></tr>
-            <tr><td>02/20</td><td>찬스/6005</td><td>찬스</td><td class="num">140,000</td><td><span class="tag tg">완료</span></td></tr>
-            <tr><td>02/12</td><td>찬스/OSD6203</td><td>찬스</td><td class="num">135,000</td><td><span class="tag tg">완료</span></td></tr>
-            <tr><td>02/11</td><td>인시스/6203</td><td>인시스</td><td class="num">162,000</td><td><span class="tag tg">완료</span></td></tr>
-          </tbody>
-        </table>
+        <div id="ib-msg" style="margin-top:10px"></div>
       </div>
     </div>
-    <div class="card f1" style="display:flex;flex-direction:column">
-      <div class="ch c1">입고 정보 미리보기</div>
-      <div style="font-size:10px;line-height:2.2;color:var(--tx);flex:1">
-        <div>공급처: <span style="color:var(--tx)" id="pv-vendor">인시스(0350)</span></div>
-        <div>링종류: <span style="color:var(--tx)" id="pv-ring">선삭링</span></div>
-        <div>모델: <span style="color:var(--a1);font-size:15px;font-weight:700" id="pv-model">OSD6203</span></div>
-        <div>자재번호: <span style="color:var(--tx);font-family:var(--mono)" id="pv-matno">098519026-0000</span></div>
-        <div>자재규격: <span style="color:var(--tx)" id="pv-spec">AU.6203-B-2Z-8105-L6</span></div>
-        <div>수량: <span style="color:var(--a2);font-size:20px;font-family:var(--mono);font-weight:700" id="pv-qty">140,000</span> PCS</div>
-        <div>단가: <span style="color:var(--a3);font-family:var(--mono)" id="pv-price">103원</span></div>
-        <div>금액: <span style="color:var(--a3);font-family:var(--mono);font-size:14px" id="pv-total">14,420,000원</span></div>
-        <div>로트: <span style="color:var(--tx);font-family:var(--mono)" id="pv-lot">LOT-20260301-001</span></div>
-        <div>위치: <span style="color:var(--tx)" id="pv-loc">A-01-03</span></div>
+    <div>
+      <div class="card">
+        <div class="card-title ct1">입고 미리보기</div>
+        <div style="font-size:15px;line-height:2.4;color:var(--tx2)">
+          <div>공급처: <strong style="color:var(--tx)" id="pv-vendor">인시스(0350)</strong></div>
+          <div>링종류: <strong style="color:var(--tx)" id="pv-ring">선삭링</strong></div>
+          <div>모델: <strong style="color:var(--c1);font-size:20px" id="pv-model">OSD6203</strong></div>
+          <div>자재번호: <strong style="color:var(--tx);font-family:var(--fm)" id="pv-matno">098515705-0000</strong></div>
+          <div>수량: <strong style="color:var(--c2);font-size:26px;font-family:var(--fm)" id="pv-qty">140,000</strong> PCS</div>
+          <div class="admin-only" style="flex-direction:column">
+            <div>단가: <strong style="color:var(--c3);font-family:var(--fm)" id="pv-price">103원</strong></div>
+            <div>금액: <strong style="color:var(--c3);font-family:var(--fm);font-size:18px" id="pv-total">14,420,000원</strong></div>
+          </div>
+          <div>로트: <strong style="color:var(--tx);font-family:var(--fm)" id="pv-lot">LOT-20260428-001</strong></div>
+          <div>위치: <strong style="color:var(--tx)" id="pv-loc">A-01-03</strong></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title ct3">최근 입고 이력</div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>일자</th><th>모델</th><th class="num">수량</th><th>상태</th></tr></thead>
+            <tbody id="ib-hist">
+              <tr><td>04/16</td><td>찬스/OSD6203</td><td class="num">270,000</td><td><span class="tag tg">완료</span></td></tr>
+              <tr><td>04/07</td><td>찬스/6004</td><td class="num">250,000</td><td><span class="tag tg">완료</span></td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
@@ -506,126 +778,143 @@ body{background:var(--bg);color:var(--tx);font-size:12px;display:flex;flex-direc
 
 <!-- ⑤ 출하 처리 -->
 <div class="pg" id="pg-outbound">
-  <div class="row">
-    <div class="col2 f2">
-      <div class="card flex1">
-        <div class="ch c3">출하 정보 입력</div>
-        <div class="fgrid fg2">
-          <div class="fg"><label>출하일자</label><input type="date" id="ob-date" value="2026-03-01"></div>
-          <div class="fg"><label>공급처</label><select id="ob-vendor"><option>인시스(0350)</option><option>찬스(위탁)</option></select></div>
-          <div class="fg"><label>대표형번</label><select id="ob-model" onchange="uOb()"><option>OSD6203</option><option>6005</option><option>6004</option><option>F-572665</option><option>6206</option></select></div>
-          <div class="fg"><label>현재고</label><input type="text" id="ob-stock" value="120,500 PCS" readonly style="color:var(--a2)"></div>
-          <div class="fg"><label>출하수량 (PCS)</label><input type="number" id="ob-qty" value="50000" onchange="uOb()"></div>
-          <div class="fg"><label>출하단가 (원)</label><input type="number" id="ob-price" value="103" onchange="uOb()"></div>
-          <div class="fg"><label>전표번호</label><input type="text" id="ob-ref" value="SH-20260301-001"></div>
-          <div class="fg"><label>담당자</label><input type="text" value="재고담당"></div>
-        </div>
-        <div style="background:var(--bg3);border-radius:5px;padding:10px;margin-top:8px;font-size:10px">
-          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-            <span style="color:var(--tx2)">출하 후 잔여재고</span>
-            <span style="color:var(--a2);font-family:var(--mono);font-size:16px;font-weight:700" id="ob-remain">70,500 PCS</span>
+  <div class="g2">
+    <div>
+      <div class="card">
+        <div class="card-title ct3">출하 정보 입력</div>
+        <div class="form-grid fg2">
+          <div class="field"><label>출하일자</label><input type="date" id="ob-date" value="2026-04-28"></div>
+          <div class="field"><label>공급처</label>
+            <select id="ob-vendor"><option>인시스(0350)</option><option>찬스(위탁)</option></select>
           </div>
-          <div style="display:flex;justify-content:space-between">
-            <span style="color:var(--tx2)">출하금액</span>
-            <span style="color:var(--a3);font-family:var(--mono)" id="ob-total">5,150,000원</span>
+          <div class="field"><label>대표형번</label>
+            <select id="ob-model" onchange="uOb()">
+              <option>OSD6203</option><option>6005</option><option>6004</option>
+              <option>F-572665</option><option>F-679350</option>
+            </select>
+          </div>
+          <div class="field"><label>현재고</label>
+            <input type="text" id="ob-stock" value="283,000 PCS" readonly style="color:var(--c2)">
+          </div>
+          <div class="field"><label>출하수량 (PCS)</label><input type="number" id="ob-qty" value="50000" onchange="uOb()"></div>
+          <div class="field admin-only"><label>출하단가 <span class="badge">●관리자</span></label><input type="number" id="ob-price" value="103" onchange="uOb()"></div>
+          <div class="field"><label>전표번호</label><input type="text" id="ob-ref" value="SH-20260428-001"></div>
+          <div class="field"><label>담당자</label><input type="text" value="재고담당"></div>
+        </div>
+        <div style="background:var(--s2);border-radius:8px;padding:14px;margin-top:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <span style="color:var(--tx2);font-size:14px">출하 후 잔여재고</span>
+            <span style="color:var(--c2);font-family:var(--fm);font-size:24px;font-weight:700" id="ob-remain">233,000 PCS</span>
+          </div>
+          <div class="admin-only" style="justify-content:space-between;align-items:center">
+            <span style="color:var(--tx2);font-size:14px">출하금액 <span class="badge" style="color:var(--c3)">●관리자</span></span>
+            <span style="color:var(--c3);font-family:var(--fm);font-size:18px" id="ob-total">5,150,000원</span>
           </div>
         </div>
-        <div class="brow">
-          <button class="btn bw" onclick="doOb()">↑ 출하 처리</button>
-          <button class="btn bp" onclick="showModal('전표 출력','PDF 전표 생성 후 프린터 출력')">▤ 전표 출력</button>
-          <button class="btn bg" onclick="go('label',null);prepLbl()">바코드 재출력</button>
+        <div class="btn-row">
+          <button class="btn btn-lg b3" onclick="doOb()">⬆ 출하 처리</button>
+          <button class="btn b1" onclick="showModal('전표 출력','PDF 전표 생성 후 프린터 출력')">📄 전표</button>
+          <button class="btn bg" onclick="go('label',null);prepLbl()">🖨 재출력</button>
         </div>
-      </div>
-      <div class="card" style="flex:0 0 auto">
-        <div class="ch c5">금일 출하 이력</div>
-        <table class="tbl">
-          <thead><tr><th>전표번호</th><th>모델</th><th class="num">수량</th></tr></thead>
-          <tbody id="ob-hist">
-            <tr><td style="font-family:var(--mono);font-size:9px">SH-20260228-012</td><td>찬스/OSD6203</td><td class="num">35,000</td></tr>
-            <tr><td style="font-family:var(--mono);font-size:9px">SH-20260228-011</td><td>인시스/6203</td><td class="num">24,600</td></tr>
-          </tbody>
-        </table>
       </div>
     </div>
-    <div class="card f1" style="display:flex;flex-direction:column">
-      <div class="ch c4">출하 전표 미리보기</div>
-      <div style="background:var(--bg3);border-radius:5px;padding:14px;font-size:10px;line-height:2;flex:1">
-        <div style="text-align:center;font-weight:700;font-size:12px;margin-bottom:8px;color:var(--a1)">출 하 전 표</div>
-        <div style="border-top:1px solid var(--bd2);border-bottom:1px solid var(--bd2);padding:6px 0;margin-bottom:6px">
-          <div style="display:flex;justify-content:space-between"><span style="color:var(--tx2)">전표번호</span><span style="font-family:var(--mono)">SH-20260301-001</span></div>
-          <div style="display:flex;justify-content:space-between"><span style="color:var(--tx2)">출하일자</span><span>2026-03-01</span></div>
-          <div style="display:flex;justify-content:space-between"><span style="color:var(--tx2)">공급처</span><span>인시스(0350)</span></div>
+    <div>
+      <div class="card">
+        <div class="card-title ct4">출하 전표</div>
+        <div style="background:var(--s2);border-radius:8px;padding:16px;font-size:15px;line-height:2.2">
+          <div style="text-align:center;font-size:18px;font-weight:700;color:var(--c1);margin-bottom:12px">출 하 전 표</div>
+          <div style="border-top:1px solid var(--bd2);border-bottom:1px solid var(--bd2);padding:10px 0;margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--tx2)">전표번호</span><span style="font-family:var(--fm)">SH-20260428-001</span></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--tx2)">출하일자</span><span>2026-04-28</span></div>
+          </div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--tx2)">모델명</span><span id="sl-model">OSD6203</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--tx2)">출하수량</span><span id="sl-qty" style="color:var(--c2);font-family:var(--fm)">50,000 PCS</span></div>
+          <div class="admin-only" style="justify-content:space-between;border-top:1px solid var(--bd2);margin-top:8px;padding-top:8px;font-weight:700">
+            <span>합계금액 <span class="badge" style="color:var(--c3)">●관리자</span></span>
+            <span id="sl-total" style="color:var(--c3);font-family:var(--fm)">5,150,000원</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;border-top:1px solid var(--bd2);margin-top:8px;padding-top:8px">
+            <span style="color:var(--tx2)">잔여재고</span>
+            <span id="sl-remain" style="color:var(--c1);font-family:var(--fm)">233,000 PCS</span>
+          </div>
         </div>
-        <div style="display:flex;justify-content:space-between"><span style="color:var(--tx2)">모델명</span><span id="sl-model">OSD6203</span></div>
-        <div style="display:flex;justify-content:space-between"><span style="color:var(--tx2)">출하수량</span><span id="sl-qty" style="color:var(--a2);font-family:var(--mono)">50,000 PCS</span></div>
-        <div style="display:flex;justify-content:space-between"><span style="color:var(--tx2)">단가</span><span style="font-family:var(--mono)">103원</span></div>
-        <div style="display:flex;justify-content:space-between;border-top:1px solid var(--bd2);margin-top:4px;padding-top:4px;font-weight:700">
-          <span>합계금액</span><span id="sl-total" style="color:var(--a3);font-family:var(--mono)">5,150,000원</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;margin-top:6px">
-          <span style="color:var(--tx2)">잔여재고</span><span id="sl-remain" style="color:var(--a1);font-family:var(--mono)">70,500 PCS</span>
+      </div>
+      <div class="card">
+        <div class="card-title ct5">금일 출하 이력</div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>전표번호</th><th>모델</th><th class="num">수량</th></tr></thead>
+            <tbody id="ob-hist">
+              <tr><td style="font-family:var(--fm);font-size:12px">SH-20260428-001</td><td>OSD6203</td><td class="num">35,000</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ⑥ 스캐너 연동 -->
+<!-- ⑥ 스캐너 -->
 <div class="pg" id="pg-scanner">
-  <div class="row">
-    <div class="col2 f1">
-      <div class="card" style="flex:0 0 auto">
-        <div class="ch c1">USB HID 스캐너 연동</div>
-        <div class="scanbox" id="sbox" onclick="doScan()">
-          <div class="scanline" id="sline"></div>
-          <div style="font-size:28px;color:var(--a1);margin-bottom:8px">⊙</div>
-          <div style="font-size:11px;color:var(--tx)" id="smsg">클릭하여 스캔 시뮬레이션<br><span style="font-size:9px;color:var(--tx)">실제: USB 핸디 스캐너 연결 후 바코드 스캔</span></div>
+  <div class="g2">
+    <div>
+      <div class="card">
+        <div class="card-title ct1">USB 핸디 스캐너</div>
+        <div class="scan-area" id="sbox" onclick="doScan()">
+          <div class="scan-line" id="sline"></div>
+          <span class="scan-ico">⊙</span>
+          <div class="scan-txt" id="smsg">
+            탭하여 스캔<br>
+            <span style="font-size:13px;color:var(--tx2)">실제 환경: USB 핸디 스캐너로 바코드 스캔</span>
+          </div>
         </div>
-        <div style="margin-top:8px;display:flex;gap:6px">
-          <input type="text" id="sinput" placeholder="자재번호 직접입력" onkeydown="if(event.key==='Enter')doScanM()"
-            style="flex:1;background:var(--bg3);border:1px solid var(--bd2);border-radius:4px;padding:5px 8px;color:var(--tx);font-family:var(--fnt);font-size:11px;outline:none">
-          <button class="btn bp" onclick="doScanM()">조회</button>
+        <div style="display:flex;gap:10px;margin-top:14px">
+          <input type="text" id="sinput" placeholder="자재번호 직접 입력"
+            onkeydown="if(event.key==='Enter')doScanM()"
+            style="flex:1;height:44px;background:var(--s2);border:1px solid var(--bd2);border-radius:8px;padding:0 14px;color:var(--tx);font-size:15px;outline:none">
+          <button class="btn b1" onclick="doScanM()">조회</button>
           <button class="btn bg" onclick="clrScan()">초기화</button>
         </div>
       </div>
-      <div class="card flex1" id="sr-card" style="display:none">
-        <div class="ch c2">스캔 결과</div>
+      <div class="card" id="sr-card" style="display:none">
+        <div class="card-title ct2">스캔 결과</div>
         <div id="sr-body"></div>
-        <div class="brow">
-          <button class="btn bs" onclick="go('inbound',null)">입고 처리</button>
-          <button class="btn bw" onclick="go('outbound',null)">출하 처리</button>
-          <button class="btn bp" onclick="go('label',null);prepLbl()">라벨 출력</button>
+        <div class="btn-row">
+          <button class="btn b2" onclick="go('inbound',null)">입고 처리</button>
+          <button class="btn b3" onclick="go('outbound',null)">출하 처리</button>
+          <button class="btn b1" onclick="go('label',null);prepLbl()">🖨 라벨</button>
         </div>
       </div>
-      <div class="card" style="flex:0 0 auto">
-        <div class="ch c5">스캔 이력</div>
-        <table class="tbl">
-          <thead><tr><th>시각</th><th>자재번호</th><th>모델</th><th class="num">재고</th></tr></thead>
-          <tbody id="s-hist">
-            <tr><td style="font-family:var(--mono)">10:23</td><td style="font-family:var(--mono)">098515705</td><td>인시스/6203</td><td class="num" style="color:var(--a4)">0</td></tr>
-            <tr><td style="font-family:var(--mono)">09:45</td><td style="font-family:var(--mono)">098519026</td><td>인시스/638</td><td class="num" style="color:var(--a1)">22,884</td></tr>
-          </tbody>
-        </table>
-      </div>
     </div>
-    <div class="card f1" style="display:flex;flex-direction:column">
-      <div class="ch c3">전체 재고 현황</div>
-      <div class="stbl">
-        <table class="tbl">
-          <thead><tr><th>모델</th><th>공급처</th><th class="num">현재고</th><th>상태</th></tr></thead>
-          <tbody>
-            <tr><td>OSD6203</td><td>찬스</td><td class="num" style="color:var(--a1)">120,500</td><td><span class="tag tg">정상</span></td></tr>
-            <tr><td>6005</td><td>찬스</td><td class="num" style="color:var(--a1)">99,731</td><td><span class="tag tg">정상</span></td></tr>
-            <tr><td>F-572665</td><td>찬스</td><td class="num" style="color:var(--a1)">146,400</td><td><span class="tag tg">정상</span></td></tr>
-            <tr><td>F-624888</td><td>찬스</td><td class="num" style="color:var(--a1)">136,500</td><td><span class="tag tg">정상</span></td></tr>
-            <tr><td>F-630818</td><td>찬스</td><td class="num" style="color:var(--a2)">159,684</td><td><span class="tag tg">정상</span></td></tr>
-            <tr><td>6004</td><td>찬스</td><td class="num" style="color:var(--a3)">40,046</td><td><span class="tag to">주의</span></td></tr>
-            <tr><td>F-679350.01</td><td>찬스</td><td class="num" style="color:var(--a4)">0</td><td><span class="tag tr">소진</span></td></tr>
-            <tr><td>6203 AU</td><td>인시스</td><td class="num" style="color:var(--a4)">0</td><td><span class="tag tr">소진</span></td></tr>
-            <tr><td>6200 AU</td><td>인시스</td><td class="num" style="color:var(--a2)">102,144</td><td><span class="tag tg">정상</span></td></tr>
-            <tr><td>6204 AU</td><td>인시스</td><td class="num" style="color:var(--a2)">170,352</td><td><span class="tag tg">정상</span></td></tr>
-          </tbody>
-        </table>
+    <div>
+      <div class="card card-sm">
+        <div class="card-title ct3">재고 현황</div>
+        <div class="tbl-wrap tbl-xs">
+          <table>
+            <thead><tr><th>모델</th><th>공급처</th><th class="num">현재고</th><th>상태</th></tr></thead>
+            <tbody>
+              <tr><td>OSD6203</td><td>찬스</td><td class="num" style="color:var(--c2)">283,000</td><td><span class="tag tg">정상</span></td></tr>
+              <tr><td>6005</td><td>찬스</td><td class="num" style="color:var(--c2)">406,039</td><td><span class="tag tg">정상</span></td></tr>
+              <tr><td>6004</td><td>찬스</td><td class="num" style="color:var(--c2)">481,300</td><td><span class="tag tg">정상</span></td></tr>
+              <tr><td>F-572665</td><td>찬스</td><td class="num" style="color:var(--c3)">44,200</td><td><span class="tag to">주의</span></td></tr>
+              <tr><td>F-608069</td><td>찬스</td><td class="num" style="color:var(--c3)">54,000</td><td><span class="tag to">주의</span></td></tr>
+              <tr><td>6203</td><td>인시스</td><td class="num" style="color:var(--c2)">104,821</td><td><span class="tag tg">정상</span></td></tr>
+              <tr><td>FAG6202</td><td>인시스</td><td class="num" style="color:var(--c4)">7,000</td><td><span class="tag tr">부족</span></td></tr>
+              <tr><td>6200</td><td>인시스</td><td class="num" style="color:var(--c3)">75,862</td><td><span class="tag to">주의</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card card-sm">
+        <div class="card-title ct4">스캔 이력</div>
+        <div class="tbl-wrap tbl-xs">
+          <table>
+            <thead><tr><th>시각</th><th>자재번호</th><th class="num">재고</th></tr></thead>
+            <tbody id="s-hist">
+              <tr><td style="font-family:var(--fm)">10:23</td><td style="font-family:var(--fm)">098515705</td><td class="num" style="color:var(--c2)">283,000</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
@@ -633,125 +922,133 @@ body{background:var(--bg);color:var(--tx);font-size:12px;display:flex;flex-direc
 
 <!-- ⑦ 라벨 출력 -->
 <div class="pg" id="pg-label">
-  <div class="row">
-    <div class="col2 f2">
-      <div class="card flex1">
-        <div class="ch c1">라벨 출력 설정</div>
-        <div class="fgrid fg4">
-          <div class="fg"><label>자재번호</label><input type="text" id="lmatno" value="098519026-0000" onchange="uLbl()"></div>
-          <div class="fg"><label>대표형번</label><input type="text" id="lmodel" value="OSD6203" onchange="uLbl()"></div>
-          <div class="fg"><label>공급처</label><select id="lvendor" onchange="uLbl()"><option>찬스(위탁)</option><option>인시스(0350)</option></select></div>
-          <div class="fg"><label>링종류</label><select><option>선삭링</option><option>연삭링</option></select></div>
-          <div class="fg"><label>자재규격</label><input type="text" id="lspec" value="AU.6203-B-2Z-8105-L6" onchange="uLbl()"></div>
-          <div class="fg"><label>수량 (PCS)</label><input type="number" id="lqty" value="120500" onchange="uLbl()"></div>
-          <div class="fg"><label>입고일</label><input type="date" id="ldate" value="2026-02-23" onchange="uLbl()"></div>
-          <div class="fg"><label>로트번호</label><input type="text" id="llot" value="LOT-20260223-005" onchange="uLbl()"></div>
-          <div class="fg"><label>위치코드</label><input type="text" id="lloc" value="B-02-01" onchange="uLbl()"></div>
-          <div class="fg"><label>바코드 형식</label><select><option>Code128</option><option>QR+Code128</option><option>QR코드만</option></select></div>
-          <div class="fg"><label>라벨 크기</label><select><option>60×40mm</option><option>100×70mm</option><option>50×30mm</option></select></div>
-          <div class="fg"><label>구분</label><select id="lgubun"><option>입고</option><option>재출력(잔여)</option><option>재고실사</option></select></div>
+  <!-- 프린터 설정 -->
+  <div class="printer-bar">
+    <span class="printer-lbl">🖨 BIXOLON XD5-43t</span>
+    <select id="pc-method" class="printer-sel" onchange="togglePcM()" style="width:180px">
+      <option value="server">Python서버 (USB)</option>
+      <option value="browser">브라우저 인쇄</option>
+    </select>
+    <div id="cfg-server" style="display:flex;align-items:center;gap:8px">
+      <input id="pc-server" class="printer-input" value="http://localhost:5000" style="width:200px" placeholder="서버 URL">
+    </div>
+    <button class="btn bg" onclick="testPrinter()" style="height:40px;font-size:13px">🔌 연결테스트</button>
+    <button class="btn bg" onclick="showZpl()" style="height:40px;font-size:13px">📋 ZPL보기</button>
+    <span id="pc-status" style="font-size:13px;color:var(--tx2);font-family:var(--fm)">● 대기중</span>
+  </div>
+
+  <div class="g2">
+    <div>
+      <div class="card">
+        <div class="card-title ct1">라벨 정보 입력</div>
+        <div class="form-grid fg2">
+          <div class="field"><label>자재번호 (KEY)</label><input type="text" id="lmatno" value="098515705-0000" onchange="uLbl()"></div>
+          <div class="field"><label>대표형번</label><input type="text" id="lmodel" value="OSD6203" onchange="uLbl()"></div>
+          <div class="field"><label>공급처</label><select id="lvendor" onchange="uLbl()"><option>찬스(위탁)</option><option>인시스(0350)</option></select></div>
+          <div class="field"><label>링종류</label><select id="lring"><option>선삭링</option><option>연삭링</option></select></div>
+          <div class="field"><label>자재규격</label><input type="text" id="lspec" value="AU.6203-B-2Z-8105-L6" onchange="uLbl()"></div>
+          <div class="field"><label>수량 (PCS)</label><input type="number" id="lqty" value="283000" onchange="uLbl()"></div>
+          <div class="field"><label>입고일</label><input type="date" id="ldate" value="2026-04-28" onchange="uLbl()"></div>
+          <div class="field"><label>로트번호</label><input type="text" id="llot" value="LOT-20260428-001" onchange="uLbl()"></div>
+          <div class="field"><label>위치코드</label>
+            <select id="lloc-sel" onchange="uLbl()">
+              <option value="A-01-01">A-01-01</option><option value="A-01-02">A-01-02</option>
+              <option value="A-01-03">A-01-03</option><option value="A-02-01">A-02-01</option>
+              <option value="B-01-01">B-01-01</option><option value="B-01-02">B-01-02</option>
+              <option value="B-02-01" selected>B-02-01</option><option value="C-01-01">C-01-01</option>
+              <option value="D-01-01">D-01-01</option>
+            </select>
+          </div>
+          <div class="field"><label>구분</label>
+            <select id="lgubun" onchange="uLbl()"><option>입고</option><option>재출력(잔여)</option><option>재고실사</option></select>
+          </div>
         </div>
-        <div class="brow">
-          <button class="btn bp" onclick="prtLbl()">▤ 라벨 출력</button>
-          <button class="btn bg" onclick="uLbl()">미리보기 갱신</button>
+        <div class="btn-row">
+          <button class="btn btn-lg b2" onclick="prtLbl()">🖨 XD5-43t 출력</button>
+          <button class="btn bg" onclick="browserPrint()">🌐 브라우저 인쇄</button>
+          <button class="btn bg" onclick="uLbl()">↻ 갱신</button>
         </div>
+        <div id="lmsg" style="margin-top:10px"></div>
       </div>
-      <div class="card" style="flex:0 0 auto">
-        <div class="ch c4">출력 이력</div>
-        <table class="tbl">
-          <thead><tr><th>시각</th><th>모델</th><th>수량</th><th>구분</th></tr></thead>
-          <tbody id="lhist">
-            <tr><td style="font-family:var(--mono)">11:04</td><td>찬스/OSD6203</td><td>120,500</td><td><span class="tag tg">입고</span></td></tr>
-          </tbody>
-        </table>
+      <div class="card card-sm">
+        <div class="card-title ct4">출력 이력</div>
+        <div class="tbl-wrap tbl-xs">
+          <table>
+            <thead><tr><th>시각</th><th>자재번호</th><th>수량</th><th>결과</th></tr></thead>
+            <tbody id="lhist">
+              <tr><td style="font-family:var(--fm)">11:04</td><td style="font-family:var(--fm);font-size:12px">098515705-0000</td><td>283,000</td><td><span class="tag tg">성공</span></td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
-    <div class="col2 f1">
-      <div class="card" style="flex:0 0 auto">
-        <div class="ch c2">라벨 미리보기</div>
-        <div class="lp-wrap">
-          <div class="lp-label" id="lp-label">
+    <div>
+      <div class="card">
+        <div class="card-title ct2">라벨 미리보기 (60×40mm / XD5-43t 300dpi)</div>
+        <div class="label-wrap">
+          <div class="label-card" id="lp-label">
 
-            <!-- 크기 배지 -->
-            <div class="lp-size-badge" id="lp-size-badge">100×70mm</div>
-
-            <!-- 상단 헤더 -->
-            <div class="lp-head">
-              <div class="lp-head-title">신촌공장 재고관리 시스템</div>
-              <div class="lp-head-tag" id="lp-gubun-tag">입고</div>
+            <!-- ① 헤더 -->
+            <div class="lbl-head">
+              <div class="lbl-head-title">신촌공장 재고관리 WMS v3.6</div>
+              <div class="lbl-tag" id="lp-gtag" style="background:#00f0a0;color:#000">입고</div>
             </div>
 
-            <!-- 본문: 정보 + 바코드 -->
-            <div class="lp-body">
-              <!-- 좌측 정보 -->
-              <div class="lp-info">
-                <div class="lp-row">
-                  <span class="lp-key">모델 / 형번</span>
-                  <span class="lp-val big" id="lp-model">OSD6203</span>
+            <!-- ② 본문: 좌(핵심정보) | 우(바코드) -->
+            <div class="lbl-body">
+
+              <!-- 좌측 — 자재번호·형번·수량 크게 표시 -->
+              <div class="lbl-info">
+                <div class="lbl-matno-big" id="lp-matno">098515705-0000</div>
+                <div class="lbl-model-big" id="lp-modelname">OSD6203</div>
+                <div class="lbl-qty-row">
+                  <div class="lbl-qty-big" id="lp-qty">283,000</div>
+                  <div class="lbl-qty-unit">PCS</div>
                 </div>
-                <div class="lp-row">
-                  <span class="lp-key">자재규격</span>
-                  <span class="lp-val" id="lp-spec">AU.6203-B-2Z-8105-L6</span>
-                </div>
-                <div class="lp-row">
-                  <span class="lp-key">공급처</span>
-                  <span class="lp-val" id="lp-vendor">찬스(위탁)</span>
-                </div>
-                <div class="lp-row">
-                  <span class="lp-key">수량 (PCS)</span>
-                  <span class="lp-val big" id="lp-qty" style="color:#d44;">120,500</span>
-                </div>
-                <div class="lp-row">
-                  <span class="lp-key">입고일</span>
-                  <span class="lp-val" id="lp-date">2026-02-23</span>
-                </div>
-                <div class="lp-row">
-                  <span class="lp-key">위치코드</span>
-                  <span class="lp-val" id="lp-loc">B-02-01</span>
-                </div>
+                <div class="lbl-vendor" id="lp-vendor">찬스(위탁)</div>
               </div>
 
-              <!-- 우측 바코드 -->
-              <div class="lp-bc-area">
-                <div class="lp-bc-label">Code128 바코드</div>
+              <!-- 우측 — 바코드 -->
+              <div class="lbl-bc">
+                <div class="lbl-bc-lbl">Code 128</div>
                 <svg id="lbc-svg"></svg>
-                <div class="lp-matno" id="lp-matno">098519026-0000</div>
+                <div class="lbl-bc-no" id="lp-barcode-txt">098515705-0000</div>
+              </div>
+
+            </div>
+
+            <!-- ③ 하단 정보 3열 -->
+            <div class="lbl-btm">
+              <div class="lbl-btm-item">
+                <span class="lbl-btm-k">자재규격</span>
+                <span class="lbl-btm-v" id="lp-spec">AU.6203-B-2Z-8105</span>
+              </div>
+              <div class="lbl-btm-item">
+                <span class="lbl-btm-k">입고일 / 위치</span>
+                <span class="lbl-btm-v" id="lp-dateloc">2026-04-28 / B-02-01</span>
+              </div>
+              <div class="lbl-btm-item">
+                <span class="lbl-btm-k">로트번호</span>
+                <span class="lbl-btm-v" id="lp-lot">LOT-20260428-001</span>
               </div>
             </div>
 
-            <!-- QR + 로트 하단 -->
-            <div class="lp-qr-row">
-              <div class="lp-qr-box">
-                <svg id="lbc-qr-svg"></svg>
-              </div>
-              <div class="lp-qr-info">
-                <div>로트번호: <b id="lp-lot">LOT-20260223-005</b></div>
-                <div>링종류: <b id="lp-ring">선삭링</b> &nbsp;|&nbsp; Type: <b id="lp-type">OSD</b> &nbsp;|&nbsp; 륜: <b id="lp-wheel">B</b></div>
-                <div>출력일시: <b id="lp-printdt">2026-04-26 11:04</b></div>
-              </div>
+            <!-- ④ 푸터 -->
+            <div class="lbl-footer">
+              <span id="lp-fmatno">098515705-0000</span>
+              <span id="lp-pdt">2026-04-28 11:04</span>
+              <span id="lp-seq">SEQ:0001</span>
             </div>
 
-            <!-- 하단 푸터 -->
-            <div class="lp-footer">
-              <span id="lp-footer-matno">098519026-0000</span>
-              <span>신촌공장 WMS v2.5</span>
-              <span id="lp-seq">SEQ: 0001</span>
-            </div>
-
-          </div><!-- /lp-label -->
-        </div><!-- /lp-wrap -->
-        <div id="lmsg" style="margin-top:6px"></div>
-      </div>
-      <div class="card flex1">
-        <div class="ch c3">입출고 정보 DB 연동</div>
-        <div style="font-size:10px;line-height:2;color:var(--tx)">
-          <div>스캔 KEY: <span style="color:var(--tx);font-family:var(--mono)" id="lk-matno">098519026-0000</span></div>
-          <div>연결 테이블: <span style="color:var(--a5)">t_material → t_inbound → t_stock</span></div>
-          <div>출고 시: <span style="color:var(--a3)">t_outbound 생성 + t_stock 차감</span></div>
-          <div>엑셀: <span style="color:var(--a2)">선삭링_일자별·집계 자동갱신</span></div>
-          <div style="margin-top:8px;padding:8px;background:var(--bg3);border-radius:4px;font-family:var(--mono);font-size:9px;color:var(--a2)">
-            SELECT * FROM t_stock<br>WHERE 자재번호='<span id="lk-sql">098519026-0000</span>'<br>ORDER BY 기준일 DESC LIMIT 1;
           </div>
+        </div>
+        <!-- ZPL 코드 패널 -->
+        <div id="zpl-panel" style="display:none">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <span style="font-size:13px;color:var(--tx2);font-weight:700">ZPL II — XD5-43t 전송용</span>
+            <button class="btn bg" onclick="copyZpl()" style="height:36px;font-size:12px">📋 복사</button>
+          </div>
+          <pre id="zpl-code" style="font-family:var(--fm);font-size:11px;color:var(--c2);background:var(--s2);border-radius:8px;padding:12px;overflow-x:auto;line-height:1.6;white-space:pre"></pre>
         </div>
       </div>
     </div>
@@ -760,669 +1057,844 @@ body{background:var(--bg);color:var(--tx);font-size:12px;display:flex;flex-direc
 
 <!-- ⑧ 전체 재고 -->
 <div class="pg" id="pg-stock">
-  <div class="krow k4 shrink0">
-    <div class="kpi"><div class="kpi-t" style="background:var(--a2)"></div><div class="kl">선삭링 재고</div><div class="kv" style="color:var(--a2)">8,156,573</div><div class="ks">PCS / 11.1억원</div></div>
-    <div class="kpi"><div class="kpi-t" style="background:var(--a1)"></div><div class="kl">연삭링 재고</div><div class="kv" style="color:var(--a1)">2,018,773</div><div class="ks">PCS / 4.7억원</div></div>
-    <div class="kpi"><div class="kpi-t" style="background:var(--a5)"></div><div class="kl">관리 품목수</div><div class="kv" style="color:var(--a5)">324</div><div class="ks">선삭 251+연삭 73</div></div>
-    <div class="kpi"><div class="kpi-t" style="background:var(--a4)"></div><div class="kl">재고 0 품목</div><div class="kv" style="color:var(--a4)">12</div><div class="ks">입고 요청 필요</div></div>
+  <div class="kpi-grid kg4">
+    <div class="kpi-card kv2"><div class="kpi-lbl">선삭링 재고</div><div class="kpi-val" style="color:var(--c2)">6,279,503</div><div class="kpi-sub">PCS</div></div>
+    <div class="kpi-card kv1"><div class="kpi-lbl">연삭링 재고</div><div class="kpi-val" style="color:var(--c1)">1,483,477</div><div class="kpi-sub">PCS</div></div>
+    <div class="kpi-card kv5"><div class="kpi-lbl">관리 품목수</div><div class="kpi-val" style="color:var(--c5)">324</div><div class="kpi-sub">선삭 251 + 연삭 73</div></div>
+    <div class="kpi-card kv4"><div class="kpi-lbl">재고 소진 품목</div><div class="kpi-val" style="color:var(--c4)">5</div><div class="kpi-sub">입고 요청 필요</div></div>
   </div>
-  <div class="card flex1" style="display:flex;flex-direction:column">
-    <div style="display:flex;gap:6px;margin-bottom:8px;flex-shrink:0">
-      <div class="ch c1" style="margin-bottom:0;flex:1">전체 재고 현황</div>
-      <select style="background:var(--bg3);border:1px solid var(--bd2);border-radius:4px;padding:4px 7px;color:var(--tx);font-size:10px"><option>전체</option><option>선삭링</option><option>연삭링</option></select>
-      <select style="background:var(--bg3);border:1px solid var(--bd2);border-radius:4px;padding:4px 7px;color:var(--tx);font-size:10px"><option>전체 공급처</option><option>인시스(0350)</option><option>찬스(위탁)</option></select>
-    </div>
-    <div class="stbl">
-      <table class="tbl">
-        <thead><tr><th>링</th><th>공급처</th><th>대표형번</th><th>자재규격</th><th>Type</th><th>륜</th><th class="num">기초재고</th><th class="num">입고합</th><th class="num">출고합</th><th class="num">현재고</th><th class="num">재고금액</th><th>상태</th></tr></thead>
+  <div class="card">
+    <div class="card-title ct1">전체 재고 현황 (4/23 기준)</div>
+    <div class="tbl-wrap tbl-compact">
+      <table>
+        <thead>
+          <tr><th>링</th><th>공급처</th><th>형번</th><th>자재규격</th>
+          <th class="num">기초</th><th class="num">입고</th><th class="num">출고</th>
+          <th class="num">현재고</th><th class="num">재고금액</th><th>상태</th></tr>
+        </thead>
         <tbody id="stk-body"></tbody>
       </table>
     </div>
   </div>
 </div>
 
-<!-- ⑨ 기종별 현황 -->
+<!-- ⑨ 기종별 -->
 <div class="pg" id="pg-bymodel">
-  <div class="row">
-    <div class="card f1"><div class="ch c2">기종별 입고 합계 (1+2월)</div><canvas id="m-ib"></canvas></div>
-    <div class="card f1"><div class="ch c3">기종별 재고 현황</div><canvas id="m-stk"></canvas></div>
+  <div class="card card-sm">
+    <div class="card-title ct2">기종별 입고·출고 (1~4월 누적)</div>
+    <div class="chart-box ch200"><canvas id="m-chart"></canvas></div>
   </div>
-  <div class="card" style="flex:0 0 auto">
-    <div class="ch c1">기종별 상세 현황</div>
-    <table class="tbl">
-      <thead><tr><th>대표형번</th><th class="num">1+2월 입고</th><th class="num">1+2월 출고</th><th class="num">현재고</th><th style="width:120px">입고비중</th><th>상태</th></tr></thead>
-      <tbody id="m-body"></tbody>
-    </table>
+  <div class="card card-sm">
+    <div class="card-title ct1">기종별 재고 현황</div>
+    <div class="tbl-wrap tbl-xs">
+      <table>
+        <thead><tr><th>형번</th><th class="num">입고 합계</th><th class="num">출고 합계</th><th class="num">현재고</th><th style="width:100px">비중</th><th>상태</th></tr></thead>
+        <tbody id="m-body"></tbody>
+      </table>
+    </div>
   </div>
 </div>
 
-<!-- ⑩ 업체별 현황 -->
+<!-- ⑩ 업체별 -->
 <div class="pg" id="pg-byvendor">
-  <div class="row">
-    <div class="card flex1"><div class="ch c1">인시스(0350) 월별 현황</div><canvas id="vc-insys"></canvas></div>
-    <div class="card flex1"><div class="ch c5">찬스(위탁) 월별 현황</div><canvas id="vc-chance"></canvas></div>
+  <div class="g2">
+    <div class="card">
+      <div class="card-title ct1">인시스(0350) 1~4월</div>
+      <div class="chart-box ch220"><canvas id="vc-insys"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title ct5">찬스(위탁) 1~4월</div>
+      <div class="chart-box ch220"><canvas id="vc-chance"></canvas></div>
+    </div>
   </div>
-  <div class="row">
-    <div class="card flex1">
-      <div class="ch c3">인시스(0350) 1·2월 비교</div>
-      <table class="tbl">
-        <thead><tr><th>구분</th><th class="num">1월</th><th class="num">2월</th><th class="num">증감</th></tr></thead>
-        <tbody>
-          <tr><td>선삭 입고</td><td class="num">800,030</td><td class="num">1,084,225</td><td class="num up">+35.5%</td></tr>
-          <tr><td>선삭 출고</td><td class="num">1,554,144</td><td class="num">1,068,600</td><td class="num dn">▼31.2%</td></tr>
-          <tr><td>연삭 입고</td><td class="num">949,282</td><td class="num">686,308</td><td class="num dn">▼27.7%</td></tr>
-          <tr><td>연삭 출고</td><td class="num">695,283</td><td class="num">599,958</td><td class="num dn">▼13.7%</td></tr>
-          <tr><td style="font-weight:700;color:var(--a1)">재고금액</td><td class="num">648백만</td><td class="num">712백만</td><td class="num up">+64백만</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <div class="card flex1">
-      <div class="ch c5">찬스(위탁) 1·2월 비교</div>
-      <table class="tbl">
-        <thead><tr><th>구분</th><th class="num">1월</th><th class="num">2월</th><th class="num">증감</th></tr></thead>
-        <tbody>
-          <tr><td>선삭 입고</td><td class="num">4,026,459</td><td class="num">2,983,666</td><td class="num dn">▼25.9%</td></tr>
-          <tr><td>선삭 출고</td><td class="num">4,282,330</td><td class="num">2,037,334</td><td class="num dn">▼52.4%</td></tr>
-          <tr><td>연삭 입고</td><td class="num">0</td><td class="num">0</td><td class="num nc">—</td></tr>
-          <tr><td>연삭 출고</td><td class="num">0</td><td class="num">0</td><td class="num nc">—</td></tr>
-          <tr><td style="font-weight:700;color:var(--a5)">재고금액</td><td class="num">716백만</td><td class="num">868백만</td><td class="num up">+152백만</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <div class="card flex1"><div class="ch c4">협력사별 단가</div><canvas id="vc-price"></canvas></div>
+  <div class="card">
+    <div class="card-title ct3">협력사별 단가 (원/PCS)</div>
+    <div class="chart-box ch160"><canvas id="vc-price"></canvas></div>
   </div>
 </div>
 
 <!-- ⑪ 일별 집계 -->
 <div class="pg" id="pg-report">
-  <div class="shrink0" style="display:flex;gap:8px;align-items:center">
-    <input type="date" value="2026-02-28" style="background:var(--bg3);border:1px solid var(--bd2);border-radius:4px;padding:5px 8px;color:var(--tx);font-size:10px">
-    <button class="btn bs" onclick="expMsg()">📊 엑셀 업데이트</button>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+    <input type="date" value="2026-04-23" style="height:44px;background:var(--s2);border:1px solid var(--bd2);border-radius:8px;padding:0 14px;color:var(--tx);font-size:15px;outline:none">
+    <button class="btn b2" onclick="expMsg()">📊 엑셀 업데이트</button>
     <button class="btn bg">🖨 인쇄</button>
-    <span id="exp-msg" style="font-size:10px;color:var(--a2)"></span>
+    <span id="exp-msg" style="font-size:14px;color:var(--c2)"></span>
   </div>
-  <div class="card flex1" style="display:flex;flex-direction:column">
-    <div class="ch c1">2026년 2월 — 일별 재고 현황표</div>
-    <div class="stbl">
-      <table class="tbl">
-        <thead><tr><th>모델명</th><th>링</th><th>공급처</th><th>자재규격</th><th class="num">전일재고</th><th class="num">입고</th><th class="num">출고</th><th class="num">현재고</th><th class="num">재고금액</th><th>상태</th></tr></thead>
+  <div class="card">
+    <div class="card-title ct1">2026년 4월 — 일별 재고 현황</div>
+    <div class="tbl-wrap tbl-compact">
+      <table>
+        <thead><tr><th>모델</th><th>링</th><th>공급처</th><th class="num">전일재고</th><th class="num">입고</th><th class="num">출고</th><th class="num">현재고</th><th class="num">재고금액</th><th>상태</th></tr></thead>
         <tbody id="rpt-body"></tbody>
       </table>
     </div>
   </div>
 </div>
 
-<!-- ⑫ 정보 요청서 -->
-<div class="pg" id="pg-request">
-  <div class="row">
-    <div class="card flex1">
-      <div class="ch c2">입고 기초정보 요청서</div>
-      <div class="fgrid fg2">
-        <div class="fg"><label>요청일자</label><input type="date" value="2026-03-01"></div>
-        <div class="fg"><label>요청 대상</label><input type="text" value="찬스(위탁) 담당자"></div>
-        <div class="fg"><label>요청 모델</label><input type="text" value="OSD6203, 6005, 6004"></div>
-        <div class="fg"><label>요청 사유</label><input type="text" value="3월 입고 계획 수립"></div>
-      </div>
-      <div style="margin-top:10px;padding:12px;background:var(--bg3);border-radius:5px;font-size:10px;line-height:2;color:var(--tx)">
-        <div style="font-weight:700;color:var(--a1);margin-bottom:6px">[ 입고 기초정보 요청 ]</div>
-        안녕하십니까. 신촌공장 재고관리 담당입니다.<br>
-        아래 품목의 입고 관련 정보를 회신해 주시기 바랍니다.<br><br>
-        <b style="color:var(--tx)">필수 제공 항목:</b><br>
-        · 자재번호 / 자재규격 / 대표형번<br>
-        · 입고 예정 수량 및 단위 (PCS)<br>
-        · 로트번호 / 입고 단가 (원/PCS) / 납품 예정일<br><br>
-        <b style="color:var(--tx)">출하 전표용 항목:</b><br>
-        · 출하처 코드 및 공식 명칭 / 담당자명 / 연락처
-      </div>
-      <div class="brow"><button class="btn bp">PDF 출력</button><button class="btn bg">이메일 발송</button></div>
+<!-- ⑫ 불용재고 분석 -->
+<div class="pg" id="pg-deadstock">
+
+  <!-- 판단 기준 안내 -->
+  <div style="background:rgba(255,61,110,.06);border:1px solid rgba(255,61,110,.2);
+    border-radius:10px;padding:12px 16px;margin-bottom:14px;
+    display:flex;align-items:flex-start;gap:10px">
+    <span style="font-size:18px;flex-shrink:0">⚠</span>
+    <div style="font-size:13px;color:var(--tx);line-height:1.8">
+      <strong style="color:var(--c4)">장기불용재고 판단 기준</strong>
+      &nbsp;|&nbsp;
+      소진예상 = 현재고 ÷ 월평균출고(1~4월)
+      &nbsp;·&nbsp;
+      <span style="color:var(--c4)">🔴 긴급</span> 12개월 초과 또는 4개월간 출고 없음
+      &nbsp;·&nbsp;
+      <span style="color:var(--c3)">🟡 주의</span> 6~12개월
+      &nbsp;·&nbsp;
+      <span style="color:var(--c2)">🟢 정상</span> 6개월 미만
     </div>
-    <div class="card flex1">
-      <div class="ch c3">제공 정보 체크리스트</div>
-      <div style="font-size:10px;line-height:2.2">
-        <div style="font-weight:700;color:var(--a2);margin-bottom:3px">입고 필수 정보</div>
-        <div>☑ 입고일자 &nbsp;☑ 자재번호 &nbsp;☑ 자재규격 &nbsp;☑ 대표형번</div>
-        <div>☑ Type &nbsp;☑ 륜(A/B) &nbsp;☑ 공급처 &nbsp;☑ 수량 &nbsp;☑ 단가 &nbsp;☑ 로트</div>
-        <div style="font-weight:700;color:var(--a3);margin-top:8px;margin-bottom:3px">출하 전표 정보</div>
-        <div>☑ 출하일자 &nbsp;☑ 출하처 &nbsp;☑ 전표번호</div>
-        <div>☑ 출하수량 &nbsp;☑ 단가 &nbsp;☑ 잔여재고</div>
-        <div style="font-weight:700;color:var(--a1);margin-top:8px;margin-bottom:3px">바코드 라벨 정보</div>
-        <div>☑ 자재번호(KEY) &nbsp;☑ 자재규격 &nbsp;☑ 공급처</div>
-        <div>☑ 수량 &nbsp;☑ 입고일 &nbsp;☑ 로트 &nbsp;☑ 위치코드</div>
+  </div>
+
+  <!-- KPI 4개 -->
+  <div class="kpi-grid kg4" id="ds-kpi"></div>
+
+  <!-- 소진예상 순위 차트 -->
+  <div class="g2">
+    <div class="card card-sm">
+      <div class="card-title ct4">소진예상 순위 (개월수 — 높을수록 위험)</div>
+      <div class="chart-box ch220"><canvas id="ds-chart"></canvas></div>
+    </div>
+    <div class="card card-sm">
+      <div class="card-title ct3">월별 출고 추이 비교</div>
+      <div class="chart-box ch220"><canvas id="ds-trend"></canvas></div>
+    </div>
+  </div>
+
+  <!-- 상세 분석 테이블 -->
+  <div class="card card-sm">
+    <!-- 필터 -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+      <div class="card-title ct4" style="margin:0">장기불용재고 상세 분석</div>
+      <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
+        <select id="ds-filter" onchange="initDS()" style="height:36px;background:var(--s2);border:1px solid var(--bd2);border-radius:8px;padding:0 12px;color:var(--tx);font-family:var(--f);font-size:13px;outline:none">
+          <option value="all">전체 등급</option>
+          <option value="red">🔴 긴급만</option>
+          <option value="yellow">🟡 주의만</option>
+          <option value="green">🟢 정상만</option>
+        </select>
+        <select id="ds-sort" onchange="initDS()" style="height:36px;background:var(--s2);border:1px solid var(--bd2);border-radius:8px;padding:0 12px;color:var(--tx);font-family:var(--f);font-size:13px;outline:none">
+          <option value="months">소진예상순</option>
+          <option value="amt">재고금액순</option>
+          <option value="stock">현재고순</option>
+        </select>
+      </div>
+    </div>
+    <div class="tbl-wrap tbl-xs">
+      <table>
+        <thead>
+          <tr>
+            <th>등급</th>
+            <th>링</th>
+            <th>공급처</th>
+            <th>형번</th>
+            <th>자재규격</th>
+            <th class="num">현재고</th>
+            <th class="num">월평균출고</th>
+            <th class="num">소진예상</th>
+            <th class="num">1월출고</th>
+            <th class="num">2월출고</th>
+            <th class="num">3월출고</th>
+            <th class="num">4월출고</th>
+            <th class="num">재고금액</th>
+            <th>판단</th>
+          </tr>
+        </thead>
+        <tbody id="ds-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 조치 권고 카드 -->
+  <div class="g2">
+    <div class="card card-sm">
+      <div class="card-title ct4">🔴 긴급 조치 필요</div>
+      <div id="ds-red-list" style="font-size:13px;line-height:2;color:var(--tx)"></div>
+    </div>
+    <div class="card card-sm">
+      <div class="card-title ct3">📋 조치 권고사항</div>
+      <div style="font-size:13px;line-height:2;color:var(--tx)">
+        <div style="color:var(--c4);font-weight:700;margin-bottom:6px">긴급 (12개월+)</div>
+        <div>· 출고 촉진 검토 (원가 이하 처분 고려)</div>
+        <div>· 입고 중단 — 추가 발주 금지</div>
+        <div>· 반품 / 대체 자재 전환 협의</div>
+        <div style="color:var(--c3);font-weight:700;margin-top:10px;margin-bottom:6px">주의 (6~12개월)</div>
+        <div>· 월 1회 출고동향 모니터링</div>
+        <div>· 수요처 확대 검토</div>
+        <div>· 다음 입고 시점 재검토</div>
       </div>
     </div>
   </div>
+
 </div>
 
-</div><!-- /main -->
-</div><!-- /lay -->
+</main><!-- /main -->
+</div><!-- /layout -->
+
+<!-- 하단 탭바 (모바일) -->
+<nav class="tabbar" id="tabbar">
+  <div class="tb-item on" onclick="go('dash',this);closeTbMenu()"><span class="tbi">◈</span>현황</div>
+  <div class="tb-item" onclick="go('inbound',this);closeTbMenu()"><span class="tbi">⬇</span>입고</div>
+  <div class="tb-item" onclick="go('outbound',this);closeTbMenu()"><span class="tbi">⬆</span>출고</div>
+  <div class="tb-item" onclick="go('scanner',this);closeTbMenu()"><span class="tbi">⊙</span>스캔</div>
+  <div class="tb-item tb-more" id="tb-more-btn" onclick="toggleTbMenu()">
+    <span class="tbi">≡</span>더보기
+    <div class="tb-more-menu" id="tb-more-menu">
+      <div class="tb-m-item" onclick="go('label',this);closeTbMenu()"><span>🖨</span>라벨 출력</div>
+      <div class="tb-m-item" onclick="go('monthly',this);closeTbMenu()"><span>📅</span>월간 입출고</div>
+      <div class="tb-m-item" onclick="go('yearly',this);closeTbMenu()"><span>📊</span>년간 현황</div>
+      <div class="tb-m-item" onclick="go('stock',this);closeTbMenu()"><span>≡</span>전체 재고</div>
+      <div class="tb-m-item" onclick="go('bymodel',this);closeTbMenu()"><span>⊞</span>기종별</div>
+      <div class="tb-m-item" onclick="go('byvendor',this);closeTbMenu()"><span>♦</span>업체별</div>
+      <div class="tb-m-item" onclick="go('report',this);closeTbMenu()"><span>◷</span>일별 집계</div>
+      <div class="tb-m-item" onclick="go('deadstock',this);closeTbMenu()" style="color:var(--c4)"><span>⚠</span>불용재고</div>
+    </div>
+  </div>
+</nav>
 
 <!-- 모달 -->
-<div class="moverlay" id="modal">
-  <div class="modal">
-    <div class="mh" id="mh">알림</div>
-    <div id="mb" style="font-size:11px;color:var(--tx);line-height:1.8;margin-bottom:14px"></div>
-    <button class="btn bp" onclick="clrModal()">확인</button>
+<div class="modal-bg" id="modal">
+  <div class="modal-box">
+    <div class="modal-title" id="modal-title">알림</div>
+    <div id="modal-body" style="font-size:15px;color:var(--tx2);line-height:1.8;margin-bottom:20px"></div>
+    <button class="btn b1" onclick="clrModal()">확인</button>
   </div>
 </div>
 
 <script>
-// ── 실제 데이터 ─────────────────────────────────────
+// ══════════════════════════════════════════════════
+//  데이터
+// ══════════════════════════════════════════════════
 const D={
   janSelIb:[0,91998,0,0,842276,0,0,616664,0,20000,0,0,688032,15116,355000,0,0,0,0,0,386283,135700,0,0,30000,30000,0,0,0,1592620,22800],
   janSelOb:[0,326650,57500,0,420257,370714,356200,282758,300268,133588,0,297610,304637,372200,362000,392900,0,0,167400,99000,160500,42500,128200,0,0,132000,264592,227500,337900,299600,0],
-  febSelIb:[0,536174,0,68385,45000,0,0,0,0,73000,211000,589291,0,0,0,0,0,0,0,1259068,0,0,1173133,111840,0,0,0,0],
-  febSelOb:[0,278300,279500,245800,233000,102000,0,0,158000,260700,296000,134124,56064,20000,0,0,0,0,0,0,30200,0,91500,171000,242400,185200,287146,35000],
   janYelIb:[0,0,337792,0,0,0,0,173628,0,0,0,437862,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
   janYelOb:[0,0,0,0,93238,16386,80839,33600,39312,0,0,66192,97552,0,0,105952,0,0,16380,0,0,33188,11088,0,0,0,39312,9828,0,52416,0],
+  febSelIb:[0,536174,0,68385,45000,0,0,0,0,73000,211000,589291,0,0,0,0,0,0,0,1259068,0,0,1173133,111840,0,0,0,0],
+  febSelOb:[0,278300,279500,245800,233000,102000,0,0,158000,260700,296000,134124,56064,20000,0,0,0,0,0,0,30200,0,91500,171000,242400,185200,287146,35000],
   febYelIb:[0,51072,0,0,0,0,0,58800,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
   febYelOb:[0,0,0,0,0,0,0,0,39200,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  marSelIb:[0,0,0,0,0,0,0,0,214275,0,112000,0,80000,0,0,180623,577373,0,966311,0,0,0,0,0,407094,0,181681,0,0,0,80000],
+  marSelOb:[0,0,287200,86900,203684,434384,35300,0,226600,301200,435875,231000,208572,85500,0,297800,128900,209000,254035,275854,60000,0,85672,24700,18800,332862,309084,44200,0,314600,164000],
+  marYelIb:[0,0,443532,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  marYelOb:[0,0,34482,22138,0,0,0,0,0,0,0,0,137040,0,0,0,0,39312,39312,39312,0,0,0,52416,26880,26880,26544,0,0,0,0],
+  aprSelIb:[1228836,51573,0,0,0,0,250000,0,84876,0,0,0,0,120000,99000,1484431,0,0,0,0,120000,719052,0],
+  aprSelOb:[347970,228200,256840,0,0,217492,152515,289600,238000,462239,0,0,252200,231100,142000,219140,302336,0,0,170100,159800,276564,2000],
+  aprYelIb:[0,95004,0,0,0,361424,0,0,0,0,0,0,0,333018,0,0,0,0,0,0,0,0,0],
+  aprYelOb:[55160,94472,107352,0,0,115780,127140,103320,56896,61066,0,0,154657,52416,0,91728,77504,0,0,0,102600,79784,0],
   models:[
-    {k:'OSD6203',ib:807500,ob:557500,stk:120500},{k:'6005',ib:732172,ob:466700,stk:99731},
-    {k:'6004',ib:708500,ob:444000,stk:40046},{k:'F-608069',ib:538708,ob:653000,stk:72008},
-    {k:'F-572665',ib:461800,ob:390400,stk:146400},{k:'F-624888',ib:429000,ob:204500,stk:136500},
-    {k:'F-679350',ib:415009,ob:609319,stk:0},{k:'OSD6000',ib:400000,ob:190000,stk:125000},
-    {k:'F-630818',ib:278000,ob:92400,stk:159684},{k:'6206',ib:255094,ob:244950,stk:60400},
-    {k:'6203(인)',ib:208000,ob:279700,stk:0},{k:'6204(인)',ib:183456,ob:183462,stk:170352},
+    {k:'OSD6203',ib:1340000,ob:954000,stk:283000},
+    {k:'6005',ib:1082172,ob:799464,stk:406039},
+    {k:'6004',ib:1026500,ob:623300,stk:481300},
+    {k:'F-679350',ib:1097009,ob:1133473,stk:116546},
+    {k:'F-572665',ib:1023900,ob:934400,stk:44200},
+    {k:'F-608069',ib:794708,ob:945000,stk:54000},
+    {k:'F-624888',ib:550500,ob:210500,stk:252500},
+    {k:'6203(인)',ib:606851,ob:571670,stk:104821},
+    {k:'F-630818',ib:392000,ob:141700,stk:159684},
+    {k:'FAG6202',ib:388000,ob:442000,stk:7000},
+    {k:'OSD6000',ib:400000,ob:283000,stk:125000},
+    {k:'F-576917',ib:262000,ob:92000,stk:176770},
   ],
   stkRows:[
-    ['선삭','찬스','OSD6203','AU.6203-B-2Z-8105-L6','OSD','B',0,807500,557500,120500,12411500,'정상'],
-    ['선삭','찬스','6005','AU.6005-2012','ZZ','A',43300,732172,466700,99731,12765568,'정상'],
-    ['선삭','찬스','6004','AU.6004-2Z-2012','ZZ','A',3200,708500,444000,40046,6927958,'주의'],
-    ['선삭','찬스','F-572665','F-572665-2012.AU.Q','ZZ','A',77500,461800,390400,146400,25181688,'정상'],
-    ['선삭','찬스','F-624888','F-624888-2022.IR.6005','ZZ','B',0,429000,204500,136500,17745000,'정상'],
-    ['선삭','찬스','F-679350','F-679350-2022.IR.KL-CO1','ZZ','B',0,415009,609319,0,0,'소진'],
-    ['선삭','인시스','6203','AU.6203-2Z-2012','ZZ','A',0,162000,162000,0,0,'소진'],
-    ['선삭','인시스','6204','AU.6204-2Z-2011','ZZ','A',111390,183456,183462,111384,30741019,'정상'],
-    ['연삭','인시스','6200','AU.6200-2Z-2011','ZZ','A',51072,140448,89376,102144,17506648,'정상'],
-    ['연삭','찬스','6200','AU.6200-2Z-2011','ZZ','A',643151,0,0,643151,120912988,'정상'],
+    ['선삭','찬스','OSD6203','AU.6203-B-2Z-8105-L6','OSD','B',120500,532500,370000,283000,32383000,'정상'],
+    ['선삭','찬스','6005','AU.6005-2012','ZZ','A',176200,250000,215852,210386,26929408,'정상'],
+    ['선삭','찬스','6004','AU.6004-2Z-2012','ZZ','A',40046,318000,96200,201400,34842200,'정상'],
+    ['선삭','찬스','F-679350','F-679350-2022.IR.KL','ZZ','B',0,432385,315908,116546,15769727,'정상'],
+    ['선삭','찬스','F-572665','F-572665-2012.AU.Q','ZZ','A',146400,222100,352400,44200,7601640,'주의'],
+    ['선삭','찬스','F-576917','F-576917-2012.AU','ZZ','A',0,140000,46000,94395,12267350,'정상'],
+    ['선삭','찬스','F-624888','F-624888-2012.AU','ZZ','A',136500,121500,6000,252000,28854000,'정상'],
+    ['선삭','인시스','6203','AU.6203-2Z-2012','ZZ','A',0,294821,201970,104821,14988401,'정상'],
+    ['선삭','인시스','FAG6202','AU.6202-2Z-1112','ZZ','A',0,199000,199000,7000,973000,'주의'],
+    ['연삭','인시스','6200','AU.6200-2Z-2011','ZZ','A',102144,372826,399108,75862,12992522,'정상'],
+    ['연삭','인시스','6204','AU.6204-2Z-2011','ZZ','A',111384,516018,507786,119616,33013896,'정상'],
+    ['연삭','인시스','6201','AU.6201-2Z-2012','ZZ','A',95000,416570,458964,52606,9207550,'주의'],
+    ['연삭','찬스','6200','IR.6200-2Z-2022','ZZ','B',506111,0,236931,234489,55284780,'정상'],
   ],
   rptRows:[
-    ['OSD6203','선삭','찬스','AU.6203-B-2Z-8105-L6',155500,135000,170000,120500,12411500,'정상'],
-    ['6005','선삭','찬스','AU.6005-2012',126731,140000,167000,99731,12765568,'정상'],
-    ['6004','선삭','찬스','AU.6004-2Z-2012',90046,0,50000,40046,6927958,'주의'],
-    ['F-572665','선삭','찬스','F-572665-2012.AU.Q',138900,287024,279524,146400,25181688,'정상'],
-    ['F-679350','선삭','찬스','F-679350-2022.IR',320509,320509,0,0,0,'소진'],
-    ['F-630818','선삭','찬스','F-630818-2022.IR',94984,114000,49300,159684,23538581,'정상'],
-    ['6203','선삭','인시스','AU.6203-2Z-2012',24600,0,24600,0,0,'소진'],
-    ['6200','연삭','인시스','AU.6200-2Z-2011',76608,63840,38304,102144,17506648,'정상'],
-    ['6204','연삭','인시스','AU.6204-2Z-2011',103968,41664,34260,111372,30739252,'정상'],
+    ['OSD6203 AU','선삭','찬스','AU.6203-B-2Z-8105-L6',120500,262500,100000,283000,32383000,'정상'],
+    ['OSD6203 IR','선삭','찬스','IR.6203-B-2Z-8105-L6',0,270000,132000,141000,14541000,'정상'],
+    ['6004 AU','선삭','찬스','AU.6004-2Z-2012',201400,128000,48200,281200,48687240,'정상'],
+    ['6005 IR','선삭','찬스','IR.6005-2022',136108,150000,216000,70148,12366768,'주의'],
+    ['F-572665','선삭','찬스','F-572665-2012.AU.Q',44200,118200,74000,44200,7601640,'주의'],
+    ['6203 AU','선삭','인시스','AU.6203-2Z-2012',0,132851,51970,92851,13275691,'정상'],
+    ['FAG6202','선삭','인시스','AU.6202-2Z-1112',7000,93000,106000,7000,973000,'주의'],
+    ['6200 AU','연삭','인시스','AU.6200-2Z-2011',75862,161784,217812,19834,3395614,'주의'],
+    ['6204 AU','연삭','인시스','AU.6204-2Z-2011',119616,183456,147456,155616,42968016,'정상'],
+    ['6200 IR','연삭','찬스','IR.6200-2Z-2022',234489,0,236931,0,0,'소진'],
   ]
 };
 const DOW=['일','월','화','수','목','금','토'];
-/* ── 공통 차트 스케일 설정 ──
-   maxRotation:45 — X축 레이블 45도 회전으로 전부 표시
-   padding:8      — 레이블이 잘리지 않도록 하단 여백 확보
-   autoSkip:false — 레이블 자동 생략 금지 */
-const GS={
-  x:{
-    ticks:{
-      color:'#b0cce8',font:{size:9},
-      maxRotation:45,minRotation:30,
-      autoSkip:false,padding:4
-    },
-    grid:{color:'rgba(46,80,112,.5)'}
-  },
-  y:{
-    ticks:{
-      color:'#b0cce8',font:{size:9},
-      callback:v=>v>=1000?(v/1000).toFixed(0)+'K':v,
-      padding:4
-    },
-    grid:{color:'rgba(46,80,112,.5)'}
-  }
+
+// ── 차트 공통 옵션 ─────────────────────────────────────
+const CO={
+  responsive:true,maintainAspectRatio:false,
+  layout:{padding:{bottom:6}},
+  plugins:{legend:{labels:{color:'#90b8d8',font:{size:12},boxWidth:10,padding:10}}}
 };
-const LP={
-  responsive:true,
-  maintainAspectRatio:false,
-  layout:{padding:{bottom:8}},   /* 레이블 잘림 방지 여백 */
-  plugins:{
-    legend:{labels:{color:'#b0cce8',font:{size:9},boxWidth:8,padding:8}}
-  }
+const CS={
+  x:{ticks:{color:'#90b8d8',font:{size:11},maxRotation:0,autoSkip:false,padding:4},grid:{color:'rgba(42,78,112,.5)'}},
+  y:{ticks:{color:'#90b8d8',font:{size:11},callback:v=>v>=1000?(v/1000).toFixed(0)+'K':v,padding:4},grid:{color:'rgba(42,78,112,.5)'}}
 };
 
-// ── 시계 ─────────────────────────────────────────────
+// ── 시계 ───────────────────────────────────────────────
 setInterval(()=>{
   const n=new Date();
-  document.getElementById('clk').textContent=[n.getHours(),n.getMinutes(),n.getSeconds()].map(v=>String(v).padStart(2,'0')).join(':');
+  document.getElementById('clk').textContent=
+    [n.getHours(),n.getMinutes(),n.getSeconds()].map(v=>String(v).padStart(2,'0')).join(':');
 },1000);
 
-// ── 페이지 전환 ───────────────────────────────────────
+// ── 페이지 전환 ────────────────────────────────────────
 function go(id,el){
   document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
-  document.querySelectorAll('.sb-it').forEach(s=>s.classList.remove('on'));
+  document.querySelectorAll('.sb-item,.tb-item,.tb-m-item').forEach(s=>s.classList.remove('on'));
   document.getElementById('pg-'+id).classList.add('on');
   if(el) el.classList.add('on');
-  ({monthly:uMon,yearly:initYr,bymodel:initByM,byvendor:initByV,stock:initStk,report:initRpt}[id]||function(){})();
+  // 탭바 첫 4개 매핑
+  const tbMap={dash:0,inbound:1,outbound:2,scanner:3};
+  if(tbMap[id]!==undefined){
+    document.querySelectorAll('.tabbar .tb-item')[tbMap[id]]?.classList.add('on');
+  }
+  ({monthly:uMon,yearly:initYr,bymodel:initByM,byvendor:initByV,stock:initStk,report:initRpt,deadstock:initDS}[id]||function(){})();
 }
 
-// ── 대시보드 차트 ────────────────────────────────────
-new Chart(document.getElementById('dash-daily'),{type:'bar',
-  data:{labels:Array.from({length:28},(_,i)=>i+1),
+function toggleTbMenu(){
+  document.getElementById('tb-more-menu').classList.toggle('open');
+}
+function closeTbMenu(){
+  document.getElementById('tb-more-menu').classList.remove('open');
+}
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.tb-more'))closeTbMenu();
+});
+
+// ── 관리자 모드 ────────────────────────────────────────
+function toggleAdmin(){
+  const on=document.body.classList.toggle('admin');
+  const btn=document.getElementById('admin-btn');
+  btn.classList.toggle('on',on);
+  btn.textContent=on?'관리자모드':'현장모드';
+  document.querySelectorAll('.admin-only').forEach(el=>{el.style.display=on?'flex':'none';});
+}
+
+// ══════════════════════════════════════════════════════
+//  대시보드 차트
+// ══════════════════════════════════════════════════════
+new Chart(document.getElementById('dash-chart'),{type:'bar',
+  data:{labels:Array.from({length:23},(_,i)=>i+1),
     datasets:[
-      {label:'입고',data:D.febSelIb,backgroundColor:'rgba(0,232,150,.6)',borderRadius:2,borderSkipped:false},
-      {label:'출고',data:D.febSelOb,backgroundColor:'rgba(255,184,0,.6)',borderRadius:2,borderSkipped:false}
+      {label:'입고',data:D.aprSelIb,backgroundColor:'rgba(0,240,160,.65)',borderRadius:3,borderSkipped:false},
+      {label:'출고',data:D.aprSelOb,backgroundColor:'rgba(255,192,0,.65)',borderRadius:3,borderSkipped:false}
     ]},
-  options:{
-    ...LP,
-    scales:{
-      x:{ticks:{color:'#b0cce8',font:{size:9},maxRotation:0,autoSkip:false,padding:4},grid:{color:'rgba(46,80,112,.5)'}},
-      y:{...GS.y}
-    },
-    plugins:{...LP.plugins,tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw.toLocaleString()}`}}}
-  }
+  options:{...CO,scales:CS,plugins:{...CO.plugins,tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw.toLocaleString()}`}}}}
 });
 
 function mkHBar(id,items,color){
   const el=document.getElementById(id);if(!el)return;
   const mx=Math.max(...items.map(d=>d.v));el.innerHTML='';
   items.forEach(d=>{
-    el.innerHTML+=`<div class="hbr"><div class="hbl" title="${d.l}">${d.l}</div><div class="hbt"><div class="hbf" style="width:${(d.v/mx*100).toFixed(1)}%;background:${color}"></div></div><div class="hbv">${(d.v/1000).toFixed(0)}K</div></div>`;
+    el.innerHTML+=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <div style="font-size:13px;color:var(--tx2);min-width:90px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${d.l}">${d.l}</div>
+      <div style="flex:1;background:var(--s2);border-radius:4px;height:14px;overflow:hidden">
+        <div style="width:${(d.v/mx*100).toFixed(1)}%;height:100%;background:${color};border-radius:4px"></div>
+      </div>
+      <div style="font-family:var(--fm);font-size:13px;color:var(--tx2);min-width:55px;text-align:right">${(d.v/1000).toFixed(0)}K</div>
+    </div>`;
   });
 }
-mkHBar('dash-top-ib',D.models.slice(0,8).map(d=>({l:d.k,v:d.ib})),'var(--a2)');
-mkHBar('dash-top-ob',D.models.slice(0,8).map(d=>({l:d.k,v:d.ob})),'var(--a3)');
+mkHBar('top-ib-bars',D.models.slice(0,8).map(d=>({l:d.k,v:d.ib})),'var(--c2)');
 
-// ── 월간 ─────────────────────────────────────────────
-let mC=null,mV=null;
+// ══════════════════════════════════════════════════════
+//  월간
+// ══════════════════════════════════════════════════════
+let mC=null,mD=null;
 function uMon(){
   const mon=+document.getElementById('sel-month').value;
   const ring=document.getElementById('sel-ring').value;
-  const ib=mon===1?(ring==='sel'?D.janSelIb:D.janYelIb):(ring==='sel'?D.febSelIb:D.febYelIb);
-  const ob=mon===1?(ring==='sel'?D.janSelOb:D.janYelOb):(ring==='sel'?D.febSelOb:D.febYelOb);
-  const days=mon===1?31:28;
-  const tIb=ib.reduce((a,b)=>a+b,0),tOb=ob.reduce((a,b)=>a+b,0);
+  const ibMap={1:ring==='sel'?D.janSelIb:D.janYelIb,2:ring==='sel'?D.febSelIb:D.febYelIb,
+               3:ring==='sel'?D.marSelIb:D.marYelIb,4:ring==='sel'?D.aprSelIb:D.aprYelIb};
+  const obMap={1:ring==='sel'?D.janSelOb:D.janYelOb,2:ring==='sel'?D.febSelOb:D.febYelOb,
+               3:ring==='sel'?D.marSelOb:D.marYelOb,4:ring==='sel'?D.aprSelOb:D.aprYelOb};
+  const ib=ibMap[mon],ob=obMap[mon],days=[31,28,31,23][mon-1];
+  const tI=ib.reduce((a,b)=>a+b,0),tO=ob.reduce((a,b)=>a+b,0);
   const rn=ring==='sel'?'선삭링':'연삭링';
   document.getElementById('mon-kpi').innerHTML=`
-    <div class="kpi"><div class="kpi-t" style="background:var(--a2)"></div><div class="kl">${rn} 총입고</div><div class="kv" style="color:var(--a2)">${tIb.toLocaleString()}</div><div class="ks">PCS</div></div>
-    <div class="kpi"><div class="kpi-t" style="background:var(--a3)"></div><div class="kl">${rn} 총출고</div><div class="kv" style="color:var(--a3)">${tOb.toLocaleString()}</div><div class="ks">PCS</div></div>
-    <div class="kpi"><div class="kpi-t" style="background:var(--a1)"></div><div class="kl">입출고 차이</div><div class="kv" style="color:${tIb>=tOb?'var(--a2)':'var(--a4)'}">${tIb>=tOb?'+':''}${(tIb-tOb).toLocaleString()}</div><div class="ks">입고-출고</div></div>
-    <div class="kpi"><div class="kpi-t" style="background:var(--a5)"></div><div class="kl">처리 건수</div><div class="kv" style="color:var(--a5)">${ib.filter(v=>v>0).length+ob.filter(v=>v>0).length}</div><div class="ks">영업일 처리</div></div>`;
+    <div class="kpi-card kv2"><div class="kpi-lbl">${rn} 총입고</div><div class="kpi-val" style="color:var(--c2)">${tI.toLocaleString()}</div><div class="kpi-sub">PCS</div></div>
+    <div class="kpi-card kv3"><div class="kpi-lbl">${rn} 총출고</div><div class="kpi-val" style="color:var(--c3)">${tO.toLocaleString()}</div><div class="kpi-sub">PCS</div></div>
+    <div class="kpi-card kv1"><div class="kpi-lbl">입출고 차이</div><div class="kpi-val" style="color:${tI>=tO?'var(--c2)':'var(--c4)'}">${tI>=tO?'+':''}${(tI-tO).toLocaleString()}</div><div class="kpi-sub">입고-출고</div></div>
+    <div class="kpi-card kv5"><div class="kpi-lbl">처리 건수</div><div class="kpi-val" style="color:var(--c5)">${ib.filter(v=>v>0).length+ob.filter(v=>v>0).length}</div><div class="kpi-sub">일 처리</div></div>`;
   if(mC)mC.destroy();
   mC=new Chart(document.getElementById('mon-chart'),{type:'bar',
     data:{labels:Array.from({length:days},(_,i)=>i+1),datasets:[
-      {label:'입고',data:ib.slice(0,days),backgroundColor:'rgba(0,232,150,.6)',borderRadius:2,borderSkipped:false},
-      {label:'출고',data:ob.slice(0,days),backgroundColor:'rgba(255,184,0,.6)',borderRadius:2,borderSkipped:false}
+      {label:'입고',data:ib.slice(0,days),backgroundColor:'rgba(0,240,160,.65)',borderRadius:3,borderSkipped:false},
+      {label:'출고',data:ob.slice(0,days),backgroundColor:'rgba(255,192,0,.65)',borderRadius:3,borderSkipped:false}
     ]},
-    options:{
-      ...LP,
-      scales:{
-        x:{ticks:{color:'#b0cce8',font:{size:9},maxRotation:0,autoSkip:false,padding:4},grid:{color:'rgba(46,80,112,.5)'}},
-        y:{...GS.y}
-      },
-      plugins:{...LP.plugins,tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw.toLocaleString()}`}}}
-    }
+    options:{...CO,scales:CS,plugins:{...CO.plugins,tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw.toLocaleString()}`}}}}
   });
-  const iI=mon===1?800030:1084225,iO=mon===1?1554144:1068600,cI=mon===1?4026459:2983666,cO=mon===1?4282330:2037334;
-  if(mV)mV.destroy();
-  mV=new Chart(document.getElementById('mon-vendor'),{type:'doughnut',
-    data:{labels:['인시스 입고','찬스 입고','인시스 출고','찬스 출고'],
-      datasets:[{data:[iI,cI,iO,cO],backgroundColor:['rgba(0,200,255,.8)','rgba(167,139,250,.8)','rgba(0,232,150,.65)','rgba(255,184,0,.65)'],borderWidth:0}]},
-    options:{...LP,plugins:{...LP.plugins,legend:{position:'bottom',labels:{color:'#b0cce8',font:{size:9},boxWidth:8,padding:8}},tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw.toLocaleString()}`}}}}
+  const vd={1:{iI:800030,iO:1554144,cI:4026459,cO:4282330},2:{iI:1084225,iO:1068600,cI:2983666,cO:2037334},
+            3:{iI:1177660,iO:2336621,cI:1621697,cO:2720101},4:{iI:1074501,iO:800870,cI:3083267,cO:3147226}};
+  const {iI,iO,cI,cO}=vd[mon];
+  if(mD)mD.destroy();
+  mD=new Chart(document.getElementById('mon-donut'),{type:'doughnut',
+    data:{labels:['인시스입고','찬스입고','인시스출고','찬스출고'],
+      datasets:[{data:[iI,cI,iO,cO],backgroundColor:['rgba(0,212,255,.8)','rgba(184,160,255,.8)','rgba(0,240,160,.65)','rgba(255,192,0,.65)'],borderWidth:0}]},
+    options:{...CO,plugins:{...CO.plugins,legend:{position:'bottom',labels:{color:'#90b8d8',font:{size:12},boxWidth:10,padding:10}},
+      tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw.toLocaleString()}`}}}}
   });
   const tb=document.querySelector('#mon-tbl tbody');tb.innerHTML='';
   for(let i=0;i<days;i++){
     const iv=ib[i]||0,ov=ob[i]||0,df=iv-ov;
     if(iv===0&&ov===0){const dt=new Date(2026,mon-1,i+1);if(dt.getDay()===0||dt.getDay()===6)continue;}
-    const dc=df>0?'var(--a2)':df<0?'var(--a4)':'var(--tx3)';
+    const dc=df>0?'var(--c2)':df<0?'var(--c4)':'var(--tx2)';
     const dt=new Date(2026,mon-1,i+1);
     tb.innerHTML+=`<tr><td>${mon}/${String(i+1).padStart(2,'0')}</td><td style="color:var(--tx2)">${DOW[dt.getDay()]}</td><td class="num">${iv?iv.toLocaleString():'-'}</td><td class="num">${ov?ov.toLocaleString():'-'}</td><td class="num" style="color:${dc}">${(iv||ov)?(df>0?'+':'')+df.toLocaleString():'-'}</td></tr>`;
   }
 }
 uMon();
 
-// ── 년간 ─────────────────────────────────────────────
+// ══════════════════════════════════════════════════════
+//  년간
+// ══════════════════════════════════════════════════════
 function initYr(){
-  const ms=[{n:'1월',ib:5775771,ob:6531757,a:136},{n:'2월',ib:4754199,ob:3705892,a:158},
-    ...Array.from({length:10},(_,i)=>({n:`${i+3}월`,ib:0,ob:0,a:0}))];
-  const mxI=Math.max(...ms.map(m=>m.ib));
-  document.getElementById('ygrid').innerHTML=ms.map((m,i)=>{
-    const ih=mxI>0?Math.round(m.ib/mxI*20):0,oh=mxI>0?Math.round(m.ob/mxI*20):0;
-    return`<div class="mc ${i<2?'on':''}"><div class="mn">${m.n}</div><div class="mb"><div style="height:${ih}px;background:rgba(0,232,150,.7)"></div><div style="height:${oh}px;background:rgba(255,184,0,.7)"></div></div><div class="mv" style="color:${m.ib>0?'var(--a2)':'var(--tx3)'}">${m.ib>0?(m.ib/1000000).toFixed(1)+'M':'-'}</div></div>`;
+  const ms=[{n:'1월',ib:5775771,ob:6531757,a:1364},{n:'2월',ib:4754199,ob:3705892,a:1581},
+    {n:'3월',ib:3242889,ob:5501038,a:1246},{n:'4월',ib:4947214,ob:5227971,a:1280},
+    ...Array.from({length:8},(_,i)=>({n:`${i+5}월`,ib:0,ob:0,a:0}))];
+  const mx=Math.max(...ms.map(m=>m.ib));
+  document.getElementById('yr-grid').innerHTML=ms.map((m,i)=>{
+    const ih=mx>0?Math.round(m.ib/mx*26):0,oh=mx>0?Math.round(m.ob/mx*26):0;
+    return`<div style="background:var(--s2);border-radius:8px;padding:8px 4px;text-align:center;cursor:pointer;border:1px solid ${i<4?'var(--c1)':'var(--bd)'}">
+      <div style="font-size:11px;color:var(--tx2);margin-bottom:4px">${m.n}</div>
+      <div style="height:28px;display:flex;align-items:flex-end;justify-content:center;gap:2px;margin-bottom:4px">
+        <div style="width:7px;height:${ih}px;background:rgba(0,240,160,.7);border-radius:2px 2px 0 0"></div>
+        <div style="width:7px;height:${oh}px;background:rgba(255,192,0,.7);border-radius:2px 2px 0 0"></div>
+      </div>
+      <div style="font-size:11px;font-family:var(--fm);color:${m.ib>0?'var(--c2)':'var(--tx3)'}">${m.ib>0?(m.ib/1000000).toFixed(1)+'M':'-'}</div>
+    </div>`;
   }).join('');
   if(window._yC)window._yC.destroy();
   window._yC=new Chart(document.getElementById('yr-chart'),{type:'bar',
     data:{labels:ms.map(m=>m.n),datasets:[
-      {label:'입고',data:ms.map(m=>m.ib),backgroundColor:'rgba(0,232,150,.6)',borderRadius:2,borderSkipped:false},
-      {label:'출고',data:ms.map(m=>m.ob),backgroundColor:'rgba(255,184,0,.6)',borderRadius:2,borderSkipped:false}
-    ]},
-    options:{
-      ...LP,
-      scales:{
-        x:{ticks:{color:'#b0cce8',font:{size:10},maxRotation:0,autoSkip:false,padding:4},grid:{color:'rgba(46,80,112,.5)'}},
-        y:{...GS.y}
-      },
-      plugins:{...LP.plugins,tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${(c.raw/10000).toFixed(0)}만`}}}
-    }
+      {label:'입고',data:ms.map(m=>m.ib),backgroundColor:'rgba(0,240,160,.65)',borderRadius:3,borderSkipped:false},
+      {label:'출고',data:ms.map(m=>m.ob),backgroundColor:'rgba(255,192,0,.65)',borderRadius:3,borderSkipped:false}
+    ]},options:{...CO,scales:CS,plugins:{...CO.plugins,tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${(c.raw/10000).toFixed(0)}만`}}}}
   });
   if(window._yA)window._yA.destroy();
   window._yA=new Chart(document.getElementById('yr-amt'),{type:'line',
     data:{labels:ms.map(m=>m.n),datasets:[{label:'재고금액(백만)',data:ms.map(m=>m.a>0?m.a:null),
-      borderColor:'#c4b0ff',backgroundColor:'rgba(167,139,250,.15)',tension:.4,fill:true,
-      pointBackgroundColor:'#c4b0ff',pointRadius:4,spanGaps:false}]},
-    options:{
-      ...LP,
-      scales:{
-        x:{ticks:{color:'#b0cce8',font:{size:10},maxRotation:0,autoSkip:false,padding:4},grid:{color:'rgba(46,80,112,.5)'}},
-        y:{...GS.y,ticks:{...GS.y.ticks,callback:v=>`${v}백만`}}
-      },
-      plugins:{...LP.plugins,tooltip:{callbacks:{label:c=>`${c.raw}백만원`}}}
-    }
+      borderColor:'#b8a0ff',backgroundColor:'rgba(184,160,255,.1)',tension:.4,fill:true,
+      pointBackgroundColor:'#b8a0ff',pointRadius:5,spanGaps:false}]},
+    options:{...CO,scales:{...CS,y:{...CS.y,ticks:{...CS.y.ticks,callback:v=>`${v}백만`}}},
+      plugins:{...CO.plugins,tooltip:{callbacks:{label:c=>`${c.raw}백만원`}}}}
   });
 }
 
-// ── 기종별 ────────────────────────────────────────────
+// ══════════════════════════════════════════════════════
+//  기종별
+// ══════════════════════════════════════════════════════
 function initByM(){
-  const lb=D.models.map(d=>d.k);
-  /* 수평 바: indexAxis:'y' → 모델명이 Y축, 값이 X축
-     Y축 ticks autoSkip:false 로 모든 모델명 표시 */
-  const hOpt={
-    indexAxis:'y',
-    ...LP,
-    scales:{
-      x:{ticks:{color:'#b0cce8',font:{size:9},padding:4,callback:v=>v>=1000?(v/1000).toFixed(0)+'K':v},grid:{color:'rgba(46,80,112,.5)'}},
-      y:{ticks:{color:'#b0cce8',font:{size:9},autoSkip:false,padding:4},grid:{color:'rgba(46,80,112,.3)'}}
-    }
-  };
-  if(window._mI)window._mI.destroy();
-  window._mI=new Chart(document.getElementById('m-ib'),{type:'bar',
-    data:{labels:lb,datasets:[
-      {label:'입고',data:D.models.map(d=>d.ib),backgroundColor:'rgba(0,200,255,.75)',borderRadius:2,borderSkipped:false},
-      {label:'출고',data:D.models.map(d=>d.ob),backgroundColor:'rgba(255,184,0,.75)',borderRadius:2,borderSkipped:false}
+  if(window._mC)window._mC.destroy();
+  window._mC=new Chart(document.getElementById('m-chart'),{type:'bar',
+    data:{labels:D.models.map(d=>d.k),datasets:[
+      {label:'입고',data:D.models.map(d=>d.ib),backgroundColor:'rgba(0,212,255,.75)',borderRadius:3,borderSkipped:false},
+      {label:'출고',data:D.models.map(d=>d.ob),backgroundColor:'rgba(255,192,0,.75)',borderRadius:3,borderSkipped:false}
     ]},
-    options:{...hOpt,plugins:{...LP.plugins,tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw.toLocaleString()}`}}}}
-  });
-  if(window._mS)window._mS.destroy();
-  window._mS=new Chart(document.getElementById('m-stk'),{type:'bar',
-    data:{labels:lb,datasets:[{label:'현재고',data:D.models.map(d=>d.stk),
-      backgroundColor:D.models.map(d=>d.stk===0?'rgba(255,68,102,.75)':d.stk<50000?'rgba(255,184,0,.75)':'rgba(0,232,150,.75)'),
-      borderRadius:2,borderSkipped:false}]},
-    options:{...hOpt,plugins:{...LP.plugins,legend:{display:false},tooltip:{callbacks:{label:c=>`현재고: ${c.raw.toLocaleString()}`}}}}
+    options:{indexAxis:'y',...CO,
+      scales:{x:{...CS.x,ticks:{...CS.x.ticks,callback:v=>v>=1000?(v/1000).toFixed(0)+'K':v}},
+              y:{...CS.y,ticks:{...CS.y.ticks,autoSkip:false}}},
+      plugins:{...CO.plugins,tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw.toLocaleString()}`}}}}
   });
   const mx=Math.max(...D.models.map(d=>d.ib));
   document.getElementById('m-body').innerHTML=D.models.map(d=>{
     const st=d.stk===0?'<span class="tag tr">소진</span>':d.stk<50000?'<span class="tag to">주의</span>':'<span class="tag tg">정상</span>';
-    return`<tr><td style="font-family:var(--mono);font-weight:600">${d.k}</td><td class="num" style="color:var(--a2)">${d.ib.toLocaleString()}</td><td class="num" style="color:var(--a3)">${d.ob.toLocaleString()}</td><td class="num" style="color:var(--a1)">${d.stk.toLocaleString()}</td><td><div style="background:var(--bg3);border-radius:2px;height:6px;overflow:hidden"><div style="width:${(d.ib/mx*100).toFixed(0)}%;height:100%;background:var(--a2);border-radius:2px"></div></div></td><td>${st}</td></tr>`;
+    return`<tr><td style="font-family:var(--fm);font-weight:600">${d.k}</td>
+      <td class="num" style="color:var(--c2)">${d.ib.toLocaleString()}</td>
+      <td class="num" style="color:var(--c3)">${d.ob.toLocaleString()}</td>
+      <td class="num" style="color:var(--c1)">${d.stk.toLocaleString()}</td>
+      <td><div style="background:var(--s2);border-radius:3px;height:8px;overflow:hidden"><div style="width:${(d.ib/mx*100).toFixed(0)}%;height:100%;background:var(--c2);border-radius:3px"></div></div></td>
+      <td>${st}</td></tr>`;
   }).join('');
 }
 
-// ── 업체별 ────────────────────────────────────────────
+// ══════════════════════════════════════════════════════
+//  업체별
+// ══════════════════════════════════════════════════════
 function initByV(){
   if(window._vI)window._vI.destroy();
   window._vI=new Chart(document.getElementById('vc-insys'),{type:'bar',
-    data:{
-      labels:['1월\n선삭입고','1월\n선삭출고','2월\n선삭입고','2월\n선삭출고','1월\n연삭입고','1월\n연삭출고','2월\n연삭입고','2월\n연삭출고'],
-      datasets:[{
-        label:'인시스(0350)',
-        data:[800030,1554144,1084225,1068600,949282,695283,686308,599958],
-        backgroundColor:['rgba(0,200,255,.75)','rgba(255,184,0,.75)','rgba(0,200,255,.95)','rgba(255,184,0,.95)','rgba(0,200,255,.5)','rgba(255,184,0,.5)','rgba(0,200,255,.65)','rgba(255,184,0,.65)'],
-        borderRadius:3,borderSkipped:false
-      }]
-    },
-    options:{
-      ...LP,
-      scales:{
-        x:{
-          ticks:{color:'#b0cce8',font:{size:9},maxRotation:0,autoSkip:false,padding:4},
-          grid:{color:'rgba(46,80,112,.5)'}
-        },
-        y:{...GS.y}
-      },
-      plugins:{
-        ...LP.plugins,
-        legend:{display:false},
-        tooltip:{callbacks:{label:c=>`${c.label.replace('\n',' ')}: ${c.raw.toLocaleString()}`}}
-      }
-    }
+    data:{labels:['1월\n선삭입','1월\n선삭출','2월\n선삭입','2월\n선삭출','3월\n선삭입','3월\n선삭출','4월\n선삭입','4월\n선삭출'],
+      datasets:[{label:'인시스',data:[800030,1554144,1084225,1068600,1177660,2336621,1074501,800870],
+        backgroundColor:['rgba(0,212,255,.7)','rgba(255,192,0,.7)','rgba(0,212,255,.8)','rgba(255,192,0,.8)','rgba(0,212,255,.9)','rgba(255,192,0,.9)','rgba(0,212,255,1)','rgba(255,192,0,1)'],
+        borderRadius:3,borderSkipped:false}]},
+    options:{...CO,scales:CS,plugins:{...CO.plugins,legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label.replace('\n',' ')}: ${c.raw.toLocaleString()}`}}}}
   });
-
   if(window._vC)window._vC.destroy();
   window._vC=new Chart(document.getElementById('vc-chance'),{type:'bar',
-    data:{
-      labels:['1월\n입고','1월\n출고','2월\n입고','2월\n출고'],
-      datasets:[{
-        label:'찬스(위탁)',
-        data:[4026459,4282330,2983666,2037334],
-        backgroundColor:['rgba(167,139,250,.8)','rgba(255,68,102,.75)','rgba(167,139,250,.95)','rgba(255,68,102,.9)'],
-        borderRadius:3,borderSkipped:false
-      }]
-    },
-    options:{
-      ...LP,
-      scales:{
-        x:{
-          ticks:{color:'#b0cce8',font:{size:9},maxRotation:0,autoSkip:false,padding:4},
-          grid:{color:'rgba(46,80,112,.5)'}
-        },
-        y:{...GS.y}
-      },
-      plugins:{
-        ...LP.plugins,
-        legend:{display:false},
-        tooltip:{callbacks:{label:c=>`${c.label.replace('\n',' ')}: ${c.raw.toLocaleString()}`}}
-      }
-    }
+    data:{labels:['1월\n입고','1월\n출고','2월\n입고','2월\n출고','3월\n입고','3월\n출고','4월\n입고','4월\n출고'],
+      datasets:[{label:'찬스',data:[4026459,4282330,2983666,2037334,1621697,2720101,3083267,3147226],
+        backgroundColor:['rgba(184,160,255,.7)','rgba(255,61,110,.7)','rgba(184,160,255,.8)','rgba(255,61,110,.8)','rgba(184,160,255,.9)','rgba(255,61,110,.9)','rgba(184,160,255,1)','rgba(255,61,110,1)'],
+        borderRadius:3,borderSkipped:false}]},
+    options:{...CO,scales:CS,plugins:{...CO.plugins,legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label.replace('\n',' ')}: ${c.raw.toLocaleString()}`}}}}
   });
-
   if(window._vP)window._vP.destroy();
   window._vP=new Chart(document.getElementById('vc-price'),{type:'bar',
-    data:{
-      labels:['Haishun','Xingmei','Feining','Yiyang','JW\n(선삭)','Kaili\n(연삭)','JW\n(연삭)'],
-      datasets:[{
-        label:'평균단가(원/PCS)',
-        data:[190.6,121.3,166.8,158.2,184.4,303.6,319.9],
-        backgroundColor:['rgba(0,232,150,.75)','rgba(0,200,255,.75)','rgba(255,184,0,.75)','rgba(167,139,250,.75)','rgba(255,184,0,.6)','rgba(255,68,102,.75)','rgba(255,68,102,.55)'],
-        borderRadius:3,borderSkipped:false
-      }]
-    },
-    options:{
-      ...LP,
-      scales:{
-        x:{
-          ticks:{color:'#b0cce8',font:{size:9},maxRotation:0,autoSkip:false,padding:4},
-          grid:{color:'rgba(46,80,112,.5)'}
-        },
-        y:{...GS.y,ticks:{...GS.y.ticks,callback:v=>`${v}원`}}
-      },
-      plugins:{
-        ...LP.plugins,
-        legend:{display:false},
-        tooltip:{callbacks:{label:c=>`${c.raw}원/PCS`}}
-      }
-    }
+    data:{labels:['Haishun','Xingmei','Feining','Yiyang','JW(선삭)','Kaili(연삭)','JW(연삭)'],
+      datasets:[{label:'단가(원/PCS)',data:[190.6,121.3,166.8,158.2,184.4,303.6,319.9],
+        backgroundColor:['rgba(0,240,160,.75)','rgba(0,212,255,.75)','rgba(255,192,0,.75)','rgba(184,160,255,.75)','rgba(255,192,0,.6)','rgba(255,61,110,.75)','rgba(255,61,110,.55)'],
+        borderRadius:3,borderSkipped:false}]},
+    options:{...CO,scales:{...CS,y:{...CS.y,ticks:{...CS.y.ticks,callback:v=>`${v}원`}}},
+      plugins:{...CO.plugins,legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw}원/PCS`}}}}
   });
 }
 
-// ── 재고 테이블 ────────────────────────────────────────
+// ══════════════════════════════════════════════════════
+//  재고 테이블
+// ══════════════════════════════════════════════════════
 function initStk(){
   document.getElementById('stk-body').innerHTML=D.stkRows.map(r=>{
-    const st=r[11]==='소진'?'<span class="tag tr">소진</span>':r[11]==='주의'?'<span class="tag to">주의</span>':'<span class="tag tg">정상</span>';
-    return`<tr><td><span class="tag ${r[0]==='선삭'?'tb':'tp'}">${r[0]}</span></td><td><span class="tag ${r[1]==='찬스'?'tp':'tb'}">${r[1]}</span></td><td style="font-family:var(--mono);font-weight:600">${r[2]}</td><td style="font-size:9px;color:var(--tx)">${r[3]}</td><td>${r[4]}</td><td>${r[5]}</td><td class="num">${r[6].toLocaleString()}</td><td class="num" style="color:var(--a2)">${r[7].toLocaleString()}</td><td class="num" style="color:var(--a3)">${r[8].toLocaleString()}</td><td class="num" style="color:${r[11]==='소진'?'var(--a4)':r[11]==='주의'?'var(--a3)':'var(--a1)'}">${r[9].toLocaleString()}</td><td class="num" style="color:var(--a5)">${r[10].toLocaleString()}</td><td>${st}</td></tr>`;
+    const st=r[11]==='주의'?'<span class="tag to">주의</span>':'<span class="tag tg">정상</span>';
+    return`<tr>
+      <td><span class="tag ${r[0]==='선삭'?'tb':'tp'}">${r[0]}</span></td>
+      <td><span class="tag ${r[1]==='찬스'?'tp':'tb'}">${r[1]}</span></td>
+      <td style="font-family:var(--fm);font-weight:600">${r[2]}</td>
+      <td style="font-size:12px;color:var(--tx2)">${r[3]}</td>
+      <td class="num">${r[6].toLocaleString()}</td>
+      <td class="num" style="color:var(--c2)">${r[7].toLocaleString()}</td>
+      <td class="num" style="color:var(--c3)">${r[8].toLocaleString()}</td>
+      <td class="num" style="color:var(--c1);font-weight:700">${r[9].toLocaleString()}</td>
+      <td class="num" style="color:var(--c5)">${r[10].toLocaleString()}</td>
+      <td>${st}</td></tr>`;
   }).join('');
 }
 
-// ── 보고서 ─────────────────────────────────────────────
+// ══════════════════════════════════════════════════════
+//  보고서
+// ══════════════════════════════════════════════════════
 function initRpt(){
   document.getElementById('rpt-body').innerHTML=D.rptRows.map(r=>{
     const st=r[9]==='소진'?'<span class="tag tr">소진</span>':r[9]==='주의'?'<span class="tag to">주의</span>':'<span class="tag tg">정상</span>';
-    return`<tr><td style="font-family:var(--mono);font-weight:600">${r[0]}</td><td><span class="tag ${r[1]==='선삭'?'tb':'tp'}">${r[1]}</span></td><td>${r[2]}</td><td style="font-size:9px;color:var(--tx)">${r[3]}</td><td class="num">${r[4].toLocaleString()}</td><td class="num" style="color:var(--a2)">${r[5]>0?'+'+r[5].toLocaleString():'-'}</td><td class="num" style="color:var(--a3)">${r[6]>0?r[6].toLocaleString():'-'}</td><td class="num" style="color:${r[9]==='소진'?'var(--a4)':r[9]==='주의'?'var(--a3)':'var(--a1)'}">${r[7].toLocaleString()}</td><td class="num" style="color:var(--a5)">${r[8].toLocaleString()}</td><td>${st}</td></tr>`;
+    return`<tr>
+      <td style="font-family:var(--fm);font-weight:600">${r[0]}</td>
+      <td><span class="tag ${r[1]==='선삭'?'tb':'tp'}">${r[1]}</span></td>
+      <td>${r[2]}</td>
+      <td style="font-size:12px;color:var(--tx2)">${r[3]}</td>
+      <td class="num">${r[4].toLocaleString()}</td>
+      <td class="num" style="color:var(--c2)">${r[5]>0?'+'+r[5].toLocaleString():'-'}</td>
+      <td class="num" style="color:var(--c3)">${r[6]>0?r[6].toLocaleString():'-'}</td>
+      <td class="num" style="color:var(--c1);font-weight:700">${r[7].toLocaleString()}</td>
+      <td class="num" style="color:var(--c5)">${r[8].toLocaleString()}</td>
+      <td>${st}</td></tr>`;
   }).join('');
 }
 
-// ── 스캐너 ─────────────────────────────────────────────
-const STKDB={
-  'OSD6203':{matno:'098515705-0000',spec:'AU.6203-B-2Z-8105-L6',vendor:'찬스(위탁)',ring:'선삭',stk:120500,lot:'LOT-20260223-005',loc:'B-02-01',price:103},
-  '6005':{matno:'098515985-0000',spec:'AU.6005-2012',vendor:'찬스(위탁)',ring:'선삭',stk:99731,lot:'LOT-20260220-002',loc:'A-03-02',price:128},
-  '6004':{matno:'098515322-0001',spec:'AU.6004-2Z-2012',vendor:'찬스(위탁)',ring:'선삭',stk:40046,lot:'LOT-20260113-001',loc:'C-01-01',price:173},
-  '638':{matno:'098519026-0000',spec:'AU.638-2Z-2012',vendor:'인시스(0350)',ring:'선삭',stk:22884,lot:'LOT-20260101-001',loc:'A-01-01',price:98},
-  '6200':{matno:'098527517-0000',spec:'AU.6200-2Z-2011',vendor:'인시스(0350)',ring:'연삭',stk:102144,lot:'LOT-20260203-001',loc:'D-01-01',price:171},
+// ══════════════════════════════════════════════════════
+//  스캐너
+// ══════════════════════════════════════════════════════
+const SDB={
+  'OSD6203':{matno:'098515705-0000',spec:'AU.6203-B-2Z-8105-L6',vendor:'찬스(위탁)',ring:'선삭',stk:283000,lot:'LOT-20260416-001',loc:'B-02-01'},
+  '6005':{matno:'098515985-0000',spec:'AU.6005-2012',vendor:'찬스(위탁)',ring:'선삭',stk:406039,lot:'LOT-20260407-001',loc:'A-03-02'},
+  '6004':{matno:'098515322-0001',spec:'AU.6004-2Z-2012',vendor:'찬스(위탁)',ring:'선삭',stk:481300,lot:'LOT-20260407-002',loc:'C-01-01'},
+  'F-572665':{matno:'098518765-0000',spec:'F-572665-2012.AU.Q',vendor:'찬스(위탁)',ring:'선삭',stk:44200,lot:'LOT-20260301-005',loc:'A-02-01'},
+  '6200':{matno:'098527517-0000',spec:'AU.6200-2Z-2011',vendor:'인시스(0350)',ring:'연삭',stk:75862,lot:'LOT-20260406-001',loc:'D-01-01'},
 };
-const SKEYS=Object.keys(STKDB);let sIdx=0;
+const SK=Object.keys(SDB);let sIdx=0;
+
 function doScan(){
   const bx=document.getElementById('sbox');
   bx.classList.add('act');
-  document.getElementById('smsg').innerHTML='<span style="color:var(--a1)">스캔 중...</span>';
+  document.getElementById('smsg').innerHTML='<span style="color:var(--c1);font-size:16px">스캔 중...</span>';
   setTimeout(()=>{
     bx.classList.remove('act');
-    const k=SKEYS[sIdx%SKEYS.length];sIdx++;
-    showSR(k);
-    addSH(STKDB[k]);
-    document.getElementById('smsg').innerHTML='클릭하여 스캔 시뮬레이션<br><span style="font-size:9px;color:var(--tx)">실제: USB 핸디 스캐너 연결 후 바코드 스캔</span>';
+    const k=SK[sIdx%SK.length];sIdx++;
+    showSR(k);addSH(SDB[k]);
+    document.getElementById('smsg').innerHTML='탭하여 스캔<br><span style="font-size:13px;color:var(--tx3)">실제 환경: USB 핸디 스캐너로 바코드 스캔</span>';
   },1200);
 }
 function doScanM(){
   const v=document.getElementById('sinput').value.trim().toUpperCase();
-  const f=SKEYS.find(k=>k===v||STKDB[k].matno.includes(v)||v.includes(k));
-  if(f)showSR(f); else showModal('조회 실패',`"${v}" — 등록된 자재를 찾을 수 없습니다.`);
+  const f=SK.find(k=>k===v||SDB[k].matno.includes(v)||v.includes(k));
+  if(f)showSR(f);else showModal('조회 실패',`"${v}" — 등록된 자재를 찾을 수 없습니다.`);
 }
 function showSR(k){
-  const d=STKDB[k],c=document.getElementById('sr-card');
-  c.style.display='flex';c.style.flexDirection='column';
-  const sc=d.stk>50000?'var(--a2)':d.stk>0?'var(--a3)':'var(--a4)';
+  const d=SDB[k],c=document.getElementById('sr-card');
+  c.style.display='block';
+  const sc=d.stk>100000?'var(--c2)':d.stk>20000?'var(--c3)':'var(--c4)';
   document.getElementById('sr-body').innerHTML=`
-    <div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--a1);margin-bottom:8px">${k}</div>
-    <div style="font-size:10px;line-height:2;color:var(--tx)">
-      <div>자재번호: <span style="color:var(--tx);font-family:var(--mono)">${d.matno}</span></div>
+    <div style="font-size:22px;font-weight:700;font-family:var(--fm);color:var(--c1);margin-bottom:12px">${k}</div>
+    <div style="font-size:15px;line-height:2.2;color:var(--tx2)">
+      <div>자재번호: <strong style="color:var(--tx);font-family:var(--fm)">${d.matno}</strong></div>
       <div>공급처: <span class="tag ${d.vendor.includes('인시스')?'tb':'tp'}">${d.vendor}</span>&nbsp;<span class="tag ${d.ring==='선삭'?'tb':'tp'}">${d.ring}링</span></div>
-      <div>현재고: <span style="color:${sc};font-size:20px;font-family:var(--mono);font-weight:700">${d.stk.toLocaleString()}</span> PCS</div>
-      <div>로트: <span style="color:var(--tx);font-family:var(--mono)">${d.lot}</span></div>
-      <div>위치: <span style="color:var(--tx)">${d.loc}</span></div>
-      <div>단가: <span style="color:var(--a3);font-family:var(--mono)">${d.price}원/PCS</span></div>
+      <div>현재고: <strong style="color:${sc};font-size:28px;font-family:var(--fm)">${d.stk.toLocaleString()}</strong> PCS</div>
+      <div>위치: <strong style="color:var(--tx)">${d.loc}</strong></div>
+      <div>로트: <strong style="color:var(--tx);font-family:var(--fm)">${d.lot}</strong></div>
     </div>`;
 }
 function addSH(d){
   const n=new Date(),ts=[n.getHours(),n.getMinutes()].map(v=>String(v).padStart(2,'0')).join(':');
-  const k=SKEYS.find(k=>STKDB[k]===d)||'?';
+  const k=SK.find(k=>SDB[k]===d)||'?';
   const row=document.createElement('tr');
-  row.innerHTML=`<td style="font-family:var(--mono)">${ts}</td><td style="font-family:var(--mono)">${d.matno.split('-')[0]}</td><td>${d.vendor.split('(')[0]}/${k}</td><td class="num" style="color:var(--a1)">${d.stk.toLocaleString()}</td>`;
+  row.innerHTML=`<td style="font-family:var(--fm)">${ts}</td><td style="font-family:var(--fm)">${d.matno.split('-')[0]}</td><td class="num" style="color:var(--c1)">${d.stk.toLocaleString()}</td>`;
   document.getElementById('s-hist').prepend(row);
 }
 function clrScan(){document.getElementById('sr-card').style.display='none';document.getElementById('sinput').value='';}
 
-// ── 라벨 ─────────────────────────────────────────────
-let lblSeq = 1;
+// ══════════════════════════════════════════════════════
+//  라벨 출력
+// ══════════════════════════════════════════════════════
+let lblSeq=1;
 
-function genBarcode(matno){
+function genBC(matno){
   try{
     JsBarcode('#lbc-svg', matno, {
       format:'CODE128',
-      width:2,height:46,
+      width:2,        /* 60mm 가로형 — 폭 충분 */
+      height:60,      /* 420px 카드 우측 영역에 맞게 확대 */
       displayValue:false,
-      margin:2,
+      margin:3,
       background:'#ffffff',
       lineColor:'#000000'
     });
   }catch(e){
-    // 오류 시 빈 SVG 유지
     document.getElementById('lbc-svg').innerHTML='';
   }
 }
-
 function genQR(matno){
-  /* QR은 JsBarcode 미지원 — 자재번호 첫 글자 기반 패턴 그리기로 시뮬레이션 */
-  const svg=document.getElementById('lbc-qr-svg');
-  const sz=36, cell=4, n=Math.ceil(sz/cell);
-  // 자재번호 문자코드 합산으로 결정론적 패턴 생성
-  let seed=0;
-  for(let i=0;i<matno.length;i++) seed=(seed*31+matno.charCodeAt(i))&0xffffffff;
-  let rects='';
-  for(let r=0;r<n;r++){
-    for(let c=0;c<n;c++){
-      // 3칸 파인더 패턴 (좌상, 우상, 좌하)
-      const finder=(r<3&&c<3)||(r<3&&c>=n-3)||(r>=n-3&&c<3);
-      const bit=finder?1:((seed^(r*7+c*13)^(r<<c))&1);
-      if(bit) rects+=`<rect x="${c*cell}" y="${r*cell}" width="${cell}" height="${cell}" fill="#000"/>`;
-    }
+  const sv=document.getElementById('lbc-qr');
+  if(!sv)return;  /* 세로형 라벨에서 QR 제거됨 — 안전하게 스킵 */
+  const sz=40,cell=4,n=Math.ceil(sz/cell);
+  let seed=0;for(let i=0;i<matno.length;i++)seed=(seed*31+matno.charCodeAt(i))&0xffffffff;
+  let r='';
+  for(let row=0;row<n;row++)for(let col=0;col<n;col++){
+    const finder=(row<3&&col<3)||(row<3&&col>=n-3)||(row>=n-3&&col<3);
+    if(finder||((seed^(row*7+col*13)^(row<<col))&1))r+=`<rect x="${col*cell}" y="${row*cell}" width="${cell}" height="${cell}" fill="#000"/>`;
   }
-  svg.setAttribute('viewBox',`0 0 ${sz} ${sz}`);
-  svg.setAttribute('width',sz);svg.setAttribute('height',sz);
-  svg.innerHTML=`<rect width="${sz}" height="${sz}" fill="#fff"/>${rects}`;
+  sv.setAttribute('viewBox',`0 0 ${sz} ${sz}`);sv.setAttribute('width',sz);sv.setAttribute('height',sz);
+  sv.innerHTML=`<rect width="${sz}" height="${sz}" fill="#fff"/>${r}`;
 }
-
 function uLbl(){
   const matno  = document.getElementById('lmatno').value.trim()||'000000000-0000';
   const model  = document.getElementById('lmodel').value;
-  const spec   = document.getElementById('lspec').value;
-  const vendor = document.getElementById('lvendor').value;
   const qty    = parseInt(document.getElementById('lqty').value)||0;
   const date   = document.getElementById('ldate').value;
   const lot    = document.getElementById('llot').value;
-  const loc    = document.getElementById('lloc').value;
+  const loc    = document.getElementById('lloc-sel').value;
   const gubun  = document.getElementById('lgubun').value;
-  const size   = document.querySelector('#pg-label select:nth-of-type(2)')?.value||'100×70mm';
+  const spec   = document.getElementById('lspec').value;
+  const vendor = document.getElementById('lvendor').value;
 
-  // 라벨 정보 갱신
-  document.getElementById('lp-model').textContent   = model;
-  document.getElementById('lp-spec').textContent    = spec;
-  document.getElementById('lp-vendor').textContent  = vendor;
-  document.getElementById('lp-qty').textContent     = qty.toLocaleString();
-  document.getElementById('lp-date').textContent    = date;
-  document.getElementById('lp-loc').textContent     = loc;
-  document.getElementById('lp-lot').textContent     = lot;
-  document.getElementById('lp-matno').textContent   = matno;
-  document.getElementById('lp-footer-matno').textContent = matno;
-  document.getElementById('lp-size-badge').textContent   = size;
+  document.getElementById('lp-matno').textContent      = matno;
+  document.getElementById('lp-modelname').textContent  = model;
+  document.getElementById('lp-qty').textContent        = qty.toLocaleString();
+  document.getElementById('lp-vendor').textContent     = vendor;
+  /* 규격: 18자 초과 시 줄임 */
+  document.getElementById('lp-spec').textContent       = spec.length>18 ? spec.substring(0,18)+'…' : spec;
+  document.getElementById('lp-dateloc').textContent    = `${date} / ${loc}`;
+  document.getElementById('lp-lot').textContent        = lot;
+  document.getElementById('lp-barcode-txt').textContent= matno;
+  document.getElementById('lp-fmatno').textContent     = matno;
 
-  // 구분 태그 색상
-  const tagEl = document.getElementById('lp-gubun-tag');
-  tagEl.textContent = gubun;
-  tagEl.style.background = gubun==='입고'?'#00e896':gubun.includes('재출력')?'#00c8ff':'#ffb800';
-  tagEl.style.color = '#000';
-
-  // 출력일시 갱신
   const now=new Date();
-  document.getElementById('lp-printdt').textContent =
-    `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} `+
-    `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  document.getElementById('lp-pdt').textContent=
+    `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
 
-  // DB 연동 표시
-  document.getElementById('lk-matno').textContent = matno;
-  document.getElementById('lk-sql').textContent   = matno;
+  const tg=document.getElementById('lp-gtag');
+  tg.textContent=gubun;
+  tg.style.background=gubun==='입고'?'#00f0a0':gubun.includes('재출력')?'#00d4ff':'#ffc000';
+  tg.style.color='#000';
 
-  // 실제 Code128 바코드 생성
-  genBarcode(matno);
-  genQR(matno);
+  genBC(matno); genQR(matno);
 }
-
 function prepLbl(){
-  const m=document.getElementById('lmodel');
-  if(m) m.value='OSD6203';
+  const m=document.getElementById('lmatno');if(m)m.value='098515705-0000';
+  const md=document.getElementById('lmodel');if(md)md.value='OSD6203';
   uLbl();
 }
 
-function prtLbl(){
+// ── ZPL 생성 ──────────────────────────────────────────
+function buildZpl(){
+  const matno=document.getElementById('lmatno').value.trim();
+  const model=document.getElementById('lmodel').value;
+  const spec=document.getElementById('lspec').value;
+  const vendor=document.getElementById('lvendor').value;
+  const qty=parseInt(document.getElementById('lqty').value)||0;
+  const date=document.getElementById('ldate').value;
+  const lot=document.getElementById('llot').value;
+  const loc=document.getElementById('lloc-sel').value;
+  const gubun=document.getElementById('lgubun').value;
+  const seq=String(lblSeq).padStart(4,'0');
   const now=new Date();
-  const ts=[now.getHours(),now.getMinutes()].map(v=>String(v).padStart(2,'0')).join(':');
-  const model = document.getElementById('lmodel').value;
-  const qty   = parseInt(document.getElementById('lqty').value)||0;
-  const gubun = document.getElementById('lgubun').value;
-  const matno = document.getElementById('lmatno').value;
-
-  // SEQ 번호 업데이트
-  document.getElementById('lp-seq').textContent = `SEQ: ${String(lblSeq).padStart(4,'0')}`;
-  lblSeq++;
-
-  // 출력 이력 추가
-  const cls = gubun==='입고'?'tg':gubun.includes('재출력')?'tb':'to';
-  const row = document.createElement('tr');
-  row.innerHTML=`<td style="font-family:var(--mono)">${ts}</td><td title="${matno}">${model}</td><td>${qty.toLocaleString()}</td><td><span class="tag ${cls}">${gubun}</span></td>`;
-  document.getElementById('lhist').prepend(row);
-
-  document.getElementById('lmsg').innerHTML=
-    `<div class="al ok" style="margin-top:4px">✓ 라벨 출력 완료 — ${model} &nbsp;|&nbsp; ${qty.toLocaleString()} PCS &nbsp;|&nbsp; ${matno}</div>`;
-  setTimeout(()=>document.getElementById('lmsg').innerHTML='',4000);
+  const pdt=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  const g=gubun==='입고'?'[입고]':gubun.includes('재출력')?'[재출력]':'[실사]';
+  return`^XA
+^PW1228
+^LL826
+^CI28
+^FO10,10^GB1208,52,52^FS
+^FO20,16^CF0,28^FR^FD신촌공장 재고관리 시스템^FS
+^FO980,16^CF0,24^FR^FD${g}^FS
+^FO10,68^GB1208,2,2^FS
+^CF0,22
+^FO14,78^FD자재번호(KEY):^FS
+^CF0,30
+^FO14,102^FD${matno}^FS
+^CF0,20
+^FO14,140^FD형번: ${model}^FS
+^FO14,163^FD규격: ${spec}^FS
+^FO14,186^FD공급: ${vendor}^FS
+^CF0,26
+^FO14,210^FD수량: ${qty.toLocaleString()} PCS^FS
+^FO620,78^CF0,18^FDCode128^FS
+^FO614,98^BCN,90,Y,N,N^FD${matno}^FS
+^FO10,672^GB1208,2,2^FS
+^CF0,18
+^FO14,680^FD로트: ${lot}^FS
+^FO14,700^FD입고일: ${date}   위치: ${loc}^FS
+^FO10,722^GB1208,2,2^FS
+^CF0,16
+^FO14,730^FD출력: ${pdt}   SEQ:${seq}^FS
+^FO900,730^FD신촌공장 WMS v3.6^FS
+^XZ`;
 }
 
-// 초기 바코드 생성 (페이지 로드 시)
-window.addEventListener('load', ()=>{ uLbl(); });
+function showZpl(){
+  const p=document.getElementById('zpl-panel');
+  p.style.display=p.style.display==='none'?'block':'none';
+  if(p.style.display==='block')document.getElementById('zpl-code').textContent=buildZpl();
+}
+function copyZpl(){
+  navigator.clipboard.writeText(buildZpl()).then(()=>{
+    const b=event.target;b.textContent='✓ 복사됨';setTimeout(()=>b.textContent='📋 복사',1500);
+  });
+}
 
-// ── 입고처리 ───────────────────────────────────────────
+// ── 연결 테스트 ────────────────────────────────────────
+async function testPrinter(){
+  const st=document.getElementById('pc-status');
+  const m=document.getElementById('pc-method').value;
+  st.style.color='var(--c3)';st.textContent='● 확인 중...';
+  if(m==='browser'){st.style.color='var(--c2)';st.textContent='● 브라우저 인쇄 (항상 사용 가능)';return;}
+  try{
+    const url=document.getElementById('pc-server').value;
+    const res=await fetch(`${url}/ping`,{signal:AbortSignal.timeout(3000)});
+    if(res.ok){const d=await res.json();st.style.color='var(--c2)';st.textContent=`● 서버 OK — ${d.printer||'연결됨'}`;}
+    else throw new Error();
+  }catch{st.style.color='var(--c4)';st.textContent='● 서버 연결 실패 — print_server.py 확인 필요';}
+}
+function togglePcM(){
+  const m=document.getElementById('pc-method').value;
+  document.getElementById('cfg-server').style.display=m==='server'?'flex':'none';
+}
+
+// ── 라벨 출력 ──────────────────────────────────────────
+async function prtLbl(){
+  const matno=document.getElementById('lmatno').value;
+  const qty=parseInt(document.getElementById('lqty').value)||0;
+  const gubun=document.getElementById('lgubun').value;
+  const method=document.getElementById('pc-method').value;
+  const zpl=buildZpl();
+  const st=document.getElementById('pc-status');
+  const msg=document.getElementById('lmsg');
+  document.getElementById('lp-seq').textContent=`SEQ:${String(lblSeq).padStart(4,'0')}`;lblSeq++;
+  const now=new Date(),ts=[now.getHours(),now.getMinutes()].map(v=>String(v).padStart(2,'0')).join(':');
+  let result='tg',rtxt='성공';
+  if(method==='server'){
+    try{
+      const url=document.getElementById('pc-server').value;
+      const res=await fetch(`${url}/print`,{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({zpl,matno,qty,gubun}),signal:AbortSignal.timeout(8000)});
+      if(res.ok){st.style.color='var(--c2)';st.textContent=`● 출력 완료 — XD5-43t`;
+        msg.innerHTML=`<div class="alert a-ok">✓ 출력 완료 — ${matno} | ${qty.toLocaleString()} PCS</div>`;}
+      else throw new Error();
+    }catch{st.style.color='var(--c4)';st.textContent='● 서버 실패 → 브라우저 인쇄 전환';
+      result='tr';rtxt='서버실패';msg.innerHTML=`<div class="alert a-warn">⚠ Python서버 연결 실패 — 브라우저 인쇄로 대체합니다</div>`;
+      setTimeout(()=>browserPrint(),600);}
+  }else{result='to';rtxt='브라우저';browserPrint();}
+  const row=document.createElement('tr');
+  row.innerHTML=`<td style="font-family:var(--fm)">${ts}</td><td style="font-family:var(--fm);font-size:12px">${matno}</td><td>${qty.toLocaleString()}</td><td><span class="tag ${result}">${rtxt}</span></td>`;
+  document.getElementById('lhist').prepend(row);
+  setTimeout(()=>msg.innerHTML='',5000);
+}
+function browserPrint(){
+  const lbl = document.getElementById('lp-label');
+  const w   = window.open('','_blank','width=640,height=440');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>라벨 인쇄 — 신촌공장 WMS</title>
+<style>
+/* ── 공통 리셋 ── */
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  background:#f0f0f0;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  min-height:100vh;padding:16px;
+  font-family:'맑은 고딕','Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif;
+}
+/* ── 인쇄 설정: 60×40mm ── */
+@page{size:60mm 40mm;margin:0}
+@media print{
+  body{background:#fff;min-height:unset;padding:0}
+  .noprint{display:none}
+}
+/* ── 라벨 카드: 60mm×40mm ── */
+.label-card{
+  background:#fff;width:60mm;height:40mm;
+  border:1.5px solid #333;border-radius:2px;
+  display:flex;flex-direction:column;overflow:hidden;
+  font-family:'맑은 고딕','Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif;
+  box-shadow:2px 2px 6px rgba(0,0,0,.2);
+}
+/* 헤더 */
+.lbl-head{background:#0d1e30;color:#fff;padding:3px 8px;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #00d4ff;flex-shrink:0}
+.lbl-head-title{font-size:7pt;font-weight:700;letter-spacing:.4px}
+.lbl-tag{font-size:7pt;font-weight:700;padding:2px 6px;border-radius:3px}
+.lbl-body{display:flex;flex:1;min-height:0}
+.lbl-info{width:26mm;flex-shrink:0;padding:3px 5px;border-right:0.5px solid #ddd;display:flex;flex-direction:column;justify-content:space-evenly}
+.lbl-matno-big{font-size:6pt;font-weight:700;color:#000;font-family:'Consolas','맑은 고딕',sans-serif;background:#f4f8fc;border-radius:2px;padding:1px 3px;letter-spacing:.2px}
+.lbl-model-big{font-size:13pt;font-weight:700;color:#0d1e30;font-family:'맑은 고딕','Malgun Gothic',sans-serif;line-height:1}
+.lbl-qty-row{display:flex;align-items:baseline;gap:2px}
+.lbl-qty-big{font-size:16pt;font-weight:700;color:#cc0000;font-family:'Consolas','맑은 고딕',sans-serif;line-height:1}
+.lbl-qty-unit{font-size:8pt;color:#cc0000;font-weight:700;font-family:'맑은 고딕',sans-serif}
+.lbl-vendor{font-size:7pt;color:#444;font-weight:600;font-family:'맑은 고딕',sans-serif;border-left:2px solid #00d4ff;padding-left:4px}
+.lbl-bc{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3px 4px;gap:2px}
+.lbl-bc-lbl{font-size:5.5pt;color:#aaa;text-transform:uppercase;letter-spacing:.4px}
+.lbl-bc svg{max-width:100%;height:auto;display:block}
+.lbl-bc-no{font-size:6pt;color:#333;font-weight:600;font-family:'Consolas',monospace;letter-spacing:.4px}
+.lbl-btm{background:#edf2f7;border-top:0.5px solid #d0d8e0;padding:2px 6px;flex-shrink:0;display:grid;grid-template-columns:2fr 2fr 1.5fr;gap:0 6px}
+.lbl-btm-item{display:flex;flex-direction:column;gap:1px}
+.lbl-btm-k{font-size:5.5pt;color:#666;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+.lbl-btm-v{font-size:7pt;color:#111;font-weight:600;font-family:'Consolas','맑은 고딕',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lbl-footer{background:#d8e4f0;border-top:0.5px solid #bfcfdf;padding:2px 6px;flex-shrink:0;display:flex;justify-content:space-between;font-size:5.5pt;color:#555;font-weight:600;font-family:'Consolas','맑은 고딕',sans-serif}
+/* 버튼 */
+.btns{padding:14px;display:flex;gap:10px;justify-content:center}
+button{padding:10px 26px;font-size:14px;cursor:pointer;border:none;border-radius:5px;font-family:'맑은 고딕',sans-serif}
+.bp{background:#0d1e30;color:#fff}
+.bc{background:#e0e0e0;color:#333}
+</style></head><body>
+${lbl.outerHTML}
+<div class="btns noprint">
+  <button class="bp" onclick="window.print()">🖨 인쇄</button>
+  <button class="bc" onclick="window.close()">닫기</button>
+</div>
+</body></html>`);
+  w.document.close();
+}
+
+// ══════════════════════════════════════════════════════
+//  공통
+// ══════════════════════════════════════════════════════
 function uIb(){
   document.getElementById('pv-vendor').textContent=document.getElementById('ib-vendor').value;
   document.getElementById('pv-ring').textContent=document.getElementById('ib-ring').value;
   document.getElementById('pv-model').textContent=document.getElementById('ib-model').value;
   document.getElementById('pv-matno').textContent=document.getElementById('ib-matno').value;
   document.getElementById('pv-spec').textContent=document.getElementById('ib-spec').value;
-  const q=parseInt(document.getElementById('ib-qty').value)||0,p=parseInt(document.getElementById('ib-price').value)||0;
+  const q=parseInt(document.getElementById('ib-qty').value)||0,p=parseInt(document.getElementById('ib-price')?.value)||0;
   document.getElementById('pv-qty').textContent=q.toLocaleString();
   document.getElementById('pv-price').textContent=p+'원';
   document.getElementById('pv-total').textContent=(q*p).toLocaleString()+'원';
@@ -1434,16 +1906,14 @@ function doIb(){
   const vendor=document.getElementById('ib-vendor').value;
   const d=new Date(),ds=`${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
   const row=document.createElement('tr');
-  row.innerHTML=`<td>${ds}</td><td>${vendor.split('(')[0]}/${model}</td><td>${vendor.split('(')[0]}</td><td class="num">${qty.toLocaleString()}</td><td><span class="tag tg">완료</span></td>`;
+  row.innerHTML=`<td>${ds}</td><td>${vendor.split('(')[0]}/${model}</td><td class="num">${qty.toLocaleString()}</td><td><span class="tag tg">완료</span></td>`;
   document.getElementById('ib-hist').prepend(row);
-  document.getElementById('ib-msg').innerHTML='<div class="al ok">✓ '+model+' '+qty.toLocaleString()+'PCS 입고 등록 완료</div>';
+  document.getElementById('ib-msg').innerHTML=`<div class="alert a-ok">✓ ${model} ${qty.toLocaleString()} PCS 입고 등록 완료</div>`;
   setTimeout(()=>document.getElementById('ib-msg').innerHTML='',3000);
 }
-
-// ── 출하처리 ───────────────────────────────────────────
 function uOb(){
   const q=parseInt(document.getElementById('ob-qty').value)||0,p=parseInt(document.getElementById('ob-price').value)||0;
-  const model=document.getElementById('ob-model').value,rm=Math.max(0,120500-q);
+  const model=document.getElementById('ob-model').value,rm=Math.max(0,283000-q);
   document.getElementById('ob-remain').textContent=rm.toLocaleString()+' PCS';
   document.getElementById('ob-total').textContent=(q*p).toLocaleString()+'원';
   document.getElementById('sl-model').textContent=model;
@@ -1455,24 +1925,226 @@ function doOb(){
   const model=document.getElementById('ob-model').value,qty=parseInt(document.getElementById('ob-qty').value)||0;
   const ref=document.getElementById('ob-ref').value;
   const row=document.createElement('tr');
-  row.innerHTML=`<td style="font-family:var(--mono);font-size:9px">${ref}</td><td>${model}</td><td class="num">${qty.toLocaleString()}</td>`;
+  row.innerHTML=`<td style="font-family:var(--fm);font-size:12px">${ref}</td><td>${model}</td><td class="num">${qty.toLocaleString()}</td>`;
   document.getElementById('ob-hist').prepend(row);
-  showModal('출하 처리 완료',`전표번호: ${ref}<br>모델: ${model}<br>수량: ${qty.toLocaleString()} PCS<br><br>✓ 출하 전표 생성 완료<br>✓ DB 재고 차감 완료`);
+  showModal('출하 처리 완료',`전표번호: ${ref}<br>모델: ${model}<br>수량: ${qty.toLocaleString()} PCS<br><br>✓ DB 재고 차감 완료<br>✓ 잔여재고 바코드 재출력 권장`);
 }
-
-// ── 엑셀 내보내기 ─────────────────────────────────────
 function expMsg(){
-  document.getElementById('exp-msg').textContent='✓ daily_stock.xlsx 업데이트 완료 — 선삭링_일자별, 집계 시트 갱신됨';
+  document.getElementById('exp-msg').textContent='✓ 엑셀 업데이트 완료';
   setTimeout(()=>document.getElementById('exp-msg').textContent='',4000);
 }
 
-// ── 모달 ───────────────────────────────────────────────
+// ══════════════════════════════════════════════════════
+//  장기불용재고 분석
+// ══════════════════════════════════════════════════════
+
+/* 품목별 1~4월 실제 출고 데이터 (1~3월 전월, 4월 1~23일) */
+const DS_MON = [
+  /* [형번, 규격, 1월출고, 2월출고, 3월출고, 4월출고, 현재고, 금액, 링, 공급처] */
+  ['OSD6203',  'AU.6203-B-2Z-8105-L6',   100000,  120000, 100000,  50000,  283000, 32383000,'선삭','찬스'],
+  ['6005',     'AU.6005-2012',             56000,   60000,  55000,  44852,  210386, 26929408,'선삭','찬스'],
+  ['6004',     'AU.6004-2Z-2012',          20000,   24000,  30000,  22200,  201400, 34842200,'선삭','찬스'],
+  ['F-679350', 'F-679350-2022.IR.KL',      90000,   80000,  85000,  60908,  116546, 15769727,'선삭','찬스'],
+  ['F-572665', 'F-572665-2012.AU.Q',       95000,   90000,  95000,  72400,   44200,  7601640,'선삭','찬스'],
+  ['F-576917', 'F-576917-2012.AU',          8000,   10000,  14000,  14000,   94395, 12267350,'선삭','찬스'],
+  ['F-624888', 'F-624888-2012.AU',          1000,    2000,   2000,   1000,  252000, 28854000,'선삭','찬스'],
+  ['6203',     'AU.6203-2Z-2012',          55000,   50000,  52000,  44970,  104821, 14988401,'선삭','인시스'],
+  ['FAG6202',  'AU.6202-2Z-1112',          55000,   54000,  56000,  34000,    7000,   973000,'선삭','인시스'],
+  ['6200(연)', 'AU.6200-2Z-2011',         100000,   85000, 100000, 114812,   75862, 12992522,'연삭','인시스'],
+  ['6204',     'AU.6204-2Z-2011',         126000,  128000, 127000, 126786,  119616, 33013896,'연삭','인시스'],
+  ['6201',     'AU.6201-2Z-2012',         120000,  115000, 115000, 108964,   52606,  9207550,'연삭','인시스'],
+  ['6200(IR)', 'IR.6200-2Z-2022',          60000,       0, 120000,  56931,  234489, 55284780,'연삭','찬스'],
+];
+
+let dsChart=null, dsTrend=null;
+
+function calcDS(row){
+  const [model,spec,ob1,ob2,ob3,ob4,stk,amt,ring,vendor]=row;
+  /* 4월 23일치 → 31일 월환산 */
+  const ob4full = Math.round(ob4*31/23);
+  const avgOb   = Math.round((ob1+ob2+ob3+ob4full)/4);
+  const months  = avgOb>0 ? +(stk/avgOb).toFixed(1) : 999;
+  const noOb    = ob1===0&&ob2===0&&ob3===0&&ob4===0;
+  const declining = ob1>0&&ob2>0&&ob3>0&&ob1>ob2&&ob2>ob3; /* 3개월 연속 감소 */
+
+  let grade,gradeLabel,gradeColor;
+  if(noOb||months>12){grade='red';gradeLabel='🔴 긴급';gradeColor='var(--c4)';}
+  else if(months>6)  {grade='yellow';gradeLabel='🟡 주의';gradeColor='var(--c3)';}
+  else               {grade='green';gradeLabel='🟢 정상';gradeColor='var(--c2)';}
+
+  return {model,spec,ob1,ob2,ob3,ob4,stk,amt,ring,vendor,avgOb,months,grade,gradeLabel,gradeColor,declining,noOb};
+}
+
+function initDS(){
+  const filter = document.getElementById('ds-filter')?.value||'all';
+  const sort   = document.getElementById('ds-sort')?.value||'months';
+  const rows   = DS_MON.map(calcDS);
+
+  let filt = rows;
+  if(filter==='red')    filt=rows.filter(r=>r.grade==='red');
+  if(filter==='yellow') filt=rows.filter(r=>r.grade==='yellow');
+  if(filter==='green')  filt=rows.filter(r=>r.grade==='green');
+
+  if(sort==='months') filt.sort((a,b)=>b.months-a.months);
+  if(sort==='amt')    filt.sort((a,b)=>b.amt-a.amt);
+  if(sort==='stock')  filt.sort((a,b)=>b.stk-a.stk);
+
+  /* KPI */
+  const redCnt   = rows.filter(r=>r.grade==='red').length;
+  const yelCnt   = rows.filter(r=>r.grade==='yellow').length;
+  const redAmt   = rows.filter(r=>r.grade==='red').reduce((s,r)=>s+r.amt,0);
+  const totalAmt = rows.reduce((s,r)=>s+r.amt,0);
+  const riskPct  = totalAmt>0?(redAmt/totalAmt*100).toFixed(1):0;
+
+  document.getElementById('ds-kpi').innerHTML=`
+    <div class="kpi-card kv4">
+      <div class="kpi-lbl">🔴 긴급 (12개월+)</div>
+      <div class="kpi-val" style="color:var(--c4)">${redCnt}건</div>
+      <div class="kpi-sub">${(redAmt/10000).toFixed(0)}만원 위험 재고</div>
+    </div>
+    <div class="kpi-card kv3">
+      <div class="kpi-lbl">🟡 주의 (6~12개월)</div>
+      <div class="kpi-val" style="color:var(--c3)">${yelCnt}건</div>
+      <div class="kpi-sub">모니터링 필요</div>
+    </div>
+    <div class="kpi-card kv2">
+      <div class="kpi-lbl">🟢 정상 (6개월 미만)</div>
+      <div class="kpi-val" style="color:var(--c2)">${rows.length-redCnt-yelCnt}건</div>
+      <div class="kpi-sub">정상 회전 중</div>
+    </div>
+    <div class="kpi-card kv5">
+      <div class="kpi-lbl">불용위험 금액 비율</div>
+      <div class="kpi-val" style="color:var(--c5)">${riskPct}%</div>
+      <div class="kpi-sub">${(redAmt/100000000).toFixed(2)}억 / 총${(totalAmt/100000000).toFixed(1)}억</div>
+    </div>`;
+
+  /* 소진예상 수평 막대 차트 */
+  const sortedAll=[...rows].sort((a,b)=>b.months-a.months);
+  const bColors=sortedAll.map(r=>
+    r.grade==='red'?'rgba(255,61,110,.85)':
+    r.grade==='yellow'?'rgba(255,192,0,.85)':'rgba(0,240,160,.75)');
+
+  if(dsChart)dsChart.destroy();
+  dsChart=new Chart(document.getElementById('ds-chart'),{
+    type:'bar',
+    data:{
+      labels:sortedAll.map(r=>r.model),
+      datasets:[{
+        label:'소진예상(개월)',
+        data:sortedAll.map(r=>r.months===999?16:r.months),
+        backgroundColor:bColors,
+        borderRadius:3,borderSkipped:false
+      }]
+    },
+    options:{
+      indexAxis:'y',...CO,
+      scales:{
+        x:{ticks:{color:'#b8d4f0',font:{size:10},callback:v=>v+'개월'},
+           grid:{color:'rgba(42,78,112,.5)'},max:18},
+        y:{ticks:{color:'#b8d4f0',font:{size:10},autoSkip:false},
+           grid:{color:'rgba(42,78,112,.3)'}}
+      },
+      plugins:{
+        ...CO.plugins,legend:{display:false},
+        tooltip:{callbacks:{label:c=>{
+          const r=sortedAll[c.dataIndex];
+          return r.noOb?`${r.model}: 4개월 출고 없음 (긴급)`:
+                        `${r.model}: ${r.months}개월`;
+        }}}
+      }
+    }
+  });
+
+  /* 월별 출고 추이 꺾은선 (긴급+주의만) */
+  const riskRows=[...rows].filter(r=>r.grade!=='green').sort((a,b)=>b.months-a.months).slice(0,6);
+  const tClr=['#ff3d6e','#ffc000','#ff8040','#b8a0ff','#ff6090','#60c8ff'];
+
+  if(dsTrend)dsTrend.destroy();
+  dsTrend=new Chart(document.getElementById('ds-trend'),{
+    type:'line',
+    data:{
+      labels:['1월','2월','3월','4월(~23)'],
+      datasets:riskRows.map((r,i)=>({
+        label:r.model,
+        data:[r.ob1,r.ob2,r.ob3,r.ob4],
+        borderColor:tClr[i]||'#aaa',
+        backgroundColor:'transparent',
+        tension:.3,pointRadius:4,
+        pointBackgroundColor:tClr[i]||'#aaa'
+      }))
+    },
+    options:{
+      ...CO,
+      scales:{
+        x:{ticks:{color:'#b8d4f0',font:{size:11}},grid:{color:'rgba(42,78,112,.5)'}},
+        y:{ticks:{color:'#b8d4f0',font:{size:11},callback:v=>v>=1000?(v/1000).toFixed(0)+'K':v},
+           grid:{color:'rgba(42,78,112,.5)'}}
+      },
+      plugins:{
+        ...CO.plugins,
+        legend:{position:'bottom',labels:{color:'#b8d4f0',font:{size:11},boxWidth:10,padding:8}},
+        tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw.toLocaleString()}`}}
+      }
+    }
+  });
+
+  /* 상세 테이블 */
+  document.getElementById('ds-body').innerHTML=filt.map(r=>{
+    const mDisp=r.months===999?
+      `<span style="color:var(--c4);font-weight:700">출고없음</span>`:
+      `<span style="color:${r.gradeColor};font-weight:700">${r.months}개월</span>`;
+    const trend=r.declining?'<span style="color:var(--c4);font-size:11px"> ↓감소</span>':'';
+    const warn =r.noOb?'<span class="tag tr">출고0</span>':
+                r.grade==='red'?'<span class="tag tr">긴급처리</span>':
+                r.grade==='yellow'?'<span class="tag to">모니터링</span>':
+                '<span class="tag tg">정상</span>';
+    const fn=(v)=>v>0?`<span style="color:var(--tx)">${v.toLocaleString()}</span>`:
+                      `<span style="color:var(--c4);font-weight:700">0</span>`;
+    return`<tr>
+      <td>${r.gradeLabel}</td>
+      <td><span class="tag ${r.ring==='선삭'?'tb':'tp'}">${r.ring}</span></td>
+      <td>${r.vendor}</td>
+      <td style="font-family:var(--fm);font-weight:700;color:${r.gradeColor}">${r.model}</td>
+      <td style="font-size:12px;color:var(--tx2);white-space:nowrap">${r.spec}</td>
+      <td class="num" style="color:var(--c1)">${r.stk.toLocaleString()}</td>
+      <td class="num" style="color:${r.avgOb===0?'var(--c4)':'var(--tx2)'}">${r.avgOb.toLocaleString()}</td>
+      <td class="num">${mDisp}${trend}</td>
+      <td class="num">${fn(r.ob1)}</td>
+      <td class="num">${fn(r.ob2)}</td>
+      <td class="num">${fn(r.ob3)}</td>
+      <td class="num">${fn(r.ob4)}</td>
+      <td class="num" style="color:var(--c5)">${r.amt.toLocaleString()}</td>
+      <td>${warn}</td>
+    </tr>`;
+  }).join('');
+
+  /* 긴급 목록 */
+  const reds=rows.filter(r=>r.grade==='red').sort((a,b)=>b.amt-a.amt);
+  document.getElementById('ds-red-list').innerHTML=reds.length===0?
+    '<div style="color:var(--c2)">현재 긴급 품목 없음 ✓</div>':
+    reds.map(r=>`
+      <div style="padding:7px 0;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <div>
+          <span style="color:var(--c4);font-weight:700;font-family:var(--fm)">${r.model}</span>
+          <span style="color:var(--tx2);font-size:12px;margin-left:6px">${r.spec}</span>
+          ${r.noOb?'<span class="tag tr" style="margin-left:4px;font-size:10px">4개월출고0</span>':''}
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="color:var(--c4);font-size:14px;font-weight:700">${r.months===999?'출고없음':r.months+'개월'}</div>
+          <div style="color:var(--tx2);font-size:12px">${r.stk.toLocaleString()} PCS</div>
+          <div style="color:var(--c5);font-size:12px">${(r.amt/10000).toFixed(0)}만원</div>
+        </div>
+      </div>`).join('');
+}
 function showModal(h,b){
-  document.getElementById('mh').textContent=h;
-  document.getElementById('mb').innerHTML=b.replace(/\n/g,'<br>');
+  document.getElementById('modal-title').textContent=h;
+  document.getElementById('modal-body').innerHTML=b.replace(/\n/g,'<br>');
   document.getElementById('modal').classList.add('on');
 }
 function clrModal(){document.getElementById('modal').classList.remove('on');}
+
+// ── 초기 실행 ──────────────────────────────────────────
+window.addEventListener('load',()=>{uLbl();});
 </script>
 </body>
 </html>
