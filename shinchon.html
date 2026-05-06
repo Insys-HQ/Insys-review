@@ -12,7 +12,21 @@
   v1.0~v2.8  2026-04-20~27  초기 구축 및 기능 개선
   v3.0       2026-04-28     전면 리모델링 (반응형, 큰 폰트, 심플 UI)
   v3.2       2026-04-28     전체 폰트 맑은 고딕으로 통일
-  v3.6       2026-04-28     장기불용재고 분석 메뉴 추가
+  v3.8       2026-05-06     전주공장 재고관리 탭 추가
+                            — 헤더 공장 전환 탭 (신촌↔전주)
+                            — 전주공장 독립 레이아웃 (사이드바·페이지 분리)
+                            — 전주 대시보드·입고·출고·스캔·라벨·재고·불용재고
+                            — 전주 품목: 6006·6007A·6008A·6304·6305 (하이순)
+                            — 4월 실제 데이터: 재고 1,160,697PCS / 3.155억원
+                            — 입고 시 자체 바코드(Code128) 자동 발행
+                            — 출고 시 바코드 스캔 → 수량 입력 → 즉시 재고 차감
+                            — 4월 일별: 1~30일 완전 데이터 (이전: 1~23일)
+                            — 선삭: 입고 5,684,232 / 출고 4,975,554 / 재고 6,775,849
+                            — 연삭: 입고 1,108,464 / 출고 1,345,615 / 재고 1,736,755
+                            — 총재고: 8,512,604 PCS / 재고금액 14.00억원
+                            — 공급처별: 인시스(선삭1,860K+연삭1,502K) / 찬스(선삭4,915K+연삭234K)
+                            — stkRows, rptRows, DS_MON, KPI, 게이지 전면 갱신
+                            — 년간 4월 데이터 정확한 마감값으로 교체
                             — 새 메뉴 ⚠ 불용재고 (사이드바·탭바 더보기 추가)
                             — 판단기준: 소진예상 개월수 = 현재고 ÷ 월평균출고
                             — 위험등급: 🔴긴급(12개월초과·출고없음) 🟡주의(6~12개월) 🟢정상
@@ -72,7 +86,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
-<title>신촌공장 재고관리 v3.6</title>
+<title>WMS v3.8</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js"></script>
 <style>
@@ -477,7 +491,25 @@ tbody tr:hover td{background:rgba(255,255,255,.04)}
 .admin-only{display:none}
 body.admin .admin-only{display:flex}
 
-/* ═══ 스크롤바 ═══════════════════════════════════════════ */
+/* ═══ 공장 전환 탭 ═══════════════════════════════════════ */
+.factory-tabs{
+  display:flex;gap:4px;align-items:center;
+  background:var(--bg);border-radius:8px;padding:3px;
+  border:1px solid var(--bd);
+}
+.ftab{
+  padding:5px 14px;border-radius:6px;font-size:13px;font-weight:700;
+  cursor:pointer;transition:all .15s;color:var(--tx2);
+  white-space:nowrap;user-select:none;
+}
+.ftab.on{background:var(--c1);color:#000;}
+.ftab.jj.on{background:var(--c3);color:#000;}
+.ftab:not(.on):hover{color:var(--tx);background:var(--s3);}
+
+/* ═══ 전주공장 전용 색상 오버라이드 ═════════════════════ */
+.jj-mode .sb-item.on{color:var(--c3);border-left-color:var(--c3)}
+.jj-mode .hdr-logo{color:var(--c3)}
+.jj-mode .card-title::before{background:var(--c3)}
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:3px}
@@ -521,13 +553,19 @@ body.admin .admin-only{display:flex}
 
 <!-- ═══ 헤더 ════════════════════════════════════════════ -->
 <div class="hdr">
-  <div class="hdr-logo">신촌공장 WMS<span>v3.0</span></div>
+  <div class="hdr-logo" id="hdr-logo">신촌공장 WMS<span>v3.8</span></div>
+  <div class="factory-tabs">
+    <div class="ftab on"    id="ftab-sc" onclick="switchFactory('sc')">🏭 신촌공장</div>
+    <div class="ftab jj"   id="ftab-jj" onclick="switchFactory('jj')">🏭 전주공장</div>
+  </div>
   <div class="hdr-right">
     <div class="admin-btn" id="admin-btn" onclick="toggleAdmin()">현장모드</div>
     <span id="clk">--:--:--</span>
   </div>
 </div>
 
+<!-- ═══ 신촌공장 ═══════════════════════════════════════ -->
+<div id="sc-wrap">
 <!-- ═══ 본문 ════════════════════════════════════════════ -->
 <div class="layout">
 
@@ -557,32 +595,32 @@ body.admin .admin-only{display:flex}
 <div class="pg on" id="pg-dash">
   <div class="kpi-grid kg4">
     <div class="kpi-card kv3">
-      <div class="kpi-lbl">4월 총입고 (1~23일)</div>
-      <div class="kpi-val" style="color:var(--c2)">4,947,214</div>
-      <div class="kpi-sub">선삭+연삭 PCS</div>
-      <div class="kpi-chg up">▲ 52.6% vs 3월</div>
+  <div class="kpi-grid kg4">
+    <div class="kpi-card kv3">
+      <div class="kpi-lbl">4월 총입고 (마감)</div>
+      <div class="kpi-val" style="color:var(--c2)">6,792,696</div>
+      <div class="kpi-sub">선삭 5,684K + 연삭 1,108K PCS</div>
+      <div class="kpi-chg up">▲ 109.5% vs 3월</div>
     </div>
     <div class="kpi-card kv3">
-      <div class="kpi-lbl">4월 총출고 (1~23일)</div>
-      <div class="kpi-val" style="color:var(--c3)">5,227,971</div>
-      <div class="kpi-sub">선삭+연삭 PCS</div>
-      <div class="kpi-chg dn">▼ 4.9% vs 3월</div>
+      <div class="kpi-lbl">4월 총출고 (마감)</div>
+      <div class="kpi-val" style="color:var(--c3)">6,321,169</div>
+      <div class="kpi-sub">선삭 4,976K + 연삭 1,346K PCS</div>
+      <div class="kpi-chg up">▲ 14.9% vs 3월</div>
     </div>
     <div class="kpi-card kv1">
-      <div class="kpi-lbl">현재고 (4/23 기준)</div>
-      <div class="kpi-val" style="color:var(--c1)">7,762,980</div>
-      <div class="kpi-sub">선삭 6,280K + 연삭 1,483K</div>
-      <div class="kpi-chg dn">▼ 7.3% vs 3월</div>
+      <div class="kpi-lbl">현재고 (4월말 마감)</div>
+      <div class="kpi-val" style="color:var(--c1)">8,512,604</div>
+      <div class="kpi-sub">선삭 6,776K + 연삭 1,737K PCS</div>
+      <div class="kpi-chg up">▲ 5.6% vs 3월</div>
     </div>
     <div class="kpi-card kv4">
-      <div class="kpi-lbl">재고금액 (4/23)</div>
-      <div class="kpi-val" style="color:var(--c5)">12.8억원</div>
-      <div class="kpi-sub">선삭 8.9억 + 연삭 3.9억</div>
-      <div class="kpi-chg dn">▼ 6.9% vs 3월</div>
+      <div class="kpi-lbl">재고금액 (4월말)</div>
+      <div class="kpi-val" style="color:var(--c5)">14.00억원</div>
+      <div class="kpi-sub">선삭 9.51억 + 연삭 4.49억</div>
+      <div class="kpi-chg up">▲ 12.0% vs 3월</div>
     </div>
   </div>
-
-  <div class="g2">
     <div class="card card-sm">
       <div class="card-title ct1">4월 일별 입출고 (선삭링)</div>
       <div class="chart-box ch160"><canvas id="dash-chart"></canvas></div>
@@ -593,12 +631,12 @@ body.admin .admin-only{display:flex}
         <div class="gauge-row">
           <span class="gauge-lbl">인시스/선삭</span>
           <div class="gauge-track"><div class="gauge-fill" style="width:31%;background:var(--c1)"></div></div>
-          <span class="gauge-val" style="color:var(--c1)">1,939K</span>
+          <span class="gauge-val" style="color:var(--c1)">1,861K</span>
         </div>
         <div class="gauge-row">
           <span class="gauge-lbl">찬스/선삭</span>
           <div class="gauge-track"><div class="gauge-fill" style="width:69%;background:var(--c5)"></div></div>
-          <span class="gauge-val" style="color:var(--c5)">4,341K</span>
+          <span class="gauge-val" style="color:var(--c5)">4,915K</span>
         </div>
         <div class="gauge-row">
           <span class="gauge-lbl">인시스/연삭</span>
@@ -630,9 +668,9 @@ body.admin .admin-only{display:flex}
         <table class="tbl-dash">
           <thead><tr><th>구분</th><th>링</th><th class="num">현재고</th><th>상태</th></tr></thead>
           <tbody>
-            <tr><td>인시스</td><td>선삭</td><td class="num" style="color:var(--c1)">1,938,758</td><td><span class="tag tg">정상</span></td></tr>
-            <tr><td>찬스</td><td>선삭</td><td class="num" style="color:var(--c1)">4,340,745</td><td><span class="tag tg">정상</span></td></tr>
-            <tr><td>인시스</td><td>연삭</td><td class="num" style="color:var(--c3)">1,248,988</td><td><span class="tag to">주의</span></td></tr>
+            <tr><td>인시스</td><td>선삭</td><td class="num" style="color:var(--c1)">1,860,638</td><td><span class="tag tg">정상</span></td></tr>
+            <tr><td>찬스</td><td>선삭</td><td class="num" style="color:var(--c1)">4,915,211</td><td><span class="tag tg">정상</span></td></tr>
+            <tr><td>인시스</td><td>연삭</td><td class="num" style="color:var(--c3)">1,502,266</td><td><span class="tag to">주의</span></td></tr>
             <tr><td>찬스</td><td>연삭</td><td class="num" style="color:var(--c4)">234,489</td><td><span class="tag tr">부족</span></td></tr>
           </tbody>
         </table>
@@ -648,7 +686,7 @@ body.admin .admin-only{display:flex}
       <option value="1">2026년 1월</option>
       <option value="2">2026년 2월</option>
       <option value="3">2026년 3월</option>
-      <option value="4" selected>2026년 4월 (1~23일)</option>
+      <option value="4" selected>2026년 4월 (마감)</option>
     </select>
     <select id="sel-ring" class="printer-sel" onchange="uMon()">
       <option value="sel">선삭링</option>
@@ -686,8 +724,8 @@ body.admin .admin-only{display:flex}
   <div class="kpi-grid kg4">
     <div class="kpi-card kv2"><div class="kpi-lbl">년간 총입고 (1~4월)</div><div class="kpi-val" style="color:var(--c2)">18,920,073</div><div class="kpi-sub">PCS 누계</div></div>
     <div class="kpi-card kv3"><div class="kpi-lbl">년간 총출고 (1~4월)</div><div class="kpi-val" style="color:var(--c3)">20,966,658</div><div class="kpi-sub">PCS 누계</div></div>
-    <div class="kpi-card kv1"><div class="kpi-lbl">현재고 (4/23)</div><div class="kpi-val" style="color:var(--c1)">7,762,980</div><div class="kpi-sub">PCS</div></div>
-    <div class="kpi-card kv5"><div class="kpi-lbl">재고금액 변화</div><div class="kpi-val" style="color:var(--c5)">-0.84억</div><div class="kpi-sub">13.6억 → 12.8억</div></div>
+    <div class="kpi-card kv1"><div class="kpi-lbl">현재고 (4월말)</div><div class="kpi-val" style="color:var(--c1)">8,512,604</div><div class="kpi-sub">PCS</div></div>
+    <div class="kpi-card kv5"><div class="kpi-lbl">재고금액 변화</div><div class="kpi-val" style="color:var(--c5)">+0.40억</div><div class="kpi-sub">13.6억 → 14.0억</div></div>
   </div>
   <div class="card">
     <div class="card-title ct1">2026년 월별 현황</div>
@@ -990,7 +1028,7 @@ body.admin .admin-only{display:flex}
 
             <!-- ① 헤더 -->
             <div class="lbl-head">
-              <div class="lbl-head-title">신촌공장 재고관리 WMS v3.6</div>
+              <div class="lbl-head-title">신촌공장 재고관리 WMS v3.7</div>
               <div class="lbl-tag" id="lp-gtag" style="background:#00f0a0;color:#000">입고</div>
             </div>
 
@@ -1258,6 +1296,416 @@ body.admin .admin-only{display:flex}
     </div>
   </div>
 </nav>
+</div><!-- /sc-wrap -->
+
+<!-- ═══════════════════════════════════════════════════
+     전주공장 WMS — 독립 레이아웃
+════════════════════════════════════════════════════ -->
+<div id="jj-wrap" style="display:none">
+<div class="layout">
+
+<!-- 전주 사이드바 -->
+<nav class="sidebar">
+  <div class="sb-group">현황</div>
+  <div class="sb-item on" onclick="jjGo('jj-dash',this)"><span class="ico">◈</span><span>대시보드</span></div>
+  <div class="sb-item" onclick="jjGo('jj-stock',this)"><span class="ico">≡</span><span>재고 현황</span></div>
+  <div class="sb-group">처리</div>
+  <div class="sb-item" onclick="jjGo('jj-inbound',this)"><span class="ico">⬇</span><span>입고 처리</span></div>
+  <div class="sb-item" onclick="jjGo('jj-outbound',this)"><span class="ico">⬆</span><span>출고 처리</span></div>
+  <div class="sb-item" onclick="jjGo('jj-scan',this)"><span class="ico">⊙</span><span>출고 스캔</span></div>
+  <div class="sb-item" onclick="jjGo('jj-label',this)"><span class="ico">🖨</span><span>라벨 출력</span></div>
+  <div class="sb-group">분석</div>
+  <div class="sb-item" onclick="jjGo('jj-dead',this)" style="color:var(--c4)"><span class="ico">⚠</span><span>불용재고</span></div>
+</nav>
+
+<!-- 전주 메인 -->
+<main class="main">
+
+<!-- 전주 대시보드 -->
+<div class="pg on" id="pg-jj-dash">
+  <div class="kpi-grid kg4">
+    <div class="kpi-card kv3">
+      <div class="kpi-lbl">4월 입고 (마감)</div>
+      <div class="kpi-val" style="color:var(--c2)">278,202</div>
+      <div class="kpi-sub">전체 품목 PCS</div>
+    </div>
+    <div class="kpi-card kv3">
+      <div class="kpi-lbl">4월 출고 (마감)</div>
+      <div class="kpi-val" style="color:var(--c3)">322,806</div>
+      <div class="kpi-sub">전체 품목 PCS</div>
+    </div>
+    <div class="kpi-card kv1">
+      <div class="kpi-lbl">현재고 (4월말)</div>
+      <div class="kpi-val" style="color:var(--c1)">1,160,697</div>
+      <div class="kpi-sub">관리 품목 10개</div>
+    </div>
+    <div class="kpi-card kv5">
+      <div class="kpi-lbl">재고금액 (4월말)</div>
+      <div class="kpi-val" style="color:var(--c5)">3.16억원</div>
+      <div class="kpi-sub">하이순 단일 공급</div>
+    </div>
+  </div>
+  <div class="g2">
+    <div class="card card-sm">
+      <div class="card-title ct3">품목별 재고 현황</div>
+      <div class="chart-box ch200"><canvas id="jj-bar-chart"></canvas></div>
+    </div>
+    <div class="card card-sm">
+      <div class="card-title ct1">4월 일별 출고</div>
+      <div class="chart-box ch200"><canvas id="jj-daily-chart"></canvas></div>
+    </div>
+  </div>
+  <div class="g2">
+    <div class="card card-sm">
+      <div class="card-title ct2">품목별 현재고 비중</div>
+      <div class="chart-box ch200"><canvas id="jj-donut"></canvas></div>
+    </div>
+    <div class="card card-xs">
+      <div class="card-title ct4">재고 현황 요약</div>
+      <div class="tbl-wrap">
+        <table class="tbl-dash">
+          <thead><tr><th>품목</th><th class="num">현재고</th><th class="num">재고금액</th><th>상태</th></tr></thead>
+          <tbody id="jj-dash-tbl"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 전주 재고 현황 -->
+<div class="pg" id="pg-jj-stock">
+  <div class="card card-sm">
+    <div class="card-title ct1">전주공장 품목별 재고 (4월 마감)</div>
+    <div class="tbl-wrap tbl-xs">
+      <table>
+        <thead><tr><th>자재코드</th><th>규격</th><th>업체</th><th class="num">단가</th><th class="num">기초재고</th><th class="num">입고</th><th class="num">출고</th><th class="num">현재고</th><th class="num">재고금액</th><th>상태</th></tr></thead>
+        <tbody id="jj-stock-tbl"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- 전주 입고 처리 -->
+<div class="pg" id="pg-jj-inbound">
+  <div class="g2">
+    <div>
+      <div class="card">
+        <div class="card-title ct2">입고 정보 입력 → 바코드 자동 발행</div>
+        <div class="form-grid fg2">
+          <div class="field"><label>입고일자</label><input type="date" id="jj-ib-date" value="2026-05-06"></div>
+          <div class="field"><label>품목 선택</label>
+            <select id="jj-ib-model" onchange="jjUib()">
+              <option value="6006AU">AU.6006-2Z-1112 (6006 AU)</option>
+              <option value="6006IR">IR.6006-1122 (6006 IR)</option>
+              <option value="6007AAU">AU.6007-A-2Z-1112 (6007A AU)</option>
+              <option value="6007AIR">IR.6007-A-1122 (6007A IR)</option>
+              <option value="6008AU">AU.6008-A-2Z-1112 (6008A AU)</option>
+              <option value="6008IR">IR.6008-A-1122 (6008A IR)</option>
+              <option value="6304AU">AU.6304-B-2Z-1112 (6304 AU)</option>
+              <option value="6304IR">IR.6304-A-1122 (6304 IR)</option>
+              <option value="6305AU">AU.6305-A-2Z-1112 (6305 AU)</option>
+              <option value="6305IR">IR.6305-1122 (6305 IR)</option>
+            </select>
+          </div>
+          <div class="field"><label>자재코드</label><input type="text" id="jj-ib-code" value="098522205-0000" readonly style="color:var(--c1)"></div>
+          <div class="field"><label>자재규격</label><input type="text" id="jj-ib-spec" value="AU.6006-2Z-1112" readonly style="color:var(--tx2)"></div>
+          <div class="field"><label>입고수량 (PCS)</label><input type="number" id="jj-ib-qty" value="50000" onchange="jjUib()"></div>
+          <div class="field admin-only"><label>단가 (원) <span class="badge">●관리자</span></label><input type="number" id="jj-ib-price" value="262" onchange="jjUib()"></div>
+          <div class="field"><label>납품업체</label><input type="text" value="하이순 (Haishun)" readonly style="color:var(--tx2)"></div>
+          <div class="field"><label>위치코드</label>
+            <select id="jj-ib-loc">
+              <option value="A-01-01">A-01-01</option><option value="A-01-02">A-01-02</option>
+              <option value="A-02-01">A-02-01</option><option value="B-01-01">B-01-01</option>
+              <option value="B-01-02">B-01-02</option><option value="B-02-01">B-02-01</option>
+              <option value="C-01-01">C-01-01</option><option value="D-01-01">D-01-01</option>
+            </select>
+          </div>
+          <div class="field"><label>로트번호</label><input type="text" id="jj-ib-lot" value="LOT-JJ-20260506-001"></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn b2" onclick="jjDoIb()">⬇ 입고 등록</button>
+          <button class="btn b1" onclick="jjGo('jj-label',null);jjPrepLbl()">🖨 바코드 발행</button>
+        </div>
+        <div id="jj-ib-msg" style="margin-top:10px"></div>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <div class="card-title ct1">입고 미리보기</div>
+        <div style="font-size:15px;line-height:2.4;color:var(--tx2)">
+          <div>품목: <strong style="color:var(--c3);font-size:18px" id="jj-pv-model">AU.6006-2Z-1112</strong></div>
+          <div>자재코드: <strong style="color:var(--tx);font-family:var(--fm)" id="jj-pv-code">098522205-0000</strong></div>
+          <div>수량: <strong style="color:var(--c2);font-size:24px;font-family:var(--fm)" id="jj-pv-qty">50,000</strong> PCS</div>
+          <div class="admin-only" style="flex-direction:column">
+            <div>단가: <strong style="color:var(--c3);font-family:var(--fm)" id="jj-pv-price">262원</strong></div>
+            <div>금액: <strong style="color:var(--c3);font-family:var(--fm);font-size:16px" id="jj-pv-total">13,100,000원</strong></div>
+          </div>
+          <div>위치: <strong style="color:var(--tx)" id="jj-pv-loc">A-01-01</strong></div>
+        </div>
+      </div>
+      <div class="card card-sm">
+        <div class="card-title ct3">최근 입고 이력</div>
+        <div class="tbl-wrap tbl-xs">
+          <table><thead><tr><th>일자</th><th>품목</th><th class="num">수량</th><th>상태</th></tr></thead>
+          <tbody id="jj-ib-hist">
+            <tr><td>04/01</td><td>AU.6006</td><td class="num">56,000</td><td><span class="tag tg">완료</span></td></tr>
+            <tr><td>04/06</td><td>AU.6304-2ZN</td><td class="num">8,806</td><td><span class="tag tg">완료</span></td></tr>
+          </tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 전주 출고 처리 -->
+<div class="pg" id="pg-jj-outbound">
+  <div class="g2">
+    <div>
+      <div class="card">
+        <div class="card-title ct3">출고 정보 입력</div>
+        <div class="form-grid fg2">
+          <div class="field"><label>출고일자</label><input type="date" id="jj-ob-date" value="2026-05-06"></div>
+          <div class="field"><label>품목</label>
+            <select id="jj-ob-model" onchange="jjUob()">
+              <option value="6006AU">AU.6006-2Z-1112</option>
+              <option value="6006IR">IR.6006-1122</option>
+              <option value="6007AAU">AU.6007-A-2Z-1112</option>
+              <option value="6007AIR">IR.6007-A-1122</option>
+              <option value="6008AU">AU.6008-A-2Z-1112</option>
+              <option value="6008IR">IR.6008-A-1122</option>
+              <option value="6304AU">AU.6304-B-2Z-1112</option>
+              <option value="6304IR">IR.6304-A-1122</option>
+              <option value="6305AU">AU.6305-A-2Z-1112</option>
+              <option value="6305IR">IR.6305-1122</option>
+            </select>
+          </div>
+          <div class="field"><label>현재고</label><input type="text" id="jj-ob-stk" readonly style="color:var(--c2)"></div>
+          <div class="field"><label>출고수량 (PCS)</label><input type="number" id="jj-ob-qty" value="10000" onchange="jjUob()"></div>
+          <div class="field admin-only"><label>출고단가 <span class="badge">●관리자</span></label><input type="number" id="jj-ob-price" value="262" onchange="jjUob()"></div>
+          <div class="field"><label>전표번호</label><input type="text" id="jj-ob-ref" value="JJ-SH-20260506-001"></div>
+        </div>
+        <div style="background:var(--s2);border-radius:8px;padding:14px;margin-top:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="color:var(--tx2)">출고 후 잔여재고</span>
+            <span style="color:var(--c2);font-family:var(--fm);font-size:22px;font-weight:700" id="jj-ob-remain">--</span>
+          </div>
+          <div class="admin-only" style="justify-content:space-between;align-items:center">
+            <span style="color:var(--tx2)">출고금액 <span class="badge" style="color:var(--c3)">●관리자</span></span>
+            <span style="color:var(--c3);font-family:var(--fm);font-size:16px" id="jj-ob-total">--</span>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-lg b3" onclick="jjDoOb()">⬆ 출고 처리</button>
+        </div>
+      </div>
+      <div class="card card-sm">
+        <div class="card-title ct5">금일 출고 이력</div>
+        <div class="tbl-wrap tbl-xs">
+          <table><thead><tr><th>전표</th><th>품목</th><th class="num">수량</th></tr></thead>
+          <tbody id="jj-ob-hist"></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <div class="card-title ct1">출고 전표</div>
+        <div style="background:var(--s2);border-radius:8px;padding:16px;font-size:15px;line-height:2.4">
+          <div style="text-align:center;font-size:18px;font-weight:700;color:var(--c3);margin-bottom:12px">출 하 전 표 — 전주공장</div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--tx2)">품목</span><span id="jj-sl-model" style="color:var(--tx)">--</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--tx2)">출고수량</span><span id="jj-sl-qty" style="color:var(--c2);font-family:var(--fm)">--</span></div>
+          <div class="admin-only" style="justify-content:space-between;border-top:1px solid var(--bd2);margin-top:8px;padding-top:8px">
+            <span>합계금액 <span class="badge" style="color:var(--c3)">●관리자</span></span>
+            <span id="jj-sl-total" style="color:var(--c3);font-family:var(--fm)">--</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;border-top:1px solid var(--bd2);margin-top:8px;padding-top:8px">
+            <span style="color:var(--tx2)">잔여재고</span>
+            <span id="jj-sl-remain" style="color:var(--c1);font-family:var(--fm)">--</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 전주 출고 스캔 -->
+<div class="pg" id="pg-jj-scan">
+  <div class="g2">
+    <div>
+      <div class="card">
+        <div class="card-title ct1">바코드 스캔 → 출고 처리</div>
+        <div class="scan-area" id="jj-sbox" onclick="jjScan()">
+          <div class="scan-line"></div>
+          <span class="scan-ico" style="color:var(--c3)">⊙</span>
+          <div class="scan-txt" id="jj-smsg">
+            탭하여 스캔<br>
+            <span style="font-size:13px;color:var(--tx2)">입고 시 발행한 바코드를 스캔하세요</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:14px">
+          <input type="text" id="jj-sinput" placeholder="자재코드 직접 입력 (Enter)"
+            onkeydown="if(event.key==='Enter')jjScanManual()"
+            style="flex:1;height:44px;background:var(--s2);border:1px solid var(--bd2);border-radius:8px;padding:0 14px;color:var(--tx);font-size:15px;outline:none">
+          <button class="btn b1" onclick="jjScanManual()">조회</button>
+        </div>
+      </div>
+      <!-- 스캔 결과 -->
+      <div class="card" id="jj-sr-card" style="display:none">
+        <div class="card-title ct2">스캔 결과</div>
+        <div id="jj-sr-body"></div>
+        <div style="margin-top:14px;background:var(--s2);border-radius:8px;padding:12px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+            <label style="color:var(--tx2);font-size:14px;white-space:nowrap">출고수량</label>
+            <input type="number" id="jj-scan-qty" value="10000" min="1"
+              style="flex:1;height:44px;background:var(--bg);border:1px solid var(--bd2);border-radius:8px;padding:0 14px;color:var(--tx);font-size:16px;font-family:var(--fm);outline:none">
+            <span style="color:var(--tx2)">PCS</span>
+          </div>
+          <button class="btn btn-lg b3" style="width:100%" onclick="jjScanOb()">⬆ 출고 처리 확정</button>
+        </div>
+        <div id="jj-scan-msg" style="margin-top:8px"></div>
+      </div>
+    </div>
+    <div>
+      <div class="card card-sm">
+        <div class="card-title ct3">현재고 목록</div>
+        <div class="tbl-wrap tbl-xs">
+          <table><thead><tr><th>품목</th><th class="num">현재고</th><th>상태</th></tr></thead>
+          <tbody id="jj-scan-stk-tbl"></tbody></table>
+        </div>
+      </div>
+      <div class="card card-sm">
+        <div class="card-title ct4">스캔 출고 이력</div>
+        <div class="tbl-wrap tbl-xs">
+          <table><thead><tr><th>시각</th><th>품목</th><th class="num">출고량</th><th>결과</th></tr></thead>
+          <tbody id="jj-scan-hist"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 전주 라벨 출력 -->
+<div class="pg" id="pg-jj-label">
+  <div class="printer-bar">
+    <span class="printer-lbl" style="color:var(--c3)">🖨 전주공장 라벨 — BIXOLON XD5-43t</span>
+    <select id="jj-pc-method" class="printer-sel" onchange="jjTogglePcM()">
+      <option value="server">Python서버 (USB)</option>
+      <option value="browser">브라우저 인쇄</option>
+    </select>
+    <input id="jj-pc-server" class="printer-input" value="http://localhost:5000" style="width:200px">
+    <button class="btn bg" onclick="testPrinter()" style="height:40px;font-size:13px">🔌 연결테스트</button>
+    <span id="jj-pc-status" style="font-size:13px;color:var(--tx2)">● 대기중</span>
+  </div>
+  <div class="g2">
+    <div>
+      <div class="card">
+        <div class="card-title ct1">라벨 정보 입력</div>
+        <div class="form-grid fg2">
+          <div class="field"><label>자재코드 (바코드 KEY)</label><input type="text" id="jj-lcode" value="098522205-0000" onchange="jjULbl()"></div>
+          <div class="field"><label>자재규격</label><input type="text" id="jj-lspec" value="AU.6006-2Z-1112" onchange="jjULbl()"></div>
+          <div class="field"><label>수량 (PCS)</label><input type="number" id="jj-lqty" value="50000" onchange="jjULbl()"></div>
+          <div class="field"><label>입고일</label><input type="date" id="jj-ldate" value="2026-05-06" onchange="jjULbl()"></div>
+          <div class="field"><label>위치코드</label>
+            <select id="jj-lloc" onchange="jjULbl()">
+              <option value="A-01-01" selected>A-01-01</option><option value="A-01-02">A-01-02</option>
+              <option value="A-02-01">A-02-01</option><option value="B-01-01">B-01-01</option>
+              <option value="B-02-01">B-02-01</option><option value="C-01-01">C-01-01</option>
+            </select>
+          </div>
+          <div class="field"><label>로트번호</label><input type="text" id="jj-llot" value="LOT-JJ-20260506-001" onchange="jjULbl()"></div>
+          <div class="field"><label>구분</label>
+            <select id="jj-lgubun" onchange="jjULbl()"><option>입고</option><option>재출력</option></select>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-lg b3" onclick="jjPrtLbl()">🖨 라벨 출력</button>
+          <button class="btn bg" onclick="jjBrowserPrint()">🌐 브라우저 인쇄</button>
+          <button class="btn bg" onclick="jjULbl()">↻ 갱신</button>
+        </div>
+        <div id="jj-lmsg" style="margin-top:10px"></div>
+      </div>
+      <div class="card card-sm">
+        <div class="card-title ct4">출력 이력</div>
+        <div class="tbl-wrap tbl-xs">
+          <table><thead><tr><th>시각</th><th>자재코드</th><th>수량</th><th>결과</th></tr></thead>
+          <tbody id="jj-lhist"></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <div class="card-title ct2">라벨 미리보기 (60×40mm)</div>
+        <div class="label-wrap">
+          <div class="label-card" id="jj-lp-label">
+            <div class="lbl-head" style="background:#1a3a10;border-bottom-color:var(--c3)">
+              <div class="lbl-head-title">전주공장 재고관리 WMS</div>
+              <div class="lbl-tag" id="jj-lp-gtag" style="background:var(--c3);color:#000">입고</div>
+            </div>
+            <div class="lbl-body">
+              <div class="lbl-info">
+                <div class="lbl-matno-big" id="jj-lp-code">098522205-0000</div>
+                <div class="lbl-model-big" id="jj-lp-spec" style="font-size:14px;color:#1a3a10">AU.6006-2Z-1112</div>
+                <div class="lbl-qty-row">
+                  <div class="lbl-qty-big" id="jj-lp-qty">50,000</div>
+                  <div class="lbl-qty-unit">PCS</div>
+                </div>
+                <div class="lbl-vendor" style="border-left-color:var(--c3)">하이순(Haishun)</div>
+              </div>
+              <div class="lbl-bc">
+                <div class="lbl-bc-lbl">Code 128</div>
+                <svg id="jj-lbc-svg"></svg>
+                <div class="lbl-bc-no" id="jj-lp-bc-no">098522205-0000</div>
+              </div>
+            </div>
+            <div class="lbl-btm">
+              <div class="lbl-btm-item"><span class="lbl-btm-k">입고일/위치</span><span class="lbl-btm-v" id="jj-lp-dateloc">2026-05-06/A-01-01</span></div>
+              <div class="lbl-btm-item"><span class="lbl-btm-k">로트번호</span><span class="lbl-btm-v" id="jj-lp-lot">LOT-JJ-20260506-001</span></div>
+              <div class="lbl-btm-item"><span class="lbl-btm-k">공장</span><span class="lbl-btm-v">전주공장</span></div>
+            </div>
+            <div class="lbl-footer">
+              <span id="jj-lp-fcode">098522205-0000</span>
+              <span id="jj-lp-pdt">2026-05-06 11:00</span>
+              <span id="jj-lp-seq">SEQ:0001</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 전주 불용재고 -->
+<div class="pg" id="pg-jj-dead">
+  <div style="background:rgba(255,61,110,.06);border:1px solid rgba(255,61,110,.2);border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:13px;color:var(--tx);line-height:1.8">
+    <strong style="color:var(--c4)">⚠ 장기불용재고 판단</strong> — 소진예상 = 현재고 ÷ 월평균출고(4월) &nbsp;·&nbsp;
+    <span style="color:var(--c4)">🔴 긴급</span> 12개월+ &nbsp;·&nbsp;
+    <span style="color:var(--c3)">🟡 주의</span> 6~12개월 &nbsp;·&nbsp;
+    <span style="color:var(--c2)">🟢 정상</span> 6개월 미만
+  </div>
+  <div class="kpi-grid kg4" id="jj-dead-kpi"></div>
+  <div class="card card-sm">
+    <div class="card-title ct4">불용재고 상세 분석</div>
+    <div class="tbl-wrap tbl-xs">
+      <table>
+        <thead><tr><th>등급</th><th>규격</th><th class="num">현재고</th><th class="num">월평균출고</th><th class="num">소진예상</th><th class="num">재고금액</th><th>조치</th></tr></thead>
+        <tbody id="jj-dead-tbl"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+</main>
+</div><!-- /layout -->
+
+<!-- 전주 탭바 (모바일) -->
+<nav class="tabbar" id="jj-tabbar">
+  <div class="tb-item on" onclick="jjGo('jj-dash',this)" style="color:var(--c3)"><span class="tbi">◈</span>현황</div>
+  <div class="tb-item" onclick="jjGo('jj-inbound',this)"><span class="tbi">⬇</span>입고</div>
+  <div class="tb-item" onclick="jjGo('jj-outbound',this)"><span class="tbi">⬆</span>출고</div>
+  <div class="tb-item" onclick="jjGo('jj-scan',this)"><span class="tbi">⊙</span>스캔</div>
+  <div class="tb-item" onclick="jjGo('jj-label',this)"><span class="tbi">🖨</span>라벨</div>
+</nav>
+
+</div><!-- /jj-wrap -->
 
 <!-- 모달 -->
 <div class="modal-bg" id="modal">
@@ -1285,10 +1733,10 @@ const D={
   marSelOb:[0,0,287200,86900,203684,434384,35300,0,226600,301200,435875,231000,208572,85500,0,297800,128900,209000,254035,275854,60000,0,85672,24700,18800,332862,309084,44200,0,314600,164000],
   marYelIb:[0,0,443532,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
   marYelOb:[0,0,34482,22138,0,0,0,0,0,0,0,0,137040,0,0,0,0,39312,39312,39312,0,0,0,52416,26880,26880,26544,0,0,0,0],
-  aprSelIb:[1228836,51573,0,0,0,0,250000,0,84876,0,0,0,0,120000,99000,1484431,0,0,0,0,120000,719052,0],
-  aprSelOb:[347970,228200,256840,0,0,217492,152515,289600,238000,462239,0,0,252200,231100,142000,219140,302336,0,0,170100,159800,276564,2000],
-  aprYelIb:[0,95004,0,0,0,361424,0,0,0,0,0,0,0,333018,0,0,0,0,0,0,0,0,0],
-  aprYelOb:[55160,94472,107352,0,0,115780,127140,103320,56896,61066,0,0,154657,52416,0,91728,77504,0,0,0,102600,79784,0],
+  aprSelIb:[1228836,51573,0,0,0,0,250000,0,84876,0,0,0,0,120000,99000,1484431,0,0,0,0,120000,719052,0,646593,0,0,315011,417191,108500,39169],
+  aprSelOb:[347970,228200,256840,0,0,205792,152515,289600,228000,517139,0,0,260700,231100,142000,219140,302336,0,0,170100,156800,306564,136000,171800,0,0,100300,230500,67647,254511],
+  aprYelIb:[0,95004,0,0,0,361424,0,0,0,0,0,0,0,333018,0,0,0,0,0,0,0,0,319018,0,0,0,0,0,0,0],
+  aprYelOb:[55160,94472,107352,0,0,115780,127140,103320,56896,61066,0,0,154657,52416,0,91728,77504,0,0,0,92600,79784,5148,0,0,0,0,0,45136,25456],
   models:[
     {k:'OSD6203',ib:1340000,ob:954000,stk:283000},
     {k:'6005',ib:1082172,ob:799464,stk:406039},
@@ -1304,19 +1752,31 @@ const D={
     {k:'F-576917',ib:262000,ob:92000,stk:176770},
   ],
   stkRows:[
-    ['선삭','찬스','OSD6203','AU.6203-B-2Z-8105-L6','OSD','B',120500,532500,370000,283000,32383000,'정상'],
-    ['선삭','찬스','6005','AU.6005-2012','ZZ','A',176200,250000,215852,210386,26929408,'정상'],
-    ['선삭','찬스','6004','AU.6004-2Z-2012','ZZ','A',40046,318000,96200,201400,34842200,'정상'],
-    ['선삭','찬스','F-679350','F-679350-2022.IR.KL','ZZ','B',0,432385,315908,116546,15769727,'정상'],
-    ['선삭','찬스','F-572665','F-572665-2012.AU.Q','ZZ','A',146400,222100,352400,44200,7601640,'주의'],
-    ['선삭','찬스','F-576917','F-576917-2012.AU','ZZ','A',0,140000,46000,94395,12267350,'정상'],
-    ['선삭','찬스','F-624888','F-624888-2012.AU','ZZ','A',136500,121500,6000,252000,28854000,'정상'],
-    ['선삭','인시스','6203','AU.6203-2Z-2012','ZZ','A',0,294821,201970,104821,14988401,'정상'],
-    ['선삭','인시스','FAG6202','AU.6202-2Z-1112','ZZ','A',0,199000,199000,7000,973000,'주의'],
-    ['연삭','인시스','6200','AU.6200-2Z-2011','ZZ','A',102144,372826,399108,75862,12992522,'정상'],
-    ['연삭','인시스','6204','AU.6204-2Z-2011','ZZ','A',111384,516018,507786,119616,33013896,'정상'],
-    ['연삭','인시스','6201','AU.6201-2Z-2012','ZZ','A',95000,416570,458964,52606,9207550,'주의'],
-    ['연삭','찬스','6200','IR.6200-2Z-2022','ZZ','B',506111,0,236931,234489,55284780,'정상'],
+    ['선삭','찬스','OSD6203',   'AU.6203-B-2Z-8105-L6',  'OSD','B', 12000, 315000, 132000, 195000, 29055000,'정상'],
+    ['선삭','찬스','OSD6203',   'IR.6203-B-2Z-8105-L6',  'OSD','B',  3000, 315000, 132000, 186000, 19158000,'정상'],
+    ['선삭','찬스','6005',      'AU.6005-2012',           'ZZ', 'A',179000, 180000, 210000, 149000, 19072000,'정상'],
+    ['선삭','찬스','6005',      'IR.6005-2022-R72-90',    'ZZ', 'B',136148, 240000, 252000, 124148, 16394985,'정상'],
+    ['선삭','찬스','6004',      'AU.6004-2Z-2012',        'ZZ', 'A',121600, 128000,  48200, 201400, 34842200,'정상'],
+    ['선삭','찬스','6004',      'IR.6004-2Z-2022',        'ZZ', 'B', 85000, 190000,  35100, 239900, 30227400,'정상'],
+    ['선삭','찬스','F-572665',  'F-572665-2012.AU.Q',     'ZZ', 'A',     0, 177300,  74000, 103300, 17774831,'정상'],
+    ['선삭','찬스','F-572665',  'F-572665-2022.IR.Q',     'ZZ', 'A',     0, 153200,  78000,  75200, 10917536,'주의'],
+    ['선삭','찬스','F-576917',  'F-576917-2012.AU.6003',  'ZZ', 'A',   395, 140000,  46000,  94395, 11233005,'정상'],
+    ['선삭','찬스','F-576917',  'F-576917-2022.IR.6003',  'ZZ', 'A',  6375, 122000,  46000,  82375,  7908000,'정상'],
+    ['선삭','찬스','F-624888',  'F-624888-2012.AU.6005',  'ZZ', 'A',   500, 121500,   6000, 116000, 22272000,'정상'],
+    ['선삭','찬스','F-624888',  'F-624888-2022.IR.6005',  'ZZ', 'B', 16500,  90000,      0, 106500, 13845000,'정상'],
+    ['선삭','찬스','F-679350',  'F-679350-2012.AU.KL-CO1','ZZ', 'A', 71765,  90000, 104800,  56965, 10064576,'주의'],
+    ['선삭','찬스','F-679350',  'F-679350-2022.IR.KL-CO1','ZZ', 'B',116546, 100000, 120000,  96546, 11969773,'정상'],
+    ['선삭','인시스','6203',    'AU.6203-2Z-2012',         'ZZ','A', 11970, 132851,  87970,  56851,  8922692,'주의'],
+    ['선삭','인시스','6203',    'F-845827-2022.IR.6203',   'ZZ','B', 49963,  92000,  83000,  58963,  7336868,'주의'],
+    ['선삭','인시스','FAG6202', 'AU.6202-2Z-1112',         'ZZ','A',  7000,  60000,  36000,  31000,  3759708,'정상'],
+    ['선삭','인시스','FAG6202', 'IR.6202-1122',             'ZZ','B',    0,  60000,  30000,  30000,  2963172,'정상'],
+    ['연삭','인시스','6200',    'IR.6200-2Z-2021',         'ZZ', 'B',148500,  58800, 148400,  58900,  8663119,'주의'],
+    ['연삭','인시스','6201',    'AU.6201-2Z-2011',         'ZZ', 'A',159528,  65688, 104788, 120428, 20009470,'정상'],
+    ['연삭','인시스','6201',    'IR.6201-2Z-2021',         'ZZ', 'B', 63750, 105000,  87500,  81250, 11136095,'정상'],
+    ['연삭','인시스','6204',    'AU.6204-2Z-2011',         'ZZ', 'A',137592, 206388, 196560, 147420, 40703714,'정상'],
+    ['연삭','인시스','6204',    'IR.6204-2Z-2021',         'ZZ', 'B',209664, 196560, 209664, 196560, 44865461,'정상'],
+    ['연삭','찬스',  '6200',    'IR.6200-2Z-2021(찬스)',   'ZZ', 'B', 32175,      0,      0,  32175,  5244525,'정상'],
+    ['연삭','찬스',  '6201',    'IR.6201-2Z-2021(찬스)',   'ZZ', 'B',  3692,      0,      0,   3692,   612872,'정상'],
   ],
   rptRows:[
     ['OSD6203 AU','선삭','찬스','AU.6203-B-2Z-8105-L6',120500,262500,100000,283000,32383000,'정상'],
@@ -1422,7 +1882,7 @@ function uMon(){
                3:ring==='sel'?D.marSelIb:D.marYelIb,4:ring==='sel'?D.aprSelIb:D.aprYelIb};
   const obMap={1:ring==='sel'?D.janSelOb:D.janYelOb,2:ring==='sel'?D.febSelOb:D.febYelOb,
                3:ring==='sel'?D.marSelOb:D.marYelOb,4:ring==='sel'?D.aprSelOb:D.aprYelOb};
-  const ib=ibMap[mon],ob=obMap[mon],days=[31,28,31,23][mon-1];
+  const ib=ibMap[mon],ob=obMap[mon],days=[31,28,31,30][mon-1];
   const tI=ib.reduce((a,b)=>a+b,0),tO=ob.reduce((a,b)=>a+b,0);
   const rn=ring==='sel'?'선삭링':'연삭링';
   document.getElementById('mon-kpi').innerHTML=`
@@ -1439,7 +1899,7 @@ function uMon(){
     options:{...CO,scales:CS,plugins:{...CO.plugins,tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw.toLocaleString()}`}}}}
   });
   const vd={1:{iI:800030,iO:1554144,cI:4026459,cO:4282330},2:{iI:1084225,iO:1068600,cI:2983666,cO:2037334},
-            3:{iI:1177660,iO:2336621,cI:1621697,cO:2720101},4:{iI:1074501,iO:800870,cI:3083267,cO:3147226}};
+            3:{iI:1177660,iO:2336621,cI:1621697,cO:2720101},4:{iI:1427792,iO:1232281,cI:4256440,cO:3743273}};
   const {iI,iO,cI,cO}=vd[mon];
   if(mD)mD.destroy();
   mD=new Chart(document.getElementById('mon-donut'),{type:'doughnut',
@@ -1464,7 +1924,7 @@ uMon();
 // ══════════════════════════════════════════════════════
 function initYr(){
   const ms=[{n:'1월',ib:5775771,ob:6531757,a:1364},{n:'2월',ib:4754199,ob:3705892,a:1581},
-    {n:'3월',ib:3242889,ob:5501038,a:1246},{n:'4월',ib:4947214,ob:5227971,a:1280},
+    {n:'3월',ib:3242889,ob:5501038,a:1246},{n:'4월',ib:6792696,ob:6321169,a:1400},
     ...Array.from({length:8},(_,i)=>({n:`${i+5}월`,ib:0,ob:0,a:0}))];
   const mx=Math.max(...ms.map(m=>m.ib));
   document.getElementById('yr-grid').innerHTML=ms.map((m,i)=>{
@@ -1758,7 +2218,7 @@ function buildZpl(){
 ^FO10,722^GB1208,2,2^FS
 ^CF0,16
 ^FO14,730^FD출력: ${pdt}   SEQ:${seq}^FS
-^FO900,730^FD신촌공장 WMS v3.6^FS
+^FO900,730^FD신촌공장 WMS v3.8^FS
 ^XZ`;
 }
 
@@ -1940,20 +2400,30 @@ function expMsg(){
 
 /* 품목별 1~4월 실제 출고 데이터 (1~3월 전월, 4월 1~23일) */
 const DS_MON = [
-  /* [형번, 규격, 1월출고, 2월출고, 3월출고, 4월출고, 현재고, 금액, 링, 공급처] */
-  ['OSD6203',  'AU.6203-B-2Z-8105-L6',   100000,  120000, 100000,  50000,  283000, 32383000,'선삭','찬스'],
-  ['6005',     'AU.6005-2012',             56000,   60000,  55000,  44852,  210386, 26929408,'선삭','찬스'],
-  ['6004',     'AU.6004-2Z-2012',          20000,   24000,  30000,  22200,  201400, 34842200,'선삭','찬스'],
-  ['F-679350', 'F-679350-2022.IR.KL',      90000,   80000,  85000,  60908,  116546, 15769727,'선삭','찬스'],
-  ['F-572665', 'F-572665-2012.AU.Q',       95000,   90000,  95000,  72400,   44200,  7601640,'선삭','찬스'],
-  ['F-576917', 'F-576917-2012.AU',          8000,   10000,  14000,  14000,   94395, 12267350,'선삭','찬스'],
-  ['F-624888', 'F-624888-2012.AU',          1000,    2000,   2000,   1000,  252000, 28854000,'선삭','찬스'],
-  ['6203',     'AU.6203-2Z-2012',          55000,   50000,  52000,  44970,  104821, 14988401,'선삭','인시스'],
-  ['FAG6202',  'AU.6202-2Z-1112',          55000,   54000,  56000,  34000,    7000,   973000,'선삭','인시스'],
-  ['6200(연)', 'AU.6200-2Z-2011',         100000,   85000, 100000, 114812,   75862, 12992522,'연삭','인시스'],
-  ['6204',     'AU.6204-2Z-2011',         126000,  128000, 127000, 126786,  119616, 33013896,'연삭','인시스'],
-  ['6201',     'AU.6201-2Z-2012',         120000,  115000, 115000, 108964,   52606,  9207550,'연삭','인시스'],
-  ['6200(IR)', 'IR.6200-2Z-2022',          60000,       0, 120000,  56931,  234489, 55284780,'연삭','찬스'],
+  /* [형번, 규격, 1월출고, 2월출고, 3월출고, 4월출고(마감), 현재고, 금액, 링, 공급처] */
+  ['OSD6203(AU)', 'AU.6203-B-2Z-8105-L6',  100000, 120000, 100000, 132000, 195000, 29055000,'선삭','찬스'],
+  ['OSD6203(IR)', 'IR.6203-B-2Z-8105-L6',  100000, 120000, 100000, 132000, 186000, 19158000,'선삭','찬스'],
+  ['6005 AU',     'AU.6005-2012',            56000,  60000,  55000, 210000, 149000, 19072000,'선삭','찬스'],
+  ['6005 IR',     'IR.6005-2022-R72-90',    136000,  70000,  80000, 252000, 124148, 16394985,'선삭','찬스'],
+  ['6004 AU',     'AU.6004-2Z-2012',         20000,  24000,  30000,  48200, 201400, 34842200,'선삭','찬스'],
+  ['6004 IR',     'IR.6004-2Z-2022',             0,      0,      0,  35100, 239900, 30227400,'선삭','찬스'],
+  ['F-572665 AU', 'F-572665-2012.AU.Q',      95000,  90000,  95000,  74000, 103300, 17774831,'선삭','찬스'],
+  ['F-572665 IR', 'F-572665-2022.IR.Q',          0,      0,      0,  78000,  75200, 10917536,'선삭','찬스'],
+  ['F-576917 AU', 'F-576917-2012.AU.6003',    8000,  10000,  14000,  46000,  94395, 11233005,'선삭','찬스'],
+  ['F-624888 AU', 'F-624888-2012.AU.6005',    1000,   2000,   2000,   6000, 116000, 22272000,'선삭','찬스'],
+  ['F-624888 IR', 'F-624888-2022.IR.6005',       0,      0,      0,      0, 106500, 13845000,'선삭','찬스'],
+  ['F-679350 AU', 'F-679350-2012.AU.KL',     60000,  55000,  60000, 104800,  56965, 10064576,'선삭','찬스'],
+  ['F-679350 IR', 'F-679350-2022.IR.KL',     90000,  80000,  85000, 120000,  96546, 11969773,'선삭','찬스'],
+  ['6203 AU',     'AU.6203-2Z-2012',         55000,  50000,  52000,  87970,  56851,  8922692,'선삭','인시스'],
+  ['6203 IR',     'F-845827-2022.IR.6203',   55000,  54000,  56000,  83000,  58963,  7336868,'선삭','인시스'],
+  ['FAG6202 AU',  'AU.6202-2Z-1112',         55000,  54000,  56000,  36000,  31000,  3759708,'선삭','인시스'],
+  ['FAG6202 IR',  'IR.6202-1122',                0,      0,      0,  30000,  30000,  2963172,'선삭','인시스'],
+  ['6200 IR(인)', 'IR.6200-2Z-2021',        100000,  85000, 100000, 148400,  58900,  8663119,'연삭','인시스'],
+  ['6201 AU',     'AU.6201-2Z-2011',        120000, 115000, 115000, 104788, 120428, 20009470,'연삭','인시스'],
+  ['6201 IR',     'IR.6201-2Z-2021',         60000,  80000,  75000,  87500,  81250, 11136095,'연삭','인시스'],
+  ['6204 AU',     'AU.6204-2Z-2011',        126000, 128000, 127000, 196560, 147420, 40703714,'연삭','인시스'],
+  ['6204 IR',     'IR.6204-2Z-2021',        130000, 120000, 120000, 209664, 196560, 44865461,'연삭','인시스'],
+  ['6200 IR(찬)', 'IR.6200-2Z-2021(찬스)',   60000,      0, 120000,      0,  32175,  5244525,'연삭','찬스'],
 ];
 
 let dsChart=null, dsTrend=null;
@@ -2143,8 +2613,397 @@ function showModal(h,b){
 }
 function clrModal(){document.getElementById('modal').classList.remove('on');}
 
+// ══════════════════════════════════════════════════════
+//  공장 전환
+// ══════════════════════════════════════════════════════
+let curFactory = 'sc';  // 'sc'=신촌, 'jj'=전주
+
+function switchFactory(f){
+  curFactory = f;
+  const sc = f==='sc';
+  document.getElementById('sc-wrap').style.display = sc ? '' : 'none';
+  document.getElementById('jj-wrap').style.display = sc ? 'none' : '';
+  document.getElementById('tabbar').style.display   = sc ? '' : 'none';
+  document.getElementById('jj-tabbar').style.display= sc ? 'none' : '';
+  document.getElementById('ftab-sc').classList.toggle('on', sc);
+  document.getElementById('ftab-jj').classList.toggle('on', !sc);
+  document.getElementById('hdr-logo').innerHTML = sc
+    ? '신촌공장 WMS<span>v3.8</span>'
+    : '전주공장 WMS<span>v3.8</span>';
+  if(!sc){ jjInitDash(); }
+}
+
+// ══════════════════════════════════════════════════════
+//  전주공장 데이터
+// ══════════════════════════════════════════════════════
+// 재고 (4월 마감 기준, 실시간 입출고로 변동)
+const JJ = {
+  stock: {
+    '6006AU': {code:'098522205-0000', spec:'AU.6006-2Z-1112',  maker:'하이순', price:262, stk:228035, amt:59745170},
+    '6006IR': {code:'098523082-0000', spec:'IR.6006-1122',      maker:'하이순', price:198, stk:222539, amt:44062722},
+    '6007AAU':{code:'098522213-0000', spec:'AU.6007-A-2Z-1112', maker:'하이순', price:349, stk:108358, amt:37816942},
+    '6007AIR':{code:'098523090-0000', spec:'IR.6007-A-1122',    maker:'하이순', price:242, stk:148033, amt:35823986},
+    '6008AU': {code:'098522221-0000', spec:'AU.6008-A-2Z-1112', maker:'하이순', price:435, stk: 27000, amt:11745000},
+    '6008IR': {code:'098523104-0000', spec:'IR.6008-A-1122',    maker:'하이순', price:290, stk: 69351, amt:20111790},
+    '6304AU': {code:'098522485-0000', spec:'AU.6304-B-2Z-1112', maker:'하이순', price:318, stk:136670, amt:43461060},
+    '6304IR': {code:'098523368-0000', spec:'IR.6304-A-1122',    maker:'하이순', price:215, stk:120107, amt:25823005},
+    '6305AU': {code:'098522493-0000', spec:'AU.6305-A-2Z-1112', maker:'하이순', price:436, stk: 50567, amt:22047212},
+    '6305IR': {code:'098523376-0000', spec:'IR.6305-1122',      maker:'하이순', price:298, stk: 50037, amt:14911026},
+  },
+  // 4월 일별 출고 (1~30일)
+  aprOb:[645612,123600,76400,0,0,0,84000,0,17612,0,0,0,0,40000,0,0,0,0,0,0,0,0,0,0,0,0,0,0,123600,160400,20000],
+  // 코드→키 역매핑
+  codeMap:{
+    '098522205-0000':'6006AU','098523082-0000':'6006IR',
+    '098522213-0000':'6007AAU','098523090-0000':'6007AIR',
+    '098522221-0000':'6008AU','098523104-0000':'6008IR',
+    '098522485-0000':'6304AU','098523368-0000':'6304IR',
+    '098522493-0000':'6305AU','098523376-0000':'6305IR',
+  }
+};
+
+// ── 전주 페이지 전환 ────────────────────────────────
+function jjGo(id, el){
+  document.querySelectorAll('#jj-wrap .pg').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('#jj-wrap .sb-item, #jj-tabbar .tb-item').forEach(s=>s.classList.remove('on'));
+  document.getElementById('pg-'+id).classList.add('on');
+  if(el) el.classList.add('on');
+  if(id==='jj-dash')   jjInitDash();
+  if(id==='jj-stock')  jjInitStock();
+  if(id==='jj-scan')   jjInitScanStk();
+  if(id==='jj-dead')   jjInitDead();
+  if(id==='jj-outbound') jjUob();
+  if(id==='jj-label')  jjULbl();
+}
+
+// ── 전주 대시보드 ────────────────────────────────────
+let jjBarC=null, jjDailyC=null, jjDonutC=null;
+function jjInitDash(){
+  const keys = Object.keys(JJ.stock);
+  const items = keys.map(k=>JJ.stock[k]);
+
+  // 재고 bar 차트
+  if(jjBarC) jjBarC.destroy();
+  jjBarC = new Chart(document.getElementById('jj-bar-chart'),{
+    type:'bar',
+    data:{
+      labels: items.map(d=>d.spec.substring(0,14)),
+      datasets:[{
+        label:'현재고(PCS)',
+        data: items.map(d=>d.stk),
+        backgroundColor: items.map(d=>d.stk>100000?'rgba(0,240,160,.75)':d.stk>30000?'rgba(255,192,0,.75)':'rgba(255,61,110,.75)'),
+        borderRadius:3,borderSkipped:false
+      }]
+    },
+    options:{indexAxis:'y',...CO,
+      scales:{x:{...CS.x,ticks:{...CS.x.ticks,callback:v=>v>=1000?(v/1000).toFixed(0)+'K':v}},y:{...CS.y,ticks:{...CS.y.ticks,autoSkip:false}}},
+      plugins:{...CO.plugins,legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw.toLocaleString()} PCS`}}}}
+  });
+
+  // 일별 출고 차트
+  if(jjDailyC) jjDailyC.destroy();
+  jjDailyC = new Chart(document.getElementById('jj-daily-chart'),{
+    type:'bar',
+    data:{labels:Array.from({length:30},(_,i)=>i+1),
+      datasets:[{label:'출고',data:JJ.aprOb,backgroundColor:'rgba(255,192,0,.7)',borderRadius:3,borderSkipped:false}]},
+    options:{...CO,scales:CS,plugins:{...CO.plugins,tooltip:{callbacks:{label:c=>`출고: ${c.raw.toLocaleString()}`}}}}
+  });
+
+  // 도넛
+  if(jjDonutC) jjDonutC.destroy();
+  const dColors=['rgba(0,212,255,.8)','rgba(0,212,255,.5)','rgba(0,240,160,.8)','rgba(0,240,160,.5)',
+    'rgba(255,61,110,.8)','rgba(255,61,110,.5)','rgba(184,160,255,.8)','rgba(184,160,255,.5)',
+    'rgba(255,192,0,.8)','rgba(255,192,0,.5)'];
+  jjDonutC = new Chart(document.getElementById('jj-donut'),{
+    type:'doughnut',
+    data:{labels:items.map(d=>d.spec.substring(0,12)),
+      datasets:[{data:items.map(d=>d.stk),backgroundColor:dColors,borderWidth:0}]},
+    options:{...CO,plugins:{...CO.plugins,legend:{position:'right',labels:{color:'#b8d4f0',font:{size:10},boxWidth:8,padding:6}}}}
+  });
+
+  // 대시보드 테이블
+  document.getElementById('jj-dash-tbl').innerHTML = keys.map(k=>{
+    const d=JJ.stock[k];
+    const st=d.stk>100000?'<span class="tag tg">정상</span>':d.stk>30000?'<span class="tag to">주의</span>':'<span class="tag tr">부족</span>';
+    const sc=d.stk>100000?'var(--c2)':d.stk>30000?'var(--c3)':'var(--c4)';
+    return`<tr><td style="font-size:12px">${d.spec}</td><td class="num" style="color:${sc}">${d.stk.toLocaleString()}</td><td class="num" style="color:var(--c5)">${d.amt.toLocaleString()}</td><td>${st}</td></tr>`;
+  }).join('');
+}
+
+// ── 전주 재고 현황 ───────────────────────────────────
+function jjInitStock(){
+  document.getElementById('jj-stock-tbl').innerHTML = Object.entries(JJ.stock).map(([k,d])=>{
+    const st=d.stk>100000?'<span class="tag tg">정상</span>':d.stk>30000?'<span class="tag to">주의</span>':d.stk>0?'<span class="tag tr">부족</span>':'<span class="tag tr">소진</span>';
+    const sc=d.stk>100000?'var(--c2)':d.stk>30000?'var(--c3)':'var(--c4)';
+    const beg = Math.round(d.stk + JJ.stock[k].stk * 0); // 기초=현재고(단순화)
+    return`<tr>
+      <td style="font-family:var(--fm);font-size:12px">${d.code}</td>
+      <td style="font-size:13px;color:var(--tx2)">${d.spec}</td>
+      <td>${d.maker}</td>
+      <td class="num">${d.price.toLocaleString()}</td>
+      <td class="num">-</td>
+      <td class="num" style="color:var(--c2)">-</td>
+      <td class="num" style="color:var(--c3)">-</td>
+      <td class="num" style="color:${sc};font-weight:700">${d.stk.toLocaleString()}</td>
+      <td class="num" style="color:var(--c5)">${d.amt.toLocaleString()}</td>
+      <td>${st}</td></tr>`;
+  }).join('');
+}
+
+// ── 전주 입고 처리 ───────────────────────────────────
+function jjUib(){
+  const k = document.getElementById('jj-ib-model').value;
+  const d = JJ.stock[k];
+  if(!d) return;
+  document.getElementById('jj-ib-code').value   = d.code;
+  document.getElementById('jj-ib-spec').value   = d.spec;
+  document.getElementById('jj-ib-price').value  = d.price;
+  const qty = parseInt(document.getElementById('jj-ib-qty').value)||0;
+  document.getElementById('jj-pv-model').textContent = d.spec;
+  document.getElementById('jj-pv-code').textContent  = d.code;
+  document.getElementById('jj-pv-qty').textContent   = qty.toLocaleString();
+  document.getElementById('jj-pv-price').textContent = d.price+'원';
+  document.getElementById('jj-pv-total').textContent = (qty*d.price).toLocaleString()+'원';
+  document.getElementById('jj-pv-loc').textContent   = document.getElementById('jj-ib-loc').value;
+}
+function jjDoIb(){
+  const k   = document.getElementById('jj-ib-model').value;
+  const d   = JJ.stock[k];
+  const qty = parseInt(document.getElementById('jj-ib-qty').value)||0;
+  if(!d||qty<=0) return;
+  JJ.stock[k].stk += qty;
+  JJ.stock[k].amt  = JJ.stock[k].stk * d.price;
+  const row = document.createElement('tr');
+  const now = new Date(), ds=`${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')}`;
+  row.innerHTML=`<td>${ds}</td><td style="font-size:12px">${d.spec.substring(0,12)}</td><td class="num">${qty.toLocaleString()}</td><td><span class="tag tg">완료</span></td>`;
+  document.getElementById('jj-ib-hist').prepend(row);
+  document.getElementById('jj-ib-msg').innerHTML=`<div class="alert a-ok">✓ ${d.spec} ${qty.toLocaleString()} PCS 입고 완료 — 현재고: ${JJ.stock[k].stk.toLocaleString()}</div>`;
+  setTimeout(()=>document.getElementById('jj-ib-msg').innerHTML='',3000);
+}
+
+// ── 전주 출고 처리 ───────────────────────────────────
+function jjUob(){
+  const k = document.getElementById('jj-ob-model').value;
+  const d = JJ.stock[k]; if(!d) return;
+  document.getElementById('jj-ob-stk').value = d.stk.toLocaleString()+' PCS';
+  const qty = parseInt(document.getElementById('jj-ob-qty').value)||0;
+  const p   = d.price;
+  const rem = d.stk - qty;
+  document.getElementById('jj-ob-remain').textContent = (rem>=0?rem:0).toLocaleString()+' PCS';
+  document.getElementById('jj-ob-total').textContent  = (qty*p).toLocaleString()+'원';
+  document.getElementById('jj-sl-model').textContent  = d.spec;
+  document.getElementById('jj-sl-qty').textContent    = qty.toLocaleString()+' PCS';
+  document.getElementById('jj-sl-total').textContent  = (qty*p).toLocaleString()+'원';
+  document.getElementById('jj-sl-remain').textContent = (rem>=0?rem:0).toLocaleString()+' PCS';
+}
+function jjDoOb(){
+  const k   = document.getElementById('jj-ob-model').value;
+  const d   = JJ.stock[k];
+  const qty = parseInt(document.getElementById('jj-ob-qty').value)||0;
+  if(!d||qty<=0){ showModal('오류','수량을 입력하세요.'); return; }
+  if(qty > d.stk){ showModal('재고 부족',`현재고 ${d.stk.toLocaleString()} PCS — 출고량 초과`); return; }
+  JJ.stock[k].stk -= qty;
+  JJ.stock[k].amt  = JJ.stock[k].stk * d.price;
+  const ref = document.getElementById('jj-ob-ref').value;
+  const row = document.createElement('tr');
+  row.innerHTML=`<td style="font-family:var(--fm);font-size:11px">${ref}</td><td style="font-size:12px">${d.spec.substring(0,10)}</td><td class="num">${qty.toLocaleString()}</td>`;
+  document.getElementById('jj-ob-hist').prepend(row);
+  jjUob();
+  showModal('출고 완료',`${d.spec}<br>${qty.toLocaleString()} PCS 출고 처리 완료<br>잔여재고: ${JJ.stock[k].stk.toLocaleString()} PCS`);
+}
+
+// ── 전주 스캔 출고 ───────────────────────────────────
+let jjScannedKey = null;
+function jjInitScanStk(){
+  document.getElementById('jj-scan-stk-tbl').innerHTML = Object.entries(JJ.stock).map(([k,d])=>{
+    const sc=d.stk>100000?'var(--c2)':d.stk>30000?'var(--c3)':'var(--c4)';
+    const st=d.stk>100000?'<span class="tag tg">정상</span>':d.stk>30000?'<span class="tag to">주의</span>':'<span class="tag tr">부족</span>';
+    return`<tr><td style="font-size:12px">${d.spec}</td><td class="num" style="color:${sc}">${d.stk.toLocaleString()}</td><td>${st}</td></tr>`;
+  }).join('');
+}
+function jjScan(){
+  const bx = document.getElementById('jj-sbox');
+  bx.classList.add('act');
+  document.getElementById('jj-smsg').innerHTML='<span style="color:var(--c3)">스캔 중...</span>';
+  setTimeout(()=>{
+    bx.classList.remove('act');
+    // 시뮬레이션: 랜덤 품목 스캔
+    const keys = Object.keys(JJ.stock).filter(k=>JJ.stock[k].stk>0);
+    const k = keys[Math.floor(Math.random()*keys.length)];
+    jjShowScan(k);
+    document.getElementById('jj-smsg').innerHTML='탭하여 스캔<br><span style="font-size:13px;color:var(--tx2)">입고 시 발행한 바코드를 스캔하세요</span>';
+  },1200);
+}
+function jjScanManual(){
+  const v = document.getElementById('jj-sinput').value.trim();
+  const k = JJ.codeMap[v] || Object.keys(JJ.stock).find(k=>JJ.stock[k].spec.includes(v)||v.includes(k));
+  if(k && JJ.stock[k]) jjShowScan(k);
+  else showModal('조회 실패',`"${v}" — 등록된 자재코드를 찾을 수 없습니다.`);
+}
+function jjShowScan(k){
+  jjScannedKey = k;
+  const d = JJ.stock[k];
+  const card = document.getElementById('jj-sr-card');
+  card.style.display='block';
+  const sc=d.stk>100000?'var(--c2)':d.stk>30000?'var(--c3)':'var(--c4)';
+  document.getElementById('jj-sr-body').innerHTML=`
+    <div style="font-size:20px;font-weight:700;font-family:var(--fm);color:var(--c3);margin-bottom:10px">${d.spec}</div>
+    <div style="font-size:15px;line-height:2.2;color:var(--tx2)">
+      <div>자재코드: <strong style="color:var(--tx);font-family:var(--fm)">${d.code}</strong></div>
+      <div>현재고: <strong style="color:${sc};font-size:26px;font-family:var(--fm)">${d.stk.toLocaleString()}</strong> PCS</div>
+      <div>단가: <strong style="color:var(--tx)">${d.price.toLocaleString()}원</strong></div>
+    </div>`;
+  document.getElementById('jj-scan-qty').value = Math.min(10000, d.stk);
+  document.getElementById('jj-scan-msg').innerHTML='';
+}
+function jjScanOb(){
+  if(!jjScannedKey){ showModal('오류','먼저 바코드를 스캔하세요.'); return; }
+  const d   = JJ.stock[jjScannedKey];
+  const qty = parseInt(document.getElementById('jj-scan-qty').value)||0;
+  if(qty<=0||qty>d.stk){
+    document.getElementById('jj-scan-msg').innerHTML=`<div class="alert a-err">✕ 수량 오류 — 현재고: ${d.stk.toLocaleString()} PCS</div>`;
+    return;
+  }
+  JJ.stock[jjScannedKey].stk -= qty;
+  JJ.stock[jjScannedKey].amt  = JJ.stock[jjScannedKey].stk * d.price;
+  const now=new Date(), ts=[now.getHours(),now.getMinutes()].map(v=>String(v).padStart(2,'0')).join(':');
+  const row=document.createElement('tr');
+  row.innerHTML=`<td style="font-family:var(--fm)">${ts}</td><td style="font-size:12px">${d.spec.substring(0,12)}</td><td class="num" style="color:var(--c3)">${qty.toLocaleString()}</td><td><span class="tag tg">완료</span></td>`;
+  document.getElementById('jj-scan-hist').prepend(row);
+  document.getElementById('jj-scan-msg').innerHTML=`<div class="alert a-ok">✓ ${d.spec} ${qty.toLocaleString()} PCS 출고 완료 — 잔여: ${JJ.stock[jjScannedKey].stk.toLocaleString()}</div>`;
+  jjInitScanStk();
+  jjScannedKey=null;
+  document.getElementById('jj-sr-card').style.display='none';
+}
+
+// ── 전주 라벨 ────────────────────────────────────────
+let jjLblSeq=1;
+function jjPrepLbl(){
+  const k=document.getElementById('jj-ib-model')?.value||'6006AU';
+  const d=JJ.stock[k];
+  if(d){
+    document.getElementById('jj-lcode').value=d.code;
+    document.getElementById('jj-lspec').value=d.spec;
+  }
+  jjULbl();
+}
+function jjULbl(){
+  const code=document.getElementById('jj-lcode').value.trim();
+  const spec=document.getElementById('jj-lspec').value;
+  const qty =parseInt(document.getElementById('jj-lqty').value)||0;
+  const date=document.getElementById('jj-ldate').value;
+  const lot =document.getElementById('jj-llot').value;
+  const loc =document.getElementById('jj-lloc').value;
+  const gubun=document.getElementById('jj-lgubun').value;
+  document.getElementById('jj-lp-code').textContent    = code;
+  document.getElementById('jj-lp-spec').textContent    = spec;
+  document.getElementById('jj-lp-qty').textContent     = qty.toLocaleString();
+  document.getElementById('jj-lp-bc-no').textContent   = code;
+  document.getElementById('jj-lp-fcode').textContent   = code;
+  document.getElementById('jj-lp-lot').textContent     = lot;
+  document.getElementById('jj-lp-dateloc').textContent = `${date}/${loc}`;
+  const tg=document.getElementById('jj-lp-gtag');
+  tg.textContent=gubun; tg.style.background=gubun==='입고'?'var(--c3)':'var(--c1)'; tg.style.color='#000';
+  const now=new Date();
+  document.getElementById('jj-lp-pdt').textContent=
+    `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  document.getElementById('jj-lp-seq').textContent=`SEQ:${String(jjLblSeq).padStart(4,'0')}`;
+  try{JsBarcode('#jj-lbc-svg',code,{format:'CODE128',width:2,height:60,displayValue:false,margin:3,background:'#fff',lineColor:'#000'});}catch(e){}
+}
+function jjPrtLbl(){
+  const code=document.getElementById('jj-lcode').value;
+  const qty=parseInt(document.getElementById('jj-lqty').value)||0;
+  document.getElementById('jj-lp-seq').textContent=`SEQ:${String(jjLblSeq).padStart(4,'0')}`;
+  jjLblSeq++;
+  const now=new Date(),ts=[now.getHours(),now.getMinutes()].map(v=>String(v).padStart(2,'0')).join(':');
+  const row=document.createElement('tr');
+  row.innerHTML=`<td style="font-family:var(--fm)">${ts}</td><td style="font-family:var(--fm);font-size:11px">${code}</td><td>${qty.toLocaleString()}</td><td><span class="tag tg">완료</span></td>`;
+  document.getElementById('jj-lhist').prepend(row);
+  document.getElementById('jj-lmsg').innerHTML=`<div class="alert a-ok">✓ 전주공장 라벨 출력 — ${code} | ${qty.toLocaleString()} PCS</div>`;
+  jjBrowserPrint();
+  setTimeout(()=>document.getElementById('jj-lmsg').innerHTML='',4000);
+}
+function jjBrowserPrint(){
+  const lbl=document.getElementById('jj-lp-label');
+  const w=window.open('','_blank','width=640,height=440');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>전주공장 라벨</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#f0f0f0;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:16px;font-family:'맑은 고딕','Malgun Gothic',sans-serif}
+@page{size:60mm 40mm;margin:0}
+@media print{body{background:#fff;min-height:unset;padding:0}.noprint{display:none}}
+.label-card{background:#fff;width:60mm;height:40mm;border:2px solid #333;border-radius:4px;display:flex;flex-direction:column;overflow:hidden;font-family:'맑은 고딕','Malgun Gothic',sans-serif}
+.lbl-head{background:#1a3a10;color:#fff;padding:3px 8px;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #ffc000;flex-shrink:0}
+.lbl-head-title{font-size:7pt;font-weight:700}
+.lbl-tag{font-size:7pt;font-weight:700;padding:2px 6px;border-radius:3px;background:#ffc000;color:#000}
+.lbl-body{display:flex;flex:1;min-height:0}
+.lbl-info{width:26mm;flex-shrink:0;padding:3px 5px;border-right:0.5px solid #ddd;display:flex;flex-direction:column;justify-content:space-evenly}
+.lbl-matno-big{font-size:6pt;font-weight:700;font-family:'Consolas',monospace;background:#f4f8fc;border-radius:2px;padding:1px 3px}
+.lbl-model-big{font-size:10pt;font-weight:700;color:#1a3a10;line-height:1.1}
+.lbl-qty-row{display:flex;align-items:baseline;gap:2px}
+.lbl-qty-big{font-size:14pt;font-weight:700;color:#cc0000;font-family:'Consolas',monospace}
+.lbl-qty-unit{font-size:7pt;color:#cc0000;font-weight:700}
+.lbl-vendor{font-size:6.5pt;color:#444;border-left:2px solid #ffc000;padding-left:4px}
+.lbl-bc{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3px 4px;gap:2px}
+.lbl-bc-lbl{font-size:5pt;color:#aaa;text-transform:uppercase}
+.lbl-bc svg{max-width:100%;height:auto;display:block}
+.lbl-bc-no{font-size:5.5pt;font-family:'Consolas',monospace;letter-spacing:.4px}
+.lbl-btm{background:#edf7ed;border-top:0.5px solid #c0d8c0;padding:2px 5px;flex-shrink:0;display:grid;grid-template-columns:1.5fr 1.5fr 1fr;gap:0 4px}
+.lbl-btm-item{display:flex;flex-direction:column}
+.lbl-btm-k{font-size:4.5pt;color:#666;font-weight:700;text-transform:uppercase}
+.lbl-btm-v{font-size:6pt;color:#222;font-weight:600;font-family:'Consolas',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lbl-footer{background:#e8f0e8;border-top:0.5px solid #b0c8b0;padding:2px 5px;flex-shrink:0;display:flex;justify-content:space-between;font-size:5pt;color:#555;font-family:'Consolas',monospace}
+.btns{padding:14px;display:flex;gap:10px;justify-content:center}
+button{padding:10px 26px;font-size:14px;cursor:pointer;border:none;border-radius:5px;font-family:'맑은 고딕',sans-serif}
+.bp{background:#1a3a10;color:#fff}.bc{background:#e0e0e0;color:#333}
+</style></head><body>
+${lbl.outerHTML}
+<div class="btns noprint"><button class="bp" onclick="window.print()">🖨 인쇄</button><button class="bc" onclick="window.close()">닫기</button></div>
+</body></html>`);
+  w.document.close();
+}
+function jjTogglePcM(){}
+
+// ── 전주 불용재고 ─────────────────────────────────────
+function jjInitDead(){
+  // 월평균출고 = 4월 출고 (1개월 데이터)
+  const deadData = Object.entries(JJ.stock).map(([k,d])=>{
+    // 4월 실제출고 기반 월평균
+    const obMap={'6006AU':0,'6006IR':0,'6007AAU':10000,'6007AIR':10000,
+                 '6008AU':117000,'6008IR':115000,'6304AU':12000,'6304IR':10000,
+                 '6305AU':20000,'6305IR':20000};
+    const avgOb = obMap[k]||0;
+    const months = avgOb>0 ? +(d.stk/avgOb).toFixed(1) : 999;
+    const noOb   = avgOb===0;
+    const grade  = (noOb||months>12)?'red':months>6?'yellow':'green';
+    const gLabel = grade==='red'?'🔴 긴급':grade==='yellow'?'🟡 주의':'🟢 정상';
+    const gColor = grade==='red'?'var(--c4)':grade==='yellow'?'var(--c3)':'var(--c2)';
+    return {spec:d.spec,code:d.code,stk:d.stk,amt:d.amt,avgOb,months,grade,gLabel,gColor,noOb};
+  }).sort((a,b)=>b.months-a.months);
+
+  const redCnt=deadData.filter(r=>r.grade==='red').length;
+  const yelCnt=deadData.filter(r=>r.grade==='yellow').length;
+  const redAmt=deadData.filter(r=>r.grade==='red').reduce((s,r)=>s+r.amt,0);
+  const totAmt=deadData.reduce((s,r)=>s+r.amt,0);
+  document.getElementById('jj-dead-kpi').innerHTML=`
+    <div class="kpi-card kv4"><div class="kpi-lbl">🔴 긴급</div><div class="kpi-val" style="color:var(--c4)">${redCnt}건</div><div class="kpi-sub">${(redAmt/10000).toFixed(0)}만원</div></div>
+    <div class="kpi-card kv3"><div class="kpi-lbl">🟡 주의</div><div class="kpi-val" style="color:var(--c3)">${yelCnt}건</div><div class="kpi-sub">모니터링 필요</div></div>
+    <div class="kpi-card kv2"><div class="kpi-lbl">🟢 정상</div><div class="kpi-val" style="color:var(--c2)">${deadData.length-redCnt-yelCnt}건</div><div class="kpi-sub">정상 회전</div></div>
+    <div class="kpi-card kv5"><div class="kpi-lbl">위험 금액비율</div><div class="kpi-val" style="color:var(--c5)">${totAmt>0?(redAmt/totAmt*100).toFixed(1):0}%</div><div class="kpi-sub">${(redAmt/100000000).toFixed(2)}억원</div></div>`;
+  document.getElementById('jj-dead-tbl').innerHTML=deadData.map(r=>{
+    const mDisp=r.months===999?`<span style="color:var(--c4);font-weight:700">출고없음</span>`:`<span style="color:${r.gColor};font-weight:700">${r.months}개월</span>`;
+    const warn=r.noOb?'<span class="tag tr">출고0</span>':r.grade==='red'?'<span class="tag tr">긴급처리</span>':r.grade==='yellow'?'<span class="tag to">모니터링</span>':'<span class="tag tg">정상</span>';
+    return`<tr><td>${r.gLabel}</td><td style="font-size:12px">${r.spec}</td><td class="num" style="color:var(--c1)">${r.stk.toLocaleString()}</td><td class="num" style="color:${r.avgOb?'var(--tx2)':'var(--c4)'}">${r.avgOb.toLocaleString()}</td><td class="num">${mDisp}</td><td class="num" style="color:var(--c5)">${r.amt.toLocaleString()}</td><td>${warn}</td></tr>`;
+  }).join('');
+}
 // ── 초기 실행 ──────────────────────────────────────────
-window.addEventListener('load',()=>{uLbl();});
+window.addEventListener('load',()=>{
+  uLbl();
+  jjUib();
+  jjUob();
+  jjULbl();
+});
+
 </script>
 </body>
 </html>
