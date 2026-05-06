@@ -433,7 +433,7 @@ tbody tr:hover td{background:rgba(255,255,255,.04)}
   font-family:'Consolas','맑은 고딕','Malgun Gothic',sans-serif;
 }
 .chart-box{position:relative;width:100%}
-.ch160{height:160px}.ch180{height:180px}.ch200{height:200px}.ch220{height:220px}.ch240{height:240px}
+.ch160{height:160px}.ch180{height:180px}.ch200{height:200px}.ch220{height:220px}.ch240{height:240px}.ch360{height:360px}
 .chart-box canvas{position:absolute;top:0;left:0;width:100%!important;height:100%!important}
 
 /* ═══ 테이블 줄간격 축소 (전체재고·일별집계) ════════════════ */
@@ -1360,10 +1360,12 @@ body.admin .admin-only{display:flex}
       <div class="chart-box ch200"><canvas id="jj-daily-chart"></canvas></div>
     </div>
   </div>
+
+  <!-- 도넛: 전체폭 단독 카드 + 재고요약 나란히 -->
   <div class="g2">
-    <div class="card card-sm">
+    <div class="card card-sm" style="display:flex;flex-direction:column">
       <div class="card-title ct2">품목별 현재고 비중</div>
-      <div class="chart-box ch200"><canvas id="jj-donut"></canvas></div>
+      <div class="chart-box ch360"><canvas id="jj-donut"></canvas></div>
     </div>
     <div class="card card-xs">
       <div class="card-title ct4">재고 현황 요약</div>
@@ -2723,14 +2725,47 @@ function jjInitDash(){
 
   // 도넛
   if(jjDonutC) jjDonutC.destroy();
-  const dColors=['rgba(0,212,255,.8)','rgba(0,212,255,.5)','rgba(0,240,160,.8)','rgba(0,240,160,.5)',
-    'rgba(255,61,110,.8)','rgba(255,61,110,.5)','rgba(184,160,255,.8)','rgba(184,160,255,.5)',
-    'rgba(255,192,0,.8)','rgba(255,192,0,.5)'];
+  const dColors=['rgba(0,212,255,.85)','rgba(0,212,255,.55)','rgba(0,240,160,.85)','rgba(0,240,160,.55)',
+    'rgba(255,61,110,.85)','rgba(255,61,110,.55)','rgba(184,160,255,.85)','rgba(184,160,255,.55)',
+    'rgba(255,192,0,.85)','rgba(255,192,0,.55)'];
   jjDonutC = new Chart(document.getElementById('jj-donut'),{
     type:'doughnut',
-    data:{labels:items.map(d=>d.spec.substring(0,12)),
-      datasets:[{data:items.map(d=>d.stk),backgroundColor:dColors,borderWidth:0}]},
-    options:{...CO,plugins:{...CO.plugins,legend:{position:'right',labels:{color:'#b8d4f0',font:{size:10},boxWidth:8,padding:6}}}}
+    data:{
+      labels: items.map(d=>d.spec.substring(0,16)),
+      datasets:[{
+        data: items.map(d=>d.stk),
+        backgroundColor: dColors,
+        borderWidth: 2,
+        borderColor: '#0d1e30',
+        hoverOffset: 10
+      }]
+    },
+    options:{
+      ...CO,
+      cutout: '55%',
+      layout:{padding:{top:10,bottom:10,left:10,right:10}},
+      plugins:{
+        ...CO.plugins,
+        legend:{
+          position:'bottom',
+          labels:{
+            color:'#b8d4f0',
+            font:{size:12},
+            boxWidth:12,
+            padding:14,
+            usePointStyle:true,
+            pointStyleWidth:10
+          }
+        },
+        tooltip:{callbacks:{
+          label: c=>{
+            const total = c.dataset.data.reduce((a,b)=>a+b,0);
+            const pct   = (c.raw/total*100).toFixed(1);
+            return ` ${c.label}: ${c.raw.toLocaleString()} PCS (${pct}%)`;
+          }
+        }}
+      }
+    }
   });
 
   // 대시보드 테이블
