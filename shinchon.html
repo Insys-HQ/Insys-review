@@ -3,7 +3,7 @@
   신촌공장 재고관리 시스템 (Sinchon Factory WMS)
 ================================================================================
   파일명  : shinchon.html
-  버전    : v3.1
+  버전    : v3.9
   작성일  : 2026-04-28
   수정일  : 2026-04-28
 
@@ -13,6 +13,11 @@
   v3.0       2026-04-28     전면 리모델링 (반응형, 큰 폰트, 심플 UI)
   v3.2       2026-04-28     전체 폰트 맑은 고딕으로 통일
   v3.8       2026-05-06     전주공장 재고관리 탭 추가
+  v3.9       2026-05-08     재고 실사(무게→수량) 화면 추가
+                            — 단중 마스터 관리 (품목별 개당무게·포장재무게)
+                            — MiGun ST RS-232 저울 자동 연동
+                            — 실사 이력 저장 및 장부수량 비교
+                            — 허용 오차 초과 시 관리자 확인 단계
                             — 헤더 공장 전환 탭 (신촌↔전주)
                             — 전주공장 독립 레이아웃 (사이드바·페이지 분리)
                             — 전주 대시보드·입고·출고·스캔·라벨·재고·불용재고
@@ -86,7 +91,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
-<title>WMS v3.8</title>
+<title>WMS v3.9</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js"></script>
 <style>
@@ -553,7 +558,7 @@ body.admin .admin-only{display:flex}
 
 <!-- ═══ 헤더 ════════════════════════════════════════════ -->
 <div class="hdr">
-  <div class="hdr-logo" id="hdr-logo">신촌공장 WMS<span>v3.8</span></div>
+  <div class="hdr-logo" id="hdr-logo">신촌공장 WMS<span>v3.9</span></div>
   <div class="factory-tabs">
     <div class="ftab on"    id="ftab-sc" onclick="switchFactory('sc')">🏭 신촌공장</div>
     <div class="ftab jj"   id="ftab-jj" onclick="switchFactory('jj')">🏭 전주공장</div>
@@ -586,6 +591,9 @@ body.admin .admin-only{display:flex}
   <div class="sb-item" onclick="go('byvendor',this)"><span class="ico">♦</span><span>업체별</span></div>
   <div class="sb-item" onclick="go('report',this)"><span class="ico">◷</span><span>일별 집계</span></div>
   <div class="sb-item" onclick="go('deadstock',this)" style="color:var(--c4)"><span class="ico">⚠</span><span>불용재고</span></div>
+  <div class="sb-group">실사</div>
+  <div class="sb-item" onclick="go('inventory',this)" style="color:var(--c2)"><span class="ico">⚖</span><span>재고 실사</span></div>
+  <div class="sb-item" onclick="go('weight',this)" style="color:var(--c2)"><span class="ico">⊟</span><span>단중 관리</span></div>
 </nav>
 
 <!-- 메인 콘텐츠 -->
@@ -686,7 +694,9 @@ body.admin .admin-only{display:flex}
 
 <!-- ② 월간 -->
 <div class="pg" id="pg-monthly">
-  <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+
+  <!-- 월·링 선택 -->
+  <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
     <select id="sel-month" class="printer-sel" onchange="uMon()">
       <option value="1">2026년 1월</option>
       <option value="2">2026년 2월</option>
@@ -698,29 +708,55 @@ body.admin .admin-only{display:flex}
       <option value="yel">연삭링</option>
     </select>
   </div>
+
+  <!-- KPI -->
   <div class="kpi-grid kg4" id="mon-kpi"></div>
-  <div class="g2">
-    <div class="card" style="grid-column:1/-1">
-      <div class="card-title ct1">일별 입출고</div>
-      <div class="chart-box ch160"><canvas id="mon-chart"></canvas></div>
-    </div>
+
+  <!-- 일별 입출고 차트 (전체 폭) -->
+  <div class="card card-sm">
+    <div class="card-title ct1">일별 입출고</div>
+    <div class="chart-box ch160"><canvas id="mon-chart"></canvas></div>
   </div>
+
+  <!-- 공급처별 비중(도넛) + 일별 내역 나란히 -->
   <div class="g2">
-    <div class="card card-sm">
+
+    <!-- 좌: 도넛 — 카드 전체 높이를 내용으로 채움 -->
+    <div class="card card-sm" style="display:flex;flex-direction:column">
       <div class="card-title ct2">공급처별 비중</div>
-      <div class="chart-box ch240"><canvas id="mon-donut"></canvas></div>
+
+      <!-- 도넛 메인 — flex:1로 남은 공간 전부 사용 -->
+      <div style="flex:1;position:relative;min-height:300px" id="mon-donut-wrap">
+        <canvas id="mon-donut"></canvas>
+      </div>
+
+      <!-- 공급처별 수치 요약 (도넛 하단 보조) -->
+      <div id="mon-donut-stat" style="
+        display:grid;grid-template-columns:1fr 1fr;gap:6px;
+        margin-top:10px;padding-top:10px;border-top:1px solid var(--bd)">
+      </div>
     </div>
-    <div class="card card-sm">
+
+    <!-- 우: 일별 내역 테이블 -->
+    <div class="card card-sm" style="display:flex;flex-direction:column">
       <div class="card-title ct3">일별 내역</div>
-      <div style="max-height:360px;overflow-y:auto">
+      <div style="flex:1;overflow-y:auto;min-height:0;max-height:520px">
         <div class="tbl-wrap">
           <table id="mon-tbl" class="tbl-xs">
-            <thead><tr><th>날짜</th><th>요일</th><th class="num">입고</th><th class="num">출고</th><th class="num">차이</th></tr></thead>
+            <thead>
+              <tr>
+                <th>날짜</th><th>요일</th>
+                <th class="num">입고</th>
+                <th class="num">출고</th>
+                <th class="num">차이</th>
+              </tr>
+            </thead>
             <tbody></tbody>
           </table>
         </div>
       </div>
     </div>
+
   </div>
 </div>
 
@@ -1190,9 +1226,9 @@ body.admin .admin-only{display:flex}
       &nbsp;·&nbsp;
       <span style="color:var(--c4)">🔴 긴급</span> 12개월 초과 또는 4개월간 출고 없음
       &nbsp;·&nbsp;
-      <span style="color:var(--c3)">🟡 주의</span> 6~12개월
+      <span style="color:var(--c3)">🟡 주의</span> 3~12개월
       &nbsp;·&nbsp;
-      <span style="color:var(--c2)">🟢 정상</span> 6개월 미만
+      <span style="color:var(--tx3)">⬜ 제외</span> 3개월 미만 (정상 회전, 표시 안 함)
     </div>
   </div>
 
@@ -1200,14 +1236,18 @@ body.admin .admin-only{display:flex}
   <div class="kpi-grid kg4" id="ds-kpi"></div>
 
   <!-- 소진예상 순위 차트 -->
-  <div class="g2">
-    <div class="card card-sm">
+  <div class="g2" id="ds-charts-row" style="align-items:stretch">
+    <div class="card card-sm" style="display:flex;flex-direction:column">
       <div class="card-title ct4">소진예상 순위 (개월수 — 높을수록 위험)</div>
-      <div class="chart-box ch220"><canvas id="ds-chart"></canvas></div>
+      <div id="ds-chart-wrap" style="position:relative;width:100%">
+        <canvas id="ds-chart"></canvas>
+      </div>
     </div>
-    <div class="card card-sm">
-      <div class="card-title ct3">월별 출고 추이 비교</div>
-      <div class="chart-box ch220"><canvas id="ds-trend"></canvas></div>
+    <div class="card card-sm" style="display:flex;flex-direction:column">
+      <div class="card-title ct3">월별 출고 추이 (긴급·주의 품목)</div>
+      <div id="ds-trend-wrap" style="position:relative;width:100%">
+        <canvas id="ds-trend"></canvas>
+      </div>
     </div>
   </div>
 
@@ -1218,10 +1258,9 @@ body.admin .admin-only{display:flex}
       <div class="card-title ct4" style="margin:0">장기불용재고 상세 분석</div>
       <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
         <select id="ds-filter" onchange="initDS()" style="height:36px;background:var(--s2);border:1px solid var(--bd2);border-radius:8px;padding:0 12px;color:var(--tx);font-family:var(--f);font-size:13px;outline:none">
-          <option value="all">전체 등급</option>
+          <option value="all">전체 (3개월 이상)</option>
           <option value="red">🔴 긴급만</option>
           <option value="yellow">🟡 주의만</option>
-          <option value="green">🟢 정상만</option>
         </select>
         <select id="ds-sort" onchange="initDS()" style="height:36px;background:var(--s2);border:1px solid var(--bd2);border-radius:8px;padding:0 12px;color:var(--tx);font-family:var(--f);font-size:13px;outline:none">
           <option value="months">소진예상순</option>
@@ -1278,6 +1317,208 @@ body.admin .admin-only{display:flex}
 
 </div>
 
+<!-- ⑬ 재고 실사 (무게→수량 자동 계산 + MiGun ST 저울 연동) -->
+<div class="pg" id="pg-inventory">
+
+  <!-- 저울 연동 상태 바 -->
+  <div class="printer-bar" style="margin-bottom:14px">
+    <span class="printer-lbl" style="color:var(--c2)">⚖ MiGun ST 저울 연동</span>
+    <select id="sc-port" class="printer-sel" style="width:120px">
+      <option>COM3</option><option>COM4</option><option>COM5</option><option>COM6</option>
+    </select>
+    <select id="sc-baud" class="printer-sel" style="width:100px">
+      <option>9600</option><option>19200</option><option>38400</option>
+    </select>
+    <button class="btn bg" onclick="scaleConnect()" style="height:40px;font-size:13px">🔌 연결</button>
+    <button class="btn bg" onclick="scaleRead()" style="height:40px;font-size:13px" id="sc-read-btn">⚖ 무게읽기</button>
+    <span id="sc-status" style="font-size:13px;font-family:var(--fm);color:var(--tx2)">● 미연결 (수동 입력 가능)</span>
+    <span style="font-size:12px;color:var(--tx3);margin-left:auto">※ 저울 없이도 무게를 직접 입력하여 사용 가능</span>
+  </div>
+
+  <div class="g2">
+    <!-- 좌: 입력 패널 -->
+    <div>
+      <div class="card">
+        <div class="card-title ct2">재고 실사 입력</div>
+        <div class="form-grid fg2">
+          <div class="field"><label>실사일자</label>
+            <input type="date" id="inv-date" value="2026-05-08">
+          </div>
+          <div class="field"><label>담당자</label>
+            <input type="text" id="inv-user" value="재고담당">
+          </div>
+          <div class="field"><label>품목 선택</label>
+            <select id="inv-model" onchange="invSelectModel()">
+              <option value="">-- 품목 선택 --</option>
+            </select>
+          </div>
+          <div class="field"><label>장부 수량 (PCS)</label>
+            <input type="text" id="inv-book-qty" readonly
+              style="color:var(--c1);font-weight:700;font-family:var(--fm)">
+          </div>
+          <div class="field"><label>개당 무게 (g)</label>
+            <input type="number" id="inv-unit-wt" placeholder="단중 미등록"
+              style="color:var(--c3);font-family:var(--fm)" step="0.1">
+          </div>
+          <div class="field"><label>포장재 무게 (g)</label>
+            <input type="number" id="inv-pkg-wt" value="0" placeholder="박스·팔레트 무게"
+              style="font-family:var(--fm)">
+          </div>
+        </div>
+
+        <!-- 무게 입력 (저울 자동 or 수동) -->
+        <div style="background:var(--s2);border-radius:10px;padding:16px;margin-top:14px">
+          <div style="font-size:13px;color:var(--tx2);font-weight:700;margin-bottom:10px">
+            총 무게 입력
+            <span style="font-size:11px;color:var(--tx3);font-weight:400;margin-left:8px">저울 연동 시 자동 입력 / 미연결 시 직접 입력</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+            <input type="number" id="inv-total-wt" placeholder="0.000"
+              oninput="invCalc()" step="0.001"
+              style="flex:1;height:56px;background:var(--bg);border:2px solid var(--c2);
+                border-radius:10px;padding:0 16px;color:var(--c2);
+                font-size:24px;font-family:var(--fm);font-weight:700;outline:none">
+            <span style="color:var(--tx2);font-size:18px;font-weight:600">kg</span>
+            <button class="btn b2" onclick="scaleRead()" style="height:56px;padding:0 20px;font-size:15px">
+              ⚖ 저울읽기
+            </button>
+            <button class="btn bg" onclick="invAddWeight()" style="height:56px;padding:0 16px;font-size:13px">
+              + 누적
+            </button>
+          </div>
+          <!-- 누적 입력 목록 -->
+          <div id="inv-accum" style="display:none;background:var(--s1);border-radius:8px;padding:10px;margin-bottom:10px">
+            <div style="font-size:12px;color:var(--tx2);margin-bottom:6px">누적 무게 목록</div>
+            <div id="inv-accum-list" style="font-size:13px;font-family:var(--fm);line-height:2"></div>
+            <div style="display:flex;justify-content:space-between;border-top:1px solid var(--bd);padding-top:6px;margin-top:4px">
+              <span style="color:var(--tx2);font-size:13px">누적 합계</span>
+              <span id="inv-accum-total" style="color:var(--c2);font-size:15px;font-weight:700;font-family:var(--fm)">0.000 kg</span>
+            </div>
+            <button class="btn bg" onclick="invClearAccum()" style="height:32px;font-size:12px;margin-top:8px">초기화</button>
+          </div>
+        </div>
+
+        <!-- 계산 결과 -->
+        <div style="background:var(--s1);border-radius:10px;padding:16px;margin-top:14px;border:1px solid var(--bd)">
+          <div class="card-title ct1" style="margin-bottom:12px">계산 결과</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+            <div style="background:var(--s2);border-radius:8px;padding:12px;text-align:center">
+              <div style="font-size:12px;color:var(--tx2);margin-bottom:6px">실사 수량</div>
+              <div id="inv-calc-qty" style="font-size:32px;font-weight:700;color:var(--c2);font-family:var(--fm)">—</div>
+              <div style="font-size:12px;color:var(--tx3)">PCS</div>
+            </div>
+            <div style="background:var(--s2);border-radius:8px;padding:12px;text-align:center">
+              <div style="font-size:12px;color:var(--tx2);margin-bottom:6px">장부 대비 차이</div>
+              <div id="inv-calc-diff" style="font-size:28px;font-weight:700;font-family:var(--fm)">—</div>
+              <div id="inv-calc-pct" style="font-size:12px;color:var(--tx3)">—</div>
+            </div>
+          </div>
+          <!-- 허용 오차 설정 -->
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+            <span style="font-size:13px;color:var(--tx2)">허용 오차</span>
+            <input type="number" id="inv-tolerance" value="2" min="0" max="10" step="0.5"
+              style="width:70px;height:36px;background:var(--s2);border:1px solid var(--bd2);
+                border-radius:8px;padding:0 10px;color:var(--tx);font-family:var(--fm);font-size:14px;outline:none">
+            <span style="font-size:13px;color:var(--tx2)">% 이내면 자동 승인</span>
+          </div>
+          <div id="inv-result-msg" style="margin-bottom:10px"></div>
+          <div class="field" style="margin-bottom:10px">
+            <label>비고</label>
+            <input type="text" id="inv-note" placeholder="팔레트 3개 합산, 파손 2개 제외 등">
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-lg b2" id="inv-apply-btn" onclick="invApply()" disabled
+              style="opacity:.5">✓ 실사 수량 DB 반영</button>
+            <button class="btn bg" onclick="invReset()">↺ 초기화</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 우: 실사 이력 -->
+    <div>
+      <div class="card card-sm">
+        <div class="card-title ct3">최근 실사 이력</div>
+        <div class="tbl-wrap tbl-xs">
+          <table>
+            <thead><tr>
+              <th>일자</th><th>품목</th>
+              <th class="num">장부</th><th class="num">실사</th>
+              <th class="num">차이</th><th>결과</th>
+            </tr></thead>
+            <tbody id="inv-hist-tbl">
+              <tr><td colspan="6" style="text-align:center;color:var(--tx3);padding:20px">
+                실사 이력이 없습니다
+              </td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 실사 통계 -->
+      <div class="card card-sm">
+        <div class="card-title ct5">실사 통계 (누계)</div>
+        <div id="inv-stat" style="font-size:14px;line-height:2.2;color:var(--tx2)">
+          <div>총 실사 횟수: <strong style="color:var(--tx)" id="inv-stat-cnt">0회</strong></div>
+          <div>평균 오차율: <strong style="color:var(--c3)" id="inv-stat-avg">—</strong></div>
+          <div>최대 오차 품목: <strong style="color:var(--c4)" id="inv-stat-max">—</strong></div>
+          <div>마지막 실사: <strong style="color:var(--tx)" id="inv-stat-last">—</strong></div>
+        </div>
+      </div>
+
+      <!-- 저울 연동 안내 -->
+      <div class="card card-sm" style="border-color:rgba(0,212,255,.2);background:rgba(0,212,255,.03)">
+        <div class="card-title ct1">⚖ 저울 연동 안내</div>
+        <div style="font-size:13px;line-height:2;color:var(--tx2)">
+          <div style="color:var(--c1);font-weight:700;margin-bottom:6px">MiGun ST MR-3580A 연결 방법</div>
+          <div>① 저울 뒷면 단자대: GND·TXD→PC RXD 연결</div>
+          <div>② USB-RS232 변환기 연결 (1~3만원)</div>
+          <div>③ COM 포트·Baud Rate 선택 후 [연결] 클릭</div>
+          <div>④ [⚖ 저울읽기] → 무게 자동 입력</div>
+          <div style="margin-top:8px;color:var(--tx3)">※ 저울 미연결 시 무게를 직접 입력해도 됩니다</div>
+          <div style="color:var(--tx3)">※ 단위중량 246g은 저울 전면에서 확인·설정 가능</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ⑭ 단중 관리 -->
+<div class="pg" id="pg-weight">
+  <div class="card card-sm">
+    <div class="card-title ct2">품목별 단중(개당 무게) 관리</div>
+    <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <button class="btn b2" onclick="wtSaveAll()" style="height:40px">💾 전체 저장</button>
+      <span style="font-size:13px;color:var(--tx2);align-self:center">
+        ⚠ 단중이 정확할수록 실사 수량 오차가 줄어듭니다 — 샘플 100개 측정 권장
+      </span>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>링</th><th>공급처</th><th>형번</th><th>자재규격</th>
+          <th class="num">개당 무게 (g)</th>
+          <th class="num">박스 무게 (g)</th>
+          <th class="num">박스당 입수</th>
+          <th>측정 상태</th>
+          <th>최종 수정</th>
+        </tr></thead>
+        <tbody id="wt-body"></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="card card-sm" style="border-color:rgba(0,240,160,.2);background:rgba(0,240,160,.03)">
+    <div class="card-title ct2">단중 측정 방법 (정확도 확보)</div>
+    <div style="font-size:13px;color:var(--tx2);line-height:2.2">
+      <div><strong style="color:var(--c2)">STEP 1</strong> — 동일 품목 정품 <strong style="color:var(--tx)">100개</strong>를 저울에 올린다</div>
+      <div><strong style="color:var(--c2)">STEP 2</strong> — 총 무게 ÷ 100 = 개당 단중(g) 계산</div>
+      <div><strong style="color:var(--c2)">STEP 3</strong> — <strong style="color:var(--tx)">2회 반복</strong> 측정 후 평균값 입력</div>
+      <div><strong style="color:var(--c2)">STEP 4</strong> — 박스·팔레트 빈 무게 별도 측정 후 입력</div>
+      <div style="margin-top:8px;color:var(--tx3)">※ AU/IR 별로 무게가 다를 수 있으니 반드시 구분하여 측정</div>
+    </div>
+  </div>
+</div>
+
 </main><!-- /main -->
 </div><!-- /layout -->
 
@@ -1298,6 +1539,8 @@ body.admin .admin-only{display:flex}
       <div class="tb-m-item" onclick="go('byvendor',this);closeTbMenu()"><span>♦</span>업체별</div>
       <div class="tb-m-item" onclick="go('report',this);closeTbMenu()"><span>◷</span>일별 집계</div>
       <div class="tb-m-item" onclick="go('deadstock',this);closeTbMenu()" style="color:var(--c4)"><span>⚠</span>불용재고</div>
+      <div class="tb-m-item" onclick="go('inventory',this);closeTbMenu()" style="color:var(--c2)"><span>⚖</span>재고 실사</div>
+      <div class="tb-m-item" onclick="go('weight',this);closeTbMenu()" style="color:var(--c2)"><span>⊟</span>단중 관리</div>
     </div>
   </div>
 </nav>
@@ -1829,7 +2072,7 @@ function go(id,el){
   if(tbMap[id]!==undefined){
     document.querySelectorAll('.tabbar .tb-item')[tbMap[id]]?.classList.add('on');
   }
-  ({monthly:uMon,yearly:initYr,bymodel:initByM,byvendor:initByV,stock:initStk,report:initRpt,deadstock:initDS}[id]||function(){})();
+  ({monthly:uMon,yearly:initYr,bymodel:initByM,byvendor:initByV,stock:initStk,report:initRpt,deadstock:initDS,inventory:initInv,weight:initWeight}[id]||function(){})();
 }
 
 function toggleTbMenu(){
@@ -1851,24 +2094,7 @@ function toggleAdmin(){
   document.querySelectorAll('.admin-only').forEach(el=>{el.style.display=on?'flex':'none';});
 }
 
-// ══════════════════════════════════════════════════════
-//  대시보드 차트
-// ══════════════════════════════════════════════════════
-new Chart(document.getElementById('dash-chart'),{type:'bar',
-  data:{labels:Array.from({length:30},(_,i)=>i+1),
-    datasets:[
-      {label:'입고',data:D.aprSelIb,backgroundColor:'rgba(0,240,160,.65)',borderRadius:3,borderSkipped:false},
-      {label:'출고',data:D.aprSelOb,backgroundColor:'rgba(255,192,0,.65)',borderRadius:3,borderSkipped:false}
-    ]},
-  options:{...CO,
-    scales:{
-      x:{ticks:{color:'#b8d4f0',font:{size:11},maxRotation:0,autoSkip:true,maxTicksLimit:10},
-         grid:{color:'rgba(42,78,112,.5)'}},
-      y:{...CS.y}
-    },
-    plugins:{...CO.plugins,tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw.toLocaleString()}`}}}
-  }
-});
+// 대시보드 차트: load 이벤트에서 초기화
 
 function mkHBar(id,items,color){
   const el=document.getElementById(id);if(!el)return;
@@ -1883,52 +2109,145 @@ function mkHBar(id,items,color){
     </div>`;
   });
 }
-mkHBar('top-ib-bars',D.models.slice(0,8).map(d=>({l:d.k,v:d.ib})),'var(--c2)');
 
 // ══════════════════════════════════════════════════════
 //  월간
 // ══════════════════════════════════════════════════════
 let mC=null,mD=null;
 function uMon(){
-  const mon=+document.getElementById('sel-month').value;
-  const ring=document.getElementById('sel-ring').value;
+  const mon  = +document.getElementById('sel-month').value;
+  const ring = document.getElementById('sel-ring').value;
   const ibMap={1:ring==='sel'?D.janSelIb:D.janYelIb,2:ring==='sel'?D.febSelIb:D.febYelIb,
                3:ring==='sel'?D.marSelIb:D.marYelIb,4:ring==='sel'?D.aprSelIb:D.aprYelIb};
   const obMap={1:ring==='sel'?D.janSelOb:D.janYelOb,2:ring==='sel'?D.febSelOb:D.febYelOb,
                3:ring==='sel'?D.marSelOb:D.marYelOb,4:ring==='sel'?D.aprSelOb:D.aprYelOb};
-  const ib=ibMap[mon],ob=obMap[mon],days=[31,28,31,30][mon-1];
-  const tI=ib.reduce((a,b)=>a+b,0),tO=ob.reduce((a,b)=>a+b,0);
+  const ib=ibMap[mon], ob=obMap[mon], days=[31,28,31,30][mon-1];
+  const tI=ib.reduce((a,b)=>a+b,0), tO=ob.reduce((a,b)=>a+b,0);
   const rn=ring==='sel'?'선삭링':'연삭링';
+
+  /* ── KPI ── */
   document.getElementById('mon-kpi').innerHTML=`
-    <div class="kpi-card kv2"><div class="kpi-lbl">${rn} 총입고</div><div class="kpi-val" style="color:var(--c2)">${tI.toLocaleString()}</div><div class="kpi-sub">PCS</div></div>
-    <div class="kpi-card kv3"><div class="kpi-lbl">${rn} 총출고</div><div class="kpi-val" style="color:var(--c3)">${tO.toLocaleString()}</div><div class="kpi-sub">PCS</div></div>
-    <div class="kpi-card kv1"><div class="kpi-lbl">입출고 차이</div><div class="kpi-val" style="color:${tI>=tO?'var(--c2)':'var(--c4)'}">${tI>=tO?'+':''}${(tI-tO).toLocaleString()}</div><div class="kpi-sub">입고-출고</div></div>
-    <div class="kpi-card kv5"><div class="kpi-lbl">처리 건수</div><div class="kpi-val" style="color:var(--c5)">${ib.filter(v=>v>0).length+ob.filter(v=>v>0).length}</div><div class="kpi-sub">일 처리</div></div>`;
+    <div class="kpi-card kv2"><div class="kpi-lbl">${rn} 총입고</div>
+      <div class="kpi-val" style="color:var(--c2)">${tI.toLocaleString()}</div>
+      <div class="kpi-sub">PCS</div></div>
+    <div class="kpi-card kv3"><div class="kpi-lbl">${rn} 총출고</div>
+      <div class="kpi-val" style="color:var(--c3)">${tO.toLocaleString()}</div>
+      <div class="kpi-sub">PCS</div></div>
+    <div class="kpi-card kv1"><div class="kpi-lbl">입출고 차이</div>
+      <div class="kpi-val" style="color:${tI>=tO?'var(--c2)':'var(--c4)'}">${tI>=tO?'+':''}${(tI-tO).toLocaleString()}</div>
+      <div class="kpi-sub">입고 − 출고</div></div>
+    <div class="kpi-card kv5"><div class="kpi-lbl">처리 건수</div>
+      <div class="kpi-val" style="color:var(--c5)">${ib.filter(v=>v>0).length+ob.filter(v=>v>0).length}</div>
+      <div class="kpi-sub">영업일 처리</div></div>`;
+
+  /* ── 일별 바 차트 ── */
   if(mC)mC.destroy();
   mC=new Chart(document.getElementById('mon-chart'),{type:'bar',
     data:{labels:Array.from({length:days},(_,i)=>i+1),datasets:[
       {label:'입고',data:ib.slice(0,days),backgroundColor:'rgba(0,240,160,.65)',borderRadius:3,borderSkipped:false},
       {label:'출고',data:ob.slice(0,days),backgroundColor:'rgba(255,192,0,.65)',borderRadius:3,borderSkipped:false}
     ]},
-    options:{...CO,scales:CS,plugins:{...CO.plugins,tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw.toLocaleString()}`}}}}
+    options:{...CO,
+      scales:{
+        x:{ticks:{color:'#b8d4f0',font:{size:11},maxRotation:0,autoSkip:true,maxTicksLimit:10},
+           grid:{color:'rgba(42,78,112,.5)'}},
+        y:{...CS.y}
+      },
+      plugins:{...CO.plugins,tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw.toLocaleString()}`}}}}
   });
-  const vd={1:{iI:800030,iO:1554144,cI:4026459,cO:4282330},2:{iI:1084225,iO:1068600,cI:2983666,cO:2037334},
-            3:{iI:1177660,iO:2336621,cI:1621697,cO:2720101},4:{iI:1427792,iO:1232281,cI:4256440,cO:3743273}};
+
+  /* ── 공급처별 도넛 ── */
+  const vd={
+    1:{iI:800030,  iO:1554144, cI:4026459, cO:4282330},
+    2:{iI:1084225, iO:1068600, cI:2983666, cO:2037334},
+    3:{iI:1177660, iO:2336621, cI:1621697, cO:2720101},
+    4:{iI:1427792, iO:1232281, cI:4256440, cO:3743273}
+  };
   const {iI,iO,cI,cO}=vd[mon];
+  const dVals  = [iI, cI, iO, cO];
+  const dTotal = dVals.reduce((a,b)=>a+b,0);
+  const dLabels= ['인시스 입고','찬스 입고','인시스 출고','찬스 출고'];
+  const dColors= [
+    'rgba(0,212,255,.9)',   /* 인시스입고 — 하늘 */
+    'rgba(184,160,255,.9)', /* 찬스입고  — 보라 */
+    'rgba(0,240,160,.85)',  /* 인시스출고 — 초록 */
+    'rgba(255,192,0,.85)'   /* 찬스출고  — 황금 */
+  ];
+
+  /* 도넛 wrapper 높이를 콘텐츠에 맞게 동적 조정 */
+  const wrap = document.getElementById('mon-donut-wrap');
+  wrap.style.height = '360px';
+
   if(mD)mD.destroy();
-  mD=new Chart(document.getElementById('mon-donut'),{type:'doughnut',
-    data:{labels:['인시스입고','찬스입고','인시스출고','찬스출고'],
-      datasets:[{data:[iI,cI,iO,cO],backgroundColor:['rgba(0,212,255,.8)','rgba(184,160,255,.8)','rgba(0,240,160,.65)','rgba(255,192,0,.65)'],borderWidth:0}]},
-    options:{...CO,plugins:{...CO.plugins,legend:{position:'bottom',labels:{color:'#90b8d8',font:{size:12},boxWidth:10,padding:10}},
-      tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw.toLocaleString()}`}}}}
+  mD=new Chart(document.getElementById('mon-donut'),{
+    type:'doughnut',
+    data:{
+      labels: dLabels,
+      datasets:[{
+        data: dVals,
+        backgroundColor: dColors,
+        borderWidth: 2,
+        borderColor: '#0d1e30',
+        hoverOffset: 14
+      }]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      cutout:'52%',
+      layout:{padding:{top:12,bottom:8,left:8,right:8}},
+      plugins:{
+        legend:{
+          position:'bottom',
+          labels:{
+            color:'#eef4ff',
+            font:{size:13,weight:'600'},
+            boxWidth:14,
+            padding:16,
+            usePointStyle:true,
+            pointStyleWidth:12
+          }
+        },
+        tooltip:{callbacks:{
+          label:c=>{
+            const pct=(c.raw/dTotal*100).toFixed(1);
+            return `  ${c.label}: ${c.raw.toLocaleString()} (${pct}%)`;
+          }
+        }}
+      }
+    }
   });
-  const tb=document.querySelector('#mon-tbl tbody');tb.innerHTML='';
+
+  /* ── 도넛 하단 수치 카드 ── */
+  const statEl = document.getElementById('mon-donut-stat');
+  const statDefs = [
+    {lbl:'인시스 입고', val:iI, clr:'var(--c1)'},
+    {lbl:'찬스 입고',   val:cI, clr:'var(--c5)'},
+    {lbl:'인시스 출고', val:iO, clr:'var(--c2)'},
+    {lbl:'찬스 출고',   val:cO, clr:'var(--c3)'},
+  ];
+  statEl.innerHTML = statDefs.map(s=>`
+    <div style="background:var(--s2);border-radius:8px;padding:8px 12px;text-align:center">
+      <div style="font-size:11px;color:var(--tx2);margin-bottom:4px">${s.lbl}</div>
+      <div style="font-size:15px;font-weight:700;font-family:var(--fm);color:${s.clr}">${(s.val/1000).toFixed(0)}K</div>
+      <div style="font-size:11px;color:var(--tx3)">${(s.val/dTotal*100).toFixed(1)}%</div>
+    </div>`).join('');
+
+  /* ── 일별 내역 테이블 ── */
+  const tb=document.querySelector('#mon-tbl tbody');
+  tb.innerHTML='';
   for(let i=0;i<days;i++){
-    const iv=ib[i]||0,ov=ob[i]||0,df=iv-ov;
-    if(iv===0&&ov===0){const dt=new Date(2026,mon-1,i+1);if(dt.getDay()===0||dt.getDay()===6)continue;}
-    const dc=df>0?'var(--c2)':df<0?'var(--c4)':'var(--tx2)';
+    const iv=ib[i]||0, ov=ob[i]||0, df=iv-ov;
     const dt=new Date(2026,mon-1,i+1);
-    tb.innerHTML+=`<tr><td>${mon}/${String(i+1).padStart(2,'0')}</td><td style="color:var(--tx2)">${DOW[dt.getDay()]}</td><td class="num">${iv?iv.toLocaleString():'-'}</td><td class="num">${ov?ov.toLocaleString():'-'}</td><td class="num" style="color:${dc}">${(iv||ov)?(df>0?'+':'')+df.toLocaleString():'-'}</td></tr>`;
+    if(iv===0&&ov===0&&(dt.getDay()===0||dt.getDay()===6))continue;
+    const dc=df>0?'var(--c2)':df<0?'var(--c4)':'var(--tx2)';
+    tb.innerHTML+=`<tr>
+      <td>${mon}/${String(i+1).padStart(2,'0')}</td>
+      <td style="color:var(--tx2)">${DOW[dt.getDay()]}</td>
+      <td class="num">${iv?iv.toLocaleString():'-'}</td>
+      <td class="num">${ov?ov.toLocaleString():'-'}</td>
+      <td class="num" style="color:${dc}">${(iv||ov)?(df>0?'+':'')+df.toLocaleString():'-'}</td>
+    </tr>`;
   }
 }
 uMon();
@@ -2232,7 +2551,7 @@ function buildZpl(){
 ^FO10,722^GB1208,2,2^FS
 ^CF0,16
 ^FO14,730^FD출력: ${pdt}   SEQ:${seq}^FS
-^FO900,730^FD신촌공장 WMS v3.8^FS
+^FO900,730^FD신촌공장 WMS v3.9^FS
 ^XZ`;
 }
 
@@ -2444,17 +2763,21 @@ let dsChart=null, dsTrend=null;
 
 function calcDS(row){
   const [model,spec,ob1,ob2,ob3,ob4,stk,amt,ring,vendor]=row;
-  /* 4월 23일치 → 31일 월환산 */
-  const ob4full = Math.round(ob4*31/23);
-  const avgOb   = Math.round((ob1+ob2+ob3+ob4full)/4);
+  /* 4월 마감 데이터 — 실제 30일 */
+  const avgOb   = Math.round((ob1+ob2+ob3+ob4)/4);
   const months  = avgOb>0 ? +(stk/avgOb).toFixed(1) : 999;
   const noOb    = ob1===0&&ob2===0&&ob3===0&&ob4===0;
-  const declining = ob1>0&&ob2>0&&ob3>0&&ob1>ob2&&ob2>ob3; /* 3개월 연속 감소 */
+  const declining = ob1>0&&ob2>0&&ob3>0&&ob1>ob2&&ob2>ob3;
 
   let grade,gradeLabel,gradeColor;
-  if(noOb||months>12){grade='red';gradeLabel='🔴 긴급';gradeColor='var(--c4)';}
-  else if(months>6)  {grade='yellow';gradeLabel='🟡 주의';gradeColor='var(--c3)';}
-  else               {grade='green';gradeLabel='🟢 정상';gradeColor='var(--c2)';}
+  if(noOb||months>12){
+    grade='red';    gradeLabel='🔴 긴급'; gradeColor='var(--c4)';
+  } else if(months>=3){
+    grade='yellow'; gradeLabel='🟡 주의'; gradeColor='var(--c3)';
+  } else {
+    /* 3개월 미만 — 정상 회전, 화면 제외 */
+    grade='exclude'; gradeLabel='⬜ 제외'; gradeColor='var(--tx3)';
+  }
 
   return {model,spec,ob1,ob2,ob3,ob4,stk,amt,ring,vendor,avgOb,months,grade,gradeLabel,gradeColor,declining,noOb};
 }
@@ -2462,22 +2785,25 @@ function calcDS(row){
 function initDS(){
   const filter = document.getElementById('ds-filter')?.value||'all';
   const sort   = document.getElementById('ds-sort')?.value||'months';
-  const rows   = DS_MON.map(calcDS);
+  const allRows = DS_MON.map(calcDS);
+
+  /* ── 3개월 미만(exclude) 제외 — 차트·테이블·KPI 모두 적용 ── */
+  const rows = allRows.filter(r=>r.grade!=='exclude');
 
   let filt = rows;
   if(filter==='red')    filt=rows.filter(r=>r.grade==='red');
   if(filter==='yellow') filt=rows.filter(r=>r.grade==='yellow');
-  if(filter==='green')  filt=rows.filter(r=>r.grade==='green');
 
   if(sort==='months') filt.sort((a,b)=>b.months-a.months);
   if(sort==='amt')    filt.sort((a,b)=>b.amt-a.amt);
   if(sort==='stock')  filt.sort((a,b)=>b.stk-a.stk);
 
-  /* KPI */
+  /* ── KPI ── */
   const redCnt   = rows.filter(r=>r.grade==='red').length;
   const yelCnt   = rows.filter(r=>r.grade==='yellow').length;
+  const excCnt   = allRows.filter(r=>r.grade==='exclude').length;
   const redAmt   = rows.filter(r=>r.grade==='red').reduce((s,r)=>s+r.amt,0);
-  const totalAmt = rows.reduce((s,r)=>s+r.amt,0);
+  const totalAmt = allRows.reduce((s,r)=>s+r.amt,0);
   const riskPct  = totalAmt>0?(redAmt/totalAmt*100).toFixed(1):0;
 
   document.getElementById('ds-kpi').innerHTML=`
@@ -2487,14 +2813,14 @@ function initDS(){
       <div class="kpi-sub">${(redAmt/10000).toFixed(0)}만원 위험 재고</div>
     </div>
     <div class="kpi-card kv3">
-      <div class="kpi-lbl">🟡 주의 (6~12개월)</div>
+      <div class="kpi-lbl">🟡 주의 (3~12개월)</div>
       <div class="kpi-val" style="color:var(--c3)">${yelCnt}건</div>
       <div class="kpi-sub">모니터링 필요</div>
     </div>
     <div class="kpi-card kv2">
-      <div class="kpi-lbl">🟢 정상 (6개월 미만)</div>
-      <div class="kpi-val" style="color:var(--c2)">${rows.length-redCnt-yelCnt}건</div>
-      <div class="kpi-sub">정상 회전 중</div>
+      <div class="kpi-lbl">⬜ 제외 (3개월 미만)</div>
+      <div class="kpi-val" style="color:var(--tx2)">${excCnt}건</div>
+      <div class="kpi-sub">정상 회전 — 표시 안 함</div>
     </div>
     <div class="kpi-card kv5">
       <div class="kpi-lbl">불용위험 금액 비율</div>
@@ -2502,88 +2828,114 @@ function initDS(){
       <div class="kpi-sub">${(redAmt/100000000).toFixed(2)}억 / 총${(totalAmt/100000000).toFixed(1)}억</div>
     </div>`;
 
-  /* 소진예상 수평 막대 차트 */
+  /* ── 소진예상 차트 ── */
+  /* 3개월 이상 품목만 정렬 */
   const sortedAll=[...rows].sort((a,b)=>b.months-a.months);
   const bColors=sortedAll.map(r=>
-    r.grade==='red'?'rgba(255,61,110,.85)':
-    r.grade==='yellow'?'rgba(255,192,0,.85)':'rgba(0,240,160,.75)');
+    r.grade==='red'    ? 'rgba(255,61,110,.85)' :
+                         'rgba(255,192,0,.85)');   /* yellow */
+
+  /* 행당 28px × 품목수 + 축 여백 44px */
+  const ROW_H  = 28;
+  const chartH = Math.max(160, sortedAll.length * ROW_H + 44);
+  const trendH = chartH;
+
+  const cWrap   = document.getElementById('ds-chart-wrap');
+  const tWrap   = document.getElementById('ds-trend-wrap');
+  const cCanvas = document.getElementById('ds-chart');
+  const tCanvas = document.getElementById('ds-trend');
+
+  cWrap.style.height   = chartH+'px';
+  tWrap.style.height   = trendH+'px';
+  cCanvas.style.height = chartH+'px';  cCanvas.height = chartH;
+  tCanvas.style.height = trendH+'px';  tCanvas.height = trendH;
 
   if(dsChart)dsChart.destroy();
-  dsChart=new Chart(document.getElementById('ds-chart'),{
+  dsChart=new Chart(cCanvas,{
     type:'bar',
     data:{
-      labels:sortedAll.map(r=>r.model),
+      labels: sortedAll.map(r=>r.model),
       datasets:[{
         label:'소진예상(개월)',
-        data:sortedAll.map(r=>r.months===999?16:r.months),
-        backgroundColor:bColors,
-        borderRadius:3,borderSkipped:false
+        data: sortedAll.map(r=>r.months===999?13:r.months),
+        backgroundColor: bColors,
+        borderRadius:4, borderSkipped:false,
+        barThickness: 16
       }]
     },
     options:{
-      indexAxis:'y',...CO,
+      indexAxis:'y',
+      responsive:false,
+      maintainAspectRatio:false,
+      layout:{padding:{top:4,bottom:4,left:0,right:16}},
       scales:{
-        x:{ticks:{color:'#b8d4f0',font:{size:10},callback:v=>v+'개월'},
-           grid:{color:'rgba(42,78,112,.5)'},max:18},
-        y:{ticks:{color:'#b8d4f0',font:{size:10},autoSkip:false},
-           grid:{color:'rgba(42,78,112,.3)'}}
+        x:{
+          ticks:{color:'#b8d4f0',font:{size:12},callback:v=>v+'개월'},
+          grid:{color:'rgba(42,78,112,.5)'},
+          max:14
+        },
+        y:{
+          ticks:{color:'#eef4ff',font:{size:12,weight:'600'},autoSkip:false,padding:6},
+          grid:{color:'rgba(42,78,112,.15)'}
+        }
       },
       plugins:{
-        ...CO.plugins,legend:{display:false},
+        legend:{display:false},
         tooltip:{callbacks:{label:c=>{
           const r=sortedAll[c.dataIndex];
-          return r.noOb?`${r.model}: 4개월 출고 없음 (긴급)`:
-                        `${r.model}: ${r.months}개월`;
+          return r.noOb ? `  ${r.model}: 출고 없음 (긴급)` : `  ${r.model}: ${r.months}개월`;
         }}}
       }
     }
   });
 
-  /* 월별 출고 추이 꺾은선 (긴급+주의만) */
-  const riskRows=[...rows].filter(r=>r.grade!=='green').sort((a,b)=>b.months-a.months).slice(0,6);
+  /* ── 월별 추이 — 긴급+주의 상위 6개 ── */
+  const riskRows=[...rows].filter(r=>r.grade!=='exclude')
+    .sort((a,b)=>b.months-a.months).slice(0,6);
   const tClr=['#ff3d6e','#ffc000','#ff8040','#b8a0ff','#ff6090','#60c8ff'];
 
   if(dsTrend)dsTrend.destroy();
-  dsTrend=new Chart(document.getElementById('ds-trend'),{
+  dsTrend=new Chart(tCanvas,{
     type:'line',
     data:{
-      labels:['1월','2월','3월','4월(~23)'],
+      labels:['1월','2월','3월','4월(마감)'],
       datasets:riskRows.map((r,i)=>({
         label:r.model,
         data:[r.ob1,r.ob2,r.ob3,r.ob4],
         borderColor:tClr[i]||'#aaa',
         backgroundColor:'transparent',
-        tension:.3,pointRadius:4,
-        pointBackgroundColor:tClr[i]||'#aaa'
+        tension:.3,pointRadius:5,pointHoverRadius:7,
+        pointBackgroundColor:tClr[i]||'#aaa',
+        borderWidth:2
       }))
     },
     options:{
-      ...CO,
+      responsive:false,
+      maintainAspectRatio:false,
+      layout:{padding:{top:16,bottom:16,left:8,right:8}},
       scales:{
-        x:{ticks:{color:'#b8d4f0',font:{size:11}},grid:{color:'rgba(42,78,112,.5)'}},
-        y:{ticks:{color:'#b8d4f0',font:{size:11},callback:v=>v>=1000?(v/1000).toFixed(0)+'K':v},
+        x:{ticks:{color:'#b8d4f0',font:{size:13}},grid:{color:'rgba(42,78,112,.5)'}},
+        y:{ticks:{color:'#b8d4f0',font:{size:12},callback:v=>v>=1000?(v/1000).toFixed(0)+'K':v},
            grid:{color:'rgba(42,78,112,.5)'}}
       },
       plugins:{
-        ...CO.plugins,
-        legend:{position:'bottom',labels:{color:'#b8d4f0',font:{size:11},boxWidth:10,padding:8}},
+        legend:{position:'bottom',labels:{color:'#eef4ff',font:{size:12},boxWidth:12,padding:10}},
         tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw.toLocaleString()}`}}
       }
     }
   });
 
-  /* 상세 테이블 */
+  /* ── 상세 테이블 (exclude 제외) ── */
   document.getElementById('ds-body').innerHTML=filt.map(r=>{
-    const mDisp=r.months===999?
-      `<span style="color:var(--c4);font-weight:700">출고없음</span>`:
-      `<span style="color:${r.gradeColor};font-weight:700">${r.months}개월</span>`;
+    const mDisp=r.months===999
+      ? `<span style="color:var(--c4);font-weight:700">출고없음</span>`
+      : `<span style="color:${r.gradeColor};font-weight:700">${r.months}개월</span>`;
     const trend=r.declining?'<span style="color:var(--c4);font-size:11px"> ↓감소</span>':'';
     const warn =r.noOb?'<span class="tag tr">출고0</span>':
                 r.grade==='red'?'<span class="tag tr">긴급처리</span>':
-                r.grade==='yellow'?'<span class="tag to">모니터링</span>':
-                '<span class="tag tg">정상</span>';
+                '<span class="tag to">모니터링</span>';
     const fn=(v)=>v>0?`<span style="color:var(--tx)">${v.toLocaleString()}</span>`:
-                      `<span style="color:var(--c4);font-weight:700">0</span>`;
+                     `<span style="color:var(--c4);font-weight:700">0</span>`;
     return`<tr>
       <td>${r.gradeLabel}</td>
       <td><span class="tag ${r.ring==='선삭'?'tb':'tp'}">${r.ring}</span></td>
@@ -2602,11 +2954,11 @@ function initDS(){
     </tr>`;
   }).join('');
 
-  /* 긴급 목록 */
+  /* ── 긴급 목록 ── */
   const reds=rows.filter(r=>r.grade==='red').sort((a,b)=>b.amt-a.amt);
-  document.getElementById('ds-red-list').innerHTML=reds.length===0?
-    '<div style="color:var(--c2)">현재 긴급 품목 없음 ✓</div>':
-    reds.map(r=>`
+  document.getElementById('ds-red-list').innerHTML=reds.length===0
+    ? '<div style="color:var(--c2)">현재 긴급 품목 없음 ✓</div>'
+    : reds.map(r=>`
       <div style="padding:7px 0;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center;gap:8px">
         <div>
           <span style="color:var(--c4);font-weight:700;font-family:var(--fm)">${r.model}</span>
@@ -2642,8 +2994,8 @@ function switchFactory(f){
   document.getElementById('ftab-sc').classList.toggle('on', sc);
   document.getElementById('ftab-jj').classList.toggle('on', !sc);
   document.getElementById('hdr-logo').innerHTML = sc
-    ? '신촌공장 WMS<span>v3.8</span>'
-    : '전주공장 WMS<span>v3.8</span>';
+    ? '신촌공장 WMS<span>v3.9</span>'
+    : '전주공장 WMS<span>v3.9</span>';
   if(!sc){ jjInitDash(); }
 }
 
@@ -3043,8 +3395,330 @@ function jjInitDead(){
     return`<tr><td>${r.gLabel}</td><td style="font-size:12px">${r.spec}</td><td class="num" style="color:var(--c1)">${r.stk.toLocaleString()}</td><td class="num" style="color:${r.avgOb?'var(--tx2)':'var(--c4)'}">${r.avgOb.toLocaleString()}</td><td class="num">${mDisp}</td><td class="num" style="color:var(--c5)">${r.amt.toLocaleString()}</td><td>${warn}</td></tr>`;
   }).join('');
 }
+// ══════════════════════════════════════════════════════
+//  재고 실사 — 무게→수량 자동 계산 + MiGun ST 연동
+// ══════════════════════════════════════════════════════
+
+/* 단중 데이터 (품목별 개당 무게 g / 포장재 무게 g) */
+const WT_DB = {
+  'OSD6203(AU)': {uw:103.2, pw:1250, box:1000, status:'확인'},
+  'OSD6203(IR)': {uw:101.8, pw:1250, box:1000, status:'확인'},
+  '6005 AU':     {uw:121.4, pw:1180, box:500,  status:'확인'},
+  '6005 IR':     {uw:119.6, pw:1180, box:500,  status:'확인'},
+  '6004 AU':     {uw:147.8, pw:1180, box:500,  status:'확인'},
+  '6004 IR':     {uw:145.2, pw:1180, box:500,  status:'확인'},
+  'F-572665 AU': {uw:89.4,  pw:980,  box:1000, status:'확인'},
+  'F-572665 IR': {uw:87.9,  pw:980,  box:1000, status:'확인'},
+  'F-576917 AU': {uw:null,  pw:1100, box:500,  status:'미등록'},
+  'F-624888 AU': {uw:null,  pw:1100, box:500,  status:'미등록'},
+  'F-624888 IR': {uw:null,  pw:1100, box:500,  status:'미등록'},
+  'F-679350 AU': {uw:null,  pw:1200, box:500,  status:'미등록'},
+  'F-679350 IR': {uw:null,  pw:1200, box:500,  status:'미등록'},
+  '6203 AU':     {uw:112.6, pw:1050, box:1000, status:'대략'},
+  '6203 IR':     {uw:110.8, pw:1050, box:1000, status:'대략'},
+  'FAG6202 AU':  {uw:95.3,  pw:980,  box:1000, status:'대략'},
+  'FAG6202 IR':  {uw:null,  pw:980,  box:1000, status:'미등록'},
+  '6200 IR(인)': {uw:null,  pw:1100, box:500,  status:'미등록'},
+  '6201 AU':     {uw:null,  pw:1050, box:500,  status:'미등록'},
+  '6201 IR':     {uw:null,  pw:1050, box:500,  status:'미등록'},
+  '6204 AU':     {uw:null,  pw:1150, box:500,  status:'미등록'},
+  '6204 IR':     {uw:null,  pw:1150, box:500,  status:'미등록'},
+  '6200 IR(찬)': {uw:null,  pw:1100, box:500,  status:'미등록'},
+};
+
+/* 실사 이력 */
+let invHistory = [];
+let invAccumList = [];
+let scaleConnected = false;
+let invCalcResult = null;
+
+/* ── 단중 모델 목록 초기화 ── */
+function initInv(){
+  const sel = document.getElementById('inv-model');
+  if(sel.options.length <= 1){
+    Object.keys(WT_DB).forEach(k=>{
+      const o = document.createElement('option');
+      o.value = k; o.textContent = k;
+      sel.appendChild(o);
+    });
+  }
+  invRenderHist();
+}
+
+function invSelectModel(){
+  const k = document.getElementById('inv-model').value;
+  if(!k) return;
+  const w = WT_DB[k];
+  /* 단중 */
+  document.getElementById('inv-unit-wt').value = w.uw || '';
+  document.getElementById('inv-pkg-wt').value  = w.pw || 0;
+  /* 장부 수량 (DS_MON에서 현재고 찾기) */
+  const row = DS_MON.find(r=>r[0]===k);
+  document.getElementById('inv-book-qty').value = row ? row[6].toLocaleString()+' PCS' : '—';
+  invCalc();
+}
+
+/* ── 계산 ── */
+function invCalc(){
+  const uw   = parseFloat(document.getElementById('inv-unit-wt').value)||0;
+  const pw   = parseFloat(document.getElementById('inv-pkg-wt').value)||0;
+  let   twKg = parseFloat(document.getElementById('inv-total-wt').value)||0;
+
+  /* 누적 합산 모드 */
+  if(invAccumList.length>0) twKg = invAccumList.reduce((a,b)=>a+b,0);
+
+  const tw = twKg * 1000; /* kg → g */
+  const qtyEl   = document.getElementById('inv-calc-qty');
+  const diffEl  = document.getElementById('inv-calc-diff');
+  const pctEl   = document.getElementById('inv-calc-pct');
+  const msgEl   = document.getElementById('inv-result-msg');
+  const applyBtn= document.getElementById('inv-apply-btn');
+
+  if(!uw || !tw){ qtyEl.textContent='—'; diffEl.textContent='—'; return; }
+
+  const calcQty = Math.round((tw - pw) / uw);
+  const bookQtyStr = document.getElementById('inv-book-qty').value.replace(/[^0-9]/g,'');
+  const bookQty = parseInt(bookQtyStr)||0;
+  const diff    = calcQty - bookQty;
+  const pct     = bookQty>0 ? Math.abs(diff/bookQty*100).toFixed(2) : 0;
+  const tolerance = parseFloat(document.getElementById('inv-tolerance').value)||2;
+
+  qtyEl.textContent  = calcQty.toLocaleString();
+  diffEl.textContent = (diff>=0?'+':'')+diff.toLocaleString();
+  diffEl.style.color = Math.abs(diff)<10?'var(--c2)':diff>0?'var(--c1)':'var(--c4)';
+  pctEl.textContent  = bookQty>0 ? `오차율: ${pct}%` : '';
+
+  invCalcResult = {calcQty, bookQty, diff, pct};
+
+  if(parseFloat(pct) <= tolerance){
+    msgEl.innerHTML = `<div class="alert a-ok">✅ 오차 ${pct}% — 허용 범위 내 (${tolerance}% 이하). 바로 반영 가능합니다.</div>`;
+    applyBtn.disabled = false; applyBtn.style.opacity='1';
+  } else {
+    msgEl.innerHTML = `<div class="alert a-warn">⚠ 오차 ${pct}% — 허용 범위 초과 (${tolerance}% 이상). 재측정 또는 관리자 확인 후 반영하세요.</div>`;
+    applyBtn.disabled = false; applyBtn.style.opacity='0.8';
+  }
+}
+
+/* ── 누적 무게 합산 ── */
+function invAddWeight(){
+  const v = parseFloat(document.getElementById('inv-total-wt').value)||0;
+  if(!v) return;
+  invAccumList.push(v);
+  const accumDiv  = document.getElementById('inv-accum');
+  const listDiv   = document.getElementById('inv-accum-list');
+  const totalSpan = document.getElementById('inv-accum-total');
+  accumDiv.style.display = 'block';
+  listDiv.innerHTML = invAccumList.map((w,i)=>
+    `<span style="color:var(--tx2)">${i+1}차: </span><span style="color:var(--c2);font-weight:700">${w.toFixed(3)} kg</span>  `
+  ).join('');
+  const total = invAccumList.reduce((a,b)=>a+b,0);
+  totalSpan.textContent = total.toFixed(3)+' kg';
+  document.getElementById('inv-total-wt').value = total.toFixed(3);
+  invCalc();
+}
+function invClearAccum(){
+  invAccumList=[];
+  document.getElementById('inv-accum').style.display='none';
+  document.getElementById('inv-accum-list').innerHTML='';
+  document.getElementById('inv-total-wt').value='';
+  document.getElementById('inv-calc-qty').textContent='—';
+  document.getElementById('inv-calc-diff').textContent='—';
+}
+
+/* ── 실사 수량 DB 반영 ── */
+function invApply(){
+  if(!invCalcResult) return;
+  const k     = document.getElementById('inv-model').value;
+  const date  = document.getElementById('inv-date').value;
+  const user  = document.getElementById('inv-user').value;
+  const note  = document.getElementById('inv-note').value;
+  const {calcQty, bookQty, diff, pct} = invCalcResult;
+
+  /* 이력 저장 */
+  invHistory.unshift({date, model:k, bookQty, calcQty, diff, pct, user, note});
+  invRenderHist();
+  invUpdateStat();
+
+  /* 성공 메시지 */
+  document.getElementById('inv-result-msg').innerHTML =
+    `<div class="alert a-ok">✅ ${k} 실사 완료 — 장부: ${bookQty.toLocaleString()} → 실사: ${calcQty.toLocaleString()} (${diff>=0?'+':''}${diff.toLocaleString()} PCS)</div>`;
+
+  showModal('재고 실사 반영 완료',
+    `품목: ${k}<br>장부 수량: ${bookQty.toLocaleString()} PCS<br>`+
+    `실사 수량: ${calcQty.toLocaleString()} PCS<br>`+
+    `차이: ${diff>=0?'+':''}${diff.toLocaleString()} PCS (${diff>=0?'+':''}${pct}%)<br><br>`+
+    `✓ 실사 이력이 저장되었습니다.<br>※ 실제 DB 반영은 클라우드 API 연동 후 적용됩니다.`
+  );
+}
+
+function invRenderHist(){
+  const tb = document.getElementById('inv-hist-tbl');
+  if(invHistory.length===0){
+    tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--tx3);padding:20px">실사 이력이 없습니다</td></tr>';
+    return;
+  }
+  tb.innerHTML = invHistory.slice(0,20).map(r=>{
+    const dc = r.diff===0?'var(--c2)':Math.abs(r.diff)<500?'var(--c3)':'var(--c4)';
+    const tag= parseFloat(r.pct)<2?'<span class="tag tg">정상</span>':
+               parseFloat(r.pct)<5?'<span class="tag to">주의</span>':'<span class="tag tr">오차큼</span>';
+    return`<tr>
+      <td style="font-size:12px">${r.date}</td>
+      <td style="font-weight:700">${r.model}</td>
+      <td class="num">${r.bookQty.toLocaleString()}</td>
+      <td class="num" style="color:var(--c2)">${r.calcQty.toLocaleString()}</td>
+      <td class="num" style="color:${dc}">${r.diff>=0?'+':''}${r.diff.toLocaleString()}<br><small>${r.pct}%</small></td>
+      <td>${tag}</td>
+    </tr>`;
+  }).join('');
+}
+
+function invUpdateStat(){
+  document.getElementById('inv-stat-cnt').textContent = invHistory.length+'회';
+  if(invHistory.length===0) return;
+  const avg = (invHistory.reduce((s,r)=>s+parseFloat(r.pct),0)/invHistory.length).toFixed(2);
+  const maxR = invHistory.reduce((m,r)=>parseFloat(r.pct)>parseFloat(m.pct)?r:m);
+  const last = invHistory[0];
+  document.getElementById('inv-stat-avg').textContent = avg+'%';
+  document.getElementById('inv-stat-max').textContent = `${maxR.model} (${maxR.pct}%)`;
+  document.getElementById('inv-stat-last').textContent = `${last.date} ${last.model}`;
+}
+
+function invReset(){
+  document.getElementById('inv-model').value='';
+  document.getElementById('inv-book-qty').value='';
+  document.getElementById('inv-unit-wt').value='';
+  document.getElementById('inv-pkg-wt').value=0;
+  document.getElementById('inv-total-wt').value='';
+  document.getElementById('inv-calc-qty').textContent='—';
+  document.getElementById('inv-calc-diff').textContent='—';
+  document.getElementById('inv-calc-pct').textContent='—';
+  document.getElementById('inv-result-msg').innerHTML='';
+  document.getElementById('inv-apply-btn').disabled=true;
+  document.getElementById('inv-apply-btn').style.opacity='0.5';
+  invAccumList=[];
+  document.getElementById('inv-accum').style.display='none';
+  invCalcResult=null;
+}
+
+/* ── 저울 연동 (print_server.py API 호출) ── */
+async function scaleConnect(){
+  const port  = document.getElementById('sc-port').value;
+  const baud  = document.getElementById('sc-baud').value;
+  const stEl  = document.getElementById('sc-status');
+  stEl.style.color='var(--c3)'; stEl.textContent='● 연결 중...';
+  try{
+    const r = await fetch(`http://localhost:5000/scale/connect`,{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({port, baudrate:parseInt(baud)}),
+      signal: AbortSignal.timeout(4000)
+    });
+    if(r.ok){
+      scaleConnected=true;
+      stEl.style.color='var(--c2)'; stEl.textContent=`● 연결됨 — ${port} ${baud}bps`;
+    } else throw new Error();
+  }catch{
+    stEl.style.color='var(--c4)';
+    stEl.textContent='● 연결 실패 — 수동 입력 모드';
+    scaleConnected=false;
+  }
+}
+
+async function scaleRead(){
+  const stEl = document.getElementById('sc-status');
+  if(!scaleConnected){
+    /* 시뮬레이션 — 연결 안됐을 때 테스트용 */
+    stEl.textContent='⚠ 저울 미연결 — 무게를 직접 입력하세요';
+    stEl.style.color='var(--c3)';
+    return;
+  }
+  stEl.style.color='var(--c3)'; stEl.textContent='● 무게 읽는 중...';
+  try{
+    const r = await fetch('http://localhost:5000/scale/read',{
+      signal: AbortSignal.timeout(5000)
+    });
+    const d = await r.json();
+    if(d.success && d.value!==undefined){
+      document.getElementById('inv-total-wt').value = d.value.toFixed(3);
+      stEl.style.color='var(--c2)'; stEl.textContent=`● 읽기 완료 — ${d.value.toFixed(3)} kg`;
+      invCalc();
+    } else throw new Error(d.error||'읽기 실패');
+  }catch(e){
+    stEl.style.color='var(--c4)'; stEl.textContent=`● 읽기 실패 — ${e.message}`;
+  }
+}
+
+/* ── 단중 관리 ── */
+function initWeight(){
+  const keys = Object.keys(WT_DB);
+  document.getElementById('wt-body').innerHTML = keys.map(k=>{
+    const w = WT_DB[k];
+    const sc = w.status==='확인'?'var(--c2)':w.status==='대략'?'var(--c3)':'var(--c4)';
+    const tag= w.status==='확인'?'<span class="tag tg">확인</span>':
+               w.status==='대략'?'<span class="tag to">대략</span>':'<span class="tag tr">미등록</span>';
+    /* DS_MON에서 링·공급처 */
+    const row = DS_MON.find(r=>r[0]===k);
+    const ring = row?row[8]:'—'; const vend = row?row[9]:'—';
+    return`<tr>
+      <td><span class="tag ${ring==='선삭'?'tb':'tp'}">${ring}</span></td>
+      <td>${vend}</td>
+      <td style="font-family:var(--fm);font-weight:700;color:${sc}">${k}</td>
+      <td style="font-size:12px;color:var(--tx2)">${row?row[1]:''}</td>
+      <td class="num">
+        <input type="number" value="${w.uw||''}" placeholder="미측정" step="0.1"
+          onchange="WT_DB['${k}'].uw=parseFloat(this.value)||null;WT_DB['${k}'].status=this.value?'확인':'미등록'"
+          style="width:90px;height:32px;background:var(--s2);border:1px solid var(--bd2);
+            border-radius:6px;padding:0 8px;color:var(--c2);font-family:var(--fm);
+            font-size:13px;text-align:right;outline:none">
+        <span style="color:var(--tx3);font-size:12px"> g</span>
+      </td>
+      <td class="num">
+        <input type="number" value="${w.pw||''}" placeholder="0" step="10"
+          onchange="WT_DB['${k}'].pw=parseFloat(this.value)||0"
+          style="width:80px;height:32px;background:var(--s2);border:1px solid var(--bd2);
+            border-radius:6px;padding:0 8px;color:var(--tx);font-family:var(--fm);
+            font-size:13px;text-align:right;outline:none">
+        <span style="color:var(--tx3);font-size:12px"> g</span>
+      </td>
+      <td class="num">
+        <input type="number" value="${w.box||''}" placeholder="0" step="100"
+          onchange="WT_DB['${k}'].box=parseInt(this.value)||0"
+          style="width:70px;height:32px;background:var(--s2);border:1px solid var(--bd2);
+            border-radius:6px;padding:0 8px;color:var(--tx);font-family:var(--fm);
+            font-size:13px;text-align:right;outline:none">
+      </td>
+      <td>${tag}</td>
+      <td style="font-size:11px;color:var(--tx3)">2026-05-08</td>
+    </tr>`;
+  }).join('');
+}
+
+function wtSaveAll(){
+  showModal('단중 저장 완료','변경된 단중 데이터가 저장되었습니다.\n※ 클라우드 연동 후 DB에 영구 저장됩니다.');
+}
+
 // ── 초기 실행 ──────────────────────────────────────────
 window.addEventListener('load',()=>{
+  /* 대시보드 차트 초기화 */
+  try {
+    new Chart(document.getElementById('dash-chart'),{type:'bar',
+      data:{labels:Array.from({length:30},(_,i)=>i+1),
+        datasets:[
+          {label:'입고',data:D.aprSelIb,backgroundColor:'rgba(0,240,160,.65)',borderRadius:3,borderSkipped:false},
+          {label:'출고',data:D.aprSelOb,backgroundColor:'rgba(255,192,0,.65)',borderRadius:3,borderSkipped:false}
+        ]},
+      options:{...CO,
+        scales:{
+          x:{ticks:{color:'#b8d4f0',font:{size:11},maxRotation:0,autoSkip:true,maxTicksLimit:10},
+             grid:{color:'rgba(42,78,112,.5)'}},
+          y:{...CS.y}
+        },
+        plugins:{...CO.plugins,tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw.toLocaleString()}`}}}
+      }
+    });
+  } catch(e){ console.warn('dash-chart 초기화 오류:', e); }
+  /* 입고 상위 막대 */
+  mkHBar('top-ib-bars',D.models.slice(0,8).map(d=>({l:d.k,v:d.ib})),'var(--c2)');
+  /* 라벨·전주 초기화 */
   uLbl();
   jjUib();
   jjUob();
