@@ -3,7 +3,7 @@
   신촌공장 재고관리 시스템 (Sinchon Factory WMS)
 ================================================================================
   파일명  : shinchon.html
-  버전    : v3.9
+  버전    : v3.10
   작성일  : 2026-04-28
   수정일  : 2026-04-28
 
@@ -13,7 +13,7 @@
   v3.0       2026-04-28     전면 리모델링 (반응형, 큰 폰트, 심플 UI)
   v3.2       2026-04-28     전체 폰트 맑은 고딕으로 통일
   v3.8       2026-05-06     전주공장 재고관리 탭 추가
-  v3.9       2026-05-08     재고 실사(무게→수량) 화면 추가
+  v3.10       2026-05-08     재고 실사(무게→수량) 화면 추가
                             — 단중 마스터 관리 (품목별 개당무게·포장재무게)
                             — MiGun ST RS-232 저울 자동 연동
                             — 실사 이력 저장 및 장부수량 비교
@@ -91,9 +91,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
-<title>WMS v3.9</title>
+<title>WMS v3.10</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
 @font-face{font-family:'MG';src:local('맑은 고딕'),local('Malgun Gothic')}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -145,16 +146,16 @@ body{display:flex;flex-direction:column;font-size:15px;line-height:1.5}
   background:var(--s1);border-right:1px solid var(--bd);
   display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;
 }
-.sb-group{padding:14px 14px 4px;font-size:11px;color:var(--tx2);
+.sb-group{padding:8px 14px 2px;font-size:10px;color:var(--tx2);
   letter-spacing:1px;text-transform:uppercase;font-weight:700}
 .sb-item{
-  display:flex;align-items:center;gap:10px;padding:11px 16px;
+  display:flex;align-items:center;gap:8px;padding:7px 14px;
   cursor:pointer;border-left:3px solid transparent;
-  transition:all .15s;color:var(--tx2);font-size:14px;font-weight:500;
+  transition:all .15s;color:var(--tx2);font-size:13px;font-weight:500;
 }
 .sb-item:hover{background:var(--s2);color:var(--tx)}
 .sb-item.on{background:var(--s2);color:var(--c1);border-left-color:var(--c1)}
-.sb-item .ico{width:20px;text-align:center;font-size:16px;flex-shrink:0}
+.sb-item .ico{width:18px;text-align:center;font-size:14px;flex-shrink:0}
 
 /* ─── 메인 콘텐츠 ─── */
 .main{flex:1;overflow-y:auto;overflow-x:hidden;padding:16px;
@@ -558,7 +559,7 @@ body.admin .admin-only{display:flex}
 
 <!-- ═══ 헤더 ════════════════════════════════════════════ -->
 <div class="hdr">
-  <div class="hdr-logo" id="hdr-logo">신촌공장 WMS<span>v3.9</span></div>
+  <div class="hdr-logo" id="hdr-logo">신촌공장 WMS<span>v3.10</span></div>
   <div class="factory-tabs">
     <div class="ftab on"    id="ftab-sc" onclick="switchFactory('sc')">🏭 신촌공장</div>
     <div class="ftab jj"   id="ftab-jj" onclick="switchFactory('jj')">🏭 전주공장</div>
@@ -781,6 +782,39 @@ body.admin .admin-only{display:flex}
 
 <!-- ④ 입고 처리 -->
 <div class="pg" id="pg-inbound">
+
+  <!-- ── 공급사 라벨 스캔 박스 ── -->
+  <div class="card" style="margin-bottom:14px;border:1px solid rgba(0,212,255,.25);background:rgba(0,212,255,.04)">
+    <div class="card-title ct1" style="margin-bottom:10px">📷 공급사 MASTER LABEL 스캔 입고</div>
+    <div style="font-size:13px;color:var(--tx2);margin-bottom:10px">
+      JW연삭·이양·씽메이·페이닝·하이순 라벨의 <strong style="color:var(--c1)">Code128 바코드</strong>를 스캔하면
+      품목·공급처·규격·로트가 자동으로 입력됩니다.
+    </div>
+    <!-- 카메라 스캐너 영역 -->
+    <div id="ib-scan-reader" style="display:none;width:100%;max-width:360px;margin:0 auto 10px;border-radius:10px;overflow:hidden;border:2px solid var(--c1)"></div>
+    <!-- 수동 입력 -->
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <input type="text" id="ib-scan-input" placeholder="바코드 스캔 또는 UN번호 직접 입력 (예: UN420506231000586672)"
+        style="flex:1;min-width:220px;height:42px;background:var(--s2);border:1.5px solid var(--bd2);border-radius:8px;
+               padding:0 14px;color:var(--tx);font-family:var(--fm);font-size:14px;outline:none"
+        onkeydown="if(event.key==='Enter')ibScanParse(this.value)">
+      <button class="btn b2" onclick="ibScanToggleCamera()" id="ib-cam-btn"
+        style="height:42px;padding:0 14px;font-size:13px;white-space:nowrap">📷 카메라</button>
+      <button class="btn bg" onclick="ibScanParse(document.getElementById('ib-scan-input').value)"
+        style="height:42px;padding:0 14px;font-size:13px;white-space:nowrap">🔍 조회</button>
+    </div>
+    <!-- 스캔 결과 미리보기 -->
+    <div id="ib-scan-result" style="display:none;margin-top:12px;background:var(--s2);border-radius:8px;padding:12px">
+      <div style="font-size:12px;color:var(--tx2);margin-bottom:6px">스캔 결과 — 아래 내용으로 입고 양식을 자동 채웁니다</div>
+      <div id="ib-scan-preview" style="font-size:13px;line-height:2"></div>
+      <div class="btn-row" style="margin-top:8px">
+        <button class="btn b2" onclick="ibScanApply()" style="height:36px;font-size:13px">✓ 입고 양식에 적용</button>
+        <button class="btn bg" onclick="ibScanClear()" style="height:36px;font-size:13px">↺ 초기화</button>
+      </div>
+    </div>
+    <div id="ib-scan-msg" style="margin-top:8px"></div>
+  </div>
+
   <div class="g2">
     <div>
       <div class="card">
@@ -802,7 +836,14 @@ body.admin .admin-only{display:flex}
           </div>
           <div class="field"><label>자재번호</label><input type="text" id="ib-matno" value="098515705-0000"></div>
           <div class="field"><label>자재규격</label><input type="text" id="ib-spec" value="AU.6203-B-2Z-8105-L6"></div>
-          <div class="field"><label>입고수량 (PCS)</label><input type="number" id="ib-qty" value="140000" onchange="uIb()"></div>
+          <div class="field"><label>입고수량 (PCS)</label>
+            <div style="display:flex;gap:6px;align-items:center">
+              <input type="number" id="ib-qty" value="140000" onchange="uIb()"
+                style="flex:1;height:40px;background:var(--s2);border:1px solid var(--bd2);border-radius:8px;padding:0 12px;color:var(--tx);font-family:var(--fm);font-size:15px;outline:none">
+              <button class="btn bg" onclick="ibScaleRead()" title="저울 무게→수량 자동 계산"
+                style="height:40px;padding:0 10px;font-size:13px;white-space:nowrap;flex-shrink:0">⚖ 저울</button>
+            </div>
+          </div>
           <div class="field admin-only"><label>단가 (원) <span class="badge">●관리자</span></label><input type="number" id="ib-price" value="103" onchange="uIb()"></div>
           <div class="field"><label>로트번호</label><input type="text" id="ib-lot" value="LOT-20260428-001"></div>
           <div class="field"><label>위치코드</label>
@@ -853,9 +894,8 @@ body.admin .admin-only{display:flex}
       </div>
     </div>
   </div>
-</div>
-
-<!-- ⑤ 출하 처리 -->
+  </div><!-- /g2 -->
+</div><!-- /pg-inbound -->
 <div class="pg" id="pg-outbound">
   <div class="g2">
     <div>
@@ -875,7 +915,14 @@ body.admin .admin-only{display:flex}
           <div class="field"><label>현재고</label>
             <input type="text" id="ob-stock" value="283,000 PCS" readonly style="color:var(--c2)">
           </div>
-          <div class="field"><label>출하수량 (PCS)</label><input type="number" id="ob-qty" value="50000" onchange="uOb()"></div>
+          <div class="field"><label>출하수량 (PCS)</label>
+            <div style="display:flex;gap:6px;align-items:center">
+              <input type="number" id="ob-qty" value="50000" onchange="uOb()"
+                style="flex:1;height:40px;background:var(--s2);border:1px solid var(--bd2);border-radius:8px;padding:0 12px;color:var(--tx);font-family:var(--fm);font-size:15px;outline:none">
+              <button class="btn bg" onclick="obScaleRead()" title="저울 무게→수량 자동 계산"
+                style="height:40px;padding:0 10px;font-size:13px;white-space:nowrap;flex-shrink:0">⚖ 저울</button>
+            </div>
+          </div>
           <div class="field admin-only"><label>출하단가 <span class="badge">●관리자</span></label><input type="number" id="ob-price" value="103" onchange="uOb()"></div>
           <div class="field"><label>전표번호</label><input type="text" id="ob-ref" value="SH-20260428-001"></div>
           <div class="field"><label>담당자</label><input type="text" value="재고담당"></div>
@@ -1350,6 +1397,47 @@ body.admin .admin-only{display:flex}
           <div class="field"><label>품목 선택</label>
             <select id="inv-model" onchange="invSelectModel()">
               <option value="">-- 품목 선택 --</option>
+              <optgroup label="🏭 신촌공장 — 선삭링 (찬스)">
+                <option value="OSD6203(AU)">OSD6203 AU · AU.6203-B-2Z-8105-L6</option>
+                <option value="OSD6203(IR)">OSD6203 IR · IR.6203-B-2Z-8105-L6</option>
+                <option value="6005 AU">6005 AU · AU.6005-2012</option>
+                <option value="6005 IR">6005 IR · IR.6005-2022-R72-90</option>
+                <option value="6004 AU">6004 AU · AU.6004-2Z-2012</option>
+                <option value="6004 IR">6004 IR · IR.6004-2Z-2022</option>
+                <option value="F-572665 AU">F-572665 AU · F-572665-2012.AU.Q</option>
+                <option value="F-572665 IR">F-572665 IR · F-572665-2022.IR.Q</option>
+                <option value="F-576917 AU">F-576917 AU · F-576917-2012.AU.6003</option>
+                <option value="F-624888 AU">F-624888 AU · F-624888-2012.AU.6005</option>
+                <option value="F-624888 IR">F-624888 IR · F-624888-2022.IR.6005</option>
+                <option value="F-679350 AU">F-679350 AU · F-679350-2012.AU.KL</option>
+                <option value="F-679350 IR">F-679350 IR · F-679350-2022.IR.KL</option>
+              </optgroup>
+              <optgroup label="🏭 신촌공장 — 선삭링 (인시스)">
+                <option value="6203 AU">6203 AU · AU.6203-2Z-2012</option>
+                <option value="6203 IR">6203 IR · F-845827-2022.IR.6203</option>
+                <option value="FAG6202 AU">FAG6202 AU · AU.6202-2Z-1112</option>
+                <option value="FAG6202 IR">FAG6202 IR · IR.6202-1122</option>
+              </optgroup>
+              <optgroup label="🏭 신촌공장 — 연삭링 (인시스)">
+                <option value="6200 IR(인)">6200 IR(인) · IR.6200-2Z-2021</option>
+                <option value="6201 AU">6201 AU · AU.6201-2Z-2011</option>
+                <option value="6201 IR">6201 IR · IR.6201-2Z-2021</option>
+                <option value="6204 AU">6204 AU · AU.6204-2Z-2011</option>
+                <option value="6204 IR">6204 IR · IR.6204-2Z-2021</option>
+                <option value="6200 IR(찬)">6200 IR(찬) · IR.6200-2Z-2021(찬스)</option>
+              </optgroup>
+              <optgroup label="🏭 전주공장 — 볼베어링 (하이순) ← 신촌에서 입고">
+                <option value="JJ_6006AU">6006 AU · AU.6006-2Z-1112</option>
+                <option value="JJ_6006IR">6006 IR · IR.6006-1122</option>
+                <option value="JJ_6007AAU">6007A AU · AU.6007-A-2Z-1112</option>
+                <option value="JJ_6007AIR">6007A IR · IR.6007-A-1122</option>
+                <option value="JJ_6008AU">6008A AU · AU.6008-A-2Z-1112</option>
+                <option value="JJ_6008IR">6008A IR · IR.6008-A-1122</option>
+                <option value="JJ_6304AU">6304 AU · AU.6304-B-2Z-1112</option>
+                <option value="JJ_6304IR">6304 IR · IR.6304-A-1122</option>
+                <option value="JJ_6305AU">6305 AU · AU.6305-A-2Z-1112</option>
+                <option value="JJ_6305IR">6305 IR · IR.6305-1122</option>
+              </optgroup>
             </select>
           </div>
           <div class="field"><label>장부 수량 (PCS)</label>
@@ -1659,7 +1747,14 @@ body.admin .admin-only{display:flex}
           </div>
           <div class="field"><label>자재코드</label><input type="text" id="jj-ib-code" value="098522205-0000" readonly style="color:var(--c1)"></div>
           <div class="field"><label>자재규격</label><input type="text" id="jj-ib-spec" value="AU.6006-2Z-1112" readonly style="color:var(--tx2)"></div>
-          <div class="field"><label>입고수량 (PCS)</label><input type="number" id="jj-ib-qty" value="50000" onchange="jjUib()"></div>
+          <div class="field"><label>입고수량 (PCS)</label>
+            <div style="display:flex;gap:6px;align-items:center">
+              <input type="number" id="jj-ib-qty" value="50000" onchange="jjUib()"
+                style="flex:1;height:40px;background:var(--s2);border:1px solid var(--bd2);border-radius:8px;padding:0 12px;color:var(--tx);font-family:var(--fm);font-size:15px;outline:none">
+              <button class="btn bg" onclick="jjIbScaleRead()" title="저울 무게→수량 자동 계산"
+                style="height:40px;padding:0 10px;font-size:13px;white-space:nowrap;flex-shrink:0;background:rgba(255,192,0,.15);border:1px solid var(--c3);color:var(--c3)">⚖ 저울</button>
+            </div>
+          </div>
           <div class="field admin-only"><label>단가 (원) <span class="badge">●관리자</span></label><input type="number" id="jj-ib-price" value="262" onchange="jjUib()"></div>
           <div class="field"><label>납품업체</label><input type="text" value="하이순 (Haishun)" readonly style="color:var(--tx2)"></div>
           <div class="field"><label>위치코드</label>
@@ -1730,7 +1825,14 @@ body.admin .admin-only{display:flex}
             </select>
           </div>
           <div class="field"><label>현재고</label><input type="text" id="jj-ob-stk" readonly style="color:var(--c2)"></div>
-          <div class="field"><label>출고수량 (PCS)</label><input type="number" id="jj-ob-qty" value="10000" onchange="jjUob()"></div>
+          <div class="field"><label>출고수량 (PCS)</label>
+            <div style="display:flex;gap:6px;align-items:center">
+              <input type="number" id="jj-ob-qty" value="10000" onchange="jjUob()"
+                style="flex:1;height:40px;background:var(--s2);border:1px solid var(--bd2);border-radius:8px;padding:0 12px;color:var(--tx);font-family:var(--fm);font-size:15px;outline:none">
+              <button class="btn bg" onclick="jjObScaleRead()" title="저울 무게→수량 자동 계산"
+                style="height:40px;padding:0 10px;font-size:13px;white-space:nowrap;flex-shrink:0;background:rgba(255,192,0,.15);border:1px solid var(--c3);color:var(--c3)">⚖ 저울</button>
+            </div>
+          </div>
           <div class="field admin-only"><label>출고단가 <span class="badge">●관리자</span></label><input type="number" id="jj-ob-price" value="262" onchange="jjUob()"></div>
           <div class="field"><label>전표번호</label><input type="text" id="jj-ob-ref" value="JJ-SH-20260506-001"></div>
         </div>
@@ -1807,6 +1909,8 @@ body.admin .admin-only{display:flex}
             <label style="color:var(--tx2);font-size:14px;white-space:nowrap">출고수량</label>
             <input type="number" id="jj-scan-qty" value="10000" min="1"
               style="flex:1;height:44px;background:var(--bg);border:1px solid var(--bd2);border-radius:8px;padding:0 14px;color:var(--tx);font-size:16px;font-family:var(--fm);outline:none">
+            <button class="btn bg" onclick="jjScanScaleRead()" title="저울 무게→수량 자동 계산"
+              style="height:44px;padding:0 12px;font-size:13px;white-space:nowrap;background:rgba(255,192,0,.15);border:1px solid var(--c3);color:var(--c3)">⚖ 저울</button>
             <span style="color:var(--tx2)">PCS</span>
           </div>
           <button class="btn btn-lg b3" style="width:100%" onclick="jjScanOb()">⬆ 출고 처리 확정</button>
@@ -2021,10 +2125,10 @@ const D={
     ['선삭','인시스','FAG6202', 'AU.6202-2Z-1112',         'ZZ','A',  7000,  60000,  36000,  31000,  3759708,'정상'],
     ['선삭','인시스','FAG6202', 'IR.6202-1122',             'ZZ','B',    0,  60000,  30000,  30000,  2963172,'정상'],
     ['연삭','인시스','6200',    'IR.6200-2Z-2021',         'ZZ', 'B',148500,  58800, 148400,  58900,  8663119,'주의'],
-    ['연삭','인시스','6201',    'AU.6201-2Z-2011',         'ZZ', 'A',159528,  65688, 104788, 120428, 20009470,'정상'],
+    ['연삭','인시스','6201',    'AU.6201-2Z-2011',         'ZZ', 'A',159528,  65688, 104788, 42636, 20009470,'정상'],
     ['연삭','인시스','6201',    'IR.6201-2Z-2021',         'ZZ', 'B', 63750, 105000,  87500,  81250, 11136095,'정상'],
-    ['연삭','인시스','6204',    'AU.6204-2Z-2011',         'ZZ', 'A',137592, 206388, 196560, 147420, 40703714,'정상'],
-    ['연삭','인시스','6204',    'IR.6204-2Z-2021',         'ZZ', 'B',209664, 196560, 209664, 196560, 44865461,'정상'],
+    ['연삭','인시스','6204',    'AU.6204-2Z-2011',         'ZZ', 'A',137592, 206388, 196560, 111384, 40703714,'정상'],
+    ['연삭','인시스','6204',    'IR.6204-2Z-2021',         'ZZ', 'B',209664, 196560, 209664, 176904, 44865461,'정상'],
     ['연삭','찬스',  '6200',    'IR.6200-2Z-2021(찬스)',   'ZZ', 'B', 32175,      0,      0,  32175,  5244525,'정상'],
     ['연삭','찬스',  '6201',    'IR.6201-2Z-2021(찬스)',   'ZZ', 'B',  3692,      0,      0,   3692,   612872,'정상'],
   ],
@@ -2551,7 +2655,7 @@ function buildZpl(){
 ^FO10,722^GB1208,2,2^FS
 ^CF0,16
 ^FO14,730^FD출력: ${pdt}   SEQ:${seq}^FS
-^FO900,730^FD신촌공장 WMS v3.9^FS
+^FO900,730^FD신촌공장 WMS v3.10^FS
 ^XZ`;
 }
 
@@ -2733,38 +2837,39 @@ function expMsg(){
 
 /* 품목별 1~4월 실제 출고 데이터 (1~3월 전월, 4월 1~23일) */
 const DS_MON = [
-  /* [형번, 규격, 1월출고, 2월출고, 3월출고, 4월출고(마감), 현재고, 금액, 링, 공급처] */
-  ['OSD6203(AU)', 'AU.6203-B-2Z-8105-L6',  100000, 120000, 100000, 132000, 195000, 29055000,'선삭','찬스'],
-  ['OSD6203(IR)', 'IR.6203-B-2Z-8105-L6',  100000, 120000, 100000, 132000, 186000, 19158000,'선삭','찬스'],
-  ['6005 AU',     'AU.6005-2012',            56000,  60000,  55000, 210000, 149000, 19072000,'선삭','찬스'],
-  ['6005 IR',     'IR.6005-2022-R72-90',    136000,  70000,  80000, 252000, 124148, 16394985,'선삭','찬스'],
-  ['6004 AU',     'AU.6004-2Z-2012',         20000,  24000,  30000,  48200, 201400, 34842200,'선삭','찬스'],
-  ['6004 IR',     'IR.6004-2Z-2022',             0,      0,      0,  35100, 239900, 30227400,'선삭','찬스'],
-  ['F-572665 AU', 'F-572665-2012.AU.Q',      95000,  90000,  95000,  74000, 103300, 17774831,'선삭','찬스'],
-  ['F-572665 IR', 'F-572665-2022.IR.Q',          0,      0,      0,  78000,  75200, 10917536,'선삭','찬스'],
-  ['F-576917 AU', 'F-576917-2012.AU.6003',    8000,  10000,  14000,  46000,  94395, 11233005,'선삭','찬스'],
-  ['F-624888 AU', 'F-624888-2012.AU.6005',    1000,   2000,   2000,   6000, 116000, 22272000,'선삭','찬스'],
-  ['F-624888 IR', 'F-624888-2022.IR.6005',       0,      0,      0,      0, 106500, 13845000,'선삭','찬스'],
-  ['F-679350 AU', 'F-679350-2012.AU.KL',     60000,  55000,  60000, 104800,  56965, 10064576,'선삭','찬스'],
-  ['F-679350 IR', 'F-679350-2022.IR.KL',     90000,  80000,  85000, 120000,  96546, 11969773,'선삭','찬스'],
-  ['6203 AU',     'AU.6203-2Z-2012',         55000,  50000,  52000,  87970,  56851,  8922692,'선삭','인시스'],
-  ['6203 IR',     'F-845827-2022.IR.6203',   55000,  54000,  56000,  83000,  58963,  7336868,'선삭','인시스'],
-  ['FAG6202 AU',  'AU.6202-2Z-1112',         55000,  54000,  56000,  36000,  31000,  3759708,'선삭','인시스'],
-  ['FAG6202 IR',  'IR.6202-1122',                0,      0,      0,  30000,  30000,  2963172,'선삭','인시스'],
-  ['6200 IR(인)', 'IR.6200-2Z-2021',        100000,  85000, 100000, 148400,  58900,  8663119,'연삭','인시스'],
-  ['6201 AU',     'AU.6201-2Z-2011',        120000, 115000, 115000, 104788, 120428, 20009470,'연삭','인시스'],
-  ['6201 IR',     'IR.6201-2Z-2021',         60000,  80000,  75000,  87500,  81250, 11136095,'연삭','인시스'],
-  ['6204 AU',     'AU.6204-2Z-2011',        126000, 128000, 127000, 196560, 147420, 40703714,'연삭','인시스'],
-  ['6204 IR',     'IR.6204-2Z-2021',        130000, 120000, 120000, 209664, 196560, 44865461,'연삭','인시스'],
-  ['6200 IR(찬)', 'IR.6200-2Z-2021(찬스)',   60000,      0, 120000,      0,  32175,  5244525,'연삭','찬스'],
+  /* [형번, 규격, 1월출고, 2월출고, 3월출고, 4월출고(마감), 5월출고(~12일), 현재고, 금액, 링, 공급처] */
+  ['OSD6203(AU)', 'AU.6203-B-2Z-8105-L6', 100000, 120000, 100000, 132000,      0, 195000,  29055000,'선삭','찬스'],
+  ['OSD6203(IR)', 'IR.6203-B-2Z-8105-L6', 100000, 120000, 100000, 132000,      0, 186000,  19158000,'선삭','찬스'],
+  ['6005 AU', 'AU.6005-2012',  56000,  60000,  55000, 210000,      0, 149000,  19072000,'선삭','찬스'],
+  ['6005 IR', 'IR.6005-2022-R72-90', 136000,  70000,  80000, 252000,      0, 124148,  16394985,'선삭','찬스'],
+  ['6004 AU', 'AU.6004-2Z-2012',  20000,  24000,  30000,  48200,      0, 201400,  34842200,'선삭','찬스'],
+  ['6004 IR', 'IR.6004-2Z-2022',      0,      0,      0,  35100,      0, 239900,  30227400,'선삭','찬스'],
+  ['F-572665 AU', 'F-572665-2012.AU.Q',  95000,  90000,  95000,  74000,      0, 103300,  17774831,'선삭','찬스'],
+  ['F-572665 IR', 'F-572665-2022.IR.Q',      0,      0,      0,  78000,      0,  75200,  10917536,'선삭','찬스'],
+  ['F-576917 AU', 'F-576917-2012.AU.6003',   8000,  10000,  14000,  46000,      0,  94395,  11233005,'선삭','찬스'],
+  ['F-624888 AU', 'F-624888-2012.AU.6005',   1000,   2000,   2000,   6000,      0, 116000,  22272000,'선삭','찬스'],
+  ['F-624888 IR', 'F-624888-2022.IR.6005',      0,      0,      0,      0,      0, 106500,  13845000,'선삭','찬스'],
+  ['F-679350 AU', 'F-679350-2012.AU.KL',  60000,  55000,  60000, 104800,      0,  56965,  10064576,'선삭','찬스'],
+  ['F-679350 IR', 'F-679350-2022.IR.KL',  90000,  80000,  85000, 120000,      0,  96546,  11969773,'선삭','찬스'],
+  ['6203 AU', 'AU.6203-2Z-2012',  55000,  50000,  52000,  87970,      0,  56851,   8922692,'선삭','인시스'],
+  ['6203 IR', 'F-845827-2022.IR.6203',  55000,  54000,  56000,  83000,  26200,  32763,   7336868,'선삭','인시스'],
+  ['FAG6202 AU', 'AU.6202-2Z-1112',  55000,  54000,  56000,  36000,      0,  31000,   3759708,'선삭','인시스'],
+  ['FAG6202 IR', 'IR.6202-1122',      0,      0,      0,  30000,      0,  30000,   2963172,'선삭','인시스'],
+  ['6200 IR(인)', 'IR.6200-2Z-2021', 100000,  85000, 100000, 148400,      0,  58900,   8663119,'연삭','인시스'],
+  ['6201 AU', 'AU.6201-2Z-2011', 120000, 115000, 115000, 104788,  77792,  42636,  20009470,'연삭','인시스'],
+  ['6201 IR', 'IR.6201-2Z-2021',  60000,  80000,  75000,  87500,  87500,  -6250,  11136095,'연삭','인시스'],
+  ['6204 AU', 'AU.6204-2Z-2011', 126000, 128000, 127000, 196560,  36036, 111384,  40703714,'연삭','인시스'],
+  ['6204 IR', 'IR.6204-2Z-2021', 130000, 120000, 120000, 209664,  19656, 176904,  44865461,'연삭','인시스'],
+  ['6200 IR(찬)', 'IR.6200-2Z-2021(찬스)',  60000,      0, 120000,      0,      0,  32175,   5244525,'연삭','찬스'],
 ];
 
 let dsChart=null, dsTrend=null;
 
 function calcDS(row){
-  const [model,spec,ob1,ob2,ob3,ob4,stk,amt,ring,vendor]=row;
-  /* 4월 마감 데이터 — 실제 30일 */
-  const avgOb   = Math.round((ob1+ob2+ob3+ob4)/4);
+  const [model,spec,ob1,ob2,ob3,ob4,ob5,stk,amt,ring,vendor]=row;
+  /* 5월 12일까지 부분 반영: 일할 환산(×30/12) 후 5개월 평균 */
+  const ob5w    = Math.round(ob5*(30/12));
+  const avgOb   = Math.round((ob1+ob2+ob3+ob4+ob5w)/5);
   const months  = avgOb>0 ? +(stk/avgOb).toFixed(1) : 999;
   const noOb    = ob1===0&&ob2===0&&ob3===0&&ob4===0;
   const declining = ob1>0&&ob2>0&&ob3>0&&ob1>ob2&&ob2>ob3;
@@ -2779,7 +2884,7 @@ function calcDS(row){
     grade='exclude'; gradeLabel='⬜ 제외'; gradeColor='var(--tx3)';
   }
 
-  return {model,spec,ob1,ob2,ob3,ob4,stk,amt,ring,vendor,avgOb,months,grade,gradeLabel,gradeColor,declining,noOb};
+  return {model,spec,ob1,ob2,ob3,ob4,ob5,stk,amt,ring,vendor,avgOb,months,grade,gradeLabel,gradeColor,declining,noOb};
 }
 
 function initDS(){
@@ -2994,8 +3099,8 @@ function switchFactory(f){
   document.getElementById('ftab-sc').classList.toggle('on', sc);
   document.getElementById('ftab-jj').classList.toggle('on', !sc);
   document.getElementById('hdr-logo').innerHTML = sc
-    ? '신촌공장 WMS<span>v3.9</span>'
-    : '전주공장 WMS<span>v3.9</span>';
+    ? '신촌공장 WMS<span>v3.10</span>'
+    : '전주공장 WMS<span>v3.10</span>';
   if(!sc){ jjInitDash(); }
 }
 
@@ -3275,6 +3380,79 @@ function jjScanOb(){
   document.getElementById('jj-sr-card').style.display='none';
 }
 
+// ── 전주공장 저울 연동 (입고·출고·스캔) ──────────────
+/* 신촌에서 전주 물품을 저울로 계수하여 입고·출고·실사 처리 */
+async function jjIbScaleRead(){
+  const k   = document.getElementById('jj-ib-model').value;
+  const wKey = 'JJ_'+k;
+  const r   = await _jjScaleReadKg(wKey, '입고');
+  if(!r) return;
+  document.getElementById('jj-ib-qty').value = r.qty;
+  jjUib();
+  showModal('⚖ 저울 측정 완료 — 전주 입고',
+    `품목: ${JJ.stock[k]?.spec||k}<br>`+
+    `측정 무게: <strong>${r.kg.toFixed(3)} kg</strong><br>`+
+    `단중: ${r.uw}g / 포장재: ${r.pw}g<br><br>`+
+    `계산 수량: <strong style="color:var(--c3);font-size:20px">${r.qty.toLocaleString()} PCS</strong><br><br>`+
+    `✓ 입고수량 필드에 자동 입력됐습니다.`);
+}
+async function jjObScaleRead(){
+  const k   = document.getElementById('jj-ob-model').value;
+  const wKey = 'JJ_'+k;
+  const r   = await _jjScaleReadKg(wKey, '출고');
+  if(!r) return;
+  document.getElementById('jj-ob-qty').value = r.qty;
+  jjUob();
+  showModal('⚖ 저울 측정 완료 — 전주 출고',
+    `품목: ${JJ.stock[k]?.spec||k}<br>`+
+    `측정 무게: <strong>${r.kg.toFixed(3)} kg</strong><br>`+
+    `단중: ${r.uw}g / 포장재: ${r.pw}g<br><br>`+
+    `계산 수량: <strong style="color:var(--c3);font-size:20px">${r.qty.toLocaleString()} PCS</strong><br><br>`+
+    `✓ 출고수량 필드에 자동 입력됐습니다.`);
+}
+async function jjScanScaleRead(){
+  if(!jjScannedKey){ showModal('알림','먼저 바코드를 스캔하세요.'); return; }
+  const wKey = 'JJ_'+jjScannedKey;
+  const r   = await _jjScaleReadKg(wKey, '스캔출고');
+  if(!r) return;
+  document.getElementById('jj-scan-qty').value = r.qty;
+  showModal('⚖ 저울 측정 완료 — 스캔 출고',
+    `측정 무게: <strong>${r.kg.toFixed(3)} kg</strong><br>`+
+    `단중: ${r.uw}g / 포장재: ${r.pw}g<br><br>`+
+    `계산 수량: <strong style="color:var(--c3);font-size:20px">${r.qty.toLocaleString()} PCS</strong><br><br>`+
+    `✓ 수량 필드에 자동 입력됐습니다. [⬆ 출고 처리 확정] 버튼을 눌러주세요.`);
+}
+/* 전주 저울 공통: WT_DB에서 단중 조회 + 저울 읽기 */
+async function _jjScaleReadKg(wKey, mode){
+  let kg = null;
+  if(scaleConnected){
+    try{
+      const r = await fetch('http://localhost:5000/scale/read',{signal:AbortSignal.timeout(5000)});
+      const d = await r.json();
+      if(d.success && d.value!==undefined) kg = d.value;
+    }catch(e){ kg = null; }
+  }
+  if(kg === null){
+    const wStr = prompt(
+      `⚖ 저울${scaleConnected?' 읽기 실패':' 미연결'} — 전주공장 ${mode}\n\n총 무게를 직접 입력하세요 (kg)\n예: 14.82`, '');
+    if(!wStr) return null;
+    kg = parseFloat(wStr);
+    if(isNaN(kg)||kg<=0){ alert('올바른 무게를 입력하세요.'); return null; }
+  }
+  const wt = WT_DB[wKey];
+  let uw, pw;
+  if(!wt||!wt.uw){
+    const uwStr = prompt(
+      `⚖ "${wKey}" 단중 미등록\n개당 무게를 입력하세요 (g)\n예: 262.0`, '');
+    if(!uwStr) return null;
+    uw = parseFloat(uwStr);
+    if(isNaN(uw)||uw<=0){ alert('올바른 단중을 입력하세요.'); return null; }
+    pw = parseFloat(prompt('포장재 무게 (g)\n없으면 0:', '0'))||0;
+  } else { uw=wt.uw; pw=wt.pw||0; }
+  const qty = Math.max(0, Math.round((kg*1000-pw)/uw));
+  return {kg, qty, uw, pw};
+}
+
 // ── 전주 라벨 ────────────────────────────────────────
 let jjLblSeq=1;
 function jjPrepLbl(){
@@ -3401,6 +3579,7 @@ function jjInitDead(){
 
 /* 단중 데이터 (품목별 개당 무게 g / 포장재 무게 g) */
 const WT_DB = {
+  // ── 신촌공장 품목 ──────────────────────────────────────
   'OSD6203(AU)': {uw:103.2, pw:1250, box:1000, status:'확인'},
   'OSD6203(IR)': {uw:101.8, pw:1250, box:1000, status:'확인'},
   '6005 AU':     {uw:121.4, pw:1180, box:500,  status:'확인'},
@@ -3424,6 +3603,17 @@ const WT_DB = {
   '6204 AU':     {uw:null,  pw:1150, box:500,  status:'미등록'},
   '6204 IR':     {uw:null,  pw:1150, box:500,  status:'미등록'},
   '6200 IR(찬)': {uw:null,  pw:1100, box:500,  status:'미등록'},
+  // ── 전주공장 품목 (신촌에서 입고 후 전주 출하) ───────────
+  'JJ_6006AU':  {uw:262.0, pw:1300, box:200, status:'확인', factory:'jj', jjKey:'6006AU'},
+  'JJ_6006IR':  {uw:198.0, pw:1300, box:200, status:'확인', factory:'jj', jjKey:'6006IR'},
+  'JJ_6007AAU': {uw:349.0, pw:1400, box:150, status:'확인', factory:'jj', jjKey:'6007AAU'},
+  'JJ_6007AIR': {uw:242.0, pw:1400, box:150, status:'확인', factory:'jj', jjKey:'6007AIR'},
+  'JJ_6008AU':  {uw:435.0, pw:1500, box:100, status:'확인', factory:'jj', jjKey:'6008AU'},
+  'JJ_6008IR':  {uw:290.0, pw:1500, box:100, status:'확인', factory:'jj', jjKey:'6008IR'},
+  'JJ_6304AU':  {uw:318.0, pw:1350, box:150, status:'확인', factory:'jj', jjKey:'6304AU'},
+  'JJ_6304IR':  {uw:215.0, pw:1350, box:150, status:'확인', factory:'jj', jjKey:'6304IR'},
+  'JJ_6305AU':  {uw:436.0, pw:1400, box:100, status:'확인', factory:'jj', jjKey:'6305AU'},
+  'JJ_6305IR':  {uw:298.0, pw:1400, box:100, status:'확인', factory:'jj', jjKey:'6305IR'},
 };
 
 /* 실사 이력 */
@@ -3450,11 +3640,21 @@ function invSelectModel(){
   if(!k) return;
   const w = WT_DB[k];
   /* 단중 */
-  document.getElementById('inv-unit-wt').value = w.uw || '';
-  document.getElementById('inv-pkg-wt').value  = w.pw || 0;
-  /* 장부 수량 (DS_MON에서 현재고 찾기) */
-  const row = DS_MON.find(r=>r[0]===k);
-  document.getElementById('inv-book-qty').value = row ? row[6].toLocaleString()+' PCS' : '—';
+  document.getElementById('inv-unit-wt').value = w && w.uw ? w.uw : '';
+  document.getElementById('inv-pkg-wt').value  = w && w.pw ? w.pw : 0;
+
+  /* 현재고 — 신촌(DS_MON) 또는 전주(JJ.stock) */
+  let bookQtyStr = '—';
+  if(k.startsWith('JJ_') && w && w.jjKey){
+    /* 전주공장 품목 → JJ.stock에서 조회 */
+    const jjd = JJ.stock[w.jjKey];
+    if(jjd) bookQtyStr = jjd.stk.toLocaleString()+' PCS (전주공장)';
+  } else {
+    /* 신촌공장 품목 → DS_MON에서 조회 */
+    const row = DS_MON.find(r=>r[0]===k);
+    if(row) bookQtyStr = row[6].toLocaleString()+' PCS (신촌공장)';
+  }
+  document.getElementById('inv-book-qty').value = bookQtyStr;
   invCalc();
 }
 
@@ -3534,20 +3734,28 @@ function invApply(){
   const note  = document.getElementById('inv-note').value;
   const {calcQty, bookQty, diff, pct} = invCalcResult;
 
+  /* 전주 품목이면 JJ.stock도 갱신 */
+  const w = WT_DB[k];
+  if(k.startsWith('JJ_') && w && w.jjKey && JJ.stock[w.jjKey]){
+    JJ.stock[w.jjKey].stk = calcQty;
+    JJ.stock[w.jjKey].amt = calcQty * JJ.stock[w.jjKey].price;
+  }
+
   /* 이력 저장 */
-  invHistory.unshift({date, model:k, bookQty, calcQty, diff, pct, user, note});
+  const factory = k.startsWith('JJ_') ? '전주' : '신촌';
+  invHistory.unshift({date, model:k, bookQty, calcQty, diff, pct, user, note, factory});
   invRenderHist();
   invUpdateStat();
 
-  /* 성공 메시지 */
   document.getElementById('inv-result-msg').innerHTML =
-    `<div class="alert a-ok">✅ ${k} 실사 완료 — 장부: ${bookQty.toLocaleString()} → 실사: ${calcQty.toLocaleString()} (${diff>=0?'+':''}${diff.toLocaleString()} PCS)</div>`;
+    `<div class="alert a-ok">✅ [${factory}] ${k} 실사 완료 — 장부: ${bookQty.toLocaleString()} → 실사: ${calcQty.toLocaleString()} (${diff>=0?'+':''}${diff.toLocaleString()} PCS)</div>`;
 
   showModal('재고 실사 반영 완료',
-    `품목: ${k}<br>장부 수량: ${bookQty.toLocaleString()} PCS<br>`+
+    `공장: ${factory}공장<br>품목: ${k}<br>장부 수량: ${bookQty.toLocaleString()} PCS<br>`+
     `실사 수량: ${calcQty.toLocaleString()} PCS<br>`+
     `차이: ${diff>=0?'+':''}${diff.toLocaleString()} PCS (${diff>=0?'+':''}${pct}%)<br><br>`+
-    `✓ 실사 이력이 저장되었습니다.<br>※ 실제 DB 반영은 클라우드 API 연동 후 적용됩니다.`
+    `✓ 실사 이력이 저장되었습니다.<br>${k.startsWith('JJ_')?'✓ 전주공장 재고에 반영됐습니다.<br>':''}`+
+    `※ 실제 DB 반영은 클라우드 API 연동 후 영구 저장됩니다.`
   );
 }
 
@@ -3645,6 +3853,247 @@ async function scaleRead(){
   }catch(e){
     stEl.style.color='var(--c4)'; stEl.textContent=`● 읽기 실패 — ${e.message}`;
   }
+}
+
+
+/* ══════════════════════════════════════════════════════
+   입고·출고 저울 연동 함수
+   ══════════════════════════════════════════════════════ */
+// ══════════════════════════════════════════════════════
+//  공급사 MASTER LABEL 스캔 파싱 (Code128 — UN 형식)
+// ══════════════════════════════════════════════════════
+
+/* 공급사별 UN 앞 6자리 식별 코드 + 품목 매핑 DB */
+const SUPPLIER_DB = {
+  '420506': {name:'JW (Quzhou JW Machinery)', vendor:'찬스(위탁)', ring:'선삭링'},
+  '527003': {name:'이양 (Zhangjiagang Yiyang)', vendor:'찬스(위탁)', ring:'선삭링'},
+  '421150': {name:'씽메이 (Ningbo Xingmei)', vendor:'찬스(위탁)', ring:'선삭링'},
+  '553897': {name:'페이닝 (Ningbo Feining)', vendor:'찬스(위탁)', ring:'선삭링'},
+  '527975': {name:'하이순 (Xinchang Haishun)', vendor:'찬스(위탁)', ring:'선삭링'},
+};
+
+/* Material-No(13자리) → WMS 품목 매핑 */
+const MATNO_DB = {
+  '0985277200000': {model:'FAG6202', spec:'AU.6202-2Z-2011', ring:'선삭링', price:95},
+  '0985159850000': {model:'FAG6202', spec:'AU.6205-2Z-2012', ring:'선삭링', price:95},
+  '0959426880000': {model:'F-572665', spec:'F-633667-2012.AU.62/22-CO1', ring:'선삭링', price:89},
+  '0985155350000': {model:'FAG6202', spec:'AU.6202-2Z-2012', ring:'선삭링', price:95},
+  '3033205910000': {model:'F-624888', spec:'F-626685-2012.AU.KLX>A', ring:'선삭링', price:null},
+  '3000333970000': {model:'F-679350', spec:'F-679350-2012.AU.KL-CO1', ring:'선삭링', price:null},
+  /* 추가 자재번호는 실제 수령 시 등록 */
+};
+
+let ibScanData = null;  /* 스캔된 데이터 임시 저장 */
+let ibQrScanner = null; /* 카메라 스캐너 인스턴스 */
+
+/* UN 바코드 파싱 메인 함수 */
+function ibScanParse(raw){
+  raw = (raw||'').trim().toUpperCase().replace(/\s/g,'');
+  const msgEl  = document.getElementById('ib-scan-msg');
+  const resEl  = document.getElementById('ib-scan-result');
+  const prevEl = document.getElementById('ib-scan-preview');
+
+  if(!raw){ msgEl.innerHTML='<div class="alert a-warn">바코드 값을 입력하세요.</div>'; return; }
+
+  /* UN 형식 검증 */
+  if(!raw.startsWith('UN') || raw.length < 14){
+    msgEl.innerHTML=`<div class="alert a-warn">⚠ UN 형식이 아닙니다 (UN으로 시작하는 20자 코드). 입력값: ${raw}</div>`;
+    return;
+  }
+
+  const digits = raw.slice(2);          /* UN 제거 */
+  const suppKey = digits.slice(0,6);    /* 앞 6자리 = 공급사 코드 */
+  const supp = SUPPLIER_DB[suppKey];
+
+  /* 자재번호 추출 시도 — 라벨에 별도 스캔된 경우 13자리로 처리 */
+  const matnoRaw = digits.replace(/^0+/,''); /* 선행 0 제거 후 매핑 시도 */
+  let matched = null;
+  for(const [key, val] of Object.entries(MATNO_DB)){
+    if(digits.includes(key.slice(0,8)) || raw.includes(key.slice(2,10))){ matched={key, val}; break; }
+  }
+
+  ibScanData = {
+    rawCode: raw,
+    suppKey,
+    supplier: supp ? supp.name : '미등록 공급사 ('+suppKey+')',
+    vendor:   supp ? supp.vendor : '찬스(위탁)',
+    ring:     supp ? supp.ring : '선삭링',
+    model:    matched ? matched.val.model : '',
+    spec:     matched ? matched.val.spec : '',
+    price:    matched ? matched.val.price : null,
+    matno:    matched ? matched.key : '',
+    lot:      '',  /* 별도 입력 */
+    qty:      0,   /* 수량은 별도 입력 */
+  };
+
+  /* 미리보기 표시 */
+  const ok = supp ? '✅' : '⚠';
+  prevEl.innerHTML = `
+    <div><span style="color:var(--tx2)">UN 코드</span>
+      <strong style="font-family:var(--fm);color:var(--c1);margin-left:8px">${raw}</strong></div>
+    <div><span style="color:var(--tx2)">공급사</span>
+      <strong style="color:var(--tx);margin-left:8px">${ok} ${ibScanData.supplier}</strong></div>
+    <div><span style="color:var(--tx2)">공급처</span>
+      <strong style="color:var(--tx);margin-left:8px">${ibScanData.vendor}</strong></div>
+    ${matched ? `
+    <div><span style="color:var(--tx2)">형번</span>
+      <strong style="color:var(--c2);margin-left:8px">${ibScanData.model}</strong></div>
+    <div><span style="color:var(--tx2)">자재규격</span>
+      <strong style="color:var(--tx);margin-left:8px;font-size:12px">${ibScanData.spec}</strong></div>
+    <div><span style="color:var(--tx2)">자재번호</span>
+      <strong style="color:var(--tx);font-family:var(--fm);margin-left:8px">${ibScanData.matno}</strong></div>
+    ` : `<div style="color:var(--c3)">⚠ 자재번호 미등록 — 형번을 직접 선택하세요</div>`}
+    <div style="color:var(--c3);margin-top:4px">📝 수량은 라벨에서 직접 확인 후 입력하세요</div>
+  `;
+  resEl.style.display = 'block';
+  msgEl.innerHTML = '';
+  document.getElementById('ib-scan-input').value = raw;
+}
+
+/* 스캔 결과 → 입고 양식 자동 적용 */
+function ibScanApply(){
+  if(!ibScanData){ return; }
+  const d = ibScanData;
+  /* 공급처 */
+  const vSel = document.getElementById('ib-vendor');
+  for(let i=0;i<vSel.options.length;i++){
+    if(vSel.options[i].value.includes('찬스') || vSel.options[i].text.includes('찬스')){
+      vSel.selectedIndex=i; break;
+    }
+  }
+  /* 링종류 */
+  const rSel = document.getElementById('ib-ring');
+  for(let i=0;i<rSel.options.length;i++){
+    if(rSel.options[i].text===d.ring){ rSel.selectedIndex=i; break; }
+  }
+  /* 형번 */
+  if(d.model){
+    const mSel = document.getElementById('ib-model');
+    for(let i=0;i<mSel.options.length;i++){
+      if(mSel.options[i].text===d.model||mSel.options[i].value===d.model){ mSel.selectedIndex=i; break; }
+    }
+  }
+  /* 자재번호·규격 */
+  if(d.matno) document.getElementById('ib-matno').value = d.matno;
+  if(d.spec)  document.getElementById('ib-spec').value  = d.spec;
+  /* 단가 */
+  if(d.price) document.getElementById('ib-price').value = d.price;
+  /* 로트 — UN 뒤 뒷부분 활용 */
+  document.getElementById('ib-lot').value = 'LOT-SCAN-'+d.rawCode.slice(-6);
+
+  uIb();
+  document.getElementById('ib-scan-msg').innerHTML =
+    '<div class="alert a-ok">✅ 입고 양식에 자동 입력됐습니다. 수량을 확인하고 [⬇ 입고 등록]을 누르세요.</div>';
+  document.getElementById('ib-scan-result').style.display='none';
+  /* 수량 입력란으로 포커스 */
+  setTimeout(()=>document.getElementById('ib-qty').focus(), 200);
+}
+
+/* 카메라 스캐너 토글 */
+function ibScanToggleCamera(){
+  const readerDiv = document.getElementById('ib-scan-reader');
+  const btnEl     = document.getElementById('ib-cam-btn');
+
+  if(ibQrScanner){
+    ibQrScanner.stop().then(()=>{
+      ibQrScanner = null;
+      readerDiv.style.display = 'none';
+      btnEl.textContent = '📷 카메라';
+    });
+    return;
+  }
+  if(typeof Html5Qrcode === 'undefined'){
+    document.getElementById('ib-scan-msg').innerHTML =
+      '<div class="alert a-warn">⚠ html5-qrcode 라이브러리 로드 실패. 직접 입력을 이용하세요.</div>';
+    return;
+  }
+  readerDiv.style.display = 'block';
+  btnEl.textContent = '⏹ 중지';
+  ibQrScanner = new Html5Qrcode('ib-scan-reader');
+  ibQrScanner.start(
+    {facingMode:'environment'},
+    {fps:10, qrbox:{width:280, height:120}},
+    (decodedText)=>{
+      /* 성공 → 파싱 후 카메라 중지 */
+      document.getElementById('ib-scan-input').value = decodedText;
+      ibScanParse(decodedText);
+      ibQrScanner.stop().then(()=>{
+        ibQrScanner = null;
+        readerDiv.style.display='none';
+        btnEl.textContent='📷 카메라';
+      });
+    },
+    ()=>{}
+  ).catch(err=>{
+    document.getElementById('ib-scan-msg').innerHTML =
+      `<div class="alert a-warn">⚠ 카메라 접근 실패: ${err}. HTTPS 환경에서만 카메라 API 사용 가능합니다.</div>`;
+    readerDiv.style.display='none';
+    btnEl.textContent='📷 카메라';
+    ibQrScanner = null;
+  });
+}
+
+function ibScanClear(){
+  ibScanData = null;
+  document.getElementById('ib-scan-input').value='';
+  document.getElementById('ib-scan-result').style.display='none';
+  document.getElementById('ib-scan-msg').innerHTML='';
+}
+
+async function ibScaleRead(){
+  const r = await _scaleReadKg('입고');
+  if(!r) return;
+  document.getElementById('ib-qty').value = r.qty;
+  uIb();
+  showModal('⚖ 저울 측정 완료',
+    `측정 무게: <strong>${r.kg.toFixed(3)} kg</strong><br>`+
+    `단중: ${r.uw}g&nbsp;/&nbsp;포장재: ${r.pw}g<br><br>`+
+    `계산 수량: <strong style="color:#00f0a0;font-size:20px">${r.qty.toLocaleString()} PCS</strong><br><br>`+
+    `✓ 입고수량 필드에 자동 입력됐습니다.`);
+}
+async function obScaleRead(){
+  const r = await _scaleReadKg('출고');
+  if(!r) return;
+  document.getElementById('ob-qty').value = r.qty;
+  uOb();
+  showModal('⚖ 저울 측정 완료',
+    `측정 무게: <strong>${r.kg.toFixed(3)} kg</strong><br>`+
+    `단중: ${r.uw}g&nbsp;/&nbsp;포장재: ${r.pw}g<br><br>`+
+    `계산 수량: <strong style="color:#ffc000;font-size:20px">${r.qty.toLocaleString()} PCS</strong><br><br>`+
+    `✓ 출하수량 필드에 자동 입력됐습니다.`);
+}
+async function _scaleReadKg(mode){
+  let kg = null;
+  if(scaleConnected){
+    try{
+      const r = await fetch('http://localhost:5000/scale/read',{signal:AbortSignal.timeout(5000)});
+      const d = await r.json();
+      if(d.success && d.value!==undefined) kg = d.value;
+    }catch(e){ kg = null; }
+  }
+  if(kg === null){
+    const wStr = prompt(
+      `⚖ MiGun ST 저울${scaleConnected?' 읽기 실패':' 미연결'}\n\n총 무게를 직접 입력하세요 (kg)\n예: 29.48`, '');
+    if(!wStr) return null;
+    kg = parseFloat(wStr);
+    if(isNaN(kg)||kg<=0){ alert('올바른 무게를 입력하세요.'); return null; }
+  }
+  const modelEl = document.getElementById(mode==='입고'?'ib-model':'ob-model');
+  const modelKey = modelEl ? modelEl.value : '';
+  const matchKey = Object.keys(WT_DB).find(k=>
+    k.replace(/\s*(AU|IR)$/,'').includes(modelKey)||modelKey.includes(k.split(' ')[0]));
+  const wt = matchKey ? WT_DB[matchKey] : null;
+  let uw, pw;
+  if(!wt||!wt.uw){
+    const uwStr = prompt(
+      `⚖ "${modelKey}" 단중 미등록\n\n개당 무게를 직접 입력하세요 (g)\n단중 관리 메뉴에서 등록하면 자동 적용됩니다.\n예: 103.2`, '');
+    if(!uwStr) return null;
+    uw = parseFloat(uwStr);
+    if(isNaN(uw)||uw<=0){ alert('올바른 단중을 입력하세요.'); return null; }
+    pw = parseFloat(prompt('포장재(박스) 무게 (g)\n없으면 0:', '0'))||0;
+  } else { uw=wt.uw; pw=wt.pw||0; }
+  const qty = Math.max(0, Math.round((kg*1000-pw)/uw));
+  return {kg, qty, uw, pw};
 }
 
 /* ── 단중 관리 ── */
