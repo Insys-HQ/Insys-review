@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>인시스 급여발송 시스템</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+:root{
+  --navy:#1a3c6e;--navy2:#0f2447;--navy3:#2a5ca0;
+  --accent:#4a90d9;
+  --g1:#f0f4f8;--g2:#e2e8f0;--g3:#94a3b8;
+  --green:#16a34a;--green-bg:#f0fdf4;
+  --red:#dc2626;--red-bg:#fef2f2;
+  --yellow-bg:#fefce8;
+  --r:12px;--sh:0 4px 24px rgba(26,60,110,.1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--g1);color:#1e293b;min-height:100vh}
+.hdr{background:linear-gradient(135deg,var(--navy2),var(--navy),var(--navy3));
+     padding:20px 28px;display:flex;align-items:center;justify-content:space-between}
+.hdr-title{color:#fff;font-size:18px;font-weight:700}
+.hdr-sub{color:rgba(255,255,255,.75);font-size:12px;margin-top:2px}
+.hdr-badge{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);
+           color:#fff;font-size:11px;padding:4px 12px;border-radius:20px}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px}
+.steps{display:flex;gap:0;margin-bottom:24px;background:#fff;
+       border-radius:var(--r);padding:6px;box-shadow:var(--sh)}
+.stab{flex:1;padding:10px;border:none;background:transparent;
+      font-family:'Noto Sans KR',sans-serif;font-size:13px;font-weight:500;
+      color:var(--g3);cursor:pointer;border-radius:8px;transition:.2s}
+.stab.on{background:var(--navy);color:#fff}
+.card{background:#fff;border-radius:var(--r);padding:24px;box-shadow:var(--sh);margin-bottom:16px}
+.ctitle{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:18px}
+.urow{display:flex;gap:10px;align-items:center;margin-bottom:12px}
+.ulbl{font-size:13px;color:#475569;min-width:140px;font-weight:500}
+.uf{display:none}
+.ubtn{flex:1;padding:9px 14px;border:1.5px dashed var(--g2);border-radius:8px;
+      background:#fff;font-size:13px;color:var(--g3);cursor:pointer;
+      font-family:'Noto Sans KR',sans-serif;transition:.2s;text-align:left}
+.ubtn:hover{border-color:var(--navy);color:var(--navy)}
+.ubtn.ok{border-style:solid;border-color:var(--green);color:var(--green);background:var(--green-bg)}
+.pwinput{padding:9px 12px;border:1.5px solid var(--g2);border-radius:8px;
+         font-size:13px;font-family:'Noto Sans KR',sans-serif;width:180px;outline:none}
+.pwinput:focus{border-color:var(--navy)}
+.msginput{width:100%;padding:10px 14px;border:1.5px solid var(--g2);border-radius:8px;
+          font-size:13px;font-family:'Noto Sans KR',sans-serif;outline:none}
+.msginput:focus{border-color:var(--navy)}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:12px 24px;border:none;
+     border-radius:10px;font-size:14px;font-weight:700;
+     font-family:'Noto Sans KR',sans-serif;cursor:pointer;transition:.15s}
+.btn:active{transform:scale(.98)}
+.btn-p{background:var(--navy);color:#fff}
+.btn-p:hover{background:var(--navy3)}
+.btn-p:disabled,.btn-g:disabled{background:var(--g2);color:var(--g3);cursor:not-allowed;transform:none}
+.btn-g{background:var(--green);color:#fff}
+.btn-g:hover{background:#15803d}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+.sum{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.bdg{padding:5px 13px;border-radius:20px;font-size:12px;font-weight:500}
+.bdg-t{background:#e8f0fe;color:var(--navy)}
+.bdg-ok{background:var(--green-bg);color:var(--green)}
+.bdg-fail{background:var(--red-bg);color:var(--red)}
+.bdg-ex{background:#f1f5f9;color:#64748b}
+.tblwrap{overflow-x:auto;border-radius:8px;border:1px solid var(--g2)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:var(--navy);color:#fff;padding:10px 12px;text-align:left;font-weight:500;white-space:nowrap}
+td{padding:9px 12px;border-bottom:1px solid var(--g2);white-space:nowrap}
+tr:last-child td{border-bottom:none}
+tr.ok td{background:var(--green-bg)}
+tr.fail td{background:var(--red-bg)}
+tr.new td{background:var(--yellow-bg)}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:500}
+.tok{background:var(--green);color:#fff}
+.tfail{background:var(--red);color:#fff}
+.pb-wrap{margin:16px 0}
+.pb-top{font-size:13px;color:#475569;margin-bottom:6px;display:flex;justify-content:space-between}
+.pb-bar{height:8px;background:var(--g2);border-radius:4px;overflow:hidden}
+.pb-fill{height:100%;background:linear-gradient(90deg,var(--navy),var(--accent));border-radius:4px;transition:width .3s;width:0%}
+.pb-st{font-size:12px;color:var(--g3);margin-top:5px;min-height:18px}
+.resbox{background:var(--green-bg);border:1.5px solid #86efac;border-radius:10px;
+        padding:24px;text-align:center;margin-top:16px;display:none}
+.resbox.on{display:block}
+.res-title{font-size:18px;font-weight:700;color:var(--green);margin-bottom:6px}
+.res-sub{font-size:13px;color:#166534;margin-bottom:16px}
+.panel{display:none}.panel.on{display:block}
+@media(max-width:600px){
+  .urow{flex-direction:column;align-items:stretch}
+  .ulbl{min-width:auto}
+  .hdr{padding:14px 16px}
+  .hdr-title{font-size:15px}
+  .wrap{padding:14px 10px}
+}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div>
+    <div class="hdr-title">㈜인시스그룹  급여발송 시스템</div>
+    <div class="hdr-sub">AI혁신연구소  ·  Web v4.0</div>
+  </div>
+  <div class="hdr-badge">설치 없이 브라우저에서 바로 실행</div>
+</div>
+
+<div class="wrap">
+  <div class="steps">
+    <button class="stab on" id="t0" onclick="goTab(0)">📁 1. 파일 업로드</button>
+    <button class="stab"    id="t1" onclick="goTab(1)">🔗 2. 매칭 확인</button>
+    <button class="stab"    id="t2" onclick="goTab(2)">📸 3. 변환 & 완료</button>
+  </div>
+
+  <!-- 패널1 -->
+  <div class="panel on" id="p0">
+    <div class="card">
+      <div class="ctitle">📦 급여명세서 ZIP 파일</div>
+      <div class="urow">
+        <span class="ulbl">ZIP 파일 선택</span>
+        <button class="ubtn" id="zBtn" onclick="document.getElementById('zf').click()">파일을 선택하세요...</button>
+        <input type="file" id="zf" class="uf" accept=".zip" onchange="onZip(this)">
+      </div>
+      <div style="font-size:12px;color:var(--g3)">예) 2026년5월_급여명세서.zip (내부: 강민수.pdf, 홍길동.pdf ...)</div>
+    </div>
+
+    <div class="card">
+      <div class="ctitle">📊 직원 연락처 Excel</div>
+      <div class="urow">
+        <span class="ulbl">Excel 파일 선택</span>
+        <button class="ubtn" id="xBtn" onclick="document.getElementById('xf').click()">파일을 선택하세요...</button>
+        <input type="file" id="xf" class="uf" accept=".xlsx,.xls" onchange="onXl(this)">
+      </div>
+      <div class="urow" style="margin-top:4px">
+        <span class="ulbl">Excel 비밀번호</span>
+        <input type="password" class="pwinput" id="pw" placeholder="없으면 비워두세요">
+      </div>
+      <div class="urow" style="margin-top:4px">
+        <span class="ulbl">담당 관리자</span>
+        <span id="mgr" style="font-size:14px;font-weight:700;color:var(--navy)">—</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ctitle">💬 발송 문구</div>
+      <input class="msginput" id="msg" value="[인시스] 급여명세서 전송드립니다. 문의는 답장 바랍니다.">
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-p" id="loadBtn" onclick="loadData()" disabled>▶ 불러오기 &amp; 매칭</button>
+    </div>
+    <div id="lst" style="font-size:12px;color:var(--g3);margin-top:8px"></div>
+  </div>
+
+  <!-- 패널2 -->
+  <div class="panel" id="p1">
+    <div class="card">
+      <div class="ctitle">🔗 매칭 결과</div>
+      <div class="sum" id="sumRow"></div>
+      <div class="tblwrap">
+        <table>
+          <thead><tr><th>번호</th><th>이름</th><th>업체</th><th>전화번호</th><th>PDF파일</th><th>상태</th></tr></thead>
+          <tbody id="mtbl"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-p" onclick="goTab(2)">📸 3단계 → 변환 시작</button>
+      <button class="btn" style="background:var(--g2);color:#475569" onclick="goTab(0)">← 다시 불러오기</button>
+    </div>
+  </div>
+
+  <!-- 패널3 -->
+  <div class="panel" id="p2">
+    <div class="card">
+      <div class="ctitle">📸 이미지 품질</div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap">
+        <label style="font-size:13px"><input type="radio" name="dpi" value="1.5" checked> 보통 (권장)</label>
+        <label style="font-size:13px"><input type="radio" name="dpi" value="2.0"> 고화질</label>
+        <label style="font-size:13px"><input type="radio" name="dpi" value="1.0"> 저용량</label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ctitle">🚀 변환 실행</div>
+      <div class="btn-row">
+        <button class="btn btn-g" id="cvBtn" onclick="startConvert()">🚀 변환 시작 → 모바일발송 HTML 생성</button>
+      </div>
+      <div class="pb-wrap" id="pbWrap" style="display:none">
+        <div class="pb-top"><span>진행 중</span><span id="pbPct">0%</span></div>
+        <div class="pb-bar"><div class="pb-fill" id="pbFill"></div></div>
+        <div class="pb-st" id="pbSt"></div>
+      </div>
+    </div>
+
+    <div class="resbox" id="resBox">
+      <div class="res-title">✅ 변환 완료!</div>
+      <div class="res-sub" id="resSub"></div>
+      <button class="btn btn-p" onclick="dlHTML()" style="margin:0 auto">
+        📱 모바일발송.html 다운로드
+      </button>
+      <div style="font-size:12px;color:#166534;margin-top:14px;line-height:1.7">
+        이 파일을 카톡으로 관리자에게 전송<br>
+        관리자는 폰에서 파일 열기 → 직원별 발송 버튼 탭
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+let zipData={}, xlData=[], matched=[], exclCnt=0, mgrName='', htmlBlob=null;
+
+function goTab(i){
+  ['p0','p1','p2'].forEach((id,j)=>{
+    document.getElementById(id).classList.toggle('on',j===i);
+    document.getElementById('t'+j).classList.toggle('on',j===i);
+  });
+}
+
+function onZip(inp){
+  if(!inp.files[0])return;
+  const b=document.getElementById('zBtn');
+  b.textContent='✅ '+inp.files[0].name; b.className='ubtn ok';
+  chkReady();
+}
+function onXl(inp){
+  if(!inp.files[0])return;
+  const b=document.getElementById('xBtn');
+  b.textContent='✅ '+inp.files[0].name; b.className='ubtn ok';
+  const m=inp.files[0].name.match(/([가-힣]{2,6}(?:차장|부장|과장|팀장|대리|사원|주임|이사|상무|본부장|실장)?)/);
+  mgrName=m?m[1]:inp.files[0].name.replace(/\.[^.]+$/,'');
+  document.getElementById('mgr').textContent=mgrName||'—';
+  chkReady();
+}
+function chkReady(){
+  document.getElementById('loadBtn').disabled=
+    !(document.getElementById('zf').files.length&&document.getElementById('xf').files.length);
+}
+
+async function loadData(){
+  const btn=document.getElementById('loadBtn');
+  btn.disabled=true; btn.textContent='⏳ 불러오는 중...';
+  const st=document.getElementById('lst');
+  try{
+    st.textContent='ZIP 읽는 중...';
+    const zAB=await document.getElementById('zf').files[0].arrayBuffer();
+    const zip=await JSZip.loadAsync(zAB);
+    zipData={};
+    const ents=[];
+    zip.forEach((p,e)=>{if(!e.dir&&p.toLowerCase().endsWith('.pdf'))ents.push([p,e]);});
+    for(const[p,e]of ents){
+      const bytes=await e.async('uint8array');
+      const name=p.split('/').pop().replace(/\.pdf$/i,'');
+      zipData[name]=bytes;
+    }
+    st.textContent=`ZIP: PDF ${Object.keys(zipData).length}개`;
+
+    st.textContent='Excel 읽는 중...';
+    const xAB=await document.getElementById('xf').files[0].arrayBuffer();
+    let wb;
+    try{wb=XLSX.read(xAB,{type:'array',password:document.getElementById('pw').value||undefined});}
+    catch(e){wb=XLSX.read(xAB,{type:'array'});}
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+    xlData=[]; exclCnt=0;
+    for(let i=1;i<rows.length;i++){
+      const r=rows[i];
+      if(!r[2]||!r[3])continue;
+      const note=String(r[4]||'').trim();
+      if(note.includes('퇴사')){exclCnt++;continue;}
+      const d=String(r[3]).replace(/\D/g,'');
+      const ph=d.length===11?`${d.slice(0,3)}-${d.slice(3,7)}-${d.slice(7)}`:String(r[3]);
+      xlData.push({no:r[0],co:String(r[1]||'').trim(),name:String(r[2]).trim(),ph,note});
+    }
+    st.textContent=`Excel: ${xlData.length}명`;
+
+    st.textContent='매칭 중...';
+    matched=xlData.map(emp=>{
+      const cn=cln(emp.name); let pdfKey=null;
+      for(const k of Object.keys(zipData)){
+        if(cn===cln(k)||cn.includes(cln(k))||cln(k).includes(cn)){pdfKey=k;break;}
+      }
+      return{...emp,pdfKey,pdfBytes:pdfKey?zipData[pdfKey]:null,imgB64:null};
+    });
+
+    updTable(); goTab(1);
+    st.textContent=`완료 — 총 ${matched.length}명 / 매칭 ${matched.filter(m=>m.pdfKey).length}명`;
+    btn.textContent='▶ 불러오기 & 매칭';
+  }catch(e){
+    st.textContent='⚠️ 오류: '+e.message;
+    btn.disabled=false; btn.textContent='▶ 불러오기 & 매칭'; chkReady();
+  }
+}
+
+function cln(s){return s.replace(/\(재\)/g,'').replace(/\d+/g,'').trim();}
+
+function updTable(){
+  const ok=matched.filter(m=>m.pdfKey).length, fail=matched.length-ok;
+  document.getElementById('sumRow').innerHTML=
+    `<span class="bdg bdg-t">전체: ${matched.length}명</span>
+     <span class="bdg bdg-ok">✅ 매칭: ${ok}명</span>
+     <span class="bdg bdg-fail">❌ 미매칭: ${fail}명</span>
+     <span class="bdg bdg-ex">🚪 퇴사제외: ${exclCnt}명</span>`;
+  document.getElementById('mtbl').innerHTML=matched.map(m=>{
+    const ok=!!m.pdfKey, cls=ok?'ok':(m.note.includes('입사')?'new':'fail');
+    return`<tr class="${cls}"><td>${m.no||''}</td><td>${m.name}</td><td>${m.co}</td>
+      <td>${m.ph}</td><td>${m.pdfKey||'—'}</td>
+      <td><span class="tag ${ok?'tok':'tfail'}">${ok?'✅ 매칭':'❌ PDF없음'}</span></td></tr>`;
+  }).join('');
+}
+
+async function pdfToB64(bytes,scale){
+  const pdf=await pdfjsLib.getDocument({data:bytes}).promise;
+  const page=await pdf.getPage(1);
+  const vp=page.getViewport({scale});
+  const cv=document.createElement('canvas');
+  cv.width=vp.width; cv.height=vp.height;
+  await page.render({canvasContext:cv.getContext('2d'),viewport:vp}).promise;
+  return cv.toDataURL('image/jpeg',.88);
+}
+
+async function startConvert(){
+  const tgt=matched.filter(m=>m.pdfBytes);
+  if(!tgt.length){alert('매칭된 PDF가 없습니다.');return;}
+  const scale=parseFloat(document.querySelector('[name=dpi]:checked').value);
+  const cvBtn=document.getElementById('cvBtn');
+  cvBtn.disabled=true; cvBtn.textContent='⏳ 변환 중...';
+  const pbWrap=document.getElementById('pbWrap');
+  const pbFill=document.getElementById('pbFill');
+  const pbPct=document.getElementById('pbPct');
+  const pbSt=document.getElementById('pbSt');
+  pbWrap.style.display='block';
+  const n=tgt.length; let done=0;
+  for(const m of tgt){
+    try{
+      m.imgB64=await pdfToB64(m.pdfBytes,scale); done++;
+      const pct=Math.round(done/n*100);
+      pbFill.style.width=pct+'%'; pbPct.textContent=pct+'%';
+      pbSt.textContent=`변환 중: ${m.name} (${done}/${n})`;
+      await new Promise(r=>setTimeout(r,0));
+    }catch(e){pbSt.textContent=`⚠️ ${m.name} 실패`;}
+  }
+  pbSt.textContent='HTML 생성 중...';
+  htmlBlob=genHTML();
+  const rb=document.getElementById('resBox');
+  rb.classList.add('on');
+  document.getElementById('resSub').textContent=`${done}명 변환 완료  ·  모바일발송.html 준비됨`;
+  cvBtn.textContent='✅ 완료';
+  pbSt.textContent='✅ 완료! 아래 버튼으로 다운로드하세요.';
+}
+
+function genHTML(){
+  const msg=document.getElementById('msg').value;
+  const mgr=mgrName||'관리자';
+  const stamp=new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long'});
+  const items=matched.filter(m=>m.imgB64);
+  const dataJson=JSON.stringify(items.map(m=>({
+    no:m.no,name:m.name,co:m.co,
+    ph:m.ph.replace(/\D/g,''),ph_fmt:m.ph,
+    img:m.imgB64,msg
+  })));
+  const html=`<!DOCTYPE html>
+<html lang="ko"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>급여명세서 발송 — ${mgr}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,'맑은 고딕',sans-serif;background:#f0f4f8;font-size:14px}
+.hdr{background:#1a3c6e;color:#fff;padding:16px 18px 14px;position:sticky;top:0;z-index:100}
+.hdr h1{font-size:16px;font-weight:700;margin-bottom:2px}
+.hdr .sub{font-size:12px;color:#fff}
+.sbar{display:flex;gap:8px;padding:10px 14px;background:#fff;border-bottom:1px solid #e2e8f0}
+.sc{flex:1;text-align:center;padding:7px 4px;border-radius:8px;font-size:11px}
+.sc .n{font-size:19px;font-weight:700;display:block;line-height:1.2}
+.s1{background:#e8f0fe;color:#1a3c6e}.s2{background:#f0fdf4;color:#16a34a}.s3{background:#fff7ed;color:#ea580c}
+.sw{padding:8px 12px;background:#fff;border-bottom:1px solid #e2e8f0}
+.si{width:100%;padding:8px 14px;border:1.5px solid #cbd5e1;border-radius:20px;font-size:13px;background:#f8fafc;outline:none}
+.si:focus{border-color:#1a3c6e}
+.list{padding:8px 12px;display:flex;flex-direction:column;gap:7px;padding-bottom:28px}
+.card{background:#fff;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:11px;border:1.5px solid #e2e8f0}
+.card.sent{border-color:#86efac;background:#f0fdf4}
+.thumb{width:50px;height:50px;border-radius:7px;object-fit:cover;border:1px solid #e2e8f0;flex-shrink:0;cursor:pointer}
+.tp{width:50px;height:50px;border-radius:7px;background:#e8f0fe;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#1a3c6e;flex-shrink:0}
+.info{flex:1;min-width:0}
+.nm{font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.co{font-size:11px;color:#94a3b8;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ph{font-size:12px;color:#1a3c6e;margin-top:3px;font-weight:500}
+.acts{display:flex;flex-direction:column;gap:5px;flex-shrink:0}
+.bs{padding:7px 12px;background:#1a3c6e;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;text-align:center;text-decoration:none;display:block;min-width:68px}
+.bs:active{background:#2a5ca0}
+.bc{padding:6px 8px;background:#f0fdf4;color:#16a34a;border:1.5px solid #86efac;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;text-align:center}
+.so{font-size:10px;color:#16a34a;text-align:center;margin-top:1px}
+.empty{text-align:center;padding:40px;color:#94a3b8}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:999;align-items:center;justify-content:center}
+.modal.on{display:flex}
+.modal img{max-width:95vw;max-height:90vh;border-radius:8px}
+.mx{position:fixed;top:14px;right:14px;color:#fff;font-size:26px;cursor:pointer;background:rgba(0,0,0,.5);border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center}
+</style></head><body>
+<div class="hdr"><h1>급여명세서 MMS 발송</h1><div class="sub">${stamp} · ${mgr} · 총 ${items.length}명</div></div>
+<div class="sbar">
+  <div class="sc s1"><span class="n" id="nT">${items.length}</span>전체</div>
+  <div class="sc s2"><span class="n" id="nD">0</span>완료</div>
+  <div class="sc s3"><span class="n" id="nL">${items.length}</span>미발송</div>
+</div>
+<div class="sw"><input class="si" type="search" placeholder="이름 또는 업체 검색..." id="q" oninput="render()"></div>
+<div class="list" id="list"></div>
+<div class="modal" id="modal" onclick="closeModal()">
+  <div class="mx">✕</div><img id="mimg" src="" alt="">
+</div>
+<script>
+const DATA=${dataJson};
+const SENT=new Set(JSON.parse(localStorage.getItem('is_${mgr}')||'[]'));
+function save(){localStorage.setItem('is_${mgr}',JSON.stringify([...SENT]))}
+function stat(){document.getElementById('nD').textContent=SENT.size;document.getElementById('nL').textContent=DATA.length-SENT.size}
+function render(){
+  const q=(document.getElementById('q').value||'').toLowerCase();
+  const list=q?DATA.filter(d=>d.name.includes(q)||d.co.toLowerCase().includes(q)):DATA;
+  const el=document.getElementById('list');
+  if(!list.length){el.innerHTML='<div class="empty">검색 결과 없음</div>';return}
+  el.innerHTML=list.map(d=>{
+    const s=SENT.has(d.ph);
+    return \`<div class="card\${s?' sent':''}">
+      <img class="thumb" src="\${d.img}" alt="\${d.name}" onclick="openModal('\${d.img}')" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <div class="tp" style="display:none">\${d.name[0]}</div>
+      <div class="info"><div class="nm">\${d.no?d.no+'. ':''}\${d.name}</div><div class="co">\${d.co}</div><div class="ph">\${d.ph_fmt}</div></div>
+      <div class="acts">
+        <a class="bs" href="sms:\${d.ph}?body=\${encodeURIComponent(d.msg)}" onclick="markSent('\${d.ph}')">📨 발송</a>
+        <div class="bc" onclick="toggle('\${d.ph}')">\${s?'↩ 취소':'✅ 완료'}</div>
+        \${s?'<div class="so">✅ 발송완료</div>':''}
+      </div></div>\`;
+  }).join('');
+  stat();
+}
+function markSent(ph){SENT.add(ph);save();setTimeout(()=>{render();stat()},1200)}
+function toggle(ph){SENT.has(ph)?SENT.delete(ph):SENT.add(ph);save();render();stat()}
+function openModal(s){document.getElementById('mimg').src=s;document.getElementById('modal').classList.add('on')}
+function closeModal(){document.getElementById('modal').classList.remove('on')}
+render();stat();
+<\/script></body></html>`;
+  return new Blob([html],{type:'text/html;charset=utf-8'});
+}
+
+function dlHTML(){
+  if(!htmlBlob)return;
+  const stamp=new Date().toISOString().slice(0,10).replace(/-/g,'');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(htmlBlob);
+  a.download=`mobile_send_${mgrName||'mgr'}_${stamp}.html`;
+  a.click();
+}
+</script>
+</body>
+</html>
