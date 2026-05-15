@@ -180,7 +180,7 @@ tr.new  td{background:var(--ybg)}
   <div class="hdr-l">
     <div>
       <div class="hdr-title">(주)인시스그룹 급여명세서 발송 시스템</div>
-      <div class="hdr-ver">AI혁신R&amp;D센터 · Web v7.8</div>
+      <div class="hdr-ver">AI혁신R&amp;D센터 · Web v8.0</div>
     </div>
   </div>
   <div class="hdr-badge">PC에서 확인 → 폰으로 발송</div>
@@ -503,9 +503,19 @@ async function loadData(){
     // 매칭
     st.textContent='매칭 중...';
     matched=xlData.map(emp=>{
-      const cn=cln(emp.name); let pdfKey=null;
+      const cn=cln(emp.name);
+      // (재), 숫자 제거된 이름으로 추가 시도
+      const cn2=emp.name.replace(/\(재\)/g,'').replace(/재$/,'').replace(/\d+/g,'').trim();
+      let pdfKey=null;
       for(const k of Object.keys(zipData)){
-        if(cn===cln(k)||cn.includes(cln(k))||cln(k).includes(cn)){pdfKey=k;break;}
+        const ck=cln(k);
+        // 순서대로 매칭 시도
+        if(cn===ck){ pdfKey=k; break; }                    // 완전 일치
+        if(cn2&&cn2===ck){ pdfKey=k; break; }              // (재) 제거 후 일치
+        if(cn&&ck&&cn.includes(ck)){ pdfKey=k; break; }    // 포함 관계
+        if(cn&&ck&&ck.includes(cn)){ pdfKey=k; break; }
+        if(cn2&&ck&&ck.includes(cn2)){ pdfKey=k; break; }  // cn2 포함
+        if(cn2&&ck&&cn2.includes(ck)){ pdfKey=k; break; }
       }
       return{...emp,pdfKey,pdfBytes:pdfKey?zipData[pdfKey]:null,
              imgB64:null,pdfName:null,pdfPhone:null,pdfMethod:null,pdfEmpty:false};
@@ -598,11 +608,12 @@ function updTable(){
       nameBadge=`<span class="tag tfail">❌ 불일치</span><br><small style="color:#dc2626;font-size:10px">${m.pdfName}</small>`;
       pdfNameDisp=`<span style="color:#dc2626;font-weight:600">${m.pdfName}</span>`;
     } else {
-      const fnMatch=m.pdfKey&&(m.pdfKey.replace(/\(재\)/g,'').replace(/\d+/g,'').trim()===xlClean);
+      const fnClean=m.pdfKey?m.pdfKey.replace(/\(재\)/g,'').replace(/재$/,'').replace(/\d+/g,'').trim():'';
+      const fnMatch=fnClean&&(fnClean===xlClean||xlClean.includes(fnClean)||fnClean.includes(xlClean));
       nameBadge=fnMatch
-        ?'<span class="tag" style="background:#e0f2fe;color:#0369a1">📄 파일명일치</span>'
+        ?'<span class="tag tok">✅ 파일확인</span>'
         :'<span class="tag tfail">⚠️ 확인필요</span>';
-      pdfNameDisp=`<span style="color:#0369a1">${m.pdfKey||'—'}</span>`;
+      pdfNameDisp=`<span style="color:#16a34a">${m.pdfKey||'—'}</span>`;
     }
 
     // ── 전화번호 비교 ─────────────────────────────
@@ -626,7 +637,9 @@ function updTable(){
     // hasPdf면서 이름/전화 둘 다 추출된 경우 → 둘 다 일치해야 ok
     // 전화 미추출이면 이름만으로 판단
     const bothExtracted = m.pdfName && m.pdfPhone;
-    const verified = hasPdf && (bothExtracted ? (nameOK && phoneOK) : nameOK);
+    // 파일명만 일치해도 verified로 처리
+    const fnVerified = hasPdf && !m.pdfName && fnMatch;
+    const verified = hasPdf && (bothExtracted ? (nameOK && phoneOK) : (nameOK || fnVerified));
 
     return`<tr class="${cls}">
       <td style="text-align:center">${m.no||''}</td>
@@ -1014,34 +1027,34 @@ function genHTML(){
   var mgr   = mgrName||'관리자';
   var stamp = new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long'});
   var items = matched.filter(function(m){return !!m.imgB64;});
-  var VER   = '7.4';
+  var VER   = '7.9';
 
-  // JSON 데이터 생성
   var rows = items.map(function(m){
-    return {
-      no:m.no, name:m.name, co:m.co,
-      ph:m.ph.replace(/\D/g,''), ph_fmt:m.ph,
-      img:m.imgB64, msg:msg
-    };
+    return {no:m.no,name:m.name,co:m.co,
+      ph:m.ph.replace(/\D/g,''),ph_fmt:m.ph,img:m.imgB64,msg:msg};
   });
   var dataJSON = JSON.stringify(rows);
 
-  // CSS
   var css = [
     '*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}',
     'body{font-family:-apple-system,"맑은 고딕",sans-serif;background:#dde3ea;font-size:14px}',
     '.app{max-width:460px;margin:0 auto;background:#f0f4f8;min-height:100vh}',
     '.hdr{background:#1a3c6e;color:#fff;padding:14px 16px 10px;position:sticky;top:0;z-index:100}',
     '.hdr h1{font-size:15px;font-weight:700;margin-bottom:2px}',
-    '.hdr-sub{font-size:11px;color:#fff;display:flex;justify-content:space-between;align-items:center}',
-    '.hdr-ver{font-size:10px;opacity:.7}',
+    '.hdr-sub{font-size:11px;color:#fff;display:flex;justify-content:space-between}',
     '.sbar{display:flex;gap:6px;padding:8px 10px;background:#fff;border-bottom:1px solid #e2e8f0}',
     '.sc{flex:1;text-align:center;padding:6px 4px;border-radius:8px;font-size:11px}',
     '.sc .n{font-size:18px;font-weight:700;display:block;line-height:1.2}',
     '.s1{background:#e8f0fe;color:#1a3c6e}.s2{background:#f0fdf4;color:#16a34a}.s3{background:#fff7ed;color:#ea580c}',
+    /* 일괄 발송 버튼 바 */
+    '.bulk-bar{display:flex;gap:8px;padding:10px 12px;background:#fff;border-bottom:2px solid #e2e8f0}',
+    '.bulk-btn{flex:1;padding:10px 8px;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;text-align:center}',
+    '.bulk-sms{background:#1a3c6e;color:#fff}',
+    '.bulk-sms:active{background:#2a5ca0}',
+    '.bulk-kako{background:#fee500;color:#3a1d1d}',
+    '.bulk-kako:active{background:#f0d800}',
     '.sw{padding:7px 10px;background:#fff;border-bottom:1px solid #e2e8f0}',
     '.si{width:100%;padding:8px 12px;border:1.5px solid #cbd5e1;border-radius:18px;font-size:13px;outline:none}',
-    '.si:focus{border-color:#1a3c6e}',
     '.guide{background:#fff;border-bottom:2px solid #e8f0fe}',
     '.guide-hdr{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;cursor:pointer}',
     '.guide-hdr-l{font-size:12px;font-weight:700;color:#1a3c6e}',
@@ -1059,12 +1072,16 @@ function genHTML(){
     '.thumb{width:50px;height:50px;border-radius:7px;object-fit:cover;border:1px solid #e2e8f0;flex-shrink:0;cursor:pointer}',
     '.tp{width:50px;height:50px;border-radius:7px;background:#e8f0fe;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#1a3c6e;flex-shrink:0}',
     '.info{flex:1;min-width:0}',
-    '.nm{font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
-    '.co{font-size:11px;color:#94a3b8;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
-    '.ph{font-size:12px;color:#1a3c6e;margin-top:2px;font-weight:700}',
+    '.nm{font-size:14px;font-weight:700;color:#1e293b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+    '.co{font-size:11px;color:#94a3b8;margin-top:1px}',
+    /* 전화번호 크게 + 탭 가능 */
+    '.ph{display:block;font-size:15px;color:#1a3c6e;margin-top:4px;font-weight:800;text-decoration:none;letter-spacing:.5px}',
+    '.ph:active{opacity:.7}',
     '.acts{display:flex;flex-direction:column;gap:5px;flex-shrink:0}',
-    '.bs{padding:7px 11px;background:#1a3c6e;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;min-width:64px;text-align:center;display:block}',
+    '.bs{padding:7px 11px;background:#1a3c6e;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;min-width:60px;text-align:center;display:block}',
     '.bs:active{background:#2a5ca0}',
+    '.bk{padding:7px 8px;background:#fee500;color:#3a1d1d;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;text-align:center;display:block}',
+    '.bk:active{background:#f0d800}',
     '.bc{padding:5px 7px;background:#f0fdf4;color:#16a34a;border:1.5px solid #86efac;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;text-align:center}',
     '.so{font-size:10px;color:#16a34a;text-align:center;margin-top:2px}',
     '.empty{text-align:center;padding:40px;color:#94a3b8;font-size:13px}',
@@ -1074,7 +1091,6 @@ function genHTML(){
     '.mx{position:fixed;top:12px;right:12px;color:#fff;font-size:24px;cursor:pointer;width:36px;height:36px;background:rgba(0,0,0,.5);border-radius:50%;display:flex;align-items:center;justify-content:center}'
   ].join('');
 
-  // JS (백틱/이스케이프 없이 순수 문자열)
   var js = [
     'var DATA=JSON.parse(document.getElementById("jdata").textContent);',
     'var SENT=[];',
@@ -1090,22 +1106,23 @@ function genHTML(){
     '  var q=(document.getElementById("q").value||"").toLowerCase();',
     '  var list=q?DATA.filter(function(d){return d.name.indexOf(q)>=0||d.co.toLowerCase().indexOf(q)>=0;}):DATA;',
     '  var el=document.getElementById("list");',
-    '  if(!el){return;}',
+    '  if(!el)return;',
     '  if(!list||list.length===0){el.innerHTML="<div class=\\"empty\\">검색 결과 없음</div>";stat();return;}',
     '  var html="";',
     '  for(var i=0;i<list.length;i++){',
-    '    var d=list[i];',
-    '    var s=isSent(d.ph);',
+    '    var d=list[i];var s=isSent(d.ph);',
     '    html+="<div class=\\"card"+(s?" sent":"")+"\\">";',
     '    html+="<img class=\\"thumb\\" src=\\""+d.img+"\\" alt=\\""+d.name+"\\" data-idx=\\""+i+"\\">";',
     '    html+="<div class=\\"tp\\" style=\\"display:none\\">"+d.name.charAt(0)+"</div>";',
     '    html+="<div class=\\"info\\">";',
     '    html+="<div class=\\"nm\\">"+(d.no?d.no+". ":"")+d.name+"</div>";',
     '    html+="<div class=\\"co\\">"+d.co+"</div>";',
-    '    html+="<div class=\\"ph\\">"+d.ph_fmt+"</div>";',
+    /* 전화번호 탭 → 문자앱 열기 */
+    '    html+="<a class=\\"ph\\" href=\\"sms:"+d.ph+"?body="+encodeURIComponent(d.msg)+"\\">"+d.ph_fmt+"</a>";',
     '    html+="</div>";',
     '    html+="<div class=\\"acts\\">";',
-    '    html+="<button class=\\"bs\\" data-ph=\\""+d.ph+"\\" data-idx=\\""+i+"\\">📨 발송</button>";',
+    '    html+="<button class=\\"bs\\" data-ph=\\""+d.ph+"\\" data-idx=\\""+i+"\\">📨 문자</button>";',
+    '    html+="<button class=\\"bk\\" data-ph=\\""+d.ph+"\\" data-idx=\\""+i+"\\">💬 카톡</button>";',
     '    html+="<div class=\\"bc\\" data-ph=\\""+d.ph+"\\">"+(s?"↩ 취소":"✅ 완료")+"</div>";',
     '    if(s)html+="<div class=\\"so\\">✅ 발송완료</div>";',
     '    html+="</div></div>";',
@@ -1117,102 +1134,116 @@ function genHTML(){
     '  });',
     '  stat();',
     '}',
+    /* 이벤트 위임 */
     'document.addEventListener("click",function(e){',
     '  var btn=e.target.closest("[data-ph]");',
-    '  if(!btn)return;',
+    '  if(!btn||btn.tagName==="A")return;',
     '  var ph=btn.getAttribute("data-ph");',
     '  var idx=parseInt(btn.getAttribute("data-idx")||"-1");',
-    '  if(btn.classList.contains("bs")){',
-    '    sendMMS(ph,idx);',
-    '  } else if(btn.classList.contains("bc")){',
-    '    if(isSent(ph))remSent(ph); else addSent(ph);',
-    '    render();',
+    '  if(btn.classList.contains("bs")){sendSMS(ph,idx);}',
+    '  else if(btn.classList.contains("bk")){sendKakao(ph,idx);}',
+    '  else if(btn.classList.contains("bc")){',
+    '    if(isSent(ph))remSent(ph); else addSent(ph);render();',
     '  }',
     '});',
-    'function sendMMS(ph,idx){',
-    '  var d=DATA[idx];',
-    '  if(!d){return;}',
+    /* 개별 문자 발송 */
+    'function sendSMS(ph,idx){',
+    '  var d=DATA[idx];if(!d)return;',
+    '  window.location.href="sms:"+ph+"?body="+encodeURIComponent(d.msg);',
+    '  setTimeout(function(){addSent(ph);render();},1500);',
+    '}',
+    /* 개별 카톡 발송 */
+    'function sendKakao(ph,idx){',
+    '  var d=DATA[idx];if(!d)return;',
     '  if(navigator.share&&navigator.canShare){',
     '    fetch(d.img).then(function(r){return r.blob();}).then(function(blob){',
     '      var file=new File([blob],ph+".jpg",{type:"image/jpeg"});',
     '      if(navigator.canShare({files:[file]})){',
     '        navigator.share({files:[file],text:d.msg})',
     '          .then(function(){addSent(ph);setTimeout(render,1200);})',
-    '          .catch(function(e){if(e.name!=="AbortError")fallback(ph,d);});',
-    '      }else{fallback(ph,d);}',
-    '    }).catch(function(){fallback(ph,d);});',
-    '  }else{fallback(ph,d);}',
+    '          .catch(function(){});',
+    '      }',
+    '    });',
+    '  }',
     '}',
-    'function fallback(ph,d){',
-    '  var a=document.createElement("a");',
-    '  a.href=d.img;a.download="명세서.jpg";a.click();',
-    '  setTimeout(function(){window.location.href="sms:"+ph+"?body="+encodeURIComponent(d.msg);},800);',
-    '  addSent(ph);setTimeout(render,1200);',
+    /* 일괄 문자 발송 */
+    'function bulkSMS(){',
+    '  var targets=DATA.filter(function(d){return !isSent(d.ph);});',
+    '  if(!targets.length){alert("모두 발송 완료됐습니다!");return;}',
+    '  if(!confirm(targets.length+"명에게 문자를 순차 발송합니다.\\n발송 후 완료 체크는 수동으로 해주세요.")){return;}',
+    '  var i=0;',
+    '  function next(){',
+    '    if(i>=targets.length){alert("전체 발송 완료!");return;}',
+    '    var d=targets[i++];',
+    '    window.location.href="sms:"+d.ph+"?body="+encodeURIComponent(d.msg);',
+    '    setTimeout(next,3000);',
+    '  }',
+    '  next();',
     '}',
-    'function openModal(idx){',
-    '  var d=DATA[idx];',
-    '  if(d){document.getElementById("mimg").src=d.img;}',
-    '  document.getElementById("modal").classList.add("on");',
+    /* 일괄 카톡 발송 */
+    'function bulkKakao(){',
+    '  var targets=DATA.filter(function(d){return !isSent(d.ph);});',
+    '  if(!targets.length){alert("모두 발송 완료됐습니다!");return;}',
+    '  alert("카톡 공유 시트에서 카카오톡을 선택하세요.\\n"+targets.length+"명 순차 발송합니다.");',
+    '  var i=0;',
+    '  function next(){',
+    '    if(i>=targets.length){alert("전체 발송 완료!");return;}',
+    '    var d=targets[i++];',
+    '    if(navigator.share&&navigator.canShare){',
+    '      fetch(d.img).then(function(r){return r.blob();}).then(function(blob){',
+    '        var file=new File([blob],d.ph+".jpg",{type:"image/jpeg"});',
+    '        if(navigator.canShare({files:[file]})){',
+    '          navigator.share({files:[file],text:d.msg}).then(function(){',
+    '            addSent(d.ph);render();setTimeout(next,2000);',
+    '          }).catch(function(){setTimeout(next,1000);});',
+    '        }else{next();}',
+    '      });',
+    '    }else{next();}',
+    '  }',
+    '  next();',
     '}',
+    'function openModal(idx){var d=DATA[idx];if(d)document.getElementById("mimg").src=d.img;document.getElementById("modal").classList.add("on");}',
     'function closeModal(){document.getElementById("modal").classList.remove("on");}',
-    'function toggleGuide(){',
-    '  var gb=document.getElementById("gb");',
-    '  var gt=document.getElementById("gt");',
-    '  gb.classList.toggle("on");',
-    '  gt.textContent=gb.classList.contains("on")?"접기 ▲":"펼치기 ▼";',
-    '}',
+    'function toggleGuide(){var gb=document.getElementById("gb");var gt=document.getElementById("gt");gb.classList.toggle("on");gt.textContent=gb.classList.contains("on")?"접기 ▲":"펼치기 ▼";}',
     'document.getElementById("q").addEventListener("input",render);',
     'document.getElementById("modal").addEventListener("click",closeModal);',
-    'render();',
-    'stat();'
+    'render();stat();'
   ].join('\n');
 
-  // HTML 조립
   var p=[];
   p.push('<!DOCTYPE html><html lang="ko"><head>');
-  p.push('<meta charset="UTF-8">');
-  p.push('<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">');
+  p.push('<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">');
   p.push('<title>급여명세서 발송 — '+mgr+'</title>');
-  p.push('<style>'+css+'</style>');
-  p.push('</head><body>');
+  p.push('<style>'+css+'</style></head><body>');
   p.push('<div class="app">');
-  // 헤더
-  p.push('<div class="hdr">');
-  p.push('<h1>급여명세서 MMS 발송</h1>');
-  p.push('<div class="hdr-sub">');
-  p.push('<span>'+stamp+' · '+mgr+' · 총 '+items.length+'명</span>');
-  p.push('<span class="hdr-ver">v'+VER+'</span>');
-  p.push('</div></div>');
-  // 통계바
+  p.push('<div class="hdr"><h1>급여명세서 MMS 발송</h1>');
+  p.push('<div class="hdr-sub"><span>'+stamp+' · '+mgr+' · 총 '+items.length+'명</span><span>v'+VER+'</span></div></div>');
   p.push('<div class="sbar">');
   p.push('<div class="sc s1"><span class="n" id="nT">'+items.length+'</span>전체</div>');
   p.push('<div class="sc s2"><span class="n" id="nD">0</span>완료</div>');
   p.push('<div class="sc s3"><span class="n" id="nL">'+items.length+'</span>미발송</div>');
   p.push('</div>');
-  // 사용 안내
-  p.push('<div class="guide">');
-  p.push('<div class="guide-hdr" onclick="toggleGuide()">');
-  p.push('<div class="guide-hdr-l">📋 사용 안내 — 처음 받으셨나요?</div>');
-  p.push('<span class="guide-toggle" id="gt">펼치기 ▼</span>');
+  /* 일괄 발송 버튼 */
+  p.push('<div class="bulk-bar">');
+  p.push('<button class="bulk-btn bulk-sms" onclick="bulkSMS()">📨 일괄 문자 발송</button>');
+  p.push('<button class="bulk-btn bulk-kako" onclick="bulkKakao()">💬 일괄 카톡 발송</button>');
   p.push('</div>');
+  /* 안내 */
+  p.push('<div class="guide"><div class="guide-hdr" onclick="toggleGuide()">');
+  p.push('<div class="guide-hdr-l">📋 사용 안내</div>');
+  p.push('<span class="guide-toggle" id="gt">펼치기 ▼</span></div>');
   p.push('<div class="guide-body" id="gb">');
-  p.push('<div class="g-step"><div class="g-num">1</div><div class="g-txt"><strong>카톡에서 파일 열기</strong> — html 파일 탭 → <strong>다른 앱으로 열기</strong></div></div>');
-  p.push('<div class="g-step"><div class="g-num">2</div><div class="g-txt"><strong>Chrome</strong> 또는 Samsung Internet 선택</div></div>');
-  p.push('<div class="g-step"><div class="g-num">3</div><div class="g-txt"><strong>📨 발송</strong> 버튼 탭 → 공유 시트에서 <strong>메시지</strong> 선택</div></div>');
-  p.push('<div class="g-step"><div class="g-num">4</div><div class="g-txt">이미지 자동 첨부됨 → 전화번호 입력 → 전송</div></div>');
-  p.push('<div class="g-step"><div class="g-num">5</div><div class="g-txt">발송 후 <strong>✅ 완료</strong> 탭으로 체크</div></div>');
-  p.push('<div class="g-tip">💡 Chrome 없으면: 발송 시 이미지 자동 다운로드 → 갤러리에서 첨부</div>');
+  p.push('<div class="g-step"><div class="g-num">1</div><div class="g-txt"><strong>일괄 문자/카톡 발송</strong> — 상단 버튼으로 전원 순차 발송</div></div>');
+  p.push('<div class="g-step"><div class="g-num">2</div><div class="g-txt"><strong>개별 발송</strong> — 카드의 📨문자 또는 💬카톡 버튼 탭</div></div>');
+  p.push('<div class="g-step"><div class="g-num">3</div><div class="g-txt"><strong>전화번호 탭</strong> — 해당 직원 문자앱 바로 열림</div></div>');
+  p.push('<div class="g-step"><div class="g-num">4</div><div class="g-txt">발송 후 <strong>✅ 완료</strong> 탭으로 체크</div></div>');
+  p.push('<div class="g-tip">💡 카톡 발송 시 공유 시트에서 카카오톡 선택</div>');
   p.push('</div></div>');
-  // 검색
   p.push('<div class="sw"><input class="si" type="search" id="q" placeholder="이름 또는 업체 검색..."></div>');
-  // 목록
-  p.push('<div class="list" id="list"><div class="empty">⏳ 잠시만요...</div></div>');
+  p.push('<div class="list" id="list"></div>');
   p.push('</div>');
-  // 모달
   p.push('<div class="modal" id="modal"><div class="mx" onclick="closeModal()">✕</div><img id="mimg" src="" alt=""></div>');
-  // JSON 데이터 - script type으로 완전 분리 (JS 파싱 오류 없음)
   p.push('<script type="application/json" id="jdata">'+dataJSON+'<\/script>');
-  // JS
   p.push('<script>'+js+'<\/script>');
   p.push('</body></html>');
 
