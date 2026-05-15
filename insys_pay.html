@@ -180,7 +180,7 @@ tr.new  td{background:var(--ybg)}
   <div class="hdr-l">
     <div>
       <div class="hdr-title">(주)인시스그룹 급여명세서 발송 시스템</div>
-      <div class="hdr-ver">AI혁신R&amp;D센터 · Web v7.4</div>
+      <div class="hdr-ver">AI혁신R&amp;D센터 · Web v7.7</div>
     </div>
   </div>
   <div class="hdr-badge">PC에서 확인 → 폰으로 발송</div>
@@ -744,7 +744,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc =
 let zipData={}, xlData=[], matched=[], exclCnt=0, mgrName='', htmlBlob=null, lbIdx=0;
 
 async function pdfToB64(bytes,scale){
-  const pdf=await pdfjsLib.getDocument({data:bytes}).promise;
+  const pdf=await pdfjsLib.getDocument({data:bytes.slice()}).promise; // 원본 보존
   const page=await pdf.getPage(1);
   const vp=page.getViewport({scale});
   const cv=document.createElement('canvas');
@@ -760,9 +760,12 @@ async function extractInfoFromPDF(bytes){
     '국민연금':1,'건강보험':1,'고용보험':1,'장기요양':1,'주민세':1,'상여금':1,
     '식대':1,'차량':1,'수당':1,'공제':1,'지급':1,'파견':1,'사무소':1,
     '일급':1,'시급':1,'월급':1,'주급':1,'급여':1,'임금':1,'합계':1,'차인':1,
-    '계':1,'비고':1,'확인':1,'서명':1,'담당':1,'승인':1,'팀장':1,'과장':1};
+    '계':1,'비고':1,'확인':1,'서명':1,'담당':1,'승인':1,'팀장':1,'과장':1,
+    '근무일수':1,'근무':1,'특잔':1,'특잔수당':1,'잔여':1,'기준':1,'소득':1,
+    '보험':1,'세액':1,'공휴일':1,'휴일':1,'휴가':1,'병가':1,'출근':1,
+    '퇴근':1,'파트':1,'아르바이트':1,'인턴':1,'사원':1,'대리':1,'주임':1};
   try{
-    var pdf  = await pdfjsLib.getDocument({data:bytes}).promise;
+    var pdf  = await pdfjsLib.getDocument({data:bytes.slice()}).promise; // 원본 보존
     var page = await pdf.getPage(1);
     var tc   = await page.getTextContent();
     var items = [];
@@ -1004,107 +1007,94 @@ function updFinalTable(){
 
 // ── 모바일 HTML 생성 ──────────────────────────────────────
 function genHTML(){
-  const msg   = document.getElementById('msg').value;
-  const mgr   = mgrName||'관리자';
-  const stamp = new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long'});
-  const items = matched.filter(m=>m.imgB64);
+  var msg   = document.getElementById('msg').value;
+  var mgr   = mgrName||'관리자';
+  var stamp = new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long'});
+  var items = matched.filter(function(m){return !!m.imgB64;});
+  var VER   = '7.4';
 
-  // DATA JSON - 이미지 포함
-  const rows = items.map(function(m){
+  // JSON 데이터 생성
+  var rows = items.map(function(m){
     return {
-      no:     m.no,
-      name:   m.name,
-      co:     m.co,
-      ph:     m.ph.replace(/\D/g,''),
-      ph_fmt: m.ph,
-      img:    m.imgB64,
-      msg:    msg
+      no:m.no, name:m.name, co:m.co,
+      ph:m.ph.replace(/\D/g,''), ph_fmt:m.ph,
+      img:m.imgB64, msg:msg
     };
   });
-  const dataJSON = JSON.stringify(rows);
+  var dataJSON = JSON.stringify(rows);
 
-  // CSS (문자열 배열로 안전하게)
-  const css = [
+  // CSS
+  var css = [
     '*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}',
     'body{font-family:-apple-system,"맑은 고딕",sans-serif;background:#dde3ea;font-size:14px}',
     '.app{max-width:460px;margin:0 auto;background:#f0f4f8;min-height:100vh}',
-    '.hdr{background:#1a3c6e;color:#fff;padding:14px 16px;position:sticky;top:0;z-index:100}',
+    '.hdr{background:#1a3c6e;color:#fff;padding:14px 16px 10px;position:sticky;top:0;z-index:100}',
     '.hdr h1{font-size:15px;font-weight:700;margin-bottom:2px}',
-    '.hdr .sub{font-size:11px;color:#fff}',
+    '.hdr-sub{font-size:11px;color:#fff;display:flex;justify-content:space-between;align-items:center}',
+    '.hdr-ver{font-size:10px;opacity:.7}',
     '.sbar{display:flex;gap:6px;padding:8px 10px;background:#fff;border-bottom:1px solid #e2e8f0}',
     '.sc{flex:1;text-align:center;padding:6px 4px;border-radius:8px;font-size:11px}',
     '.sc .n{font-size:18px;font-weight:700;display:block;line-height:1.2}',
-    '.s1{background:#e8f0fe;color:#1a3c6e}',
-    '.s2{background:#f0fdf4;color:#16a34a}',
-    '.s3{background:#fff7ed;color:#ea580c}',
+    '.s1{background:#e8f0fe;color:#1a3c6e}.s2{background:#f0fdf4;color:#16a34a}.s3{background:#fff7ed;color:#ea580c}',
     '.sw{padding:7px 10px;background:#fff;border-bottom:1px solid #e2e8f0}',
     '.si{width:100%;padding:8px 12px;border:1.5px solid #cbd5e1;border-radius:18px;font-size:13px;outline:none}',
     '.si:focus{border-color:#1a3c6e}',
+    '.guide{background:#fff;border-bottom:2px solid #e8f0fe}',
+    '.guide-hdr{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;cursor:pointer}',
+    '.guide-hdr-l{font-size:12px;font-weight:700;color:#1a3c6e}',
+    '.guide-toggle{font-size:11px;color:#94a3b8;background:#f0f4f8;padding:3px 8px;border-radius:10px}',
+    '.guide-body{display:none;padding:0 14px 12px}',
+    '.guide-body.on{display:block}',
+    '.g-step{display:flex;gap:8px;margin-bottom:9px;align-items:flex-start}',
+    '.g-num{width:20px;height:20px;background:#1a3c6e;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:1px}',
+    '.g-txt{font-size:11px;color:#374151;line-height:1.6}',
+    '.g-txt strong{color:#1a3c6e}',
+    '.g-tip{background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:7px 9px;font-size:11px;color:#92400e;line-height:1.5;margin-top:7px}',
     '.list{padding:7px 10px 60px;display:flex;flex-direction:column;gap:7px}',
-    '.card{background:#fff;border-radius:11px;padding:11px 13px;display:flex;align-items:center;gap:10px;border:1.5px solid #e2e8f0}',
+    '.card{background:#fff;border-radius:11px;padding:12px 13px;display:flex;align-items:center;gap:10px;border:1.5px solid #e2e8f0}',
     '.card.sent{border-color:#86efac;background:#f0fdf4}',
-    '.thumb{width:48px;height:48px;border-radius:6px;object-fit:cover;border:1px solid #e2e8f0;flex-shrink:0;cursor:pointer}',
-    '.tp{width:48px;height:48px;border-radius:6px;background:#e8f0fe;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#1a3c6e;flex-shrink:0}',
+    '.thumb{width:50px;height:50px;border-radius:7px;object-fit:cover;border:1px solid #e2e8f0;flex-shrink:0;cursor:pointer}',
+    '.tp{width:50px;height:50px;border-radius:7px;background:#e8f0fe;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#1a3c6e;flex-shrink:0}',
     '.info{flex:1;min-width:0}',
     '.nm{font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
-    '.co{font-size:11px;color:#94a3b8;margin-top:1px}',
+    '.co{font-size:11px;color:#94a3b8;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
     '.ph{font-size:12px;color:#1a3c6e;margin-top:2px;font-weight:700}',
-    '.acts{display:flex;flex-direction:column;gap:4px;flex-shrink:0}',
-    '.bs{padding:7px 11px;background:#1a3c6e;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;text-align:center;display:block;min-width:64px}',
+    '.acts{display:flex;flex-direction:column;gap:5px;flex-shrink:0}',
+    '.bs{padding:7px 11px;background:#1a3c6e;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;min-width:64px;text-align:center;display:block}',
     '.bs:active{background:#2a5ca0}',
     '.bc{padding:5px 7px;background:#f0fdf4;color:#16a34a;border:1.5px solid #86efac;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;text-align:center}',
-    '.so{font-size:10px;color:#16a34a;text-align:center;margin-top:1px}',
-    '.empty{text-align:center;padding:40px;color:#94a3b8;font-size:14px}',
-    '.err{text-align:center;padding:20px;color:#dc2626;font-size:13px;background:#fef2f2;margin:10px;border-radius:8px}',
+    '.so{font-size:10px;color:#16a34a;text-align:center;margin-top:2px}',
+    '.empty{text-align:center;padding:40px;color:#94a3b8;font-size:13px}',
     '.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:999;align-items:center;justify-content:center}',
     '.modal.on{display:flex}',
     '.modal img{max-width:95vw;max-height:90vh;border-radius:8px}',
-    '.mx{position:fixed;top:12px;right:12px;color:#fff;font-size:24px;cursor:pointer;width:36px;height:36px;background:rgba(0,0,0,.5);border-radius:50%;display:flex;align-items:center;justify-content:center}',
-    '.guide{background:#fff;border-bottom:2px solid #e8f0fe;padding:0}',
-    '.guide-hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;user-select:none}',
-    '.guide-hdr-l{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#1a3c6e}',
-    '.guide-toggle{font-size:11px;color:#94a3b8;background:#f0f4f8;padding:3px 9px;border-radius:10px}',
-    '.guide-body{display:none;padding:0 14px 14px}',
-    '.guide-body.on{display:block}',
-    '.g-step{display:flex;gap:10px;margin-bottom:11px;align-items:flex-start}',
-    '.g-step:last-child{margin-bottom:0}',
-    '.g-num{width:22px;height:22px;background:#1a3c6e;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px}',
-    '.g-txt{font-size:12px;color:#374151;line-height:1.6}',
-    '.g-txt strong{color:#1a3c6e}',
-    '.g-divider{border:none;border-top:1px dashed #e2e8f0;margin:10px 0}',
-    '.g-tip{background:#fffbeb;border:1px solid #fde68a;border-radius:7px;padding:8px 10px;font-size:11px;color:#92400e;line-height:1.6;margin-top:8px}'
-  ].join('\n');
+    '.mx{position:fixed;top:12px;right:12px;color:#fff;font-size:24px;cursor:pointer;width:36px;height:36px;background:rgba(0,0,0,.5);border-radius:50%;display:flex;align-items:center;justify-content:center}'
+  ].join('');
 
-  // JS 코드 (일반 문자열로 안전하게)
-  const js = [
-    'var DATA=' + dataJSON + ';',
-    'var SENT_KEY="is_' + mgr + '";',
+  // JS (백틱/이스케이프 없이 순수 문자열)
+  var js = [
+    'var DATA=JSON.parse(document.getElementById("jdata").textContent);',
     'var SENT=[];',
-    'try{SENT=JSON.parse(localStorage.getItem(SENT_KEY)||"[]");}catch(e){SENT=[];}',
-    'function isSent(ph){return SENT.indexOf(ph)>=0;}',
-    'function addSent(ph){if(!isSent(ph)){SENT.push(ph);}try{localStorage.setItem(SENT_KEY,JSON.stringify(SENT));}catch(e){}}',
-    'function removeSent(ph){SENT=SENT.filter(function(x){return x!==ph;});try{localStorage.setItem(SENT_KEY,JSON.stringify(SENT));}catch(e){}}',
+    'try{SENT=JSON.parse(localStorage.getItem("is_' + mgr + '")||"[]");}catch(e){}',
+    'function isSent(p){return SENT.indexOf(p)>=0;}',
+    'function addSent(p){if(!isSent(p))SENT.push(p);try{localStorage.setItem("is_' + mgr + '",JSON.stringify(SENT));}catch(e){}}',
+    'function remSent(p){SENT=SENT.filter(function(x){return x!==p;});try{localStorage.setItem("is_' + mgr + '",JSON.stringify(SENT));}catch(e){}}',
     'function stat(){',
-    '  var done=SENT.length;',
-    '  var nD=document.getElementById("nD");',
-    '  var nL=document.getElementById("nL");',
-    '  if(nD)nD.textContent=done;',
-    '  if(nL)nL.textContent=DATA.length-done;',
+    '  document.getElementById("nD").textContent=SENT.length;',
+    '  document.getElementById("nL").textContent=DATA.length-SENT.length;',
     '}',
     'function render(){',
-    '  var q=(document.getElementById("q")||{}).value||"";',
-    '  q=q.toLowerCase();',
-    '  var list=DATA;',
-    '  if(q){list=DATA.filter(function(d){return d.name.indexOf(q)>=0||d.co.toLowerCase().indexOf(q)>=0;});}',
+    '  var q=(document.getElementById("q").value||"").toLowerCase();',
+    '  var list=q?DATA.filter(function(d){return d.name.indexOf(q)>=0||d.co.toLowerCase().indexOf(q)>=0;}):DATA;',
     '  var el=document.getElementById("list");',
-    '  if(!el)return;',
+    '  if(!el){return;}',
     '  if(!list||list.length===0){el.innerHTML="<div class=\\"empty\\">검색 결과 없음</div>";stat();return;}',
     '  var html="";',
     '  for(var i=0;i<list.length;i++){',
     '    var d=list[i];',
     '    var s=isSent(d.ph);',
-    '    html+="<div class=\\"card"+(s?" sent":"")+"\\" data-ph=\\""+d.ph+"\\" data-idx=\\""+DATA.indexOf(d)+"\\">";',
-    '    html+="<img class=\\"thumb\\" src=\\""+d.img+"\\" alt=\\""+d.name+"\\">";',
+    '    html+="<div class=\\"card"+(s?" sent":"")+"\\">";',
+    '    html+="<img class=\\"thumb\\" src=\\""+d.img+"\\" alt=\\""+d.name+"\\" data-idx=\\""+i+"\\">";',
     '    html+="<div class=\\"tp\\" style=\\"display:none\\">"+d.name.charAt(0)+"</div>";',
     '    html+="<div class=\\"info\\">";',
     '    html+="<div class=\\"nm\\">"+(d.no?d.no+". ":"")+d.name+"</div>";',
@@ -1112,41 +1102,43 @@ function genHTML(){
     '    html+="<div class=\\"ph\\">"+d.ph_fmt+"</div>";',
     '    html+="</div>";',
     '    html+="<div class=\\"acts\\">";',
-    '    html+="<button class=\\"bs\\" data-action=\\"send\\" data-ph=\\""+d.ph+"\\" data-idx=\\""+DATA.indexOf(d)+"\\">📨 발송</button>";',
-    '    html+="<div class=\\"bc\\" data-action=\\"toggle\\" data-ph=\\""+d.ph+"\\">"+(s?"↩ 취소":"✅ 완료")+"</div>";',
+    '    html+="<button class=\\"bs\\" data-ph=\\""+d.ph+"\\" data-idx=\\""+i+"\\">📨 발송</button>";',
+    '    html+="<div class=\\"bc\\" data-ph=\\""+d.ph+"\\">"+(s?"↩ 취소":"✅ 완료")+"</div>";',
     '    if(s)html+="<div class=\\"so\\">✅ 발송완료</div>";',
     '    html+="</div></div>";',
     '  }',
     '  el.innerHTML=html;',
     '  el.querySelectorAll("img.thumb").forEach(function(img){',
-    '    img.addEventListener("error",function(){this.style.display="none";this.nextElementSibling.style.display="flex";});',
-    '    img.addEventListener("click",function(){openModal(this.src);});',
+    '    img.onerror=function(){this.style.display="none";this.nextElementSibling.style.display="flex";};',
+    '    img.onclick=function(){openModal(parseInt(this.getAttribute("data-idx")));};',
     '  });',
     '  stat();',
     '}',
     'document.addEventListener("click",function(e){',
-    '  var btn=e.target.closest("[data-action]");',
+    '  var btn=e.target.closest("[data-ph]");',
     '  if(!btn)return;',
-    '  var action=btn.getAttribute("data-action");',
     '  var ph=btn.getAttribute("data-ph");',
-    '  var idx=parseInt(btn.getAttribute("data-idx")||"0");',
-    '  if(action==="send"){sendMMS(ph,idx);}',
-    '  else if(action==="toggle"){',
-    '    if(isSent(ph))removeSent(ph); else addSent(ph);',
+    '  var idx=parseInt(btn.getAttribute("data-idx")||"-1");',
+    '  if(btn.classList.contains("bs")){',
+    '    sendMMS(ph,idx);',
+    '  } else if(btn.classList.contains("bc")){',
+    '    if(isSent(ph))remSent(ph); else addSent(ph);',
     '    render();',
     '  }',
     '});',
     'function sendMMS(ph,idx){',
     '  var d=DATA[idx];',
-    '  if(!d){alert("데이터 오류");return;}',
+    '  if(!d){return;}',
     '  if(navigator.share&&navigator.canShare){',
     '    fetch(d.img).then(function(r){return r.blob();}).then(function(blob){',
-    '      var file=new File([blob],ph.replace(/-/g,"")+".jpg",{type:"image/jpeg"});',
+    '      var file=new File([blob],ph+".jpg",{type:"image/jpeg"});',
     '      if(navigator.canShare({files:[file]})){',
-    '        navigator.share({files:[file],text:d.msg}).then(function(){addSent(ph);setTimeout(render,1200);}).catch(function(e){if(e.name!=="AbortError")fallback(ph,d);});',
-    '      } else {fallback(ph,d);}',
+    '        navigator.share({files:[file],text:d.msg})',
+    '          .then(function(){addSent(ph);setTimeout(render,1200);})',
+    '          .catch(function(e){if(e.name!=="AbortError")fallback(ph,d);});',
+    '      }else{fallback(ph,d);}',
     '    }).catch(function(){fallback(ph,d);});',
-    '  } else {fallback(ph,d);}',
+    '  }else{fallback(ph,d);}',
     '}',
     'function fallback(ph,d){',
     '  var a=document.createElement("a");',
@@ -1154,62 +1146,74 @@ function genHTML(){
     '  setTimeout(function(){window.location.href="sms:"+ph+"?body="+encodeURIComponent(d.msg);},800);',
     '  addSent(ph);setTimeout(render,1200);',
     '}',
-    'function openModal(src){',
-    '  document.getElementById("mimg").src=src;',
+    'function openModal(idx){',
+    '  var d=DATA[idx];',
+    '  if(d){document.getElementById("mimg").src=d.img;}',
     '  document.getElementById("modal").classList.add("on");',
     '}',
-    'document.getElementById("modal").addEventListener("click",function(){this.classList.remove("on");});',
-    'document.getElementById("q").addEventListener("input",render);',
+    'function closeModal(){document.getElementById("modal").classList.remove("on");}',
     'function toggleGuide(){',
     '  var gb=document.getElementById("gb");',
     '  var gt=document.getElementById("gt");',
-    '  var on=gb.classList.toggle("on");',
-    '  gt.textContent=on?"접기 ▲":"펼치기 ▼";',
+    '  gb.classList.toggle("on");',
+    '  gt.textContent=gb.classList.contains("on")?"접기 ▲":"펼치기 ▼";',
     '}',
+    'document.getElementById("q").addEventListener("input",render);',
+    'document.getElementById("modal").addEventListener("click",closeModal);',
     'render();',
     'stat();'
   ].join('\n');
 
   // HTML 조립
-  var parts = [];
-  parts.push('<!DOCTYPE html>');
-  parts.push('<html lang="ko"><head>');
-  parts.push('<meta charset="UTF-8">');
-  parts.push('<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">');
-  parts.push('<title>급여명세서 발송 — ' + mgr + '</title>');
-  parts.push('<style>' + css + '</style>');
-  parts.push('</head><body>');
-  parts.push('<div class="app">');
-  parts.push('<div class="hdr"><h1>급여명세서 MMS 발송</h1>');
-  parts.push('<div class="sub">' + stamp + ' · ' + mgr + ' · 총 ' + items.length + '명</div></div>');
-  parts.push('<div class="guide" id="guide">');
-  parts.push('<div class="guide-hdr" onclick="toggleGuide()">');
-  parts.push('<div class="guide-hdr-l">📋 사용 안내 — 처음 받으셨나요? 여기를 눌러 확인하세요</div>');
-  parts.push('<span class="guide-toggle" id="gt">펼치기 ▼</span>');
-  parts.push('</div>');
-  parts.push('<div class="guide-body" id="gb">');
-  parts.push('<div class="g-step"><div class="g-num">1</div><div class="g-txt"><strong>카톡에서 파일 열기</strong><br>카카오톡에서 받은 <strong>.html 파일</strong>을 길게 누르거나 탭 → <strong>"다른 앱으로 열기"</strong> 또는 <strong>"공유"</strong> 선택</div></div>');
-  parts.push('<div class="g-step"><div class="g-num">2</div><div class="g-txt"><strong>크롬(Chrome)으로 열기</strong><br>앱 목록에서 <strong>Chrome</strong> 또는 <strong>Samsung Internet</strong> 선택 → 이 화면이 열립니다</div></div>');
-  parts.push('<hr class="g-divider">');
-  parts.push('<div class="g-step"><div class="g-num">3</div><div class="g-txt"><strong>발송 버튼 탭</strong><br>직원 카드의 <strong>📨 발송</strong> 버튼 탭 → 공유 시트가 열림</div></div>');
-  parts.push('<div class="g-step"><div class="g-num">4</div><div class="g-txt"><strong>메시지 앱 선택</strong><br>공유 시트에서 반드시 <strong>"메시지"</strong> 앱 선택<br>(카카오톡 선택 시 카톡으로 발송됩니다)</div></div>');
-  parts.push('<div class="g-step"><div class="g-num">5</div><div class="g-txt"><strong>수신자 번호 입력 후 전송</strong><br>메시지 앱에서 <strong>이미지가 자동 첨부</strong>된 상태로 열립니다<br>카드에 표시된 <strong>전화번호</strong>를 입력 후 전송</div></div>');
-  parts.push('<div class="g-step"><div class="g-num">6</div><div class="g-txt"><strong>완료 체크</strong><br>발송 후 <strong>✅ 완료</strong> 버튼 탭 → 초록색으로 완료 표시</div></div>');
-  parts.push('<div class="g-tip">💡 <strong>크롬 미지원 폰:</strong> 발송 버튼 탭 시 이미지가 자동 다운로드됩니다. 갤러리에서 이미지를 확인 후 문자 앱에서 직접 첨부하세요.</div>');
-  parts.push('</div></div>');
-  parts.push('<div class="sbar">');
-  parts.push('<div class="sc s1"><span class="n" id="nT">' + items.length + '</span>전체</div>');
-  parts.push('<div class="sc s2"><span class="n" id="nD">0</span>완료</div>');
-  parts.push('<div class="sc s3"><span class="n" id="nL">' + items.length + '</span>미발송</div>');
-  parts.push('</div>');
-  parts.push('<div class="sw"><input class="si" type="search" id="q" placeholder="이름 또는 업체 검색..."></div>');
-  parts.push('<div class="list" id="list"></div>');
-  parts.push('</div>');
-  parts.push('<div class="modal" id="modal"><div class="mx">✕</div><img id="mimg" src="" alt=""></div>');
-  parts.push('<script>' + js + '<\/script>');
-  parts.push('</body></html>');
+  var p=[];
+  p.push('<!DOCTYPE html><html lang="ko"><head>');
+  p.push('<meta charset="UTF-8">');
+  p.push('<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">');
+  p.push('<title>급여명세서 발송 — '+mgr+'</title>');
+  p.push('<style>'+css+'</style>');
+  p.push('</head><body>');
+  p.push('<div class="app">');
+  // 헤더
+  p.push('<div class="hdr">');
+  p.push('<h1>급여명세서 MMS 발송</h1>');
+  p.push('<div class="hdr-sub">');
+  p.push('<span>'+stamp+' · '+mgr+' · 총 '+items.length+'명</span>');
+  p.push('<span class="hdr-ver">v'+VER+'</span>');
+  p.push('</div></div>');
+  // 통계바
+  p.push('<div class="sbar">');
+  p.push('<div class="sc s1"><span class="n" id="nT">'+items.length+'</span>전체</div>');
+  p.push('<div class="sc s2"><span class="n" id="nD">0</span>완료</div>');
+  p.push('<div class="sc s3"><span class="n" id="nL">'+items.length+'</span>미발송</div>');
+  p.push('</div>');
+  // 사용 안내
+  p.push('<div class="guide">');
+  p.push('<div class="guide-hdr" onclick="toggleGuide()">');
+  p.push('<div class="guide-hdr-l">📋 사용 안내 — 처음 받으셨나요?</div>');
+  p.push('<span class="guide-toggle" id="gt">펼치기 ▼</span>');
+  p.push('</div>');
+  p.push('<div class="guide-body" id="gb">');
+  p.push('<div class="g-step"><div class="g-num">1</div><div class="g-txt"><strong>카톡에서 파일 열기</strong> — html 파일 탭 → <strong>다른 앱으로 열기</strong></div></div>');
+  p.push('<div class="g-step"><div class="g-num">2</div><div class="g-txt"><strong>Chrome</strong> 또는 Samsung Internet 선택</div></div>');
+  p.push('<div class="g-step"><div class="g-num">3</div><div class="g-txt"><strong>📨 발송</strong> 버튼 탭 → 공유 시트에서 <strong>메시지</strong> 선택</div></div>');
+  p.push('<div class="g-step"><div class="g-num">4</div><div class="g-txt">이미지 자동 첨부됨 → 전화번호 입력 → 전송</div></div>');
+  p.push('<div class="g-step"><div class="g-num">5</div><div class="g-txt">발송 후 <strong>✅ 완료</strong> 탭으로 체크</div></div>');
+  p.push('<div class="g-tip">💡 Chrome 없으면: 발송 시 이미지 자동 다운로드 → 갤러리에서 첨부</div>');
+  p.push('</div></div>');
+  // 검색
+  p.push('<div class="sw"><input class="si" type="search" id="q" placeholder="이름 또는 업체 검색..."></div>');
+  // 목록
+  p.push('<div class="list" id="list"><div class="empty">⏳ 잠시만요...</div></div>');
+  p.push('</div>');
+  // 모달
+  p.push('<div class="modal" id="modal"><div class="mx" onclick="closeModal()">✕</div><img id="mimg" src="" alt=""></div>');
+  // JSON 데이터 - script type으로 완전 분리 (JS 파싱 오류 없음)
+  p.push('<script type="application/json" id="jdata">'+dataJSON+'<\/script>');
+  // JS
+  p.push('<script>'+js+'<\/script>');
+  p.push('</body></html>');
 
-  return new Blob([parts.join('\n')], {type:'text/html;charset=utf-8'});
+  return new Blob([p.join('\n')],{type:'text/html;charset=utf-8'});
 }
 
 function dlHTML(){
