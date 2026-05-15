@@ -3,315 +3,745 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>인시스 급여발송 시스템</title>
+<title>(주)인시스그룹 급여명세서 발송 시스템</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
+/* ── 기본 ── */
 :root{
-  --navy:#1a3c6e;--navy2:#0f2447;--navy3:#2a5ca0;
+  --navy:#1a3c6e; --navy2:#0f2447; --navy3:#2a5ca0;
   --accent:#4a90d9;
-  --g1:#f0f4f8;--g2:#e2e8f0;--g3:#94a3b8;
-  --green:#16a34a;--green-bg:#f0fdf4;
-  --red:#dc2626;--red-bg:#fef2f2;
-  --yellow-bg:#fefce8;
-  --r:12px;--sh:0 4px 24px rgba(26,60,110,.1);
+  --g1:#f0f4f8; --g2:#e2e8f0; --g3:#94a3b8;
+  --green:#16a34a; --gbg:#f0fdf4;
+  --red:#dc2626; --rbg:#fef2f2;
+  --ybg:#fefce8;
+  --r:10px; --sh:0 2px 16px rgba(26,60,110,.09);
+  --W:980px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Noto Sans KR',sans-serif;background:var(--g1);color:#1e293b;min-height:100vh}
-.hdr{background:linear-gradient(135deg,var(--navy2),var(--navy),var(--navy3));
-     padding:20px 28px;display:flex;align-items:center;justify-content:space-between}
-.hdr-title{color:#fff;font-size:18px;font-weight:700}
-.hdr-sub{color:rgba(255,255,255,.75);font-size:12px;margin-top:2px}
-.hdr-badge{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);
-           color:#fff;font-size:11px;padding:4px 12px;border-radius:20px}
-.wrap{max-width:900px;margin:0 auto;padding:24px 16px}
-.steps{display:flex;gap:0;margin-bottom:24px;background:#fff;
-       border-radius:var(--r);padding:6px;box-shadow:var(--sh)}
-.stab{flex:1;padding:10px;border:none;background:transparent;
-      font-family:'Noto Sans KR',sans-serif;font-size:13px;font-weight:500;
-      color:var(--g3);cursor:pointer;border-radius:8px;transition:.2s}
-.stab.on{background:var(--navy);color:#fff}
-.card{background:#fff;border-radius:var(--r);padding:24px;box-shadow:var(--sh);margin-bottom:16px}
-.ctitle{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:18px}
-.urow{display:flex;gap:10px;align-items:center;margin-bottom:12px}
-.ulbl{font-size:13px;color:#475569;min-width:140px;font-weight:500}
+
+/* ── 헤더 ── */
+.hdr{background:linear-gradient(135deg,var(--navy2) 0%,var(--navy) 55%,var(--navy3) 100%);
+     padding:0 28px;height:56px;display:flex;align-items:center;justify-content:space-between;
+     position:sticky;top:0;z-index:200}
+.hdr-l{display:flex;align-items:center;gap:14px}
+.hdr-title{color:#fff;font-size:17px;font-weight:700;white-space:nowrap}
+.hdr-ver{color:rgba(255,255,255,.55);font-size:11px}
+.hdr-badge{background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.25);
+           color:#fff;font-size:11px;padding:3px 11px;border-radius:14px;white-space:nowrap}
+
+/* ── 컨테이너 ── */
+.wrap{width:100%;max-width:var(--W);margin:0 auto;padding:24px 20px 48px}
+
+/* ── 스텝 탭 ── */
+.tab-bar{display:flex;background:#fff;border-radius:var(--r);padding:5px;
+         box-shadow:var(--sh);margin-bottom:22px;gap:4px}
+.tab{flex:1;padding:9px 12px;border:none;background:transparent;
+     font-family:'Noto Sans KR',sans-serif;font-size:13px;font-weight:500;
+     color:var(--g3);cursor:pointer;border-radius:7px;transition:.18s;white-space:nowrap;text-align:center}
+.tab:hover{background:var(--g1);color:#475569}
+.tab.on{background:var(--navy);color:#fff}
+.tab.done{color:var(--green)}
+.tab.done::before{content:'✓ ';}
+
+/* ── 카드 ── */
+.card{background:#fff;border-radius:var(--r);padding:22px 24px;
+      box-shadow:var(--sh);margin-bottom:14px;width:100%}
+.card-title{font-size:14px;font-weight:700;color:var(--navy);
+            margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.hint{font-size:12px;color:var(--g3);margin-top:6px}
+
+/* ── 입력 행 ── */
+.row{display:grid;grid-template-columns:150px 1fr auto;align-items:center;
+     gap:10px;margin-bottom:10px}
+.row:last-child{margin-bottom:0}
+.row-lbl{font-size:13px;color:#475569;font-weight:500}
+.row-val{font-size:14px;font-weight:700;color:var(--navy)}
 .uf{display:none}
-.ubtn{flex:1;padding:9px 14px;border:1.5px dashed var(--g2);border-radius:8px;
+.ubtn{width:100%;padding:9px 14px;border:1.5px dashed var(--g2);border-radius:8px;
       background:#fff;font-size:13px;color:var(--g3);cursor:pointer;
-      font-family:'Noto Sans KR',sans-serif;transition:.2s;text-align:left}
-.ubtn:hover{border-color:var(--navy);color:var(--navy)}
-.ubtn.ok{border-style:solid;border-color:var(--green);color:var(--green);background:var(--green-bg)}
-.pwinput{padding:9px 12px;border:1.5px solid var(--g2);border-radius:8px;
-         font-size:13px;font-family:'Noto Sans KR',sans-serif;width:180px;outline:none}
-.pwinput:focus{border-color:var(--navy)}
-.msginput{width:100%;padding:10px 14px;border:1.5px solid var(--g2);border-radius:8px;
-          font-size:13px;font-family:'Noto Sans KR',sans-serif;outline:none}
-.msginput:focus{border-color:var(--navy)}
-.btn{display:inline-flex;align-items:center;gap:8px;padding:12px 24px;border:none;
-     border-radius:10px;font-size:14px;font-weight:700;
+      font-family:'Noto Sans KR',sans-serif;transition:.18s;text-align:left;text-decoration:none;display:block}
+.ubtn:hover{border-color:var(--navy);color:var(--navy);background:var(--g1)}
+.ubtn.ok{border-style:solid;border-color:var(--green);color:var(--green);background:var(--gbg)}
+.browse-btn{padding:9px 18px;background:var(--g1);border:1.5px solid var(--g2);
+            border-radius:8px;font-size:13px;color:#475569;cursor:pointer;
+            font-family:'Noto Sans KR',sans-serif;white-space:nowrap;transition:.18s}
+.browse-btn:hover{background:var(--g2)}
+.text-inp{width:100%;padding:9px 13px;border:1.5px solid var(--g2);border-radius:8px;
+          font-size:13px;font-family:'Noto Sans KR',sans-serif;outline:none;color:#1e293b}
+.text-inp:focus{border-color:var(--navy)}
+.pw-inp{padding:9px 13px;border:1.5px solid var(--g2);border-radius:8px;
+        font-size:13px;font-family:'Noto Sans KR',sans-serif;outline:none;width:220px}
+.pw-inp:focus{border-color:var(--navy)}
+
+/* ── 버튼 ── */
+.btn{display:inline-flex;align-items:center;gap:8px;padding:11px 22px;border:none;
+     border-radius:9px;font-size:14px;font-weight:700;
      font-family:'Noto Sans KR',sans-serif;cursor:pointer;transition:.15s}
 .btn:active{transform:scale(.98)}
 .btn-p{background:var(--navy);color:#fff}
 .btn-p:hover{background:var(--navy3)}
-.btn-p:disabled,.btn-g:disabled{background:var(--g2);color:var(--g3);cursor:not-allowed;transform:none}
+.btn-p:disabled{background:var(--g2);color:var(--g3);cursor:not-allowed;transform:none}
 .btn-g{background:var(--green);color:#fff}
 .btn-g:hover{background:#15803d}
-.btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
-.sum{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
-.bdg{padding:5px 13px;border-radius:20px;font-size:12px;font-weight:500}
-.bdg-t{background:#e8f0fe;color:var(--navy)}
-.bdg-ok{background:var(--green-bg);color:var(--green)}
-.bdg-fail{background:var(--red-bg);color:var(--red)}
-.bdg-ex{background:#f1f5f9;color:#64748b}
-.tblwrap{overflow-x:auto;border-radius:8px;border:1px solid var(--g2)}
+.btn-g:disabled{background:var(--g2);color:var(--g3);cursor:not-allowed;transform:none}
+.btn-out{background:#fff;border:1.5px solid var(--g2);color:#475569}
+.btn-out:hover{background:var(--g1);border-color:#94a3b8}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px}
+
+/* ── 요약 뱃지 ── */
+.sum-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.bdg{padding:5px 14px;border-radius:20px;font-size:12px;font-weight:500}
+.bt{background:#e8f0fe;color:var(--navy)}
+.bok{background:var(--gbg);color:var(--green)}
+.bfail{background:var(--rbg);color:var(--red)}
+.bex{background:#f1f5f9;color:#64748b}
+
+/* ── 테이블 ── */
+.tbl-wrap{overflow-x:auto;border-radius:8px;border:1px solid var(--g2)}
 table{width:100%;border-collapse:collapse;font-size:13px}
-th{background:var(--navy);color:#fff;padding:10px 12px;text-align:left;font-weight:500;white-space:nowrap}
-td{padding:9px 12px;border-bottom:1px solid var(--g2);white-space:nowrap}
+th{background:var(--navy);color:#fff;padding:10px 13px;text-align:left;
+   font-weight:500;white-space:nowrap}
+td{padding:9px 13px;border-bottom:1px solid var(--g2);white-space:nowrap;vertical-align:middle}
 tr:last-child td{border-bottom:none}
-tr.ok td{background:var(--green-bg)}
-tr.fail td{background:var(--red-bg)}
-tr.new td{background:var(--yellow-bg)}
-.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:500}
+tr.ok  td{background:var(--gbg)}
+tr.fail td{background:var(--rbg)}
+tr.new  td{background:var(--ybg)}
+.tag{display:inline-block;padding:2px 9px;border-radius:10px;font-size:11px;font-weight:600}
 .tok{background:var(--green);color:#fff}
 .tfail{background:var(--red);color:#fff}
-.pb-wrap{margin:16px 0}
-.pb-top{font-size:13px;color:#475569;margin-bottom:6px;display:flex;justify-content:space-between}
-.pb-bar{height:8px;background:var(--g2);border-radius:4px;overflow:hidden}
-.pb-fill{height:100%;background:linear-gradient(90deg,var(--navy),var(--accent));border-radius:4px;transition:width .3s;width:0%}
+
+/* ── 진행바 ── */
+.pb-box{margin:16px 0}
+.pb-top{display:flex;justify-content:space-between;font-size:13px;color:#475569;margin-bottom:6px}
+.pb-bg{height:8px;background:var(--g2);border-radius:4px;overflow:hidden}
+.pb-fill{height:100%;background:linear-gradient(90deg,var(--navy),var(--accent));
+         border-radius:4px;transition:width .3s ease;width:0%}
 .pb-st{font-size:12px;color:var(--g3);margin-top:5px;min-height:18px}
-.resbox{background:var(--green-bg);border:1.5px solid #86efac;border-radius:10px;
-        padding:24px;text-align:center;margin-top:16px;display:none}
-.resbox.on{display:block}
-.res-title{font-size:18px;font-weight:700;color:var(--green);margin-bottom:6px}
-.res-sub{font-size:13px;color:#166534;margin-bottom:16px}
+
+/* ── PC 미리보기 그리드 ── */
+.preview-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
+              gap:14px;margin-top:4px}
+.pv-card{background:#fff;border:1.5px solid var(--g2);border-radius:var(--r);
+         padding:10px;cursor:pointer;transition:.18s}
+.pv-card:hover{border-color:var(--navy);box-shadow:0 4px 16px rgba(26,60,110,.12);transform:translateY(-2px)}
+.pv-img{width:100%;aspect-ratio:210/297;object-fit:cover;border-radius:6px;
+        background:var(--g1);display:block}
+.pv-info{margin-top:8px}
+.pv-name{font-size:13px;font-weight:700;color:#1e293b;
+         overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pv-co{font-size:11px;color:var(--g3);margin-top:2px;
+       overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pv-ph{font-size:12px;color:var(--navy);margin-top:3px;font-weight:500}
+.pv-fail{display:flex;align-items:center;justify-content:center;
+         aspect-ratio:210/297;background:var(--rbg);border-radius:6px;
+         font-size:12px;color:var(--red);text-align:center;padding:12px}
+
+/* ── 라이트박스 ── */
+.lb{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);
+    z-index:500;align-items:center;justify-content:center;padding:20px}
+.lb.on{display:flex}
+.lb-inner{background:#fff;border-radius:14px;padding:20px;max-width:640px;width:100%;
+          max-height:90vh;overflow-y:auto;position:relative}
+.lb-close{position:absolute;top:14px;right:14px;width:32px;height:32px;
+          background:var(--g1);border:none;border-radius:50%;cursor:pointer;
+          font-size:16px;display:flex;align-items:center;justify-content:center;color:#475569}
+.lb-close:hover{background:var(--g2)}
+.lb-img{width:100%;border-radius:8px;display:block}
+.lb-name{font-size:16px;font-weight:700;color:var(--navy);margin:14px 0 4px}
+.lb-meta{font-size:13px;color:#475569}
+.lb-nav{display:flex;gap:10px;margin-top:16px;justify-content:center}
+
+/* ── 발송 준비 박스 ── */
+.send-box{background:var(--gbg);border:1.5px solid #86efac;border-radius:var(--r);
+          padding:28px;text-align:center}
+.send-title{font-size:20px;font-weight:700;color:var(--green);margin-bottom:8px}
+.send-sub{font-size:13px;color:#166534;line-height:1.8;margin-bottom:20px}
+.send-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0}
+.ss{background:#fff;border-radius:8px;padding:14px 10px;border:1px solid #86efac;text-align:center}
+.ss-n{font-size:22px;font-weight:900;color:var(--navy);display:block;margin-bottom:4px}
+.ss-t{font-size:12px;color:#166534;font-weight:500}
+
+/* ── 패널 ── */
 .panel{display:none}.panel.on{display:block}
-@media(max-width:600px){
-  .urow{flex-direction:column;align-items:stretch}
-  .ulbl{min-width:auto}
-  .hdr{padding:14px 16px}
-  .hdr-title{font-size:15px}
-  .wrap{padding:14px 10px}
-}
+
+/* ── 상태 메시지 ── */
+.st-msg{font-size:12px;color:var(--g3);margin-top:8px;min-height:18px}
+.st-msg.err{color:var(--red)}
 </style>
 </head>
 <body>
 
+<!-- 헤더 -->
 <div class="hdr">
-  <div>
-    <div class="hdr-title">㈜인시스그룹  급여발송 시스템</div>
-    <div class="hdr-sub">AI혁신연구소  ·  Web v4.0</div>
+  <div class="hdr-l">
+    <div>
+      <div class="hdr-title">(주)인시스그룹 급여명세서 발송 시스템</div>
+      <div class="hdr-ver">AI혁신R&amp;D센터 · Web v7.4</div>
+    </div>
   </div>
-  <div class="hdr-badge">설치 없이 브라우저에서 바로 실행</div>
+  <div class="hdr-badge">PC에서 확인 → 폰으로 발송</div>
 </div>
 
 <div class="wrap">
-  <div class="steps">
-    <button class="stab on" id="t0" onclick="goTab(0)">📁 1. 파일 업로드</button>
-    <button class="stab"    id="t1" onclick="goTab(1)">🔗 2. 매칭 확인</button>
-    <button class="stab"    id="t2" onclick="goTab(2)">📸 3. 변환 & 완료</button>
+
+  <!-- 탭 -->
+  <div class="tab-bar">
+    <button class="tab on"  id="t0" onclick="goTab(0)">📁 1. 파일 설정</button>
+    <button class="tab"     id="t1" onclick="goTab(1)">🔗 2. 매칭 확인</button>
+    <button class="tab"     id="t2" onclick="goTab(2)">📸 3. 변환 & 미리보기</button>
+    <button class="tab"     id="t3" onclick="goTab(3)">📱 4. 발송 준비</button>
   </div>
 
-  <!-- 패널1 -->
+  <!-- ════ 패널 1: 파일 설정 ════ -->
   <div class="panel on" id="p0">
+
     <div class="card">
-      <div class="ctitle">📦 급여명세서 ZIP 파일</div>
-      <div class="urow">
-        <span class="ulbl">ZIP 파일 선택</span>
-        <button class="ubtn" id="zBtn" onclick="document.getElementById('zf').click()">파일을 선택하세요...</button>
-        <input type="file" id="zf" class="uf" accept=".zip" onchange="onZip(this)">
+      <div class="card-title">📦 급여명세서 파일 선택</div>
+      <div class="row">
+        <span class="row-lbl">ZIP / PDF 파일</span>
+        <div style="position:relative;flex:1">
+          <div class="ubtn" id="zBtn">파일을 선택하세요...</div>
+          <input type="file" id="zf" accept=".zip,.pdf" multiple onchange="onZip(this)"
+                 style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0">
+        </div>
+        <div style="position:relative">
+          <div class="browse-btn">찾기</div>
+          <input type="file" accept=".zip,.pdf" multiple onchange="onZip(this)"
+                 style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0">
+        </div>
       </div>
-      <div style="font-size:12px;color:var(--g3)">예) 2026년5월_급여명세서.zip (내부: 강민수.pdf, 홍길동.pdf ...)</div>
+      <p class="hint">ZIP 파일 또는 PDF 파일 직접 선택 (여러 개 동시 선택: Ctrl+클릭)</p>
     </div>
 
     <div class="card">
-      <div class="ctitle">📊 직원 연락처 Excel</div>
-      <div class="urow">
-        <span class="ulbl">Excel 파일 선택</span>
-        <button class="ubtn" id="xBtn" onclick="document.getElementById('xf').click()">파일을 선택하세요...</button>
-        <input type="file" id="xf" class="uf" accept=".xlsx,.xls" onchange="onXl(this)">
+      <div class="card-title">📊 직원 연락처 Excel</div>
+      <div class="row">
+        <span class="row-lbl">Excel 파일</span>
+        <div style="position:relative;flex:1">
+          <div class="ubtn" id="xBtn">파일을 선택하세요...</div>
+          <input type="file" id="xf" accept=".xlsx,.xls" onchange="onXl(this)"
+                 style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0">
+        </div>
+        <div style="position:relative">
+          <div class="browse-btn">찾기</div>
+          <input type="file" accept=".xlsx,.xls" onchange="onXl(this)"
+                 style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0">
+        </div>
       </div>
-      <div class="urow" style="margin-top:4px">
-        <span class="ulbl">Excel 비밀번호</span>
-        <input type="password" class="pwinput" id="pw" placeholder="없으면 비워두세요">
-      </div>
-      <div class="urow" style="margin-top:4px">
-        <span class="ulbl">담당 관리자</span>
-        <span id="mgr" style="font-size:14px;font-weight:700;color:var(--navy)">—</span>
+      <div style="margin-top:10px;padding:10px 14px;background:#fff7ed;border:1.5px solid #fed7aa;border-radius:8px;font-size:12px;color:#9a3412">
+        ⚠️ 비밀번호가 있는 Excel: 파일 열기 → [파일] → [정보] → [통합 문서 보호] → [암호화 설정] → 비밀번호 삭제 → 저장 후 업로드
       </div>
     </div>
 
     <div class="card">
-      <div class="ctitle">💬 발송 문구</div>
-      <input class="msginput" id="msg" value="[인시스] 급여명세서 전송드립니다. 문의는 답장 바랍니다.">
+      <div class="card-title">💬 발송 문구</div>
+      <div class="row">
+        <span class="row-lbl">문자 내용</span>
+        <input type="text" class="text-inp" id="msg"
+               value="안녕하세요 😊 이번 달도 정말 수고 많으셨습니다! 급여명세서 보내드립니다. 궁금한 점은 편하게 연락주세요 🙏">
+        <span></span>
+      </div>
     </div>
 
     <div class="btn-row">
-      <button class="btn btn-p" id="loadBtn" onclick="loadData()" disabled>▶ 불러오기 &amp; 매칭</button>
+      <button class="btn btn-p" id="loadBtn" onclick="loadData()" disabled>
+        ▶ 불러오기 &amp; 매칭
+      </button>
     </div>
-    <div id="lst" style="font-size:12px;color:var(--g3);margin-top:8px"></div>
+    <div class="st-msg" id="lst"></div>
   </div>
 
-  <!-- 패널2 -->
+  <!-- ════ 패널 2: 매칭 확인 ════ -->
   <div class="panel" id="p1">
     <div class="card">
-      <div class="ctitle">🔗 매칭 결과</div>
-      <div class="sum" id="sumRow"></div>
-      <div class="tblwrap">
+      <div class="card-title">🔗 매칭 결과</div>
+      <div class="sum-row" id="sumRow"></div>
+      <div class="tbl-wrap">
         <table>
-          <thead><tr><th>번호</th><th>이름</th><th>업체</th><th>전화번호</th><th>PDF파일</th><th>상태</th></tr></thead>
+          <thead>
+            <tr>
+              <th style="width:44px">번호</th>
+              <th style="width:80px">이름(Excel)</th>
+              <th>업체</th>
+              <th style="width:126px">전화(Excel)</th>
+              <th style="width:90px">이름(PDF)</th>
+              <th style="width:88px">이름비교</th>
+              <th style="width:126px">전화(PDF)</th>
+              <th style="width:88px">전화비교</th>
+            </tr>
+          </thead>
           <tbody id="mtbl"></tbody>
         </table>
       </div>
+      <p class="hint" style="margin-top:10px">❌ 미매칭: PDF 파일명과 이름이 다른 경우입니다. 확인 후 진행하세요.</p>
     </div>
     <div class="btn-row">
-      <button class="btn btn-p" onclick="goTab(2)">📸 3단계 → 변환 시작</button>
-      <button class="btn" style="background:var(--g2);color:#475569" onclick="goTab(0)">← 다시 불러오기</button>
+      <button class="btn btn-p" onclick="goTab(2)">📸 3단계 → 변환 & 미리보기</button>
+      <button class="btn btn-out" onclick="goTab(0)">← 다시 불러오기</button>
     </div>
   </div>
 
-  <!-- 패널3 -->
+  <!-- ════ 패널 3: 변환 & 미리보기 ════ -->
   <div class="panel" id="p2">
     <div class="card">
-      <div class="ctitle">📸 이미지 품질</div>
-      <div style="display:flex;gap:20px;flex-wrap:wrap">
-        <label style="font-size:13px"><input type="radio" name="dpi" value="1.5" checked> 보통 (권장)</label>
-        <label style="font-size:13px"><input type="radio" name="dpi" value="2.0"> 고화질</label>
-        <label style="font-size:13px"><input type="radio" name="dpi" value="1.0"> 저용량</label>
+      <div class="card-title">📸 이미지 품질 설정</div>
+      <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap">
+        <span class="row-lbl">변환 품질</span>
+        <label style="font-size:13px;cursor:pointer"><input type="radio" name="dpi" value="1.5" checked> 보통 (권장)</label>
+        <label style="font-size:13px;cursor:pointer"><input type="radio" name="dpi" value="2.0"> 고화질</label>
+        <label style="font-size:13px;cursor:pointer"><input type="radio" name="dpi" value="1.0"> 저용량</label>
       </div>
     </div>
 
     <div class="card">
-      <div class="ctitle">🚀 변환 실행</div>
-      <div class="btn-row">
-        <button class="btn btn-g" id="cvBtn" onclick="startConvert()">🚀 변환 시작 → 모바일발송 HTML 생성</button>
+      <div class="card-title">🚀 변환 실행</div>
+      <div class="btn-row" style="margin-top:0">
+        <button class="btn btn-g" id="cvBtn" onclick="startConvert()">
+          🚀 이미지 변환 시작
+        </button>
       </div>
-      <div class="pb-wrap" id="pbWrap" style="display:none">
-        <div class="pb-top"><span>진행 중</span><span id="pbPct">0%</span></div>
-        <div class="pb-bar"><div class="pb-fill" id="pbFill"></div></div>
+      <div class="pb-box" id="pbBox" style="display:none">
+        <div class="pb-top">
+          <span id="pbLabel">변환 진행 중...</span>
+          <span id="pbPct">0%</span>
+        </div>
+        <div class="pb-bg"><div class="pb-fill" id="pbFill"></div></div>
         <div class="pb-st" id="pbSt"></div>
       </div>
     </div>
 
-    <div class="resbox" id="resBox">
-      <div class="res-title">✅ 변환 완료!</div>
-      <div class="res-sub" id="resSub"></div>
-      <button class="btn btn-p" onclick="dlHTML()" style="margin:0 auto">
-        📱 모바일발송.html 다운로드
-      </button>
-      <div style="font-size:12px;color:#166534;margin-top:14px;line-height:1.7">
-        이 파일을 카톡으로 관리자에게 전송<br>
-        관리자는 폰에서 파일 열기 → 직원별 발송 버튼 탭
+    <!-- PC 미리보기 그리드 -->
+    <div class="card" id="pvCard" style="display:none">
+      <div class="card-title">
+        🔍 PC 미리보기
+        <span id="pvCount" style="font-size:12px;font-weight:400;color:var(--g3);margin-left:8px"></span>
       </div>
+      <p class="hint" style="margin-bottom:14px">각 카드를 클릭하면 명세서를 크게 확인할 수 있어요.</p>
+      <div class="preview-grid" id="pvGrid"></div>
+      <div class="btn-row" style="margin-top:20px">
+        <button class="btn btn-p" onclick="goTab(3)">📱 4단계 → 발송 준비</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ 패널 4: 발송 준비 ════ -->
+  <div class="panel" id="p3">
+    <div class="card">
+      <div class="send-box">
+        <div class="send-title">📱 발송 준비 완료</div>
+        <div class="send-sub">
+          PC에서 미리보기로 확인이 끝났으면<br>
+          아래 버튼으로 <strong>모바일 발송 앱</strong>을 다운로드하세요.<br>
+          다운받은 HTML 파일을 카톡으로 담당자에게 전달하면 됩니다.
+        </div>
+
+        <div class="send-steps">
+          <div class="ss"><span class="ss-n">①</span><span class="ss-t">HTML 다운로드</span></div>
+          <div class="ss"><span class="ss-n">②</span><span class="ss-t">카톡으로 담당자 전달</span></div>
+          <div class="ss"><span class="ss-n">③</span><span class="ss-t">담당자 폰에서 발송</span></div>
+        </div>
+
+        <button class="btn btn-p" id="dlBtn" onclick="dlHTML()" style="font-size:16px;padding:14px 32px">
+          📥 모바일발송.html 다운로드
+        </button>
+        <p style="font-size:12px;color:#166534;margin-top:14px">
+          이미지가 내장된 단일 HTML 파일 · 카톡으로 전달 가능
+        </p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📋 발송 대상 최종 확인</div>
+      <div class="sum-row" id="finalSum"></div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:44px">번호</th>
+              <th style="width:80px">Excel 이름</th>
+              <th style="width:80px">PDF 이름</th>
+              <th style="width:90px">이름 비교</th>
+              <th style="width:130px">Excel 전화번호</th>
+              <th style="width:130px">PDF 전화번호</th>
+              <th style="width:90px">전화 비교</th>
+              <th>업체</th>
+            </tr>
+          </thead>
+          <tbody id="finalTbl"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /wrap -->
+
+<!-- 라이트박스 -->
+<div class="lb" id="lb" onclick="closeLB(event)">
+  <div class="lb-inner" onclick="event.stopPropagation()">
+    <button class="lb-close" onclick="closeLB()">✕</button>
+    <img class="lb-img" id="lbImg" src="" alt="">
+    <div class="lb-name" id="lbName"></div>
+    <div class="lb-meta" id="lbMeta"></div>
+    <div class="lb-nav">
+      <button class="btn btn-out" onclick="lbNav(-1)">← 이전</button>
+      <button class="btn btn-out" onclick="lbNav(1)">다음 →</button>
     </div>
   </div>
 </div>
 
 <script>
-pdfjsLib.GlobalWorkerOptions.workerSrc =
-  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-
-let zipData={}, xlData=[], matched=[], exclCnt=0, mgrName='', htmlBlob=null;
-
+// ── 탭 전환 ──────────────────────────────────────────────
 function goTab(i){
-  ['p0','p1','p2'].forEach((id,j)=>{
-    document.getElementById(id).classList.toggle('on',j===i);
+  for(let j=0;j<4;j++){
+    document.getElementById('p'+j).classList.toggle('on',j===i);
     document.getElementById('t'+j).classList.toggle('on',j===i);
-  });
+  }
 }
 
+// ── 파일 선택 ─────────────────────────────────────────────
 function onZip(inp){
-  if(!inp.files[0])return;
+  if(!inp.files||!inp.files.length) return;
+  const files=inp.files;
   const b=document.getElementById('zBtn');
-  b.textContent='✅ '+inp.files[0].name; b.className='ubtn ok';
+  const mainInput=document.getElementById('zf');
+  if(inp!==mainInput){
+    try{
+      const dt=new DataTransfer();
+      for(let i=0;i<files.length;i++) dt.items.add(files[i]);
+      mainInput.files=dt.files;
+    }catch(e){}
+  }
+  b.textContent='✅ '+(files.length===1?files[0].name:'PDF '+files.length+'개 선택됨');
+  b.className='ubtn ok';
   chkReady();
-}
-function onXl(inp){
-  if(!inp.files[0])return;
-  const b=document.getElementById('xBtn');
-  b.textContent='✅ '+inp.files[0].name; b.className='ubtn ok';
-  const m=inp.files[0].name.match(/([가-힣]{2,6}(?:차장|부장|과장|팀장|대리|사원|주임|이사|상무|본부장|실장)?)/);
-  mgrName=m?m[1]:inp.files[0].name.replace(/\.[^.]+$/,'');
-  document.getElementById('mgr').textContent=mgrName||'—';
-  chkReady();
-}
-function chkReady(){
-  document.getElementById('loadBtn').disabled=
-    !(document.getElementById('zf').files.length&&document.getElementById('xf').files.length);
 }
 
+function onXl(inp){
+  if(!inp.files||!inp.files.length) return;
+  const file=inp.files[0];
+  const b=document.getElementById('xBtn');
+  const mainInput=document.getElementById('xf');
+  if(inp!==mainInput){
+    try{
+      const dt=new DataTransfer();
+      dt.items.add(file);
+      mainInput.files=dt.files;
+    }catch(e){}
+  }
+  b.textContent='✅ '+file.name;
+  b.className='ubtn ok';
+  const m=file.name.match(/([가-힣]{2,6}(?:차장|부장|과장|팀장|대리|사원|주임|이사|상무|본부장|실장)?)/);
+  mgrName=m?m[1]:file.name.replace(/\.[^.]+$/,'');
+  chkReady();
+}
+
+function chkReady(){
+  const zOk=document.getElementById('zf').files.length>0;
+  const xOk=document.getElementById('xf').files.length>0;
+  document.getElementById('loadBtn').disabled=!(zOk&&xOk);
+}
+
+// ── 데이터 로드 & 매칭 ─────────────────────────────────────
 async function loadData(){
   const btn=document.getElementById('loadBtn');
   btn.disabled=true; btn.textContent='⏳ 불러오는 중...';
   const st=document.getElementById('lst');
+  st.className='st-msg';
   try{
-    st.textContent='ZIP 읽는 중...';
-    const zAB=await document.getElementById('zf').files[0].arrayBuffer();
-    const zip=await JSZip.loadAsync(zAB);
+    // ZIP / PDF 읽기
+    const files=document.getElementById('zf').files;
     zipData={};
-    const ents=[];
-    zip.forEach((p,e)=>{if(!e.dir&&p.toLowerCase().endsWith('.pdf'))ents.push([p,e]);});
-    for(const[p,e]of ents){
-      const bytes=await e.async('uint8array');
-      const name=p.split('/').pop().replace(/\.pdf$/i,'');
-      zipData[name]=bytes;
+    const isPDF=Array.from(files).every(f=>f.name.toLowerCase().endsWith('.pdf'));
+    if(isPDF){
+      st.textContent=`PDF ${files.length}개 읽는 중...`;
+      for(const f of files){
+        const bytes=new Uint8Array(await f.arrayBuffer());
+        zipData[f.name.replace(/\.pdf$/i,'')]=bytes;
+      }
+    } else {
+      st.textContent='ZIP 읽는 중...';
+      const zAB=await files[0].arrayBuffer();
+      const zip=await JSZip.loadAsync(zAB);
+      const ents=[];
+      zip.forEach((p,e)=>{if(!e.dir&&p.toLowerCase().endsWith('.pdf'))ents.push([p,e]);});
+      for(const[p,e]of ents){
+        const bytes=await e.async('uint8array');
+        zipData[p.split('/').pop().replace(/\.pdf$/i,'')]=bytes;
+      }
     }
-    st.textContent=`ZIP: PDF ${Object.keys(zipData).length}개`;
-
+    // Excel 읽기
     st.textContent='Excel 읽는 중...';
     const xAB=await document.getElementById('xf').files[0].arrayBuffer();
     let wb;
-    try{wb=XLSX.read(xAB,{type:'array',password:document.getElementById('pw').value||undefined});}
-    catch(e){wb=XLSX.read(xAB,{type:'array'});}
+    try{wb=XLSX.read(xAB,{type:'array'});}
+    catch(e1){
+      const msg=String(e1.message||'').toLowerCase();
+      if(msg.includes('password')||msg.includes('protected')){
+        throw new Error('Excel 비밀번호를 먼저 제거해주세요. 파일→정보→통합문서보호→암호화설정→비밀번호삭제→저장');
+      }
+      throw e1;
+    }
     const ws=wb.Sheets[wb.SheetNames[0]];
     const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
     xlData=[]; exclCnt=0;
     for(let i=1;i<rows.length;i++){
       const r=rows[i];
-      if(!r[2]||!r[3])continue;
+      if(!r[2]||!r[3]) continue;
+      // 헤더행 제외 (이름/성명 등 라벨행)
+      const nameVal=String(r[2]).trim();
+      if(['이름','성명','name','성 명'].includes(nameVal.toLowerCase())) continue;
       const note=String(r[4]||'').trim();
       if(note.includes('퇴사')){exclCnt++;continue;}
       const d=String(r[3]).replace(/\D/g,'');
       const ph=d.length===11?`${d.slice(0,3)}-${d.slice(3,7)}-${d.slice(7)}`:String(r[3]);
       xlData.push({no:r[0],co:String(r[1]||'').trim(),name:String(r[2]).trim(),ph,note});
     }
-    st.textContent=`Excel: ${xlData.length}명`;
-
+    // 매칭
     st.textContent='매칭 중...';
     matched=xlData.map(emp=>{
       const cn=cln(emp.name); let pdfKey=null;
       for(const k of Object.keys(zipData)){
         if(cn===cln(k)||cn.includes(cln(k))||cln(k).includes(cn)){pdfKey=k;break;}
       }
-      return{...emp,pdfKey,pdfBytes:pdfKey?zipData[pdfKey]:null,imgB64:null};
+      return{...emp,pdfKey,pdfBytes:pdfKey?zipData[pdfKey]:null,
+             imgB64:null,pdfName:null,pdfPhone:null,pdfMethod:null,pdfEmpty:false};
     });
-
+    // PDF 텍스트 추출 (이름+전화번호 비교)
+    const pdfTargets=matched.filter(m=>m.pdfBytes);
+    for(let pi=0;pi<pdfTargets.length;pi++){
+      const m=pdfTargets[pi];
+      st.textContent=`PDF 텍스트 추출 중: ${m.name} (${pi+1}/${pdfTargets.length})`;
+      try{
+        const res=await extractInfoFromPDF(m.pdfBytes);
+        m.pdfName=res.name; m.pdfPhone=res.phone;
+        m.pdfMethod=res.method; m.pdfEmpty=res.isEmpty;
+      }catch(e){}
+      await new Promise(r=>setTimeout(r,0));
+    }
     updTable(); goTab(1);
-    st.textContent=`완료 — 총 ${matched.length}명 / 매칭 ${matched.filter(m=>m.pdfKey).length}명`;
+    const ok=matched.filter(m=>m.pdfKey).length;
+    st.textContent=`완료 — 총 ${matched.length}명 / 매칭 ${ok}명 / 미매칭 ${matched.length-ok}명`;
     btn.textContent='▶ 불러오기 & 매칭';
+    // 3단계 초기화
+    htmlBlob=null;
+    document.getElementById('pvCard').style.display='none';
+    document.getElementById('pvGrid').innerHTML='';
+    document.getElementById('pbBox').style.display='none';
+    document.getElementById('pbFill').style.width='0%';
+    document.getElementById('pbPct').textContent='0%';
+    document.getElementById('pbLabel').textContent='변환 진행 중...';
+    document.getElementById('pbSt').textContent='';
+    document.getElementById('resBox').classList.remove('on');
+    document.getElementById('cvBtn').disabled=false;
+    document.getElementById('cvBtn').textContent='🚀 이미지 변환 시작';
+    document.getElementById('finalSum').innerHTML='';
+    document.getElementById('finalTbl').innerHTML='';
   }catch(e){
-    st.textContent='⚠️ 오류: '+e.message;
+    st.className='st-msg err';
+    st.textContent='⚠️ '+e.message;
     btn.disabled=false; btn.textContent='▶ 불러오기 & 매칭'; chkReady();
   }
 }
 
 function cln(s){return s.replace(/\(재\)/g,'').replace(/\d+/g,'').trim();}
 
+// ── 매칭 테이블 ───────────────────────────────────────────
 function updTable(){
   const ok=matched.filter(m=>m.pdfKey).length, fail=matched.length-ok;
+  // 이름+전화 모두 일치한 인원
+  const fullOk = matched.filter(function(m){
+    if(!m.pdfKey||!m.pdfName) return false;
+    const xc=m.name.replace(/\(재\)/g,'').replace(/\d+/g,'').trim();
+    const pc=(m.pdfName||'').replace(/\(재\)/g,'').replace(/\d+/g,'').trim();
+    const nOK = m.pdfName===m.name || xc===pc;
+    const phOK = m.pdfPhone && m.ph.replace(/\D/g,'')===m.pdfPhone.replace(/\D/g,'');
+    return m.pdfPhone ? (nOK && phOK) : nOK;
+  }).length;
+  const needCheck = matched.filter(function(m){
+    if(!m.pdfKey) return false;
+    if(!m.pdfName) return false;
+    const xc=m.name.replace(/\(재\)/g,'').replace(/\d+/g,'').trim();
+    const pc=(m.pdfName||'').replace(/\(재\)/g,'').replace(/\d+/g,'').trim();
+    const nOK = m.pdfName===m.name || xc===pc;
+    const phOK = !m.pdfPhone || m.ph.replace(/\D/g,'')===m.pdfPhone.replace(/\D/g,'');
+    return !(nOK && phOK);
+  }).length;
   document.getElementById('sumRow').innerHTML=
-    `<span class="bdg bdg-t">전체: ${matched.length}명</span>
-     <span class="bdg bdg-ok">✅ 매칭: ${ok}명</span>
-     <span class="bdg bdg-fail">❌ 미매칭: ${fail}명</span>
-     <span class="bdg bdg-ex">🚪 퇴사제외: ${exclCnt}명</span>`;
-  document.getElementById('mtbl').innerHTML=matched.map(m=>{
-    const ok=!!m.pdfKey, cls=ok?'ok':(m.note.includes('입사')?'new':'fail');
-    return`<tr class="${cls}"><td>${m.no||''}</td><td>${m.name}</td><td>${m.co}</td>
-      <td>${m.ph}</td><td>${m.pdfKey||'—'}</td>
-      <td><span class="tag ${ok?'tok':'tfail'}">${ok?'✅ 매칭':'❌ PDF없음'}</span></td></tr>`;
+    `<span class="bdg bt">전체: ${matched.length}명</span>`+
+    `<span class="bdg bok">✅ 파일매칭: ${ok}명</span>`+
+    `<span class="bdg bfail">❌ 미매칭: ${fail}명</span>`+
+    `<span class="bdg bex">🚪 퇴사제외: ${exclCnt}명</span>`+
+    (fullOk?`<span class="bdg bok">✅ 이름+전화 일치: ${fullOk}명</span>`:'') +
+    (needCheck?`<span class="bdg bfail">⚠️ 확인필요: ${needCheck}명</span>`:'');
+
+  document.getElementById('mtbl').innerHTML=matched.map(function(m){
+    const hasPdf=!!m.pdfKey;
+    const cls=hasPdf?'ok':(m.note.includes('입사')?'new':'fail');
+
+    // ── 이름 비교 ─────────────────────────────────
+    let nameBadge, pdfNameDisp;
+    const xlClean = m.name.replace(/\(재\)/g,'').replace(/\d+/g,'').trim();
+    const pdClean = (m.pdfName||'').replace(/\(재\)/g,'').replace(/\d+/g,'').trim();
+    const nameOK  = m.pdfName && (m.pdfName===m.name || xlClean===pdClean);
+
+    if(!hasPdf){
+      nameBadge='<span class="tag tfail">❌ PDF없음</span>';
+      pdfNameDisp='—';
+    } else if(nameOK){
+      nameBadge='<span class="tag tok">✅ 일치</span>';
+      pdfNameDisp=`<span style="color:#16a34a;font-weight:600">${m.pdfName}</span>`;
+    } else if(m.pdfName){
+      nameBadge=`<span class="tag tfail">❌ 불일치</span><br><small style="color:#dc2626;font-size:10px">${m.pdfName}</small>`;
+      pdfNameDisp=`<span style="color:#dc2626;font-weight:600">${m.pdfName}</span>`;
+    } else {
+      const fnMatch=m.pdfKey&&(m.pdfKey.replace(/\(재\)/g,'').replace(/\d+/g,'').trim()===xlClean);
+      nameBadge=fnMatch
+        ?'<span class="tag" style="background:#e0f2fe;color:#0369a1">📄 파일명일치</span>'
+        :'<span class="tag tfail">⚠️ 확인필요</span>';
+      pdfNameDisp=`<span style="color:#0369a1">${m.pdfKey||'—'}</span>`;
+    }
+
+    // ── 전화번호 비교 ─────────────────────────────
+    let phoneBadge, pdfPhoneDisp;
+    const xlD = m.ph.replace(/\D/g,'');
+    const pdD = (m.pdfPhone||'').replace(/\D/g,'');
+    const phoneOK = m.pdfPhone && xlD===pdD;
+
+    if(!hasPdf||!m.pdfPhone){
+      phoneBadge='<span class="tag" style="background:#f1f5f9;color:#94a3b8">미추출</span>';
+      pdfPhoneDisp='<span style="color:#94a3b8">—</span>';
+    } else if(phoneOK){
+      phoneBadge='<span class="tag tok">✅ 일치</span>';
+      pdfPhoneDisp=`<span style="color:#16a34a;font-weight:600">${m.pdfPhone}</span>`;
+    } else {
+      phoneBadge='<span class="tag tfail">❌ 불일치</span>';
+      pdfPhoneDisp=`<span style="color:#dc2626;font-weight:600">${m.pdfPhone}</span>`;
+    }
+
+    // ── 최종 행 색상: 이름+전화 모두 일치해야 OK ──
+    // hasPdf면서 이름/전화 둘 다 추출된 경우 → 둘 다 일치해야 ok
+    // 전화 미추출이면 이름만으로 판단
+    const bothExtracted = m.pdfName && m.pdfPhone;
+    const verified = hasPdf && (bothExtracted ? (nameOK && phoneOK) : nameOK);
+
+    return`<tr class="${cls}">
+      <td style="text-align:center">${m.no||''}</td>
+      <td><strong>${m.name}</strong></td>
+      <td>${m.co}</td>
+      <td>${m.ph}</td>
+      <td>${pdfNameDisp}</td>
+      <td>${nameBadge}</td>
+      <td>${pdfPhoneDisp}</td>
+      <td>${phoneBadge}</td>
+    </tr>`;
   }).join('');
 }
+
+// ── 미리보기 & 라이트박스 ─────────────────────────────────
+function buildPreview(){
+  const items=matched.filter(m=>m.imgB64);
+  document.getElementById('pvCount').textContent=`총 ${items.length}명`;
+  document.getElementById('pvGrid').innerHTML=items.map((m,i)=>`
+    <div class="pv-card" onclick="openLB(${i})">
+      <img class="pv-img" src="${m.imgB64}" alt="${m.name}" loading="lazy">
+      <div class="pv-info">
+        <div class="pv-name">${m.no?m.no+'. ':''}${m.name}</div>
+        <div class="pv-co">${m.co}</div>
+        <div class="pv-ph">${m.ph}</div>
+      </div>
+    </div>`).join('');
+}
+
+function openLB(i){
+  const items=matched.filter(m=>m.imgB64);
+  lbIdx=i; const m=items[i];
+  document.getElementById('lbImg').src=m.imgB64;
+  document.getElementById('lbName').textContent=`${m.no?m.no+'. ':''}${m.name}`;
+  document.getElementById('lbMeta').textContent=`${m.co}  ·  ${m.ph}`;
+  document.getElementById('lb').classList.add('on');
+}
+function closeLB(e){
+  if(!e||e.target===document.getElementById('lb'))
+    document.getElementById('lb').classList.remove('on');
+}
+function lbNav(dir){
+  const items=matched.filter(m=>m.imgB64);
+  lbIdx=(lbIdx+dir+items.length)%items.length;
+  openLB(lbIdx);
+}
+document.addEventListener('keydown',e=>{
+  if(!document.getElementById('lb').classList.contains('on'))return;
+  if(e.key==='ArrowLeft')lbNav(-1);
+  if(e.key==='ArrowRight')lbNav(1);
+  if(e.key==='Escape')closeLB();
+});
+
+// ── 최종 테이블 ───────────────────────────────────────────
+function updFinalTable(){
+  const items=matched.filter(m=>m.imgB64);
+  const mismatch=items.filter(m=>m.pdfName&&m.pdfName!==m.name);
+  const confirmed=items.filter(m=>m.pdfName===m.name);
+  const fileOnly=items.filter(m=>!m.pdfName&&m.pdfKey);
+  const fail=matched.filter(m=>m.pdfKey&&!m.imgB64);
+  document.getElementById('finalSum').innerHTML=
+    '<span class="bdg bt">전체: '+matched.length+'명</span>'+
+    '<span class="bdg bok">✅ 발송대상: '+items.length+'명</span>'+
+    (fail.length?'<span class="bdg bfail">변환실패: '+fail.length+'명</span>':'<span class="bdg bok">✅ 변환완료</span>');
+  document.getElementById('finalTbl').innerHTML=items.map(function(m){
+    const xlName=m.name, pdfName=m.pdfName||null;
+    const fileNameMatch=m.pdfKey&&(m.pdfKey.replace(/\(재\)/g,'').replace(/\d+/g,'').trim()===xlName.replace(/\(재\)/g,'').replace(/\d+/g,'').trim());
+    let matchBadge='',rowCls='ok',pdfDisplay='';
+    if(pdfName!==null){
+      if(pdfName===xlName){
+        matchBadge='<span class="tag tok">✅ 일치</span>';
+        pdfDisplay='<span style="color:#16a34a;font-weight:700">'+pdfName+'</span>';
+      } else {
+        matchBadge='<span class="tag tfail">❌ 불일치</span><br><small style="color:#dc2626;font-size:10px">Excel:'+xlName+' / PDF:'+pdfName+'</small>';
+        pdfDisplay='<span style="color:#dc2626;font-weight:700">'+pdfName+'</span>';
+        rowCls='fail';
+      }
+    } else if(fileNameMatch){
+      matchBadge='<span class="tag" style="background:#e0f2fe;color:#0369a1">📄 파일명일치</span><br><small style="color:#64748b;font-size:10px">PDF 텍스트 인식불가</small>';
+      pdfDisplay='<span style="color:#0369a1">'+m.pdfKey+'</span>';
+      rowCls='new';
+    } else {
+      matchBadge='<span class="tag tfail">⚠️ 확인필요</span><br><small style="color:#dc2626;font-size:10px">파일명:'+m.pdfKey+'</small>';
+      pdfDisplay='<span style="color:#dc2626">'+m.pdfKey+'</span>';
+      rowCls='fail';
+    }
+    // 전화번호 비교
+    const xlPhone=m.ph, pdfPhone=m.pdfPhone||null;
+    let phoneBadge='<span class="tag" style="background:#f1f5f9;color:#64748b">미추출</span>';
+    let pdfPhoneDisplay='<span style="color:#94a3b8">—</span>';
+    if(pdfPhone){
+      pdfPhoneDisplay=pdfPhone;
+      const xlD=xlPhone.replace(/\D/g,''), pdD=pdfPhone.replace(/\D/g,'');
+      phoneBadge=xlD===pdD?'<span class="tag tok">✅ 일치</span>':'<span class="tag tfail">❌ 불일치</span>';
+      if(xlD!==pdD&&rowCls!=='fail') rowCls='fail';
+    }
+    return '<tr class="'+rowCls+'">'+
+      '<td style="text-align:center">'+(m.no||'')+'</td>'+
+      '<td><strong>'+xlName+'</strong></td>'+
+      '<td>'+pdfDisplay+'</td>'+
+      '<td>'+matchBadge+'</td>'+
+      '<td>'+xlPhone+'</td>'+
+      '<td>'+pdfPhoneDisplay+'</td>'+
+      '<td>'+phoneBadge+'</td>'+
+      '<td>'+m.co+'</td>'+
+    '</tr>';
+  }).join('');
+}
+
+
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// ── 상태 ────────────────────────────────────────────────
+let zipData={}, xlData=[], matched=[], exclCnt=0, mgrName='', htmlBlob=null, lbIdx=0;
 
 async function pdfToB64(bytes,scale){
   const pdf=await pdfjsLib.getDocument({data:bytes}).promise;
@@ -323,129 +753,467 @@ async function pdfToB64(bytes,scale){
   return cv.toDataURL('image/jpeg',.88);
 }
 
+// PDF에서 이름 + 전화번호 추출
+async function extractInfoFromPDF(bytes){
+  var LABELS={'성명':1,'직책':1,'부서':1,'생년월일':1,'근무시간':1,'조퇴':1,'지각':1,
+    '외출':1,'특근':1,'잔업':1,'야간':1,'연차':1,'만근':1,'기본급':1,'소득세':1,
+    '국민연금':1,'건강보험':1,'고용보험':1,'장기요양':1,'주민세':1,'상여금':1,
+    '식대':1,'차량':1,'수당':1,'공제':1,'지급':1,'파견':1,'사무소':1,
+    '일급':1,'시급':1,'월급':1,'주급':1,'급여':1,'임금':1,'합계':1,'차인':1,
+    '계':1,'비고':1,'확인':1,'서명':1,'담당':1,'승인':1,'팀장':1,'과장':1};
+  try{
+    var pdf  = await pdfjsLib.getDocument({data:bytes}).promise;
+    var page = await pdf.getPage(1);
+    var tc   = await page.getTextContent();
+    var items = [];
+    for(var ii=0;ii<tc.items.length;ii++){
+      var s=tc.items[ii].str.trim();
+      if(s.length>0) items.push(s);
+    }
+    var text = items.join(' ');
+    var foundName=null, foundPhone=null, m;
+
+    // 최우선: 한글이름 + 공백 + 6자리 생년월일
+    m = text.match(/([가-힣]{2,4}) +([0-9]{6})/);
+    if(m && !LABELS[m[1]]) foundName = m[1];
+
+    // 2순위: 배열에서 6자리 숫자 바로 앞 항목
+    if(!foundName){
+      for(var k=1;k<items.length;k++){
+        if(/^[0-9]{6}$/.test(items[k])){
+          var prev=items[k-1];
+          if(/^[가-힣]{2,4}$/.test(prev)&&!LABELS[prev]){foundName=prev;break;}
+        }
+      }
+    }
+
+    // 3순위: YY.MM.DD 날짜 앞 이름
+    if(!foundName){
+      m = text.match(/([가-힣]{2,4}) +[0-9]{2}[.][0-9]{2}[.][0-9]{2}/);
+      if(m&&!LABELS[m[1]]) foundName=m[1];
+    }
+
+    // 4순위: 성명 라벨 이후 비라벨 한글
+    if(!foundName){
+      var si=-1;
+      for(var si2=0;si2<items.length;si2++){
+        if(items[si2].replace(/ /g,'') === '성명'){si=si2;break;}
+      }
+      if(si>=0){
+        for(var j=si+1;j<Math.min(si+8,items.length);j++){
+          var w=items[j];
+          if(/^[가-힣]{2,4}$/.test(w)&&!LABELS[w]){foundName=w;break;}
+        }
+      }
+    }
+
+    // 5순위: 상위 60항목 중 비라벨 한글 2~4자
+    if(!foundName){
+      for(var l=0;l<Math.min(60,items.length);l++){
+        var w2=items[l];
+        if(/^[가-힣]{2,4}$/.test(w2)&&!LABELS[w2]){foundName=w2;break;}
+      }
+    }
+
+    // 전화번호
+    m = text.match(/01[0-9][ -]?[0-9]{3,4}[ -]?[0-9]{4}/);
+    if(m){
+      var d=m[0].replace(/[^0-9]/g,'');
+      if(d.length>=10) foundPhone=d.slice(0,3)+'-'+d.slice(3,7)+'-'+d.slice(7,11);
+    }
+
+    return {name:foundName, phone:foundPhone, isEmpty:items.length===0};
+  }catch(e){
+    return {name:null, phone:null, isEmpty:true};
+  }
+}
+
+// ── 변환 시작 ─────────────────────────────────────────────
 async function startConvert(){
   const tgt=matched.filter(m=>m.pdfBytes);
-  if(!tgt.length){alert('매칭된 PDF가 없습니다.');return;}
+  if(!tgt.length){alert('매칭된 PDF가 없습니다. 1단계로 돌아가 파일을 확인하세요.');return;}
   const scale=parseFloat(document.querySelector('[name=dpi]:checked').value);
   const cvBtn=document.getElementById('cvBtn');
   cvBtn.disabled=true; cvBtn.textContent='⏳ 변환 중...';
-  const pbWrap=document.getElementById('pbWrap');
+  const pbBox=document.getElementById('pbBox');
   const pbFill=document.getElementById('pbFill');
   const pbPct=document.getElementById('pbPct');
+  const pbLabel=document.getElementById('pbLabel');
   const pbSt=document.getElementById('pbSt');
-  pbWrap.style.display='block';
+  pbBox.style.display='block';
+  document.getElementById('pvCard').style.display='none';
+  document.getElementById('pvGrid').innerHTML='';
+
   const n=tgt.length; let done=0;
   for(const m of tgt){
     try{
-      m.imgB64=await pdfToB64(m.pdfBytes,scale); done++;
+      pbSt.textContent=`변환 중: ${m.name}`;
+      m.imgB64=await pdfToB64(m.pdfBytes,scale);
+      // PDF 텍스트는 2단계 매칭시 이미 추출됨
+      done++;
       const pct=Math.round(done/n*100);
       pbFill.style.width=pct+'%'; pbPct.textContent=pct+'%';
-      pbSt.textContent=`변환 중: ${m.name} (${done}/${n})`;
+      pbLabel.textContent=`변환 진행 중 (${done}/${n})`;
       await new Promise(r=>setTimeout(r,0));
-    }catch(e){pbSt.textContent=`⚠️ ${m.name} 실패`;}
+    }catch(e){pbSt.textContent=`⚠️ ${m.name} 변환 실패`;}
   }
-  pbSt.textContent='HTML 생성 중...';
+
+  pbSt.textContent=`✅ 변환 완료! (${done}/${n}명)`;
+  pbLabel.textContent='변환 완료';
+  cvBtn.textContent='✅ 변환 완료';
+
+  // 미리보기 그리드 표시
+  buildPreview();
+  document.getElementById('pvCard').style.display='block';
+
+  // HTML 미리 생성
   htmlBlob=genHTML();
-  const rb=document.getElementById('resBox');
-  rb.classList.add('on');
-  document.getElementById('resSub').textContent=`${done}명 변환 완료  ·  모바일발송.html 준비됨`;
-  cvBtn.textContent='✅ 완료';
-  pbSt.textContent='✅ 완료! 아래 버튼으로 다운로드하세요.';
+  updFinalTable();
 }
 
-function genHTML(){
-  const msg=document.getElementById('msg').value;
-  const mgr=mgrName||'관리자';
-  const stamp=new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long'});
+// ── 미리보기 그리드 ───────────────────────────────────────
+function buildPreview(){
   const items=matched.filter(m=>m.imgB64);
-  const dataJson=JSON.stringify(items.map(m=>({
-    no:m.no,name:m.name,co:m.co,
-    ph:m.ph.replace(/\D/g,''),ph_fmt:m.ph,
-    img:m.imgB64,msg
-  })));
-  const html=`<!DOCTYPE html>
-<html lang="ko"><head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<title>급여명세서 발송 — ${mgr}</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-body{font-family:-apple-system,'맑은 고딕',sans-serif;background:#f0f4f8;font-size:14px}
-.hdr{background:#1a3c6e;color:#fff;padding:16px 18px 14px;position:sticky;top:0;z-index:100}
-.hdr h1{font-size:16px;font-weight:700;margin-bottom:2px}
-.hdr .sub{font-size:12px;color:#fff}
-.sbar{display:flex;gap:8px;padding:10px 14px;background:#fff;border-bottom:1px solid #e2e8f0}
-.sc{flex:1;text-align:center;padding:7px 4px;border-radius:8px;font-size:11px}
-.sc .n{font-size:19px;font-weight:700;display:block;line-height:1.2}
-.s1{background:#e8f0fe;color:#1a3c6e}.s2{background:#f0fdf4;color:#16a34a}.s3{background:#fff7ed;color:#ea580c}
-.sw{padding:8px 12px;background:#fff;border-bottom:1px solid #e2e8f0}
-.si{width:100%;padding:8px 14px;border:1.5px solid #cbd5e1;border-radius:20px;font-size:13px;background:#f8fafc;outline:none}
-.si:focus{border-color:#1a3c6e}
-.list{padding:8px 12px;display:flex;flex-direction:column;gap:7px;padding-bottom:28px}
-.card{background:#fff;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:11px;border:1.5px solid #e2e8f0}
-.card.sent{border-color:#86efac;background:#f0fdf4}
-.thumb{width:50px;height:50px;border-radius:7px;object-fit:cover;border:1px solid #e2e8f0;flex-shrink:0;cursor:pointer}
-.tp{width:50px;height:50px;border-radius:7px;background:#e8f0fe;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#1a3c6e;flex-shrink:0}
-.info{flex:1;min-width:0}
-.nm{font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.co{font-size:11px;color:#94a3b8;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ph{font-size:12px;color:#1a3c6e;margin-top:3px;font-weight:500}
-.acts{display:flex;flex-direction:column;gap:5px;flex-shrink:0}
-.bs{padding:7px 12px;background:#1a3c6e;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;text-align:center;text-decoration:none;display:block;min-width:68px}
-.bs:active{background:#2a5ca0}
-.bc{padding:6px 8px;background:#f0fdf4;color:#16a34a;border:1.5px solid #86efac;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;text-align:center}
-.so{font-size:10px;color:#16a34a;text-align:center;margin-top:1px}
-.empty{text-align:center;padding:40px;color:#94a3b8}
-.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:999;align-items:center;justify-content:center}
-.modal.on{display:flex}
-.modal img{max-width:95vw;max-height:90vh;border-radius:8px}
-.mx{position:fixed;top:14px;right:14px;color:#fff;font-size:26px;cursor:pointer;background:rgba(0,0,0,.5);border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center}
-</style></head><body>
-<div class="hdr"><h1>급여명세서 MMS 발송</h1><div class="sub">${stamp} · ${mgr} · 총 ${items.length}명</div></div>
-<div class="sbar">
-  <div class="sc s1"><span class="n" id="nT">${items.length}</span>전체</div>
-  <div class="sc s2"><span class="n" id="nD">0</span>완료</div>
-  <div class="sc s3"><span class="n" id="nL">${items.length}</span>미발송</div>
-</div>
-<div class="sw"><input class="si" type="search" placeholder="이름 또는 업체 검색..." id="q" oninput="render()"></div>
-<div class="list" id="list"></div>
-<div class="modal" id="modal" onclick="closeModal()">
-  <div class="mx">✕</div><img id="mimg" src="" alt="">
-</div>
-<script>
-const DATA=${dataJson};
-const SENT=new Set(JSON.parse(localStorage.getItem('is_${mgr}')||'[]'));
-function save(){localStorage.setItem('is_${mgr}',JSON.stringify([...SENT]))}
-function stat(){document.getElementById('nD').textContent=SENT.size;document.getElementById('nL').textContent=DATA.length-SENT.size}
-function render(){
-  const q=(document.getElementById('q').value||'').toLowerCase();
-  const list=q?DATA.filter(d=>d.name.includes(q)||d.co.toLowerCase().includes(q)):DATA;
-  const el=document.getElementById('list');
-  if(!list.length){el.innerHTML='<div class="empty">검색 결과 없음</div>';return}
-  el.innerHTML=list.map(d=>{
-    const s=SENT.has(d.ph);
-    return \`<div class="card\${s?' sent':''}">
-      <img class="thumb" src="\${d.img}" alt="\${d.name}" onclick="openModal('\${d.img}')" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-      <div class="tp" style="display:none">\${d.name[0]}</div>
-      <div class="info"><div class="nm">\${d.no?d.no+'. ':''}\${d.name}</div><div class="co">\${d.co}</div><div class="ph">\${d.ph_fmt}</div></div>
-      <div class="acts">
-        <a class="bs" href="sms:\${d.ph}?body=\${encodeURIComponent(d.msg)}" onclick="markSent('\${d.ph}')">📨 발송</a>
-        <div class="bc" onclick="toggle('\${d.ph}')">\${s?'↩ 취소':'✅ 완료'}</div>
-        \${s?'<div class="so">✅ 발송완료</div>':''}
-      </div></div>\`;
-  }).join('');
-  stat();
+  document.getElementById('pvCount').textContent=`총 ${items.length}명`;
+  document.getElementById('pvGrid').innerHTML=items.map((m,i)=>`
+    <div class="pv-card" onclick="openLB(${i})">
+      <img class="pv-img" src="${m.imgB64}" alt="${m.name}" loading="lazy">
+      <div class="pv-info">
+        <div class="pv-name">${m.no?m.no+'. ':''}${m.name}</div>
+        <div class="pv-co">${m.co}</div>
+        <div class="pv-ph">${m.ph}</div>
+      </div>
+    </div>`).join('');
 }
-function markSent(ph){SENT.add(ph);save();setTimeout(()=>{render();stat()},1200)}
-function toggle(ph){SENT.has(ph)?SENT.delete(ph):SENT.add(ph);save();render();stat()}
-function openModal(s){document.getElementById('mimg').src=s;document.getElementById('modal').classList.add('on')}
-function closeModal(){document.getElementById('modal').classList.remove('on')}
-render();stat();
-<\/script></body></html>`;
-  return new Blob([html],{type:'text/html;charset=utf-8'});
+
+// ── 라이트박스 ────────────────────────────────────────────
+function openLB(i){
+  const items=matched.filter(m=>m.imgB64);
+  lbIdx=i; const m=items[i];
+  document.getElementById('lbImg').src=m.imgB64;
+  document.getElementById('lbName').textContent=`${m.no?m.no+'. ':''}${m.name}`;
+  document.getElementById('lbMeta').textContent=`${m.co}  ·  ${m.ph}`;
+  document.getElementById('lb').classList.add('on');
+}
+function closeLB(e){
+  if(!e||e.target===document.getElementById('lb'))
+    document.getElementById('lb').classList.remove('on');
+}
+function lbNav(dir){
+  const items=matched.filter(m=>m.imgB64);
+  lbIdx=(lbIdx+dir+items.length)%items.length;
+  openLB(lbIdx);
+}
+document.addEventListener('keydown',e=>{
+  if(!document.getElementById('lb').classList.contains('on'))return;
+  if(e.key==='ArrowLeft')lbNav(-1);
+  if(e.key==='ArrowRight')lbNav(1);
+  if(e.key==='Escape')closeLB();
+});
+
+// ── 최종 테이블 ───────────────────────────────────────────
+function updFinalTable(){
+  const items=matched.filter(m=>m.imgB64);
+  const fail=matched.filter(m=>m.pdfKey&&!m.imgB64);
+  const mismatch=items.filter(m=>m.pdfName&&m.pdfName!==m.name);
+  const noExtract=items.filter(m=>!m.pdfName);
+
+  const fileOnly=items.filter(m=>!m.pdfName&&m.pdfKey);
+  const confirmed=items.filter(m=>m.pdfName===m.name);
+  document.getElementById('finalSum').innerHTML=
+    '<span class="bdg bt">전체: '+matched.length+'명</span>'+
+    '<span class="bdg bok">✅ 발송대상: '+items.length+'명</span>'+
+    (mismatch.length?'<span class="bdg bfail">❌ 이름불일치: '+mismatch.length+'명</span>':'<span class="bdg bok">✅ 텍스트 일치: '+confirmed.length+'명</span>')+
+    (fileOnly.length?'<span class="bdg" style="background:#e0f2fe;color:#0369a1">📄 파일명확인: '+fileOnly.length+'명</span>':'')+
+    (fail.length?'<span class="bdg bfail">변환실패: '+fail.length+'명</span>':'');
+
+  document.getElementById('finalTbl').innerHTML=items.map(m=>{
+    const xlName=m.name;
+    const pdfName=m.pdfName||null;
+    // PDF 파일명도 비교 (보조 수단)
+    const fileNameMatch = m.pdfKey && (m.pdfKey.replace(/\(재\)/g,'').replace(/\d+/g,'').trim() === xlName.replace(/\(재\)/g,'').replace(/\d+/g,'').trim());
+
+    let matchBadge='';
+    let rowCls='ok';
+    let pdfDisplay='';
+
+    if(pdfName!==null){
+      // 텍스트 추출 성공
+      if(pdfName===xlName){
+        matchBadge='<span class="tag tok">✅ 일치</span>';
+        pdfDisplay='<span style="color:#16a34a;font-weight:700">'+pdfName+'</span>';
+        rowCls='ok';
+      } else {
+        matchBadge='<span class="tag tfail">❌ 불일치</span><br><small style="color:#dc2626;font-size:10px">Excel:'+xlName+' / PDF:'+pdfName+'</small>';
+        pdfDisplay='<span style="color:#dc2626;font-weight:700">'+pdfName+'</span>';
+        rowCls='fail';
+      }
+    } else {
+      // 텍스트 추출 실패 → 파일명으로 보조 확인
+      if(fileNameMatch){
+        matchBadge='<span class="tag" style="background:#e0f2fe;color:#0369a1">📄 파일명 일치</span><br><small style="color:#64748b;font-size:10px">PDF 텍스트 인식 불가</small>';
+        pdfDisplay='<span style="color:#0369a1">'+m.pdfKey+'</span>';
+        rowCls='new';
+      } else {
+        matchBadge='<span class="tag tfail">⚠️ 확인필요</span><br><small style="color:#dc2626;font-size:10px">파일명:'+m.pdfKey+'</small>';
+        pdfDisplay='<span style="color:#dc2626">'+m.pdfKey+'</span>';
+        rowCls='fail';
+      }
+    }
+
+    // 전화번호 비교
+    var xlPhone=m.ph;
+    var pdfPhone=m.pdfPhone||null;
+    var phoneBadge='';
+    var pdfPhoneDisplay='<span style="color:#94a3b8">—</span>';
+    if(pdfPhone){
+      pdfPhoneDisplay=pdfPhone;
+      // 숫자만 비교
+      var xlD=xlPhone.replace(/\D/g,'');
+      var pdD=pdfPhone.replace(/\D/g,'');
+      if(xlD===pdD){
+        phoneBadge='<span class="tag tok">✅ 일치</span>';
+      } else {
+        phoneBadge='<span class="tag tfail">❌ 불일치</span>';
+        if(rowCls!=='fail') rowCls='fail';
+      }
+    } else {
+      phoneBadge='<span class="tag" style="background:#f1f5f9;color:#64748b">미추출</span>';
+    }
+
+    // PDF 텍스트 완전히 없는 경우 안내
+    var debugInfo='';
+    if(m.pdfEmpty){
+      debugInfo='<br><small style="color:#dc2626;font-size:10px">⚠ PDF 이미지 전용 (텍스트 없음)</small>';
+    } else if(!m.pdfName&&m.pdfRaw){
+      debugInfo='<br><small style="color:#64748b;font-size:9px" title="'+m.pdfRaw+'">텍스트는 있으나 이름 미인식</small>';
+    }
+
+    return '<tr class="'+rowCls+'">'+
+      '<td style="text-align:center">'+(m.no||'')+'</td>'+
+      '<td><strong>'+xlName+'</strong></td>'+
+      '<td>'+pdfDisplay+debugInfo+'</td>'+
+      '<td>'+matchBadge+'</td>'+
+      '<td>'+xlPhone+'</td>'+
+      '<td>'+pdfPhoneDisplay+'</td>'+
+      '<td>'+phoneBadge+'</td>'+
+      '<td>'+m.co+'</td>'+
+    '</tr>';
+  }).join('');
+}
+
+// ── 모바일 HTML 생성 ──────────────────────────────────────
+function genHTML(){
+  const msg   = document.getElementById('msg').value;
+  const mgr   = mgrName||'관리자';
+  const stamp = new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long'});
+  const items = matched.filter(m=>m.imgB64);
+
+  // DATA JSON - 이미지 포함
+  const rows = items.map(function(m){
+    return {
+      no:     m.no,
+      name:   m.name,
+      co:     m.co,
+      ph:     m.ph.replace(/\D/g,''),
+      ph_fmt: m.ph,
+      img:    m.imgB64,
+      msg:    msg
+    };
+  });
+  const dataJSON = JSON.stringify(rows);
+
+  // CSS (문자열 배열로 안전하게)
+  const css = [
+    '*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}',
+    'body{font-family:-apple-system,"맑은 고딕",sans-serif;background:#dde3ea;font-size:14px}',
+    '.app{max-width:460px;margin:0 auto;background:#f0f4f8;min-height:100vh}',
+    '.hdr{background:#1a3c6e;color:#fff;padding:14px 16px;position:sticky;top:0;z-index:100}',
+    '.hdr h1{font-size:15px;font-weight:700;margin-bottom:2px}',
+    '.hdr .sub{font-size:11px;color:#fff}',
+    '.sbar{display:flex;gap:6px;padding:8px 10px;background:#fff;border-bottom:1px solid #e2e8f0}',
+    '.sc{flex:1;text-align:center;padding:6px 4px;border-radius:8px;font-size:11px}',
+    '.sc .n{font-size:18px;font-weight:700;display:block;line-height:1.2}',
+    '.s1{background:#e8f0fe;color:#1a3c6e}',
+    '.s2{background:#f0fdf4;color:#16a34a}',
+    '.s3{background:#fff7ed;color:#ea580c}',
+    '.sw{padding:7px 10px;background:#fff;border-bottom:1px solid #e2e8f0}',
+    '.si{width:100%;padding:8px 12px;border:1.5px solid #cbd5e1;border-radius:18px;font-size:13px;outline:none}',
+    '.si:focus{border-color:#1a3c6e}',
+    '.list{padding:7px 10px 60px;display:flex;flex-direction:column;gap:7px}',
+    '.card{background:#fff;border-radius:11px;padding:11px 13px;display:flex;align-items:center;gap:10px;border:1.5px solid #e2e8f0}',
+    '.card.sent{border-color:#86efac;background:#f0fdf4}',
+    '.thumb{width:48px;height:48px;border-radius:6px;object-fit:cover;border:1px solid #e2e8f0;flex-shrink:0;cursor:pointer}',
+    '.tp{width:48px;height:48px;border-radius:6px;background:#e8f0fe;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#1a3c6e;flex-shrink:0}',
+    '.info{flex:1;min-width:0}',
+    '.nm{font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+    '.co{font-size:11px;color:#94a3b8;margin-top:1px}',
+    '.ph{font-size:12px;color:#1a3c6e;margin-top:2px;font-weight:700}',
+    '.acts{display:flex;flex-direction:column;gap:4px;flex-shrink:0}',
+    '.bs{padding:7px 11px;background:#1a3c6e;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;text-align:center;display:block;min-width:64px}',
+    '.bs:active{background:#2a5ca0}',
+    '.bc{padding:5px 7px;background:#f0fdf4;color:#16a34a;border:1.5px solid #86efac;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;text-align:center}',
+    '.so{font-size:10px;color:#16a34a;text-align:center;margin-top:1px}',
+    '.empty{text-align:center;padding:40px;color:#94a3b8;font-size:14px}',
+    '.err{text-align:center;padding:20px;color:#dc2626;font-size:13px;background:#fef2f2;margin:10px;border-radius:8px}',
+    '.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:999;align-items:center;justify-content:center}',
+    '.modal.on{display:flex}',
+    '.modal img{max-width:95vw;max-height:90vh;border-radius:8px}',
+    '.mx{position:fixed;top:12px;right:12px;color:#fff;font-size:24px;cursor:pointer;width:36px;height:36px;background:rgba(0,0,0,.5);border-radius:50%;display:flex;align-items:center;justify-content:center}',
+    '.guide{background:#fff;border-bottom:2px solid #e8f0fe;padding:0}',
+    '.guide-hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;user-select:none}',
+    '.guide-hdr-l{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#1a3c6e}',
+    '.guide-toggle{font-size:11px;color:#94a3b8;background:#f0f4f8;padding:3px 9px;border-radius:10px}',
+    '.guide-body{display:none;padding:0 14px 14px}',
+    '.guide-body.on{display:block}',
+    '.g-step{display:flex;gap:10px;margin-bottom:11px;align-items:flex-start}',
+    '.g-step:last-child{margin-bottom:0}',
+    '.g-num{width:22px;height:22px;background:#1a3c6e;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px}',
+    '.g-txt{font-size:12px;color:#374151;line-height:1.6}',
+    '.g-txt strong{color:#1a3c6e}',
+    '.g-divider{border:none;border-top:1px dashed #e2e8f0;margin:10px 0}',
+    '.g-tip{background:#fffbeb;border:1px solid #fde68a;border-radius:7px;padding:8px 10px;font-size:11px;color:#92400e;line-height:1.6;margin-top:8px}'
+  ].join('\n');
+
+  // JS 코드 (일반 문자열로 안전하게)
+  const js = [
+    'var DATA=' + dataJSON + ';',
+    'var SENT_KEY="is_' + mgr + '";',
+    'var SENT=[];',
+    'try{SENT=JSON.parse(localStorage.getItem(SENT_KEY)||"[]");}catch(e){SENT=[];}',
+    'function isSent(ph){return SENT.indexOf(ph)>=0;}',
+    'function addSent(ph){if(!isSent(ph)){SENT.push(ph);}try{localStorage.setItem(SENT_KEY,JSON.stringify(SENT));}catch(e){}}',
+    'function removeSent(ph){SENT=SENT.filter(function(x){return x!==ph;});try{localStorage.setItem(SENT_KEY,JSON.stringify(SENT));}catch(e){}}',
+    'function stat(){',
+    '  var done=SENT.length;',
+    '  var nD=document.getElementById("nD");',
+    '  var nL=document.getElementById("nL");',
+    '  if(nD)nD.textContent=done;',
+    '  if(nL)nL.textContent=DATA.length-done;',
+    '}',
+    'function render(){',
+    '  var q=(document.getElementById("q")||{}).value||"";',
+    '  q=q.toLowerCase();',
+    '  var list=DATA;',
+    '  if(q){list=DATA.filter(function(d){return d.name.indexOf(q)>=0||d.co.toLowerCase().indexOf(q)>=0;});}',
+    '  var el=document.getElementById("list");',
+    '  if(!el)return;',
+    '  if(!list||list.length===0){el.innerHTML="<div class=\\"empty\\">검색 결과 없음</div>";stat();return;}',
+    '  var html="";',
+    '  for(var i=0;i<list.length;i++){',
+    '    var d=list[i];',
+    '    var s=isSent(d.ph);',
+    '    html+="<div class=\\"card"+(s?" sent":"")+"\\" data-ph=\\""+d.ph+"\\" data-idx=\\""+DATA.indexOf(d)+"\\">";',
+    '    html+="<img class=\\"thumb\\" src=\\""+d.img+"\\" alt=\\""+d.name+"\\">";',
+    '    html+="<div class=\\"tp\\" style=\\"display:none\\">"+d.name.charAt(0)+"</div>";',
+    '    html+="<div class=\\"info\\">";',
+    '    html+="<div class=\\"nm\\">"+(d.no?d.no+". ":"")+d.name+"</div>";',
+    '    html+="<div class=\\"co\\">"+d.co+"</div>";',
+    '    html+="<div class=\\"ph\\">"+d.ph_fmt+"</div>";',
+    '    html+="</div>";',
+    '    html+="<div class=\\"acts\\">";',
+    '    html+="<button class=\\"bs\\" data-action=\\"send\\" data-ph=\\""+d.ph+"\\" data-idx=\\""+DATA.indexOf(d)+"\\">📨 발송</button>";',
+    '    html+="<div class=\\"bc\\" data-action=\\"toggle\\" data-ph=\\""+d.ph+"\\">"+(s?"↩ 취소":"✅ 완료")+"</div>";',
+    '    if(s)html+="<div class=\\"so\\">✅ 발송완료</div>";',
+    '    html+="</div></div>";',
+    '  }',
+    '  el.innerHTML=html;',
+    '  el.querySelectorAll("img.thumb").forEach(function(img){',
+    '    img.addEventListener("error",function(){this.style.display="none";this.nextElementSibling.style.display="flex";});',
+    '    img.addEventListener("click",function(){openModal(this.src);});',
+    '  });',
+    '  stat();',
+    '}',
+    'document.addEventListener("click",function(e){',
+    '  var btn=e.target.closest("[data-action]");',
+    '  if(!btn)return;',
+    '  var action=btn.getAttribute("data-action");',
+    '  var ph=btn.getAttribute("data-ph");',
+    '  var idx=parseInt(btn.getAttribute("data-idx")||"0");',
+    '  if(action==="send"){sendMMS(ph,idx);}',
+    '  else if(action==="toggle"){',
+    '    if(isSent(ph))removeSent(ph); else addSent(ph);',
+    '    render();',
+    '  }',
+    '});',
+    'function sendMMS(ph,idx){',
+    '  var d=DATA[idx];',
+    '  if(!d){alert("데이터 오류");return;}',
+    '  if(navigator.share&&navigator.canShare){',
+    '    fetch(d.img).then(function(r){return r.blob();}).then(function(blob){',
+    '      var file=new File([blob],ph.replace(/-/g,"")+".jpg",{type:"image/jpeg"});',
+    '      if(navigator.canShare({files:[file]})){',
+    '        navigator.share({files:[file],text:d.msg}).then(function(){addSent(ph);setTimeout(render,1200);}).catch(function(e){if(e.name!=="AbortError")fallback(ph,d);});',
+    '      } else {fallback(ph,d);}',
+    '    }).catch(function(){fallback(ph,d);});',
+    '  } else {fallback(ph,d);}',
+    '}',
+    'function fallback(ph,d){',
+    '  var a=document.createElement("a");',
+    '  a.href=d.img;a.download="명세서.jpg";a.click();',
+    '  setTimeout(function(){window.location.href="sms:"+ph+"?body="+encodeURIComponent(d.msg);},800);',
+    '  addSent(ph);setTimeout(render,1200);',
+    '}',
+    'function openModal(src){',
+    '  document.getElementById("mimg").src=src;',
+    '  document.getElementById("modal").classList.add("on");',
+    '}',
+    'document.getElementById("modal").addEventListener("click",function(){this.classList.remove("on");});',
+    'document.getElementById("q").addEventListener("input",render);',
+    'function toggleGuide(){',
+    '  var gb=document.getElementById("gb");',
+    '  var gt=document.getElementById("gt");',
+    '  var on=gb.classList.toggle("on");',
+    '  gt.textContent=on?"접기 ▲":"펼치기 ▼";',
+    '}',
+    'render();',
+    'stat();'
+  ].join('\n');
+
+  // HTML 조립
+  var parts = [];
+  parts.push('<!DOCTYPE html>');
+  parts.push('<html lang="ko"><head>');
+  parts.push('<meta charset="UTF-8">');
+  parts.push('<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">');
+  parts.push('<title>급여명세서 발송 — ' + mgr + '</title>');
+  parts.push('<style>' + css + '</style>');
+  parts.push('</head><body>');
+  parts.push('<div class="app">');
+  parts.push('<div class="hdr"><h1>급여명세서 MMS 발송</h1>');
+  parts.push('<div class="sub">' + stamp + ' · ' + mgr + ' · 총 ' + items.length + '명</div></div>');
+  parts.push('<div class="guide" id="guide">');
+  parts.push('<div class="guide-hdr" onclick="toggleGuide()">');
+  parts.push('<div class="guide-hdr-l">📋 사용 안내 — 처음 받으셨나요? 여기를 눌러 확인하세요</div>');
+  parts.push('<span class="guide-toggle" id="gt">펼치기 ▼</span>');
+  parts.push('</div>');
+  parts.push('<div class="guide-body" id="gb">');
+  parts.push('<div class="g-step"><div class="g-num">1</div><div class="g-txt"><strong>카톡에서 파일 열기</strong><br>카카오톡에서 받은 <strong>.html 파일</strong>을 길게 누르거나 탭 → <strong>"다른 앱으로 열기"</strong> 또는 <strong>"공유"</strong> 선택</div></div>');
+  parts.push('<div class="g-step"><div class="g-num">2</div><div class="g-txt"><strong>크롬(Chrome)으로 열기</strong><br>앱 목록에서 <strong>Chrome</strong> 또는 <strong>Samsung Internet</strong> 선택 → 이 화면이 열립니다</div></div>');
+  parts.push('<hr class="g-divider">');
+  parts.push('<div class="g-step"><div class="g-num">3</div><div class="g-txt"><strong>발송 버튼 탭</strong><br>직원 카드의 <strong>📨 발송</strong> 버튼 탭 → 공유 시트가 열림</div></div>');
+  parts.push('<div class="g-step"><div class="g-num">4</div><div class="g-txt"><strong>메시지 앱 선택</strong><br>공유 시트에서 반드시 <strong>"메시지"</strong> 앱 선택<br>(카카오톡 선택 시 카톡으로 발송됩니다)</div></div>');
+  parts.push('<div class="g-step"><div class="g-num">5</div><div class="g-txt"><strong>수신자 번호 입력 후 전송</strong><br>메시지 앱에서 <strong>이미지가 자동 첨부</strong>된 상태로 열립니다<br>카드에 표시된 <strong>전화번호</strong>를 입력 후 전송</div></div>');
+  parts.push('<div class="g-step"><div class="g-num">6</div><div class="g-txt"><strong>완료 체크</strong><br>발송 후 <strong>✅ 완료</strong> 버튼 탭 → 초록색으로 완료 표시</div></div>');
+  parts.push('<div class="g-tip">💡 <strong>크롬 미지원 폰:</strong> 발송 버튼 탭 시 이미지가 자동 다운로드됩니다. 갤러리에서 이미지를 확인 후 문자 앱에서 직접 첨부하세요.</div>');
+  parts.push('</div></div>');
+  parts.push('<div class="sbar">');
+  parts.push('<div class="sc s1"><span class="n" id="nT">' + items.length + '</span>전체</div>');
+  parts.push('<div class="sc s2"><span class="n" id="nD">0</span>완료</div>');
+  parts.push('<div class="sc s3"><span class="n" id="nL">' + items.length + '</span>미발송</div>');
+  parts.push('</div>');
+  parts.push('<div class="sw"><input class="si" type="search" id="q" placeholder="이름 또는 업체 검색..."></div>');
+  parts.push('<div class="list" id="list"></div>');
+  parts.push('</div>');
+  parts.push('<div class="modal" id="modal"><div class="mx">✕</div><img id="mimg" src="" alt=""></div>');
+  parts.push('<script>' + js + '<\/script>');
+  parts.push('</body></html>');
+
+  return new Blob([parts.join('\n')], {type:'text/html;charset=utf-8'});
 }
 
 function dlHTML(){
-  if(!htmlBlob)return;
+  if(!htmlBlob){htmlBlob=genHTML();}
   const stamp=new Date().toISOString().slice(0,10).replace(/-/g,'');
   const a=document.createElement('a');
   a.href=URL.createObjectURL(htmlBlob);
