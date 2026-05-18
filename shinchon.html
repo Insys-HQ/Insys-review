@@ -1098,6 +1098,15 @@ body.admin .admin-only{display:flex}
     <button class="btn bg" onclick="testPrinter()" style="height:40px;font-size:13px">🔌 연결테스트</button>
     <button class="btn bg" onclick="showZpl()" style="height:40px;font-size:13px">📋 ZPL보기</button>
     <span id="pc-status" style="font-size:13px;color:var(--tx2);font-family:var(--fm)">● 대기중</span>
+    <span style="margin-left:8px;font-size:12px;color:var(--tx2)">|</span>
+    <label style="font-size:12px;color:var(--tx2);white-space:nowrap">상하(↕)</label>
+    <input type="number" id="lp-lt" value="0" min="-200" max="200" step="5"
+      style="width:60px;padding:4px 6px;border-radius:6px;border:1px solid var(--bd);background:var(--s2);color:var(--tx);font-size:13px;text-align:center"
+      onchange="uLbl()" title="상하 위치 조정 (^LT, 단위:dot, +=아래, -=위)">
+    <label style="font-size:12px;color:var(--tx2);white-space:nowrap">좌우(↔)</label>
+    <input type="number" id="lp-ls" value="0" min="-200" max="200" step="5"
+      style="width:60px;padding:4px 6px;border-radius:6px;border:1px solid var(--bd);background:var(--s2);color:var(--tx);font-size:13px;text-align:center"
+      onchange="uLbl()" title="좌우 위치 조정 (^LS, 단위:dot, +=오른쪽, -=왼쪽)">
   </div>
 
   <div class="g2">
@@ -2129,13 +2138,21 @@ async function initWmsData() {
         const urlEl = document.getElementById('pc-server');
         if(urlEl) urlEl.value = cfg.printerUrl;
       }
+      // 위치 조정값 복원
+      if (cfg.lt !== undefined) {
+        const ltEl = document.getElementById('lp-lt');
+        if(ltEl) ltEl.value = cfg.lt;
+      }
+      if (cfg.ls !== undefined) {
+        const lsEl = document.getElementById('lp-ls');
+        if(lsEl) lsEl.value = cfg.ls;
+      }
       // 프린터 방식 복원
       if (cfg.printerMethod) {
         const mtEl = document.getElementById('pc-method');
         if(mtEl) { mtEl.value = cfg.printerMethod; togglePcM(); }
       }
     }
-    // 2. 재고 DB 복원
     const stkSnap = await db.collection('sc_stock').get();
     if (!stkSnap.empty) {
       stkSnap.forEach(doc => { if(SDB[doc.id] !== undefined) SDB[doc.id] = { ...SDB[doc.id], ...doc.data() }; });
@@ -2732,6 +2749,8 @@ function buildZpl(){
   const date   = document.getElementById('ldate').value;
   const lot    = document.getElementById('llot').value;
   const gubun  = document.getElementById('lgubun').value;
+  const lt     = parseInt(document.getElementById('lp-lt')?.value)||0;
+  const ls     = parseInt(document.getElementById('lp-ls')?.value)||0;
   const seq    = String(lblSeq).padStart(4,'0');
   const now    = new Date();
   const pdt    = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
@@ -2741,8 +2760,12 @@ function buildZpl(){
   const specZ  = spec.length>18 ? spec.substring(0,18)+'..' : spec;
 
   return `^XA
+^MMT
+^MNN
 ^PW1181
 ^LL709
+^LT${lt}
+^LS${ls}
 ^FO0,0^GB1181,90,90^FS
 ^FO70,18^CF0,50^FR^FDCHANCE WMS v3.42^FS
 ^FO960,20^CF0,48^FR^FD${g}^FS
@@ -2772,6 +2795,7 @@ function buildZpl(){
 ^CF0,30
 ^FO70,672^FD${pdt}  SEQ:${seq}^FS
 ^FO820,672^FDCHANCE WMS^FS
+^PQ1,0,1,Y
 ^XZ`;
 }
 
@@ -2793,11 +2817,15 @@ async function testPrinter(){
   const url=document.getElementById('pc-server').value;
   st.style.color='var(--c3)';st.textContent='● 확인 중...';
   if(m==='browser'){st.style.color='var(--c2)';st.textContent='● 브라우저 인쇄 (항상 사용 가능)';
-    fbSet('sc_settings','shinchon',{printerMethod:m,printerUrl:url});return;}
+    const lt=parseInt(document.getElementById('lp-lt')?.value)||0;
+    const ls=parseInt(document.getElementById('lp-ls')?.value)||0;
+    fbSet('sc_settings','shinchon',{printerMethod:m,printerUrl:url,lt,ls});return;}
   try{
     const res=await fetch(`${url}/ping`,{signal:AbortSignal.timeout(3000)});
     if(res.ok){const d=await res.json();st.style.color='var(--c2)';st.textContent=`● 서버 OK — ${d.printer||'연결됨'}`;
-      fbSet('sc_settings','shinchon',{printerMethod:m,printerUrl:url});}
+      const lt=parseInt(document.getElementById('lp-lt')?.value)||0;
+      const ls=parseInt(document.getElementById('lp-ls')?.value)||0;
+      fbSet('sc_settings','shinchon',{printerMethod:m,printerUrl:url,lt,ls});}
     else throw new Error();
   }catch{st.style.color='var(--c4)';st.textContent='● 서버 연결 실패 — print_server.py 확인 필요';}
 }
@@ -3655,6 +3683,8 @@ function buildJjZpl(){
   const specZ=spec.length>7?spec.substring(0,7):spec;
   const specF=spec.length>18?spec.substring(0,18)+'..':spec;
   return `^XA
+^MMT
+^MNN
 ^PW1181
 ^LL709
 ^FO0,0^GB1181,90,90^FS
@@ -3684,6 +3714,7 @@ function buildJjZpl(){
 ^CF0,30
 ^FO70,672^FD${pdt}  SEQ:${seq}^FS
 ^FO820,672^FDJEONJU WMS^FS
+^PQ1,0,1,Y
 ^XZ`;
 }
 
