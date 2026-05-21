@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>인시스 전주공장 이전 일정표</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap');
+
+  :root {
+    --bg: #f4f6f9;
+    --surface: #ffffff;
+    --surface2: #f0f3f8;
+    --border: #d8dfe9;
+    --border2: #e8ecf3;
+    --text: #1e2740;
+    --text-muted: #5a6685;
+    --text-dim: #9aa3bb;
+    --accent: #2563eb;
+
+    /* 파스텔 계열 — 비즈니스 톤 */
+    --p0: #c07a1a; /* 준비 — 앰버 진한 */
+    --p0-bg: #fff8ec;
+    --p0-bar: linear-gradient(90deg,#f0a030,#f5b849);
+
+    --p1: #1d61c8; /* 업체선정 — 블루 */
+    --p1-bg: #eef3fd;
+    --p1-bar: linear-gradient(90deg,#2563eb,#4a86f5);
+
+    --p2: #167a52; /* 철거·도색 — 그린 */
+    --p2-bg: #edfaf4;
+    --p2-bar: linear-gradient(90deg,#1a9463,#2db87a);
+
+    --p3: #c04f10; /* 설비이전 — 오렌지 */
+    --p3-bg: #fff3ed;
+    --p3-bar: linear-gradient(90deg,#e05a14,#f07838);
+
+    --p4: #a02060; /* 마무리 — 로즈 */
+    --p4-bg: #fdf0f6;
+    --p4-bar: linear-gradient(90deg,#c0336e,#d9598a);
+
+    --p5: #5630a8; /* 행정 — 퍼플 */
+    --p5-bg: #f3f0fd;
+    --p5-bar: linear-gradient(90deg,#6840c8,#8b6de0);
+
+    --milestone-color: #c07a1a;
+    --today-color: #2563eb;
+
+    --row-h: 34px;
+    --hdr-h: 54px;
+    --label-w: 360px;
+    --cell-w: 28px;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 13px;
+  }
+
+  /* ── 헤더 ── */
+  .page-header {
+    background: #ffffff;
+    border-bottom: 2px solid var(--border);
+    padding: 16px 28px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .page-title { font-size: 17px; font-weight: 700; color: var(--text); letter-spacing: -0.3px; }
+  .page-sub { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+  .header-badges { display: flex; gap: 7px; flex-wrap: wrap; }
+  .badge {
+    padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;
+    background: #eef3fd; color: var(--p1); border: 1px solid #c5d6f8;
+  }
+  .badge.red { background: #fef2f2; color: #c0392b; border-color: #fac5c5; }
+  .badge.green { background: #edfaf4; color: #167a52; border-color: #b0e8ce; }
+
+  /* ── 범례 ── */
+  .legend {
+    display: flex; gap: 16px; flex-wrap: wrap;
+    padding: 10px 28px;
+    background: #ffffff;
+    border-bottom: 1px solid var(--border);
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+
+  /* ── 메인 레이아웃 ── */
+  .gantt-wrapper { display: flex; overflow-x: auto; min-height: calc(100vh - 110px); }
+
+  /* ── 왼쪽 레이블 패널 ── */
+  .label-panel {
+    min-width: var(--label-w);
+    max-width: var(--label-w);
+    background: #ffffff;
+    border-right: 2px solid var(--border);
+    flex-shrink: 0;
+    position: sticky;
+    left: 0;
+    z-index: 50;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.05);
+  }
+  .label-header {
+    height: var(--hdr-h);
+    display: flex; align-items: flex-end;
+    padding: 0 12px 8px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+  .label-header-text { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; }
+
+  .label-row {
+    height: var(--row-h);
+    display: flex; align-items: center;
+    padding: 0 8px 0 0;
+    border-bottom: 1px solid var(--border2);
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+  .label-row:hover { background: #f7f9fd; }
+  .label-row.phase-header {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    cursor: default;
+  }
+  .label-row.phase-header:hover { background: var(--surface2); }
+
+  .row-num {
+    min-width: 32px; text-align: center;
+    font-size: 10px; color: var(--text-dim); font-weight: 500;
+  }
+  .row-phase-bar {
+    width: 4px; min-width: 4px; height: 100%;
+    margin-right: 8px;
+  }
+  .row-name {
+    flex: 1; font-size: 12px; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    padding-right: 8px;
+    line-height: var(--row-h);
+  }
+  .row-name.phase-title {
+    font-size: 11px; font-weight: 700; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .row-assignee {
+    font-size: 10px; color: var(--text-muted);
+    min-width: 64px; text-align: right;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    background: var(--surface2);
+    border-radius: 10px;
+    padding: 1px 6px;
+    margin-right: 4px;
+  }
+
+  /* ── 오른쪽 간트 패널 ── */
+  .chart-panel { flex: 1; overflow-x: auto; position: relative; background: #ffffff; }
+
+  .chart-header {
+    height: var(--hdr-h);
+    display: flex; align-items: stretch;
+    border-bottom: 2px solid var(--border);
+    background: var(--surface2);
+    position: sticky;
+    top: 0;
+    z-index: 40;
+  }
+
+  .month-group { display: flex; flex-direction: column; border-right: 1px solid var(--border); }
+  .month-label {
+    font-size: 11px; font-weight: 700; color: var(--text);
+    padding: 7px 0 4px; text-align: center;
+    border-bottom: 1px solid var(--border);
+    letter-spacing: 0.3px;
+    background: #e8edf7;
+  }
+  .day-labels { display: flex; }
+  .day-label {
+    width: var(--cell-w); text-align: center;
+    font-size: 10px; color: var(--text-muted);
+    line-height: var(--row-h);
+    border-right: 1px solid var(--border2);
+  }
+  .day-label.weekend { color: #e05050; background: #fdf5f5; }
+  .day-label.today-col { color: var(--today-color); font-weight: 700; background: #eef3fd; }
+
+  /* ── 간트 바디 ── */
+  .chart-body { position: relative; }
+  .chart-row {
+    height: var(--row-h);
+    display: flex; align-items: center;
+    border-bottom: 1px solid var(--border2);
+    position: relative;
+  }
+  .chart-row.phase-header { background: #f0f3f8; border-bottom: 1px solid var(--border); }
+  .chart-row:hover:not(.phase-header) { background: #f7f9fd; }
+
+  .chart-cell {
+    width: var(--cell-w); min-width: var(--cell-w); height: 100%;
+    border-right: 1px solid #eef0f5;
+    flex-shrink: 0;
+  }
+  .chart-cell.weekend { background: #fdf8f8; }
+  .chart-cell.today-col { background: #eef3fd; }
+  .chart-cell.month-end { border-right: 1px solid var(--border); }
+
+  /* ── 간트 바 ── */
+  .gantt-bar {
+    position: absolute;
+    height: 20px;
+    border-radius: 4px;
+    top: 50%; transform: translateY(-50%);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 600; color: #ffffff;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    padding: 0 6px;
+    cursor: pointer;
+    transition: filter 0.15s, box-shadow 0.15s;
+    z-index: 10;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+  }
+  .gantt-bar:hover { filter: brightness(1.1); box-shadow: 0 3px 10px rgba(0,0,0,0.18); z-index: 20; }
+  .gantt-bar.milestone {
+    width: 14px !important; height: 14px;
+    border-radius: 2px;
+    transform: translateY(-50%) rotate(45deg);
+    padding: 0;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+  }
+
+  /* ── 오늘선 ── */
+  .today-line {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 2px;
+    background: var(--today-color);
+    z-index: 30;
+    pointer-events: none;
+    opacity: 0.7;
+  }
+  .today-line::before {
+    content: 'TODAY';
+    position: absolute;
+    top: 0; left: 50%; transform: translateX(-50%);
+    background: var(--today-color);
+    color: #fff;
+    font-size: 9px; font-weight: 700;
+    padding: 2px 4px; border-radius: 0 0 3px 3px;
+    white-space: nowrap;
+  }
+
+  /* ── 의존관계 SVG ── */
+  .dep-svg {
+    position: absolute;
+    top: 0; left: 0;
+    pointer-events: none;
+    z-index: 25;
+    overflow: visible;
+  }
+
+  /* ── 툴팁 ── */
+  .tooltip {
+    position: fixed;
+    background: #ffffff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    z-index: 200;
+    pointer-events: none;
+    display: none;
+    max-width: 280px;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.12);
+  }
+  .tooltip-title { font-weight: 700; color: var(--text); margin-bottom: 6px; font-size: 13px; }
+  .tooltip-row { display: flex; justify-content: space-between; gap: 16px; margin-top: 3px; color: var(--text-muted); }
+  .tooltip-val { color: var(--text); font-weight: 500; }
+
+  /* ── 스크롤바 ── */
+  ::-webkit-scrollbar { height: 6px; width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  @media print {
+    .page-header { position: static; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div>
+    <div class="page-title">인시스 전주공장 이전 마스터 일정표</div>
+    <div class="page-sub">전주 친환경 복합산업단지 | 2026.05.14 ~ 2026.08.31</div>
+  </div>
+  <div class="header-badges">
+    <span class="badge red">잔금 D-2 (5/14)</span>
+    <span class="badge">명도 6/25</span>
+    <span class="badge">세척기 가동 목표 7/14</span>
+    <span class="badge green">기존공장 명도 7/15</span>
+  </div>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:var(--p0)"></div>계약·준비</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--p1)"></div>업체선정·협의</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--p2)"></div>철거·도색</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--p3)"></div>설비이전·시공</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--p4)"></div>마무리·인테리어</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--p5)"></div>행정·등록</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--milestone); transform:rotate(45deg); border-radius:2px;"></div>마일스톤</div>
+</div>
+
+<div class="gantt-wrapper" id="ganttWrapper">
+  <div class="label-panel" id="labelPanel"></div>
+  <div class="chart-panel" id="chartPanel">
+    <div class="chart-header" id="chartHeader"></div>
+    <div class="chart-body" id="chartBody">
+      <svg class="dep-svg" id="depSvg"></svg>
+      <div class="today-line" id="todayLine"></div>
+    </div>
+  </div>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+// ─────────────────────────────────────────
+//  날짜 유틸
+// ─────────────────────────────────────────
+const START_DATE = new Date(2026, 4, 12); // 5/12
+const END_DATE   = new Date(2026, 7, 31); // 8/31
+const TODAY      = new Date(2026, 4, 21); // 오늘 5/21 (시뮬레이션)
+
+function d(y,m,day){ return new Date(y,m-1,day); }
+function dayDiff(a,b){ return Math.round((b-a)/(86400000)); }
+function col(date){ return dayDiff(START_DATE, date); }
+function totalDays(){ return dayDiff(START_DATE, END_DATE)+1; }
+
+// ─────────────────────────────────────────
+//  태스크 데이터
+// ─────────────────────────────────────────
+const PHASES = [
+  { id:'p0', label:'PHASE 0  |  계약·준비', color:'var(--p0)' },
+  { id:'p1', label:'PHASE 1  |  업체선정·협의', color:'var(--p1)' },
+  { id:'p2', label:'PHASE 2  |  철거·도색', color:'var(--p2)' },
+  { id:'p3', label:'PHASE 3  |  설비이전·시공', color:'var(--p3)' },
+  { id:'p4', label:'PHASE 4  |  마무리·인테리어', color:'var(--p4)' },
+  { id:'p5', label:'PHASE 5  |  행정·등록', color:'var(--p5)' },
+];
+
+// 태스크: { id, phase, name, start, end, assignee, color, deps:[], milestone, progress, note }
+const TASKS = [
+  // ─ PHASE 0 ─
+  { id:'m_잔금', phase:'p0', name:'잔금 납부 ★', start:d(2026,5,14), end:d(2026,5,14), assignee:'대표', color:'var(--p0)', deps:[], milestone:true, note:'5/14(목) 잔금 납부 완료' },
+  { id:'t01', phase:'p0', name:'최종 네고 견적 수령 (도색)', start:d(2026,5,14), end:d(2026,5,20), assignee:'현장', color:'var(--p0)', deps:[], note:'㈜인원케미텍 최영옥 010-3177-7018' },
+  { id:'t02', phase:'p0', name:'이천공장 색상코드 확인·문서화', start:d(2026,5,14), end:d(2026,5,21), assignee:'현장', color:'var(--p0)', deps:[], note:'RAL/KS번호 사진+문서화 → 도색업체 전달' },
+  { id:'t03', phase:'p0', name:'가스탱크 매각 진행', start:d(2026,5,14), end:d(2026,6,15), assignee:'총무', color:'var(--p0)', deps:['m_잔금'], note:'기존 공장 가스탱크 매각' },
+
+  // ─ PHASE 1 ─
+  { id:'t10', phase:'p1', name:'도색업체 외벽 착수일정 확정', start:d(2026,5,21), end:d(2026,5,28), assignee:'현장', color:'var(--p1)', deps:['t01'], note:'6/29 착수 가능 여부 확인' },
+  { id:'t11', phase:'p1', name:'트랜치 시공업체 선정·견적', start:d(2026,5,14), end:d(2026,5,31), assignee:'손홍필소장', color:'var(--p1)', deps:[], note:'세척기 주변 배수로 — 에폭시 전 선시공 필수' },
+  { id:'t12', phase:'p1', name:'전기보일러 업체 선정·견적', start:d(2026,5,14), end:d(2026,5,31), assignee:'손홍필소장', color:'var(--p1)', deps:[], note:'신규 전기보일러 설치' },
+  { id:'t13', phase:'p1', name:'폐수탱크 제작·설치업체 선정', start:d(2026,5,14), end:d(2026,5,31), assignee:'손홍필소장', color:'var(--p1)', deps:[], note:'컴프레셔실(6000×6000) 내 신규 제작' },
+  { id:'t14', phase:'p1', name:'집진기·덕트 업체 일정 협의', start:d(2026,5,14), end:d(2026,5,31), assignee:'손홍필소장', color:'var(--p1)', deps:[], note:'기존 집진기 이전 + 세척기↔집진기 덕트 신규 시공' },
+  { id:'t15', phase:'p1', name:'건조실(샌드위치패널) 업체 선정', start:d(2026,5,14), end:d(2026,5,31), assignee:'손홍필소장', color:'var(--p1)', deps:[], note:'2구역 분리, 각 출입구, 난방기·제습기 포함' },
+  { id:'t16', phase:'p1', name:'세척기 이전 일정 확정 (한마기계)', start:d(2026,5,14), end:d(2026,5,28), assignee:'손홍필소장', color:'var(--p1)', deps:[], note:'김상철 부장 010-3550-8064 / 7/10 전후 완료 목표' },
+  { id:'t17', phase:'p1', name:'렉 이전업체 선정·일정협의', start:d(2026,5,14), end:d(2026,5,31), assignee:'손홍필소장', color:'var(--p1)', deps:[], note:'기존 렉 해체·이전·재설치 + 부족분 추가' },
+  { id:'t18', phase:'p1', name:'전기공사업체 선정', start:d(2026,5,14), end:d(2026,5,31), assignee:'손홍필소장', color:'var(--p1)', deps:[], note:'분전반·배선·설비 전기 연결' },
+  { id:'t19', phase:'p1', name:'B동 철거업체 선정', start:d(2026,5,14), end:d(2026,5,31), assignee:'손홍필소장', color:'var(--p1)', deps:[], note:'화장실·임시사무소 철거 + 바닥 도색' },
+  { id:'t20', phase:'p1', name:'소방시설 점검·업체 선정', start:d(2026,5,14), end:d(2026,6,10), assignee:'경영지원팀', color:'var(--p1)', deps:[], note:'법적 기준 확인 후 소방완비증명서 취득' },
+  { id:'t21', phase:'p1', name:'지게차 렌탈 예약', start:d(2026,6,15), end:d(2026,7,15), assignee:'손홍필소장', color:'var(--p1)', deps:[], note:'설비 이전 기간 상주 필수' },
+  { id:'t22', phase:'p1', name:'온풍기·제습기 용량 확인·추가 발주', start:d(2026,5,21), end:d(2026,6,15), assignee:'손홍필소장', color:'var(--p1)', deps:[], note:'기존 장비 용량 파악 → 건조실 적정 용량 산출 → 부족분 발주' },
+  { id:'t23', phase:'p1', name:'캡작업실 배수구 공사 파악', start:d(2026,5,21), end:d(2026,6,15), assignee:'손홍필소장', color:'var(--p1)', deps:[], note:'필요 여부 현장 확인 후 결정' },
+  { id:'t24', phase:'p1', name:'에어배관 현장 확인', start:d(2026,6,25), end:d(2026,6,28), assignee:'손홍필소장', color:'var(--p1)', deps:[], note:'기존 배관 재활용 가능 여부 확인' },
+  { id:'t25', phase:'p1', name:'간판 상태 확인 (이전/신규 결정)', start:d(2026,6,25), end:d(2026,6,30), assignee:'총무', color:'var(--p1)', deps:[], note:'기존 전주공장 간판 재활용 여부 결정' },
+
+  // ─ PHASE 2 ─
+  { id:'m_명도', phase:'p2', name:'이전 공장 명도 ★', start:d(2026,6,25), end:d(2026,6,25), assignee:'손홍필소장', color:'var(--p2)', deps:[], milestone:true, note:'6/25 장비 철수 완료 + 내부 철거 시작' },
+  { id:'t30', phase:'p2', name:'A동 내부 패널 구조물 철거', start:d(2026,6,25), end:d(2026,6,27), assignee:'손홍필소장', color:'var(--p2)', deps:['m_명도'], note:'검사실·측정실 패널 철거 2~3일 / 관리자 상주' },
+  { id:'t31', phase:'p2', name:'B동 화장실·임시사무소 철거', start:d(2026,6,25), end:d(2026,7,5), assignee:'손홍필소장', color:'var(--p2)', deps:['m_명도'], note:'장마·폭염 전 선행 권장' },
+  { id:'t32', phase:'p2', name:'외벽 도색 착수 (A·B동·포인트)', start:d(2026,6,29), end:d(2026,7,14), assignee:'인원케미텍', color:'var(--p2)', deps:['t30'], note:'이천공장 동일 색상 / 포인트 구조물 짙은 회색 / 단계별 진행' },
+  { id:'t33', phase:'p2', name:'트랜치 시공 (세척기 주변 배수로)', start:d(2026,6,28), end:d(2026,7,3), assignee:'시공업체', color:'var(--p2)', deps:['t30','t11'], note:'에폭시 도색 전 반드시 완료 / 양생 3~7일' },
+  { id:'t34', phase:'p2', name:'트랜치 양생', start:d(2026,7,4), end:d(2026,7,7), assignee:'시공업체', color:'var(--p2)', deps:['t33'], note:'시멘트 양생 3~4일' },
+  { id:'t35', phase:'p2', name:'A동 에폭시 도색 (트랜치 반대쪽 우선)', start:d(2026,7,1), end:d(2026,7,6), assignee:'인원케미텍', color:'var(--p2)', deps:['t30'], note:'트랜치 반대쪽 먼저 시공 → 순차 진행' },
+  { id:'t36', phase:'p2', name:'A동 에폭시 도색 (트랜치 구역 마무리)', start:d(2026,7,8), end:d(2026,7,10), assignee:'인원케미텍', color:'var(--p2)', deps:['t34','t35'], note:'트랜치 양생 완료 후 마무리 구역 도색' },
+  { id:'m_a동도색', phase:'p2', name:'A동 바닥 도색 완료 ★', start:d(2026,7,10), end:d(2026,7,10), assignee:'', color:'var(--p2)', deps:['t36'], milestone:true, note:'설비 반입 가능 시점' },
+  { id:'t37', phase:'p2', name:'물 배관 시공 (뒤쪽→세척기·보일러·필터)', start:d(2026,6,28), end:d(2026,7,5), assignee:'손홍필소장', color:'var(--p2)', deps:['t30'], note:'공장 뒤쪽 중간에서 인입 / 세척기·보일러·필터청소 3용도' },
+
+  // ─ PHASE 3 ─
+  { id:'t40', phase:'p3', name:'렉 해체·이전·재설치', start:d(2026,7,10), end:d(2026,7,13), assignee:'손홍필소장', color:'var(--p3)', deps:['m_a동도색'], note:'기존 전주공장 렉 해체 → 이전 → 재설치 / 부족분 추가' },
+  { id:'t41', phase:'p3', name:'집진기 이전 + 덕트 신규 시공', start:d(2026,7,10), end:d(2026,7,14), assignee:'손홍필소장', color:'var(--p3)', deps:['m_a동도색'], note:'기존 집진기 이전 + 세척기↔집진기 연결 덕트 신규 시공' },
+  { id:'t42', phase:'p3', name:'전기보일러 설치', start:d(2026,7,10), end:d(2026,7,13), assignee:'전기보일러업체', color:'var(--p3)', deps:['m_a동도색'], note:'신규 전기보일러 설치·배관 연결·시운전' },
+  { id:'t43', phase:'p3', name:'컴프레셔 2대 이전·설치 (쿨러·필터포함)', start:d(2026,7,10), end:d(2026,7,13), assignee:'손홍필소장', color:'var(--p3)', deps:['m_a동도색'], note:'컴프레셔실(6000×6000) / 쿨러·에어필터 신규 설치' },
+  { id:'t44', phase:'p3', name:'폐수탱크 신규 제작·설치', start:d(2026,7,10), end:d(2026,7,14), assignee:'폐수탱크업체', color:'var(--p3)', deps:['m_a동도색'], note:'컴프레셔실 내부 설치 / 기존 탱크 폐기' },
+  { id:'t45', phase:'p3', name:'세척기 이전·재설치 ★ 핵심', start:d(2026,7,10), end:d(2026,7,13), assignee:'한마기계', color:'var(--p3)', deps:['t41','m_a동도색'], note:'김상철 부장 010-3550-8064 / 건조부 제거 / 보호커버 설치' },
+  { id:'t46', phase:'p3', name:'세척기 배관·전기 연결', start:d(2026,7,13), end:d(2026,7,14), assignee:'한마기계', color:'var(--p3)', deps:['t45'], note:'배관·전기 연결 후 시운전 준비' },
+  { id:'t47', phase:'p3', name:'전기공사 (분전반·배선·설비연결)', start:d(2026,7,10), end:d(2026,7,14), assignee:'전기업체', color:'var(--p3)', deps:['m_a동도색'], note:'전체 설비 전기 연결 / 전기안전관리자 확인서 수령' },
+  { id:'t48', phase:'p3', name:'건조실 시공 (샌드위치패널 2구역)', start:d(2026,7,10), end:d(2026,7,16), assignee:'손홍필소장', color:'var(--p3)', deps:['m_a동도색'], note:'2구역 분리·출입구·난방기·제습기 각 설치' },
+  { id:'t49', phase:'p3', name:'패드 작업대 이전·설치', start:d(2026,7,10), end:d(2026,7,12), assignee:'손홍필소장', color:'var(--p3)', deps:['m_a동도색'], note:'기존 공장에서 이전' },
+  { id:'t50', phase:'p3', name:'온풍기·제습기 이전·추가설치', start:d(2026,7,10), end:d(2026,7,14), assignee:'손홍필소장', color:'var(--p3)', deps:['t48'], note:'기존 이전 + 건조실 적정용량 추가' },
+  { id:'t51', phase:'p3', name:'세척기 시운전·품질 검증', start:d(2026,7,14), end:d(2026,7,15), assignee:'한마기계', color:'var(--p3)', deps:['t46','t47'], note:'셰플러 납품 기준 품질 합격 확인 → 수작업 중단' },
+  { id:'m_세척기', phase:'p3', name:'세척기 정상 가동 ★', start:d(2026,7,14), end:d(2026,7,14), assignee:'', color:'var(--p3)', deps:['t51'], milestone:true, note:'목표 7/14 — 핵심 마일스톤' },
+  { id:'m_기존공장', phase:'p3', name:'기존 전주공장 명도 ★', start:d(2026,7,15), end:d(2026,7,15), assignee:'최준영대리(전주)', color:'var(--p3)', deps:['m_세척기'], milestone:true, note:'7/15 기존 공장 비워주기 완료' },
+
+  // ─ PHASE 4 ─
+  { id:'t60', phase:'p4', name:'B동 재고 → A동 이동', start:d(2026,7,15), end:d(2026,7,18), assignee:'손홍필소장', color:'var(--p4)', deps:['m_a동도색'], note:'A동 바닥 도색 완료 후 B동 재고 이동' },
+  { id:'t61', phase:'p4', name:'B동 바닥 도색', start:d(2026,7,19), end:d(2026,7,24), assignee:'인원케미텍', color:'var(--p4)', deps:['t60','t31'], note:'B동 창고 용도 — 고객사 임대용' },
+  { id:'t62', phase:'p4', name:'사무동 외벽 도색', start:d(2026,7,20), end:d(2026,7,31), assignee:'인원케미텍', color:'var(--p4)', deps:['t32'], note:'공장동 외벽 도색 완료 후 진행' },
+  { id:'t63', phase:'p4', name:'A동 사무실·소장실 인테리어', start:d(2026,7,15), end:d(2026,7,31), assignee:'경영지원팀', color:'var(--p4)', deps:['m_세척기'], note:'인터넷·전화 선로 이동 포함 / 필요 부분만 선별' },
+  { id:'t64', phase:'p4', name:'A동 2층 탈의실·화장실 수리', start:d(2026,7,20), end:d(2026,8,10), assignee:'시공업체', color:'var(--p4)', deps:['m_세척기'], note:'공장 가동하면서 순차 진행' },
+  { id:'t65', phase:'p4', name:'사무동 내부 인테리어 (단계적)', start:d(2026,8,1), end:d(2026,8,31), assignee:'경영지원팀', color:'var(--p4)', deps:['t62'], note:'공장 가동 후 단계적 진행' },
+  { id:'t66', phase:'p4', name:'간판 이전 또는 신규 제작·설치', start:d(2026,7,20), end:d(2026,8,10), assignee:'총무', color:'var(--p4)', deps:['t25'], note:'상태 확인 후 이전/신규 결정' },
+
+  // ─ PHASE 5 ─
+  { id:'t70', phase:'p5', name:'산단 입주 허가 신청', start:d(2026,5,14), end:d(2026,6,20), assignee:'경영지원팀', color:'var(--p5)', deps:['m_잔금'], note:'주업종 29141(베어링) + 부업종 세척업 / 폐수위탁 계약서 제출' },
+  { id:'t71', phase:'p5', name:'폐수배출시설 신고 (전주시 환경과)', start:d(2026,6,25), end:d(2026,7,10), assignee:'경영지원팀', color:'var(--p5)', deps:['t70'], note:'폐수 전량 외부위탁 계약서 포함' },
+  { id:'t72', phase:'p5', name:'공장등록 신청 (인시스 명의)', start:d(2026,7,14), end:d(2026,7,21), assignee:'경영지원팀', color:'var(--p5)', deps:['m_세척기'], note:'기존 엘티씨 등록 말소 확인 후 신규 등록' },
+  { id:'m_공장등록', phase:'p5', name:'공장등록 완료 ★', start:d(2026,7,21), end:d(2026,7,21), assignee:'', color:'var(--p5)', deps:['t72'], milestone:true, note:'등록증 수령 후 사업 개시 공식화' },
+  { id:'t73', phase:'p5', name:'계약전력 하향 조정 신청 (한전)', start:d(2026,7,21), end:d(2026,7,31), assignee:'경영지원팀', color:'var(--p5)', deps:['m_공장등록'], note:'500kW → 적정 수준 하향 / 당월 1일 이전 접수 시 당월 적용' },
+  { id:'t74', phase:'p5', name:'사업자 등록 주소 변경', start:d(2026,7,21), end:d(2026,7,25), assignee:'경영지원팀', color:'var(--p5)', deps:['m_공장등록'], note:'세무서 신고 + 각종 허가증·인증서 주소 일괄 변경' },
+  { id:'t75', phase:'p5', name:'각종 보험 주소 변경', start:d(2026,7,21), end:d(2026,7,31), assignee:'경영지원팀', color:'var(--p5)', deps:['m_공장등록'], note:'화재·산재·시설물배상책임보험 변경 및 재산정' },
+  { id:'t76', phase:'p5', name:'인터넷·전화 선로 이전 신청', start:d(2026,6,25), end:d(2026,7,14), assignee:'경영지원팀', color:'var(--p5)', deps:['m_명도'], note:'사무동 + A동 사무실·소장실' },
+  { id:'t77', phase:'p5', name:'기존 전주공장 매각 잔무', start:d(2026,6,1), end:d(2026,7,15), assignee:'최준영대리(전주)', color:'var(--p5)', deps:[], note:'간판·명패 철거 등 / 전략기획실 전주지점 담당' },
+  { id:'t78', phase:'p5', name:'셰플러 등 고객사 이전 완료 통보', start:d(2026,7,14), end:d(2026,7,17), assignee:'손홍필소장', color:'var(--p5)', deps:['m_세척기'], note:'신규 공장 주소·연락처·정상 가동 공식 안내' },
+];
+
+// ─────────────────────────────────────────
+//  날짜 컬럼 생성
+// ─────────────────────────────────────────
+function buildDateColumns(){
+  const cols = [];
+  const cur = new Date(START_DATE);
+  while(cur <= END_DATE){
+    cols.push({
+      date: new Date(cur),
+      day: cur.getDate(),
+      month: cur.getMonth()+1,
+      year: cur.getFullYear(),
+      dow: cur.getDay(), // 0=일
+      isWeekend: cur.getDay()===0 || cur.getDay()===6,
+      isToday: cur.toDateString() === TODAY.toDateString(),
+      isMonthEnd: new Date(cur.getFullYear(), cur.getMonth()+1, 0).getDate() === cur.getDate(),
+    });
+    cur.setDate(cur.getDate()+1);
+  }
+  return cols;
+}
+
+// ─────────────────────────────────────────
+//  헤더 렌더
+// ─────────────────────────────────────────
+function renderHeader(cols){
+  const hdr = document.getElementById('chartHeader');
+  hdr.innerHTML = '';
+
+  // 월별로 그룹화
+  const months = [];
+  let cur = null;
+  cols.forEach((c,i)=>{
+    const key = `${c.year}-${c.month}`;
+    if(!cur || cur.key !== key){
+      cur = { key, month:c.month, year:c.year, days:[] };
+      months.push(cur);
+    }
+    cur.days.push({...c, idx:i});
+  });
+
+  months.forEach(m=>{
+    const mg = document.createElement('div');
+    mg.className = 'month-group';
+    mg.style.width = (m.days.length * 28) + 'px';
+
+    const ml = document.createElement('div');
+    ml.className = 'month-label';
+    const monthNames = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+    ml.textContent = `${m.year}년 ${monthNames[m.month-1]}`;
+    mg.appendChild(ml);
+
+    const dl = document.createElement('div');
+    dl.className = 'day-labels';
+    m.days.forEach(d=>{
+      const dc = document.createElement('div');
+      dc.className = 'day-label' + (d.isWeekend?' weekend':'') + (d.isToday?' today-col':'');
+      dc.textContent = d.day;
+      dl.appendChild(dc);
+    });
+    mg.appendChild(dl);
+    hdr.appendChild(mg);
+  });
+}
+
+// ─────────────────────────────────────────
+//  바디 렌더
+// ─────────────────────────────────────────
+const CELL_W = 28;
+
+function renderBody(cols){
+  const labelPanel = document.getElementById('labelPanel');
+  const chartBody  = document.getElementById('chartBody');
+
+  // 라벨 헤더
+  const lhdr = document.createElement('div');
+  lhdr.className = 'label-header';
+  lhdr.innerHTML = '<span class="label-header-text">작업 항목</span>';
+  labelPanel.appendChild(lhdr);
+
+  // 그룹화
+  const phaseMap = {};
+  PHASES.forEach(p=>{ phaseMap[p.id] = p; });
+
+  let rowIdx = 0;
+  const taskRowMap = {}; // taskId → rowIndex (차트 내 절대 행 번호)
+
+  PHASES.forEach(ph=>{
+    const tasks = TASKS.filter(t=>t.phase===ph.id);
+    if(!tasks.length) return;
+
+    // Phase 헤더 행
+    const lRow = document.createElement('div');
+    lRow.className = 'label-row phase-header';
+    lRow.innerHTML = `
+      <div class="row-num"></div>
+      <div class="row-phase-bar" style="background:${ph.color}"></div>
+      <div class="row-name phase-title">${ph.label}</div>
+    `;
+    labelPanel.appendChild(lRow);
+
+    const cRow = document.createElement('div');
+    cRow.className = 'chart-row phase-header';
+    cRow.style.width = (cols.length * CELL_W) + 'px';
+    cols.forEach(c=>{
+      const cell = document.createElement('div');
+      cell.className = 'chart-cell' + (c.isWeekend?' weekend':'') + (c.isToday?' today-col':'') + (c.isMonthEnd?' month-end':'');
+      cRow.appendChild(cell);
+    });
+    chartBody.appendChild(cRow);
+    rowIdx++;
+
+    // 태스크 행들
+    tasks.forEach((task,ti)=>{
+      taskRowMap[task.id] = rowIdx;
+
+      // 라벨
+      const lr = document.createElement('div');
+      lr.className = 'label-row';
+      lr.innerHTML = `
+        <div class="row-num">${ti+1}</div>
+        <div class="row-phase-bar" style="background:${task.color}"></div>
+        <div class="row-name" title="${task.name}">${task.milestone?'◆ ':''} ${task.name}</div>
+        <div class="row-assignee" title="${task.assignee||''}">${task.assignee||''}</div>
+      `;
+      labelPanel.appendChild(lr);
+
+      // 차트 행
+      const cr = document.createElement('div');
+      cr.className = 'chart-row';
+      cr.style.width = (cols.length * CELL_W) + 'px';
+      cr.dataset.taskId = task.id;
+      cr.dataset.rowIdx = rowIdx;
+
+      cols.forEach(c=>{
+        const cell = document.createElement('div');
+        cell.className = 'chart-cell' + (c.isWeekend?' weekend':'') + (c.isToday?' today-col':'') + (c.isMonthEnd?' month-end':'');
+        cr.appendChild(cell);
+      });
+      chartBody.appendChild(cr);
+      rowIdx++;
+    });
+  });
+
+  // 간트 바 & SVG 화살표
+  renderBars(cols, taskRowMap);
+  renderArrows(cols, taskRowMap);
+
+  // 오늘선
+  const todayLine = document.getElementById('todayLine');
+  const todayCol = col(TODAY);
+  const totalH = rowIdx * 36;
+  todayLine.style.left = (todayCol * CELL_W + CELL_W/2) + 'px';
+  todayLine.style.height = totalH + 'px';
+}
+
+// ─────────────────────────────────────────
+//  간트 바 렌더
+// ─────────────────────────────────────────
+function renderBars(cols, taskRowMap){
+  const chartBody = document.getElementById('chartBody');
+  const tooltip   = document.getElementById('tooltip');
+  const ROW_H = 36;
+
+  TASKS.forEach(task=>{
+    const startCol = col(task.start);
+    const endCol   = col(task.end);
+    const rowI     = taskRowMap[task.id];
+    if(rowI === undefined) return;
+
+    const bar = document.createElement('div');
+    bar.className = 'gantt-bar' + (task.milestone?' milestone':'');
+
+    const left = startCol * CELL_W;
+    const width = task.milestone ? 16 : (endCol - startCol + 1) * CELL_W - 2;
+
+    bar.style.left   = left + 'px';
+    bar.style.width  = width + 'px';
+    bar.style.top    = (rowI * ROW_H + ROW_H/2) + 'px';
+    bar.style.background = task.color;
+
+    if(task.milestone){
+      bar.style.background = '#e08818';
+    } else {
+      const colorMap = {
+        'var(--p0)': 'linear-gradient(90deg,#f0a030,#f5b849)',
+        'var(--p1)': 'linear-gradient(90deg,#2563eb,#4a86f5)',
+        'var(--p2)': 'linear-gradient(90deg,#1a9463,#2db87a)',
+        'var(--p3)': 'linear-gradient(90deg,#e05a14,#f07838)',
+        'var(--p4)': 'linear-gradient(90deg,#c0336e,#d9588a)',
+        'var(--p5)': 'linear-gradient(90deg,#6840c8,#8b6de0)',
+      };
+      bar.style.background = colorMap[task.color] || task.color;
+      if(width > 40){
+        bar.textContent = task.name.replace('★','').replace('◆','').trim();
+      }
+    }
+
+    // 툴팁
+    bar.addEventListener('mouseenter', e=>{
+      const opts = {year:'numeric',month:'2-digit',day:'2-digit'};
+      tooltip.innerHTML = `
+        <div class="tooltip-title">${task.name}</div>
+        <div class="tooltip-row"><span>시작</span><span class="tooltip-val">${task.start.toLocaleDateString('ko-KR',opts)}</span></div>
+        <div class="tooltip-row"><span>종료</span><span class="tooltip-val">${task.end.toLocaleDateString('ko-KR',opts)}</span></div>
+        <div class="tooltip-row"><span>담당</span><span class="tooltip-val">${task.assignee||'-'}</span></div>
+        ${task.note?`<div class="tooltip-row"><span>비고</span><span class="tooltip-val" style="max-width:160px;text-align:right;white-space:normal;">${task.note}</span></div>`:''}
+      `;
+      tooltip.style.display = 'block';
+    });
+    bar.addEventListener('mousemove', e=>{
+      tooltip.style.left = (e.clientX+14)+'px';
+      tooltip.style.top  = (e.clientY-10)+'px';
+    });
+    bar.addEventListener('mouseleave',()=>{ tooltip.style.display='none'; });
+
+    chartBody.appendChild(bar);
+  });
+}
+
+// ─────────────────────────────────────────
+//  의존관계 화살표
+// ─────────────────────────────────────────
+function renderArrows(cols, taskRowMap){
+  const svg = document.getElementById('depSvg');
+  const ROW_H = 36;
+  const totalW = cols.length * CELL_W;
+  const totalH = Object.keys(taskRowMap).length * ROW_H + PHASES.length * ROW_H;
+  svg.setAttribute('width', totalW);
+  svg.setAttribute('height', totalH + 100);
+
+  const taskById = {};
+  TASKS.forEach(t=>{ taskById[t.id] = t; });
+
+  TASKS.forEach(task=>{
+    (task.deps||[]).forEach(depId=>{
+      const dep = taskById[depId];
+      if(!dep) return;
+      const fromRow = taskRowMap[dep.id];
+      const toRow   = taskRowMap[task.id];
+      if(fromRow===undefined || toRow===undefined) return;
+
+      const x1 = (col(dep.end)+1) * CELL_W;
+      const y1 = fromRow * ROW_H + ROW_H/2;
+      const x2 = col(task.start) * CELL_W;
+      const y2 = toRow * ROW_H + ROW_H/2;
+
+      const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+      const mx = (x1+x2)/2;
+      const d = `M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`;
+      path.setAttribute('d', d);
+      path.setAttribute('stroke', 'rgba(90,102,133,0.3)');
+      path.setAttribute('stroke-width', '1.5');
+      path.setAttribute('fill', 'none');
+      path.setAttribute('marker-end', 'url(#arrow)');
+      svg.appendChild(path);
+    });
+  });
+
+  // 화살표 마커
+  const defs = document.createElementNS('http://www.w3.org/2000/svg','defs');
+  const marker = document.createElementNS('http://www.w3.org/2000/svg','marker');
+  marker.setAttribute('id','arrow');
+  marker.setAttribute('markerWidth','6');
+  marker.setAttribute('markerHeight','6');
+  marker.setAttribute('refX','5');
+  marker.setAttribute('refY','3');
+  marker.setAttribute('orient','auto');
+  const poly = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+  poly.setAttribute('points','0 0, 6 3, 0 6');
+  poly.setAttribute('fill','rgba(90,102,133,0.5)');
+  marker.appendChild(poly);
+  defs.appendChild(marker);
+  svg.insertBefore(defs, svg.firstChild);
+}
+
+// ─────────────────────────────────────────
+//  초기화
+// ─────────────────────────────────────────
+const COLS = buildDateColumns();
+renderHeader(COLS);
+renderBody(COLS);
+
+// 오늘 위치로 스크롤
+const todayPos = col(TODAY) * CELL_W - 200;
+document.getElementById('chartPanel').scrollLeft = Math.max(0, todayPos);
+</script>
+</body>
+</html>
