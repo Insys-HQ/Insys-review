@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>사내 점심 주문 분석 | 인시스 창원 13층</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f4f6fb;
+  --card: #ffffff;
+  --primary: #2563eb;
+  --primary-light: #dbeafe;
+  --accent: #0ea5e9;
+  --success: #16a34a;
+  --success-light: #dcfce7;
+  --warn: #d97706;
+  --warn-light: #fef3c7;
+  --danger: #dc2626;
+  --text: #1e293b;
+  --text2: #475569;
+  --text3: #94a3b8;
+  --border: #e2e8f0;
+  --radius: 12px;
+  --shadow: 0 2px 12px rgba(0,0,0,0.07);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Noto Sans KR',sans-serif; background:var(--bg); color:var(--text); font-size:13px; }
+
+/* ─── Header ─────────────────────────────────── */
+.header {
+  background: linear-gradient(135deg,#1e3a8a 0%,#2563eb 60%,#0ea5e9 100%);
+  color:#fff; padding:28px 32px 22px;
+}
+.header h1 { font-size:20px; font-weight:700; letter-spacing:-0.3px; }
+.header p  { font-size:12px; opacity:.75; margin-top:4px; }
+.header-meta { display:flex; gap:16px; margin-top:14px; flex-wrap:wrap; }
+.header-badge {
+  background:rgba(255,255,255,0.18); border-radius:20px;
+  padding:4px 12px; font-size:11px; font-weight:500;
+}
+
+/* ─── Layout ──────────────────────────────────── */
+.container { max-width:1200px; margin:0 auto; padding:24px 20px; }
+.section-title {
+  font-size:14px; font-weight:700; color:var(--text);
+  margin-bottom:14px; display:flex; align-items:center; gap:8px;
+}
+.section-title::before {
+  content:''; display:inline-block; width:4px; height:16px;
+  background:var(--primary); border-radius:2px;
+}
+
+/* ─── Stat Cards ──────────────────────────────── */
+.stat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-bottom:28px; }
+.stat-card {
+  background:var(--card); border-radius:var(--radius); padding:18px 16px;
+  box-shadow:var(--shadow); border-top:3px solid var(--primary);
+  transition: transform .15s;
+}
+.stat-card:hover { transform:translateY(-2px); }
+.stat-num { font-size:28px; font-weight:900; color:var(--primary); line-height:1; }
+.stat-label { font-size:11px; color:var(--text2); margin-top:6px; font-weight:500; }
+
+/* ─── Tab Nav ─────────────────────────────────── */
+.tabs { display:flex; gap:6px; margin-bottom:20px; flex-wrap:wrap; }
+.tab {
+  padding:7px 16px; border-radius:20px; font-size:12px; font-weight:500;
+  cursor:pointer; border:1.5px solid var(--border);
+  background:var(--card); color:var(--text2); transition:.15s;
+}
+.tab.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+.tab-content { display:none; }
+.tab-content.active { display:block; }
+
+/* ─── Date Section ────────────────────────────── */
+.day-block {
+  background:var(--card); border-radius:var(--radius); margin-bottom:16px;
+  box-shadow:var(--shadow); overflow:hidden;
+}
+.day-header {
+  background: linear-gradient(90deg,var(--primary) 0%,var(--accent) 100%);
+  color:#fff; padding:10px 18px; display:flex; align-items:center; gap:12px;
+  cursor:pointer;
+}
+.day-date { font-size:13px; font-weight:700; }
+.day-badge {
+  background:rgba(255,255,255,0.25); border-radius:10px;
+  padding:2px 8px; font-size:11px;
+}
+.day-note { font-size:11px; opacity:.8; margin-left:auto; }
+.day-body { padding:14px 18px; }
+
+/* ─── Order Group ─────────────────────────────── */
+.order-group { margin-bottom:14px; }
+.order-group:last-child { margin-bottom:0; }
+.rest-title {
+  font-size:12px; font-weight:700; color:var(--primary);
+  margin-bottom:8px; display:flex; align-items:center; gap:6px;
+}
+.badge-type {
+  font-size:10px; font-weight:500; padding:2px 7px; border-radius:8px;
+}
+.badge-배달 { background:#fef3c7; color:#92400e; }
+.badge-매장 { background:#dcfce7; color:#166534; }
+.badge-현장방문 { background:#ede9fe; color:#5b21b6; }
+.badge-포장 { background:#e0f2fe; color:#0c4a6e; }
+
+/* ─── Items Table ─────────────────────────────── */
+table { width:100%; border-collapse:collapse; font-size:12px; }
+th {
+  background:#f1f5f9; color:var(--text2); font-weight:600;
+  padding:7px 10px; text-align:left; border-bottom:1.5px solid var(--border);
+  font-size:11px;
+}
+td {
+  padding:6px 10px; border-bottom:1px solid var(--border);
+  vertical-align:middle;
+}
+tr:last-child td { border-bottom:none; }
+tr:hover td { background:#f8fafc; }
+
+.tag {
+  display:inline-block; font-size:10px; padding:1px 7px; border-radius:8px;
+  font-weight:500; margin-left:4px;
+}
+.tag-spicy { background:#fee2e2; color:#991b1b; }
+.tag-mild  { background:#f0fdf4; color:#166534; }
+.tag-share { background:#ede9fe; color:#5b21b6; }
+.tag-opt   { background:#fef9c3; color:#713f12; }
+
+/* ─── Rank Table ──────────────────────────────── */
+.rank-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+@media(max-width:700px){ .rank-grid { grid-template-columns:1fr; } }
+
+.rank-card { background:var(--card); border-radius:var(--radius); padding:16px; box-shadow:var(--shadow); }
+.rank-card h3 { font-size:13px; font-weight:700; margin-bottom:12px; color:var(--text); }
+.rank-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+.rank-no {
+  font-size:11px; font-weight:700; width:20px; height:20px;
+  border-radius:50%; display:flex; align-items:center; justify-content:center;
+}
+.rank-no.gold   { background:#fef3c7; color:#92400e; }
+.rank-no.silver { background:#f1f5f9; color:#475569; }
+.rank-no.bronze { background:#fff7ed; color:#9a3412; }
+.rank-no.other  { background:#f8fafc; color:#64748b; font-size:10px; }
+.rank-name { flex:1; font-size:12px; font-weight:500; }
+.rank-bar-wrap { width:100px; background:#f1f5f9; border-radius:4px; height:8px; }
+.rank-bar { height:8px; border-radius:4px; background:var(--primary); }
+.rank-cnt { font-size:11px; color:var(--text2); min-width:28px; text-align:right; }
+
+/* ─── Person Matrix ───────────────────────────── */
+.matrix-wrap { overflow-x:auto; }
+.matrix-table th { font-size:10px; min-width:55px; text-align:center; }
+.matrix-table td { text-align:center; font-size:11px; }
+.cell-hit  { background:#dbeafe; color:#1d4ed8; font-weight:600; border-radius:4px; }
+.cell-zero { color:#e2e8f0; }
+
+/* ─── Version Footer ──────────────────────────── */
+.footer {
+  text-align:center; padding:20px; color:var(--text3); font-size:11px;
+  border-top:1px solid var(--border); margin-top:12px;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🍱 사내 점심 주문 분석 리포트</h1>
+  <p>인시스 그룹 AI혁신 R&D센터 · 창원본사 13층</p>
+  <div class="header-meta">
+    <span class="header-badge">📅 분석기간: 2026-03-27 ~ 2026-04-16</span>
+    <span class="header-badge">👥 참여 인원: 22명</span>
+    <span class="header-badge">🏪 이용 식당: 21곳</span>
+    <span class="header-badge">v1.0</span>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- 통계 카드 -->
+  <div class="stat-grid" id="statGrid"></div>
+
+  <!-- 탭 -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('tab-daily')">📋 날짜별 주문</div>
+    <div class="tab" onclick="switchTab('tab-rank')">🏆 인기 식당·메뉴</div>
+    <div class="tab" onclick="switchTab('tab-person')">👤 개인별 통계</div>
+    <div class="tab" onclick="switchTab('tab-json')">💾 JSON 데이터</div>
+  </div>
+
+  <!-- 날짜별 주문 -->
+  <div id="tab-daily" class="tab-content active"></div>
+
+  <!-- 인기 랭킹 -->
+  <div id="tab-rank" class="tab-content">
+    <div class="rank-grid">
+      <div class="rank-card" id="rankRest">
+        <h3>🏪 식당 이용 횟수 TOP 10</h3>
+      </div>
+      <div class="rank-card" id="rankMenu">
+        <h3>🍜 인기 메뉴 TOP 10</h3>
+      </div>
+      <div class="rank-card" id="rankPerson">
+        <h3>🙋 주문 참여 많은 직원 TOP 10</h3>
+      </div>
+      <div class="rank-card" id="rankOrganizer">
+        <h3>📝 주문 취합 리더 TOP 5</h3>
+      </div>
+    </div>
+  </div>
+
+  <!-- 개인별 통계 -->
+  <div id="tab-person" class="tab-content">
+    <div class="section-title">직원별 식당 이용 현황</div>
+    <div style="background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;">
+      <div class="matrix-wrap">
+        <table class="matrix-table" id="personMatrix"></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- JSON 뷰어 -->
+  <div id="tab-json" class="tab-content">
+    <div class="section-title">JSON 원본 데이터 (자동주문 프로그램용)</div>
+    <div style="background:#1e293b;border-radius:var(--radius);padding:16px;overflow:auto;max-height:600px;">
+      <pre id="jsonView" style="font-family:monospace;font-size:11px;color:#e2e8f0;line-height:1.6;white-space:pre-wrap;"></pre>
+    </div>
+    <button onclick="copyJson()" style="margin-top:10px;padding:8px 20px;background:var(--primary);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-family:'Noto Sans KR',sans-serif;font-weight:500;">
+      📋 JSON 복사
+    </button>
+  </div>
+
+</div>
+
+<div class="footer">인시스 그룹 AI혁신 R&D센터 · 사내 점심 주문 채팅 분석 · v1.0</div>
+
+<script>
+// ── 데이터 ─────────────────────────────────────────────────────────────
+const DATA = {"_meta":{"version":"1.0","company":"인시스 창원본사 13층","period":"2026-03-27 ~ 2026-04-16","order_open_time":"10:30","order_close_time":"11:15","meal_time":"11:30"},"employees":[{"id":"E01","name":"이가은","rank":"사원"},{"id":"E02","name":"이미하","rank":"사원"},{"id":"E03","name":"조선아","rank":"사원"},{"id":"E04","name":"황혜선","rank":"사원"},{"id":"E05","name":"정보라","rank":"사원"},{"id":"E06","name":"최진이","rank":"대리"},{"id":"E07","name":"조미현","rank":"대리"},{"id":"E08","name":"박영은","rank":"대리"},{"id":"E09","name":"김임정","rank":"대리"},{"id":"E10","name":"김원효","rank":"대리"},{"id":"E11","name":"하봉군","rank":"대리"},{"id":"E12","name":"기상운","rank":"차장"},{"id":"E13","name":"이주란","rank":"차장"},{"id":"E14","name":"박태희","rank":"과장"},{"id":"E15","name":"김효중","rank":"과장"},{"id":"E16","name":"권하정","rank":"실장/상무이사"},{"id":"E17","name":"김양섭","rank":"미상"},{"id":"E18","name":"김유경","rank":"미상"},{"id":"E19","name":"나용웅","rank":"미상"},{"id":"E20","name":"윤증관","rank":"미상"},{"id":"E21","name":"신윤태","rank":"미상"},{"id":"E22","name":"김진익","rank":"미상"}],"order_sessions":[{"session_id":"S00","date":"날짜미상","day_of_week":"미상","orders":[{"restaurant":"참맛있는짬뽕홍","order_type":"배달","items":[{"person":"박영은","menu":"(메뉴미상)","option":"","note":""}]},{"restaurant":"맘스터치","order_type":"배달","items":[{"person":"황혜선","menu":"(메뉴미상)","option":"","note":""}]}]},{"session_id":"S01","date":"2026-03-27","day_of_week":"금","orders":[{"restaurant":"대박밀면","order_type":"매장","items":[{"person":"조미현","menu":"물비빔밀면","option":"매운맛","note":"김유경과 생등심돈까스 셰어"},{"person":"김유경","menu":"물비빔밀면","option":"매운맛","note":"조미현과 생등심돈까스 셰어"},{"person":"김원효","menu":"물비빔밀면 정식","option":"","note":"박영은과 셰어"},{"person":"박영은","menu":"물비빔밀면 정식","option":"","note":"김원효와 셰어"},{"person":"이가은","menu":"물비빔밀면 정식","option":"","note":"김임정과 셰어"},{"person":"김임정","menu":"물비빔밀면 정식","option":"","note":"이가은과 셰어"},{"person":"이미하","menu":"제육덮밥","option":"","note":""},{"person":"권하정","menu":"물비빔밀면","option":"안맵게","note":""}]},{"restaurant":"가마솥국밥","order_type":"매장","items":[{"person":"하봉군","menu":"(메뉴미상)","option":"","note":""},{"person":"박태희","menu":"(메뉴미상)","option":"","note":""}]}]},{"session_id":"S02","date":"2026-03-30","day_of_week":"월","orders":[{"restaurant":"달리는커피 창원반림노블파크점","order_type":"배달","items":[{"person":"김임정","menu":"훈제오리&고구마박스","option":"","note":"에그샌드위치 추가(3/31점심용)"},{"person":"황혜선","menu":"케이준치킨 샌드위치","option":"","note":""},{"person":"최진이","menu":"핫치킨샌드위치","option":"","note":""},{"person":"이가은","menu":"오리엔탈 케이준 현미 부리또","option":"","note":""},{"person":"정보라","menu":"치폴레 훈제오리 현미 부리또","option":"","note":""}]},{"restaurant":"김밥천국","order_type":"매장","items":[{"person":"하봉군","menu":"치즈돈까스","option":"","note":""},{"person":"기상운","menu":"치즈돈까스","option":"","note":""},{"person":"김양섭","menu":"치즈돈까스","option":"","note":""},{"person":"박태희","menu":"참치김밥","option":"","note":"떡라면 추가(매장)"},{"person":"이미하","menu":"참치김밥","option":"","note":"치즈라면 추가(매장)"},{"person":"조선아","menu":"오므라이스","option":"","note":""}]}]},{"session_id":"S03","date":"2026-03-31","day_of_week":"화","orders":[{"restaurant":"쌈마이닭쌈밥","order_type":"매장","items":[{"person":"이가은","menu":"양념닭쌈밥","option":"","note":""},{"person":"조선아","menu":"양념닭쌈밥","option":"","note":""},{"person":"이미하","menu":"쌈마이닭쌈밥","option":"","note":""},{"person":"정보라","menu":"마늘닭쌈밥","option":"","note":""},{"person":"나용웅","menu":"마늘닭쌈밥","option":"","note":""},{"person":"최진이","menu":"마늘닭쌈밥","option":"","note":""},{"person":"황혜선","menu":"마늘닭쌈밥","option":"","note":""},{"person":"김양섭","menu":"마늘닭쌈밥","option":"","note":""},{"person":"이주란","menu":"마늘닭쌈밥","option":"","note":""},{"person":"조미현","menu":"불닭쌈밥","option":"","note":"포장"},{"person":"김유경","menu":"양념닭쌈밥","option":"","note":"포장"}]},{"restaurant":"본가","order_type":"매장","items":[{"person":"김원효","menu":"(메뉴미상)","option":"","note":""},{"person":"박영은","menu":"(메뉴미상)","option":"","note":""},{"person":"권하정","menu":"(메뉴미상)","option":"","note":""}]}]},{"session_id":"S04","date":"2026-04-01","day_of_week":"수","orders":[{"restaurant":"청기와감자탕","order_type":"매장","items":[{"person":"이가은","menu":"해장국","option":"","note":""},{"person":"최진이","menu":"해장국","option":"","note":""},{"person":"황혜선","menu":"해장국","option":"","note":""},{"person":"권하정","menu":"해장국","option":"","note":""},{"person":"정보라","menu":"해장국","option":"","note":""},{"person":"조선아","menu":"해장국","option":"","note":""},{"person":"기상운","menu":"해장국","option":"","note":""}]},{"restaurant":"산청어탕","order_type":"매장","items":[{"person":"박영은","menu":"어탕밥","option":"","note":""},{"person":"김원효","menu":"어탕밥","option":"","note":""},{"person":"이주란","menu":"어탕밥","option":"","note":""},{"person":"이미하","menu":"어탕밥","option":"","note":""}]}]},{"session_id":"S05","date":"2026-04-03","day_of_week":"금","note":"정전으로 점심시간 11:55~13:05 변경","orders":[{"restaurant":"경창아구찜","order_type":"매장","items":[{"person":"권하정","menu":"대구뽈찜(소)","option":"순한맛","note":""},{"person":"박영은","menu":"대구뽈찜(소)","option":"순한맛","note":""},{"person":"김원효","menu":"대구뽈찜(소)","option":"순한맛","note":""},{"person":"이주란","menu":"대구뽈찜(중)","option":"매운맛","note":""},{"person":"조미현","menu":"대구뽈찜(중)","option":"매운맛","note":""},{"person":"기상운","menu":"대구뽈찜(중)","option":"매운맛","note":""}]},{"restaurant":"양평해장국","order_type":"매장","items":[{"person":"최진이","menu":"(메뉴미상)","option":"","note":""},{"person":"황혜선","menu":"(메뉴미상)","option":"","note":""},{"person":"조선아","menu":"(메뉴미상)","option":"","note":""}]}]},{"session_id":"S06","date":"2026-04-06","day_of_week":"월","orders":[{"restaurant":"현대칼국수","order_type":"매장","items":[{"person":"이주란","menu":"칼국수","option":"","note":""},{"person":"김원효","menu":"칼국수","option":"","note":""},{"person":"황혜선","menu":"칼국수","option":"","note":""},{"person":"박영은","menu":"국수","option":"","note":""}]},{"restaurant":"남포수제비와 주먹밥","order_type":"매장","items":[{"person":"김임정","menu":"(메뉴미상)","option":"","note":""},{"person":"정보라","menu":"(메뉴미상)","option":"","note":""},{"person":"이가은","menu":"(메뉴미상)","option":"","note":""},{"person":"조선아","menu":"(메뉴미상)","option":"","note":""},{"person":"이미하","menu":"(메뉴미상)","option":"","note":""},{"person":"최진이","menu":"(메뉴미상)","option":"","note":""}]}]},{"session_id":"S07","date":"2026-04-07","day_of_week":"화","orders":[{"restaurant":"가마솥국밥","order_type":"매장","items":[{"person":"김효중","menu":"살코기","option":"","note":""},{"person":"기상운","menu":"살코기","option":"","note":""},{"person":"조선아","menu":"살코기","option":"","note":""},{"person":"최진이","menu":"순대국밥","option":"","note":""},{"person":"김임정","menu":"순대국밥","option":"","note":""},{"person":"정보라","menu":"순대국밥","option":"","note":""},{"person":"이미하","menu":"순대국밥","option":"","note":""}]},{"restaurant":"목화식당","order_type":"매장","items":[{"person":"권하정","menu":"(메뉴미상)","option":"","note":""},{"person":"박태희","menu":"(메뉴미상)","option":"","note":""},{"person":"하봉군","menu":"(메뉴미상)","option":"","note":""},{"person":"황혜선","menu":"(메뉴미상)","option":"","note":""}]}]},{"session_id":"S08","date":"2026-04-08","day_of_week":"수","orders":[{"restaurant":"목화식당","order_type":"배달","items":[{"person":"이가은","menu":"돌솥비빔밥","option":"","note":""},{"person":"김임정","menu":"돌솥비빔밥","option":"","note":""},{"person":"정보라","menu":"돌솥비빔밥","option":"","note":""},{"person":"권하정","menu":"김치찌개","option":"","note":""},{"person":"이미하","menu":"김치찌개","option":"","note":""}]},{"restaurant":"부산식당","order_type":"매장","items":[{"person":"이주란","menu":"김치찌개","option":"","note":""},{"person":"조미현","menu":"김치찌개","option":"","note":""},{"person":"김양섭","menu":"김치찌개","option":"","note":""},{"person":"김원효","menu":"순두부찌개","option":"","note":""},{"person":"박영은","menu":"청국장찌개","option":"","note":""}]},{"restaurant":"찐한순대국밥","order_type":"현장방문","items":[{"person":"최진이","menu":"(메뉴미상)","option":"","note":""},{"person":"하봉군","menu":"(메뉴미상)","option":"","note":""},{"person":"황혜선","menu":"(메뉴미상)","option":"","note":""},{"person":"김효중","menu":"(메뉴미상)","option":"","note":""},{"person":"박태희","menu":"(메뉴미상)","option":"","note":""},{"person":"조선아","menu":"(메뉴미상)","option":"","note":""},{"person":"기상운","menu":"(메뉴미상)","option":"","note":""}]}]},{"session_id":"S09","date":"2026-04-09","day_of_week":"목","orders":[{"restaurant":"포슈아쌀국수 의창점","order_type":"배달","items":[{"person":"김임정","menu":"나시고랭볶음밥","option":"","note":""},{"person":"조선아","menu":"나시고랭볶음밥","option":"","note":""},{"person":"이가은","menu":"소고기 쌀국수","option":"","note":""},{"person":"최진이","menu":"소고기 쌀국수","option":"","note":""},{"person":"이미하","menu":"소고기 쌀국수","option":"","note":""},{"person":"정보라","menu":"소고기 쌀국수","option":"","note":""},{"person":"권하정","menu":"소고기 쌀국수","option":"","note":""},{"person":"박태희","menu":"파인애플볶음밥","option":"","note":""}]},{"restaurant":"짬뽕도감 창원1호점","order_type":"배달","items":[{"person":"조미현","menu":"짬뽕밥","option":"맵게","note":""},{"person":"기상운","menu":"짬뽕밥","option":"맵게","note":""},{"person":"이주란","menu":"짬뽕밥","option":"보통","note":""},{"person":"황혜선","menu":"짬뽕밥","option":"보통","note":""},{"person":"김원효","menu":"순두부짬뽕밥","option":"안맵게","note":""},{"person":"박영은","menu":"새우볶음밥","option":"","note":""},{"person":"김양섭","menu":"짬뽕","option":"보통","note":""}]}]},{"session_id":"S10","date":"2026-04-10","day_of_week":"금","orders":[{"restaurant":"청기와감자탕","order_type":"매장","items":[{"person":"이주란","menu":"해장국","option":"","note":""},{"person":"최진이","menu":"해장국","option":"","note":""},{"person":"황혜선","menu":"해장국","option":"","note":""},{"person":"조미현","menu":"해장국","option":"","note":""},{"person":"김임정","menu":"해장국","option":"","note":""},{"person":"이가은","menu":"해장국","option":"","note":""},{"person":"정보라","menu":"해장국","option":"","note":""},{"person":"기상운","menu":"해장국","option":"","note":""},{"person":"김양섭","menu":"해장국","option":"","note":""}]},{"restaurant":"쌈마이닭쌈밥","order_type":"매장","items":[{"person":"박영은","menu":"고바비","option":"","note":"김원효와 셰어"},{"person":"김원효","menu":"고바비","option":"","note":"박영은과 셰어"},{"person":"조미현","menu":"불닭쌈밥","option":"","note":""},{"person":"이미하","menu":"마늘닭쌈밥","option":"","note":""}]}]},{"session_id":"S11","date":"2026-04-13","day_of_week":"월","orders":[{"restaurant":"맥도날드 시티세븐점","order_type":"배달","items":[{"person":"이가은","menu":"토마토치즈비프버거세트","option":"","note":""},{"person":"김임정","menu":"토마토치즈비프버거세트","option":"","note":"스위트칠리소스 추가"},{"person":"이미하","menu":"맥치킨모짜렐라세트","option":"","note":"코울슬로·제로콜라 변경"},{"person":"박태희","menu":"맥스파이시 바질크림치즈버거","option":"단품","note":""},{"person":"하봉군","menu":"더블불고기버거","option":"단품","note":"양상추 제거·스낵랩 추가"},{"person":"정보라","menu":"슈비버거세트","option":"","note":"제로콜라 변경"},{"person":"조선아","menu":"토마토치즈비프버거세트","option":"","note":"사이다 변경"}]},{"restaurant":"미가식당","order_type":"매장","items":[{"person":"조미현","menu":"돼지두루치기","option":"매운맛","note":""},{"person":"이주란","menu":"돼지두루치기","option":"매운맛","note":""},{"person":"기상운","menu":"돼지두루치기","option":"매운맛","note":""},{"person":"김양섭","menu":"돼지두루치기","option":"매운맛","note":""},{"person":"김원효","menu":"돼지두루치기","option":"순한맛","note":""},{"person":"박영은","menu":"돼지두루치기","option":"순한맛","note":""},{"person":"권하정","menu":"돼지두루치기","option":"순한맛","note":""},{"person":"윤증관","menu":"돼지두루치기","option":"순한맛","note":""},{"person":"신윤태","menu":"돼지두루치기","option":"순한맛","note":""},{"person":"김진익","menu":"돼지두루치기","option":"순한맛","note":""}]}]},{"session_id":"S12","date":"2026-04-14","day_of_week":"화","orders":[{"restaurant":"양평해장국","order_type":"매장","items":[{"person":"이가은","menu":"양평해장국","option":"","note":""},{"person":"최진이","menu":"양평해장국","option":"","note":""},{"person":"이미하","menu":"양평해장국","option":"","note":""},{"person":"이주란","menu":"양평해장국","option":"","note":""},{"person":"김임정","menu":"선지해장국","option":"","note":""},{"person":"정보라","menu":"소고기국","option":"","note":""},{"person":"조선아","menu":"소고기국","option":"","note":""},{"person":"황혜선","menu":"소고기국","option":"","note":""},{"person":"김효중","menu":"소고기국","option":"","note":""},{"person":"박태희","menu":"소고기국","option":"","note":""},{"person":"조미현","menu":"소고기국","option":"","note":""},{"person":"김원효","menu":"소고기국","option":"","note":""},{"person":"김양섭","menu":"소고기국","option":"","note":""}]}]},{"session_id":"S13","date":"2026-04-15","day_of_week":"수","orders":[{"restaurant":"목화식당","order_type":"매장","items":[{"person":"조미현","menu":"육개장","option":"","note":""},{"person":"김원효","menu":"돌솥비빔밥","option":"","note":""},{"person":"박영은","menu":"돌솥비빔밥","option":"","note":""}]},{"restaurant":"찐한순대국밥","order_type":"매장","items":[{"person":"황혜선","menu":"찐한 내장국밥","option":"","note":""},{"person":"김임정","menu":"찐한 순대국밥","option":"","note":""},{"person":"이가은","menu":"찐한 순대국밥","option":"","note":""},{"person":"정보라","menu":"찐한 순대국밥","option":"","note":""},{"person":"조선아","menu":"찐한 순대국밥","option":"","note":""},{"person":"최진이","menu":"찐한 순대국밥","option":"","note":""},{"person":"하봉군","menu":"찐한 순대국밥","option":"","note":""},{"person":"김효중","menu":"수육국밥","option":"","note":""},{"person":"기상운","menu":"수육국밥","option":"","note":""},{"person":"박태희","menu":"찐한 돼지국밥","option":"","note":""}]}]},{"session_id":"S14","date":"2026-04-16","day_of_week":"목","orders":[{"restaurant":"달리는커피 창원반림노블파크점","order_type":"배달","items":[{"person":"김임정","menu":"훈제오리&고구마 박스","option":"","note":"병아리콩 제거·두부가라아게 추가"},{"person":"최진이","menu":"단호박베이컨샌드위치","option":"","note":""}]},{"restaurant":"대박밀면","order_type":"매장","items":[{"person":"이주란","menu":"밀면","option":"","note":""},{"person":"황혜선","menu":"철판비빔돈까스","option":"","note":""},{"person":"조선아","menu":"철판비빔돈까스","option":"","note":""},{"person":"박영은","menu":"물비빔정식(대)","option":"","note":"김원효와 셰어"},{"person":"김원효","menu":"물비빔정식(대)","option":"","note":"박영은과 셰어"},{"person":"이가은","menu":"파돈물밀면정식","option":"","note":"이미하와 셰어"},{"person":"이미하","menu":"파돈물밀면정식","option":"","note":"이가은과 셰어"},{"person":"기상운","menu":"돈까스","option":"","note":""},{"person":"권하정","menu":"비빔밀면","option":"","note":""}]},{"restaurant":"쌈마이닭쌈밥","order_type":"매장","items":[{"person":"하봉군","menu":"양념닭쌈밥","option":"","note":""},{"person":"박태희","menu":"양념닭쌈밥","option":"","note":""}]}]}]};
+
+// ── 분석 함수 ──────────────────────────────────────────────────────────
+function analyzeData() {
+  const sessions = DATA.order_sessions;
+  let totalItems = 0, restCount = {}, menuCount = {}, personCount = {}, personRest = {};
+  const organizerCount = {};
+
+  sessions.forEach(s => {
+    s.orders.forEach(o => {
+      const restKey = o.restaurant.replace(' 창원반림노블파크점','').replace(' 의창점','').replace(' 창원1호점','').replace(' 시티세븐점','');
+      restCount[restKey] = (restCount[restKey]||0) + 1;
+      o.items.forEach(it => {
+        if(it.menu !== '(메뉴미상)'){
+          const mk = it.menu + (it.option ? `(${it.option})`:'');
+          menuCount[mk] = (menuCount[mk]||0) + 1;
+        }
+        if(it.person){
+          personCount[it.person] = (personCount[it.person]||0) + 1;
+          if(!personRest[it.person]) personRest[it.person] = {};
+          personRest[it.person][restKey] = (personRest[it.person][restKey]||0) + 1;
+        }
+        totalItems++;
+      });
+    });
+  });
+
+  // organizer = person who posted longest/last order list (approximated by 참여횟수 here)
+  // We track first-person-to-post per session as organizer
+  sessions.forEach(s => {
+    s.orders.forEach(o => {
+      if(o.items.length > 0){
+        const first = o.items[0].person;
+        if(first) organizerCount[first] = (organizerCount[first]||0) + 1;
+      }
+    });
+  });
+
+  return { sessions, totalItems, restCount, menuCount, personCount, personRest, organizerCount };
+}
+
+function sortObj(obj, top=10){
+  return Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,top);
+}
+
+// ── 렌더링 ─────────────────────────────────────────────────────────────
+function renderStats(d){
+  const realSessions = d.sessions.filter(s=>s.date!=='날짜미상');
+  const restSet = new Set();
+  d.sessions.forEach(s=>s.orders.forEach(o=>restSet.add(o.restaurant)));
+  const html = `
+    <div class="stat-card"><div class="stat-num">${realSessions.length}</div><div class="stat-label">📅 주문일수</div></div>
+    <div class="stat-card"><div class="stat-num">${d.totalItems}</div><div class="stat-label">🍽️ 총 주문건수</div></div>
+    <div class="stat-card"><div class="stat-num">${Object.keys(d.personCount).length}</div><div class="stat-label">👤 참여 인원</div></div>
+    <div class="stat-card"><div class="stat-num">${restSet.size}</div><div class="stat-label">🏪 이용 식당</div></div>
+    <div class="stat-card"><div class="stat-num">${(d.totalItems/realSessions.length).toFixed(1)}</div><div class="stat-label">📊 일 평균 주문</div></div>
+    <div class="stat-card"><div class="stat-num">${Object.keys(d.menuCount).length}</div><div class="stat-label">🍜 메뉴 종류</div></div>
+  `;
+  document.getElementById('statGrid').innerHTML = html;
+}
+
+function renderDaily(){
+  const container = document.getElementById('tab-daily');
+  let html = '';
+  DATA.order_sessions.forEach(s => {
+    const dateLabel = s.date==='날짜미상' ? '날짜 미상 (03/27 이전)' : `${s.date} (${s.day_of_week})`;
+    const totalPeople = s.orders.reduce((a,o)=>a+o.items.length,0);
+    const noteStr = s.note ? `<span class="day-note">⚠️ ${s.note}</span>` : '';
+    html += `<div class="day-block">
+      <div class="day-header">
+        <span class="day-date">${dateLabel}</span>
+        <span class="day-badge">${totalPeople}명</span>
+        <span class="day-badge">${s.orders.length}개 식당</span>
+        ${noteStr}
+      </div>
+      <div class="day-body">`;
+
+    s.orders.forEach(o => {
+      const typeClass = `badge-${o.order_type}`;
+      html += `<div class="order-group">
+        <div class="rest-title">
+          🏪 ${o.restaurant}
+          <span class="badge-type ${typeClass}">${o.order_type}</span>
+          <span style="font-size:11px;color:var(--text3);font-weight:400;">${o.items.length}명</span>
+        </div>
+        <table><thead><tr><th>이름</th><th>메뉴</th><th>옵션</th><th>요청사항</th></tr></thead><tbody>`;
+      o.items.forEach(it => {
+        const optTag = it.option ? `<span class="tag ${it.option==='매운맛'||it.option==='맵게'?'tag-spicy':'tag-mild'}">${it.option}</span>` : '';
+        const noteTag = it.note ? `<span class="tag tag-opt">${it.note}</span>` : '';
+        html += `<tr><td><strong>${it.person}</strong></td><td>${it.menu}</td><td>${optTag}</td><td>${noteTag}</td></tr>`;
+      });
+      html += `</tbody></table></div>`;
+    });
+    html += `</div></div>`;
+  });
+  container.innerHTML = html;
+}
+
+function makeRankRows(arr, maxVal){
+  return arr.map(([name,cnt],i) => {
+    const cls = i===0?'gold':i===1?'silver':i===2?'bronze':'other';
+    const no = i+1;
+    const pct = Math.round((cnt/maxVal)*100);
+    return `<div class="rank-row">
+      <div class="rank-no ${cls}">${no}</div>
+      <div class="rank-name">${name}</div>
+      <div class="rank-bar-wrap"><div class="rank-bar" style="width:${pct}%"></div></div>
+      <div class="rank-cnt">${cnt}회</div>
+    </div>`;
+  }).join('');
+}
+
+function renderRanks(d){
+  const restArr = sortObj(d.restCount);
+  const menuArr = sortObj(d.menuCount);
+  const persArr = sortObj(d.personCount);
+  const orgArr  = sortObj(d.organizerCount,5);
+  document.getElementById('rankRest').innerHTML      = '<h3>🏪 식당 이용 횟수 TOP 10</h3>' + makeRankRows(restArr, restArr[0][1]);
+  document.getElementById('rankMenu').innerHTML      = '<h3>🍜 인기 메뉴 TOP 10</h3>'     + makeRankRows(menuArr, menuArr[0][1]);
+  document.getElementById('rankPerson').innerHTML    = '<h3>🙋 주문 참여 많은 직원 TOP 10</h3>' + makeRankRows(persArr, persArr[0][1]);
+  document.getElementById('rankOrganizer').innerHTML = '<h3>📝 주문 취합 선두 TOP 5</h3>'  + makeRankRows(orgArr, orgArr[0][1]);
+}
+
+function renderMatrix(d){
+  const rests = Object.keys(d.restCount).sort((a,b)=>d.restCount[b]-d.restCount[a]).slice(0,12);
+  const persons = sortObj(d.personCount).map(e=>e[0]);
+  let html = '<thead><tr><th>직원</th>';
+  rests.forEach(r => html += `<th style="font-size:10px;writing-mode:vertical-lr;height:60px;padding:4px 6px;">${r}</th>`);
+  html += '<th>합계</th></tr></thead><tbody>';
+  persons.forEach(p => {
+    const total = d.personCount[p]||0;
+    html += `<tr><td><strong>${p}</strong></td>`;
+    rests.forEach(r => {
+      const cnt = (d.personRest[p]||{})[r]||0;
+      html += cnt>0
+        ? `<td class="cell-hit">${cnt}</td>`
+        : `<td class="cell-zero">-</td>`;
+    });
+    html += `<td><strong>${total}</strong></td></tr>`;
+  });
+  html += '</tbody>';
+  document.getElementById('personMatrix').innerHTML = html;
+}
+
+function renderJson(){
+  document.getElementById('jsonView').textContent = JSON.stringify(DATA, null, 2);
+}
+
+function copyJson(){
+  navigator.clipboard.writeText(JSON.stringify(DATA, null, 2))
+    .then(()=>alert('JSON이 클립보드에 복사되었습니다!'));
+}
+
+function switchTab(id){
+  document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(el=>el.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ── 초기화 ────────────────────────────────────────────────────────────
+const d = analyzeData();
+renderStats(d);
+renderDaily();
+renderRanks(d);
+renderMatrix(d);
+renderJson();
+</script>
+</body>
+</html>
