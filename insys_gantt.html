@@ -93,22 +93,26 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 
 /* ── 메인 ── */
 .gantt-outer{display:flex;flex-direction:column;overflow:hidden;}
-.gantt-wrapper{display:flex;flex-direction:column;overflow:hidden;height:calc(100vh - 140px);}
+/* ── 간트 전체 래퍼 ── */
+.gantt-wrapper{
+  height:calc(100vh - 140px);
+  overflow:auto;          /* 단 하나의 스크롤 컨테이너 */
+  position:relative;
+}
+.gantt-wrapper::-webkit-scrollbar{height:8px;width:8px;}
+.gantt-wrapper::-webkit-scrollbar-track{background:#eef0f5;}
+.gantt-wrapper::-webkit-scrollbar-thumb{background:#b0bcd0;border-radius:4px;}
 
-/* 고정 헤더 행 (라벨헤더 + 차트헤더) */
-.gantt-head-row{display:flex;flex-shrink:0;border-bottom:2px solid var(--border);background:#e8edf7;}
-.gantt-head-label{min-width:var(--label-w);max-width:var(--label-w);flex-shrink:0;
-  border-right:2px solid var(--border);background:#e8edf7;}
-.gantt-head-chart{flex:1;overflow:hidden;}
-
-/* 스크롤 되는 바디 (라벨+차트 함께) */
-.gantt-body-row{display:flex;flex:1;overflow:hidden;}
-.label-panel{min-width:var(--label-w);max-width:var(--label-w);background:#fff;
-  border-right:2px solid var(--border);flex-shrink:0;overflow:hidden;}
-.chart-panel{flex:1;overflow:auto;position:relative;}
-.chart-panel::-webkit-scrollbar{height:8px;width:8px;}
-.chart-panel::-webkit-scrollbar-track{background:#eef0f5;}
-.chart-panel::-webkit-scrollbar-thumb{background:#b0bcd0;border-radius:4px;}
+/* 라벨 고정 컬럼 */
+.label-panel{
+  position:sticky;
+  left:0;
+  z-index:50;
+  background:#fff;
+  border-right:2px solid var(--border);
+}
+/* 차트 패널은 그냥 div */
+.chart-panel{display:inline-block;}
 
 /* ── 라벨 헤더 ── */
 .label-header{height:var(--hdr-h);display:flex;align-items:flex-end;padding:0 8px 7px;
@@ -282,27 +286,29 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
   </div>
 </div>
 
-<!-- 간트 레이아웃 -->
+<!-- 간트 레이아웃: 단일 스크롤 컨테이너 -->
 <div class="gantt-wrapper" id="ganttWrapper">
-  <!-- 고정 헤더 행 -->
-  <div class="gantt-head-row" id="ganttHeadRow">
-    <div class="gantt-head-label" id="labelHeader"></div>
-    <div class="gantt-head-chart" id="chartHeaderWrap">
-      <div class="chart-header" id="chartHeader"></div>
-    </div>
-  </div>
-  <!-- 스크롤 바디 행 -->
-  <div class="gantt-body-row" id="ganttBodyRow">
-    <div class="label-panel" id="labelPanel"></div>
-    <div class="chart-panel" id="chartPanel">
-      <div id="chartInner" style="position:relative;">
-        <div class="chart-body" id="chartBody">
-          <svg class="dep-svg" id="depSvg"></svg>
-          <div class="today-line" id="todayLine"></div>
-        </div>
-      </div>
-    </div>
-  </div>
+  <table id="ganttTable" style="border-collapse:collapse;table-layout:fixed;">
+    <thead id="ganttThead">
+      <tr>
+        <!-- 라벨 헤더 고정 -->
+        <th id="labelHeader" style="position:sticky;left:0;top:0;z-index:60;
+          width:var(--label-w);min-width:var(--label-w);padding:0;
+          background:#e8edf7;border-right:2px solid var(--border);
+          border-bottom:2px solid var(--border);vertical-align:bottom;"></th>
+        <!-- 차트 헤더 -->
+        <th style="position:sticky;top:0;z-index:40;padding:0;
+          background:#e8edf7;border-bottom:2px solid var(--border);vertical-align:top;">
+          <div class="chart-header" id="chartHeader"></div>
+        </th>
+      </tr>
+    </thead>
+    <tbody id="ganttTbody">
+      <!-- JS로 채움 -->
+    </tbody>
+  </table>
+  <svg class="dep-svg" id="depSvg" style="position:absolute;top:0;left:0;pointer-events:none;z-index:25;overflow:visible;"></svg>
+  <div class="today-line" id="todayLine"></div>
 </div>
 
 <div class="tooltip" id="tooltip"></div>
@@ -504,24 +510,29 @@ let ROW_MAP={};// taskId → rowIndex (0-based within chartBody)
 // ─── 전체 렌더 ───
 function render(){
   document.getElementById('labelHeader').innerHTML='';
-  document.getElementById('labelPanel').innerHTML='';
-  document.getElementById('chartBody').innerHTML='<svg class="dep-svg" id="depSvg"></svg><div class="today-line" id="todayLine"></div>';
   document.getElementById('chartHeader').innerHTML='';
+  document.getElementById('ganttTbody').innerHTML='';
+  document.getElementById('depSvg').querySelectorAll('path').forEach(p=>p.remove());
   ROW_MAP={};
   renderHeader();
   renderBody();
   renderArrows();
   setTodayLine();
   patchInteractive();
-  // 차트 헤더 가로 스크롤 동기화
-  const cp=document.getElementById('chartPanel');
-  const hw=document.getElementById('chartHeaderWrap');
-  hw.scrollLeft=cp.scrollLeft;
 }
 
 // ─── 헤더 ───
 function renderHeader(){
   const hdr=document.getElementById('chartHeader');
+  // 라벨 헤더
+  const lh=document.getElementById('labelHeader');
+  lh.innerHTML=`<div class="label-header">
+    <div class="lh-col lh-name" style="padding-left:36px;">작업 항목</div>
+    <div class="lh-col lh-status">상태</div>
+    <div class="lh-col lh-assign">담당자</div>
+    <div class="lh-col lh-exec">시행처</div>
+  </div>`;
+
   const months=[];let cur=null;
   COLS.forEach((c,i)=>{
     const k=`${c.year}-${c.month}`;
@@ -546,53 +557,54 @@ function renderHeader(){
 
 // ─── 바디 ───
 function renderBody(){
-  const lh2=document.getElementById('labelHeader');
-  const lp=document.getElementById('labelPanel');
-  const cb=document.getElementById('chartBody');
+  const tbody=document.getElementById('ganttTbody');
   const totalW=COLS.length*CW;
-
-  // 라벨 헤더 → 고정 헤더 영역
-  const lh=document.createElement('div');lh.className='label-header';
-  lh.innerHTML=`<div class="lh-col lh-name" style="padding-left:36px;">작업 항목</div>
-    <div class="lh-col lh-status">상태</div>
-    <div class="lh-col lh-assign">담당자</div>
-    <div class="lh-col lh-exec">시행처</div>`;
-  lh2.appendChild(lh);
-
   const phMap={};PHASES.forEach(p=>{phMap[p.id]=p;});
-  let rowIdx=0;
+  let rowIdx=1; // thead가 row 0
 
   PHASES.forEach(ph=>{
     const tasks=TASKS.filter(t=>t.ph===ph.id);
     if(!tasks.length)return;
 
-    // Phase 헤더
-    const lr=document.createElement('div');lr.className='label-row phase-hdr';
-    lr.style.background=ph.col.replace('#','').length===6?hexToRgba(ph.col,0.08):'#e8edf7';
-    lr.innerHTML=`<div class="row-num"></div><div class="row-bar" style="background:${ph.col}"></div>
-      <div class="row-name phase-title" style="color:${ph.col}">${ph.label}</div>`;
-    lp.appendChild(lr);
-    const cr=document.createElement('div');cr.className='chart-row phase-hdr';
-    cr.style.width=totalW+'px';
-    cr.style.background=hexToRgba(ph.col,0.05);
-    COLS.forEach(c=>{
-      const cell=document.createElement('div');
-      cell.className='chart-cell'+(c.isWeekend?' weekend':'')+(c.isToday?' today-col':'')+(c.isMonthEnd?' month-end':'');
-      cr.appendChild(cell);
-    });
-    cb.appendChild(cr);rowIdx++;
+    // Phase 헤더 행
+    const tr=document.createElement('tr');
+    // 라벨 셀
+    const tdL=document.createElement('td');
+    tdL.style.cssText=`position:sticky;left:0;z-index:30;padding:0;
+      background:${hexToRgba(ph.col,0.08)};border-right:2px solid var(--border);
+      border-bottom:1px solid var(--border);`;
+    tdL.innerHTML=`<div class="label-row phase-hdr">
+      <div class="row-num"></div>
+      <div class="row-bar" style="background:${ph.col}"></div>
+      <div class="row-name phase-title" style="color:${ph.col}">${ph.label}</div>
+    </div>`;
+    tr.appendChild(tdL);
+    // 차트 셀
+    const tdC=document.createElement('td');
+    tdC.style.cssText=`padding:0;background:${hexToRgba(ph.col,0.04)};
+      border-bottom:1px solid var(--border);height:${RH}px;`;
+    tdC.innerHTML=`<div class="chart-row phase-hdr" style="width:${totalW}px;">${
+      COLS.map(c=>`<div class="chart-cell${c.isWeekend?' weekend':''}${c.isToday?' today-col':''}${c.isMonthEnd?' month-end':''}"></div>`).join('')
+    }</div>`;
+    tr.appendChild(tdC);
+    tbody.appendChild(tr);
+    rowIdx++;
 
     tasks.forEach((task,ti)=>{
       ROW_MAP[task.id]=rowIdx;
-      // 라벨 행
-      const lr2=document.createElement('div');lr2.className='label-row';
       const st=task.status||'todo';
-      // 지연 판단: 시작일이 오늘보다 이전인데 시작전 상태 → 지연(overdue)
-      const isOverdue = (st==='todo') && (task.s < TODAY) && !task.ms;
-      const stClass = isOverdue ? 'overdue' : st;
-      const execVal = task.x || '-';
-      const isVendor = execVal !== '-' && execVal !== task.a && execVal !== '경영지원실' && execVal !== 'R&D센터';
-      lr2.innerHTML=`
+      const isOverdue=(st==='todo')&&(task.s<TODAY)&&!task.ms;
+      const stClass=isOverdue?'overdue':st;
+      const execVal=task.x||'-';
+      const isVendor=execVal!=='-'&&execVal!==task.a&&execVal!=='경영지원실'&&execVal!=='R&D센터';
+
+      const tr2=document.createElement('tr');
+      // 라벨 셀 (sticky)
+      const tdL2=document.createElement('td');
+      tdL2.style.cssText=`position:sticky;left:0;z-index:30;padding:0;
+        background:#fff;border-right:2px solid var(--border);
+        border-bottom:1px solid var(--border2);`;
+      tdL2.innerHTML=`<div class="label-row">
         <div class="row-num" style="color:#3a4560;font-weight:600;">${ti+1}</div>
         <div class="row-bar" style="background:${ph.col}"></div>
         <div class="row-name" title="${task.name}">${task.ms?'◆ ':''}${task.name}</div>
@@ -603,46 +615,43 @@ function renderBody(){
             <option value="done" ${st==='done'?'selected':''}>완료</option>
           </select>
         </div>
-        <div class="row-assignee" data-tid="${task.id}" title="클릭하여 담당자 수정">${task.a||'-'}</div>
-        <div class="row-exec ${isVendor?'vendor':''}" data-etid="${task.id}" title="클릭하여 시행처 수정">${execVal}</div>`;
-      lp.appendChild(lr2);
+        <div class="row-assignee" data-tid="${task.id}" title="클릭: 담당자 수정">${task.a||'-'}</div>
+        <div class="row-exec ${isVendor?'vendor':''}" data-etid="${task.id}" title="클릭: 시행처 수정">${execVal}</div>
+      </div>`;
+      tr2.appendChild(tdL2);
 
-      // 차트 행
-      const cr2=document.createElement('div');cr2.className='chart-row';
-      cr2.style.width=totalW+'px';
-      COLS.forEach(c=>{
-        const cell=document.createElement('div');
-        cell.className='chart-cell'+(c.isWeekend?' weekend':'')+(c.isToday?' today-col':'')+(c.isMonthEnd?' month-end':'');
-        cr2.appendChild(cell);
-      });
-      cb.appendChild(cr2);
+      // 차트 셀
+      const tdC2=document.createElement('td');
+      tdC2.style.cssText=`padding:0;position:relative;
+        border-bottom:1px solid var(--border2);height:${RH}px;`;
+      tdC2.innerHTML=`<div class="chart-row" style="width:${totalW}px;">${
+        COLS.map(c=>`<div class="chart-cell${c.isWeekend?' weekend':''}${c.isToday?' today-col':''}${c.isMonthEnd?' month-end':''}"></div>`).join('')
+      }</div>`;
 
       // 간트 바
       if(!task.ms){
-        const bar=document.createElement('div');bar.className='gantt-bar';
-        bar.dataset.tid=task.id;
         const sc=colOf(task.s),ec=colOf(task.e);
-        const left=sc*CW,width=(ec-sc+1)*CW-2;
-        bar.style.left=left+'px';bar.style.width=width+'px';
-        bar.style.top=(rowIdx*RH+RH/2)+'px';
-        // 지연 항목 → 붉은 바
-        const isOD=(task.status||'todo')==='todo' && task.s<TODAY;
-        bar.style.background=isOD?'linear-gradient(90deg,#dc2626,#ef4444)':ph.bar;
-        if(isOD)bar.style.boxShadow='0 1px 6px rgba(220,38,38,0.35)';
-        if(width>36)bar.textContent=task.name.replace('★','').trim();
-        // 리사이즈 핸들
+        const bar=document.createElement('div');
+        bar.className='gantt-bar';bar.dataset.tid=task.id;
+        const isOD=(task.status||'todo')==='todo'&&task.s<TODAY;
+        bar.style.cssText=`left:${sc*CW}px;width:${(ec-sc+1)*CW-2}px;
+          top:50%;transform:translateY(-50%);position:absolute;
+          background:${isOD?'linear-gradient(90deg,#dc2626,#ef4444)':ph.bar};
+          ${isOD?'box-shadow:0 1px 6px rgba(220,38,38,0.35)':''}`;
+        if((ec-sc+1)*CW>36) bar.textContent=task.name.replace('★','').trim();
         const hl=document.createElement('div');hl.className='resize-handle-l';hl.dataset.tid=task.id;hl.dataset.side='l';
         const hr2=document.createElement('div');hr2.className='resize-handle-r';hr2.dataset.tid=task.id;hr2.dataset.side='r';
         bar.appendChild(hl);bar.appendChild(hr2);
-        cb.appendChild(bar);
+        tdC2.appendChild(bar);
       } else {
-        const ms=document.createElement('div');ms.className='gantt-bar milestone-bar';
-        ms.dataset.tid=task.id;
-        ms.style.left=(colOf(task.s)*CW+CW/2-7)+'px';
-        ms.style.top=(rowIdx*RH+RH/2)+'px';
-        ms.style.background='#c07010';
-        cb.appendChild(ms);
+        const ms=document.createElement('div');
+        ms.className='gantt-bar milestone-bar';ms.dataset.tid=task.id;
+        ms.style.cssText=`left:${colOf(task.s)*CW+CW/2-6}px;top:50%;
+          transform:translateY(-50%) rotate(45deg);position:absolute;background:#c07010;`;
+        tdC2.appendChild(ms);
       }
+      tr2.appendChild(tdC2);
+      tbody.appendChild(tr2);
       rowIdx++;
     });
   });
@@ -652,8 +661,9 @@ function renderBody(){
 function renderArrows(){
   const svg=document.getElementById('depSvg');
   svg.querySelectorAll('path').forEach(p=>p.remove());
-  const totalW=COLS.length*CW;
-  const totalH=Object.keys(ROW_MAP).length*RH+PHASES.length*RH+100;
+  const LW=480; // label-w
+  const totalW=LW+COLS.length*CW+100;
+  const totalH=(Object.keys(ROW_MAP).length+PHASES.length+2)*RH;
   svg.setAttribute('width',totalW);svg.setAttribute('height',totalH);
 
   if(!svg.querySelector('defs')){
@@ -672,12 +682,12 @@ function renderArrows(){
       const dep=byId[depId];if(!dep)return;
       const fr=ROW_MAP[dep.id],tr=ROW_MAP[task.id];
       if(fr===undefined||tr===undefined)return;
-      const x1=(colOf(dep.e)+1)*CW,y1=fr*RH+RH/2;
-      const x2=colOf(task.s)*CW,  y2=tr*RH+RH/2;
+      const x1=LW+(colOf(dep.e)+1)*CW, y1=fr*RH+RH/2;
+      const x2=LW+colOf(task.s)*CW,    y2=tr*RH+RH/2;
       const path=document.createElementNS('http://www.w3.org/2000/svg','path');
       const mx=(x1+x2)/2;
       path.setAttribute('d',`M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`);
-      path.setAttribute('stroke','rgba(60,80,130,0.35)');path.setAttribute('stroke-width','1.5');
+      path.setAttribute('stroke','rgba(60,80,130,0.3)');path.setAttribute('stroke-width','1.5');
       path.setAttribute('fill','none');path.setAttribute('marker-end','url(#arr)');
       svg.appendChild(path);
     });
@@ -688,8 +698,12 @@ function renderArrows(){
 function setTodayLine(){
   const tl=document.getElementById('todayLine');
   if(!tl)return;
-  tl.style.left=(colOf(TODAY)*CW+CW/2)+'px';
-  tl.style.height=(Object.keys(ROW_MAP).length+PHASES.length)*RH+'px';
+  const LW=480;
+  tl.style.cssText=`position:absolute;left:${LW+colOf(TODAY)*CW+CW/2}px;top:0;
+    width:2px;background:var(--accent);opacity:0.6;pointer-events:none;z-index:25;
+    height:${(Object.keys(ROW_MAP).length+PHASES.length+2)*RH}px;`;
+  // TODAY 라벨
+  tl.innerHTML='<span style="position:absolute;top:0;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;font-size:9px;font-weight:700;padding:1px 4px;border-radius:0 0 3px 3px;white-space:nowrap;">TODAY</span>';
 }
 
 // ─── 연결된 후행 태스크 자동 이동 ───
@@ -712,7 +726,7 @@ function propagateDeps(changedId, delta){
 
 // ─── 인터랙티브 연결 ───
 function patchInteractive(){
-  const cb=document.getElementById('chartBody');
+  const cb=document.getElementById('ganttTbody');
   const tooltip=document.getElementById('tooltip');
 
   // 간트 바 드래그
@@ -870,24 +884,9 @@ function patchInteractive(){
   };
 }
 
-// ─── 스크롤 동기화 ───
+// ─── 스크롤 (단일 컨테이너라 동기화 불필요) ───
 function syncScroll(){
-  const lp=document.getElementById('labelPanel');
-  const cp=document.getElementById('chartPanel');
-  const hw=document.getElementById('chartHeaderWrap');
-
-  // 차트 세로 스크롤 → 라벨 동기화
-  cp.addEventListener('scroll',()=>{
-    lp.scrollTop = cp.scrollTop;
-    hw.scrollLeft = cp.scrollLeft; // 헤더 가로도 동기화
-  });
-
-  // 라벨 위 휠 → 차트로 전달
-  lp.addEventListener('wheel',(e)=>{
-    e.preventDefault();
-    cp.scrollTop  += e.deltaY;
-    cp.scrollLeft += e.deltaX;
-  },{passive:false});
+  // gantt-wrapper 하나가 전체 스크롤 담당 — 별도 동기화 필요 없음
 }
 
 // ─── 버튼 이벤트 ───
@@ -902,8 +901,9 @@ render();
 syncScroll();
 
 // 오늘 위치로 스크롤
-const chartPanel=document.getElementById('chartPanel');
-chartPanel.scrollLeft=Math.max(0,colOf(TODAY)*CW-200);
+const gw=document.getElementById('ganttWrapper');
+const LW=480;
+gw.scrollLeft=Math.max(0,LW+colOf(TODAY)*CW-300);
 </script>
 </body>
 </html>
