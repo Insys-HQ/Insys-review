@@ -3,7 +3,42 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>인시스 전주공장 이전 일정표 v1.0</title>
+<title>인시스 전주공장 이전 일정표 v1.1</title>
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import { getDatabase, ref, set, onValue } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+
+  const firebaseConfig = {
+    apiKey:            "AIzaSyCDrJbDzGsQs0lTJVDXP-j6JYJ-Kv190qg",
+    authDomain:        "insys-gantt.firebaseapp.com",
+    databaseURL:       "https://insys-gantt-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId:         "insys-gantt",
+    storageBucket:     "insys-gantt.firebasestorage.app",
+    messagingSenderId: "205051617449",
+    appId:             "1:205051617449:web:72bcfbd633f7679a34c9b8",
+    measurementId:     "G-6CRKT1VV5S"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db  = getDatabase(app);
+  const DATA_REF = 'insys_gantt/tasks';
+
+  window._fbSave = function(data){
+    return set(ref(db, DATA_REF), data)
+      .then(()=>{ window.showToast('☁️ Firebase 저장 완료'); })
+      .catch(e=>{ console.error(e); window.showToast('❌ 저장 실패: '+e.message); });
+  };
+
+  window._fbLoad = function(callback){
+    onValue(ref(db, DATA_REF), (snap)=>{
+      callback(snap.val());
+    }, { onlyOnce: false });
+  };
+
+  window._fbReady = true;
+  document.dispatchEvent(new Event('firebase-ready'));
+</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap');
 :root {
@@ -195,7 +230,10 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 <!-- 툴바 -->
 <div class="toolbar">
   <div class="tb-group">
-    <span class="tb-title">인시스 전주공장 이전 마스터 일정표 <span style="font-size:12px;font-weight:500;color:#93c5fd;margin-left:6px;" id="verBadge">v1.0</span></span>
+    <span class="tb-title">인시스 전주공장 이전 마스터 일정표 <span style="font-size:12px;font-weight:500;color:#93c5fd;margin-left:6px;" id="verBadge">v1.1</span></span>
+  </div>
+  <div class="tb-group">
+    <span id="fbStatus" style="font-size:11px;font-weight:600;color:#94a3b8;">⚪ Firebase 연결 중...</span>
   </div>
   <div class="tb-group">
     <button class="tb-btn primary" id="btnSave">💾 저장</button>
@@ -364,28 +402,64 @@ const TASKS=[
     note:'세척장 좌측 출입구 안쪽 공간 — 드릴링머신·밀링머신·작업대·공구대 구입 및 설치 / 제조업 공장등록 요건 충족용',deps:['m_명도']},
 ];
 
-// ─── 로컬스토리지 ───
+// ─── Firebase + localStorage 저장/불러오기 ───
+function getTaskData(){
+  return TASKS.map(t=>({
+    id:t.id, s:t.s.getTime(), e:t.e.getTime(),
+    a:t.a, x:t.x||'', status:t.status||'todo'
+  }));
+}
+function applyTaskData(arr){
+  if(!arr) return;
+  const list = Array.isArray(arr) ? arr : Object.values(arr);
+  list.forEach(item=>{
+    const t=TASKS.find(x=>x.id===item.id);
+    if(t){ t.s=new Date(item.s); t.e=new Date(item.e);
+           t.a=item.a; t.x=item.x||t.x; t.status=item.status||'todo'; }
+  });
+}
 function saveData(){
-  const d=TASKS.map(t=>({id:t.id,s:t.s.getTime(),e:t.e.getTime(),a:t.a,x:t.x,status:t.status||'todo'}));
-  localStorage.setItem('insys_g2',JSON.stringify(d));
-  showToast('✅ 저장 완료');
+  const data = getTaskData();
+  // Firebase 저장 (준비됐을 때)
+  if(window._fbSave){
+    window._fbSave(data);
+  } else {
+    localStorage.setItem('insys_g2', JSON.stringify(data));
+    showToast('💾 로컬 저장 완료');
+  }
+  // localStorage 백업
+  localStorage.setItem('insys_g2', JSON.stringify(data));
 }
 function loadData(){
+  // localStorage로 즉시 복원 (Firebase 로드 전 빈 화면 방지)
   try{
     const raw=localStorage.getItem('insys_g2');
-    if(!raw)return;
-    JSON.parse(raw).forEach(item=>{
-      const t=TASKS.find(x=>x.id===item.id);
-      if(t){t.s=new Date(item.s);t.e=new Date(item.e);t.a=item.a;t.x=item.x||t.x;t.status=item.status||'todo';}
-    });
+    if(raw) applyTaskData(JSON.parse(raw));
   }catch(e){}
 }
-function showToast(msg){
+function showToast(msg, dur=2200){
   const t=document.getElementById('toast');
-  t.textContent=msg;t.style.opacity='1';
-  clearTimeout(t._t);t._t=setTimeout(()=>{t.style.opacity='0';},2000);
+  t.textContent=msg; t.style.opacity='1';
+  clearTimeout(t._t); t._t=setTimeout(()=>{ t.style.opacity='0'; }, dur);
 }
-loadData();
+
+// Firebase 실시간 동기화 연결
+function connectFirebase(){
+  if(!window._fbLoad) return;
+  const fbSt = document.getElementById('fbStatus');
+  if(fbSt) fbSt.innerHTML='🟡 Firebase 연결 중...';
+  window._fbLoad((data)=>{
+    if(fbSt) fbSt.innerHTML='🟢 Firebase 연결됨';
+    if(!data) return;
+    applyTaskData(data);
+    render();
+    showToast('☁️ 동기화됨', 1500);
+  });
+}
+
+loadData(); // localStorage 즉시 적용
+if(window._fbReady){ connectFirebase(); }
+else { document.addEventListener('firebase-ready', connectFirebase); }
 
 // ─── 날짜 컬럼 빌드 ───
 function buildCols(){
