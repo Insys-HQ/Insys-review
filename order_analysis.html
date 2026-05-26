@@ -556,7 +556,19 @@ function sortTop(obj,n=15){return Object.entries(obj).sort((a,b)=>b[1]-a[1]).sli
 
 // ══ Canvas helpers ════════════════════════════════
 function dpr(){return window.devicePixelRatio||1;}
-function getW(id){const el=document.getElementById(id);const w=el?el.parentElement.clientWidth:0;return Math.max(w>50?w-40:0,620);}
+function getW(id){
+  const el=document.getElementById(id);
+  if(!el) return 680;
+  // Walk up to find a visible ancestor with real width
+  let node=el.parentElement;
+  let w=0;
+  while(node&&w<100){w=node.clientWidth||node.offsetWidth||0;node=node.parentElement;}
+  if(w<100){
+    // fallback: use body or window width
+    w=document.body.clientWidth||window.innerWidth||900;
+  }
+  return Math.max(w-80,400);
+}
 function setupCanvas(id,w,h){
   const el=document.getElementById(id),r=dpr();
   w=Math.max(w,200);h=Math.max(h,60);
@@ -680,6 +692,15 @@ function renderCharts(d){
   drawDonut('cCatPie',ce.map(e=>e[0]),ce.map(e=>e[1]),PALETTE,'catLegend');
 }
 
+function forceRenderPatterns(d){
+  // Force all canvases in tab-pattern to be visible and sized
+  const tab=document.getElementById('tab-pattern');
+  const canvases=tab.querySelectorAll('canvas');
+  canvases.forEach(cv=>{cv.style.display='block';});
+  // Force layout reflow
+  tab.getBoundingClientRect();
+  renderPatterns(d);
+}
 function renderPatterns(d){
   // 히트맵 - 요일별 식당
   const dows=['월','화','수','목','금'];
@@ -874,7 +895,7 @@ function setPeriod(p,el){
   el.classList.add('active');
   const d=analyze(filterSessions(p));
   renderStats(d);renderCharts(d);renderRanks(d);renderMatrix(d);
-  if(document.getElementById('tab-pattern').classList.contains('active')) renderPatterns(d);
+  if(document.getElementById('tab-pattern').classList.contains('active')) setTimeout(()=>forceRenderPatterns(d),80);
 }
 
 function switchTab(id,el){
@@ -882,15 +903,19 @@ function switchTab(id,el){
   document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));
   document.getElementById(id).classList.add('active');el.classList.add('active');
   const d=analyze(filterSessions(currentPeriod));
-  if(id==='tab-chart'){requestAnimationFrame(()=>requestAnimationFrame(()=>renderCharts(d)));}
-  if(id==='tab-pattern'){renderPatterns(d);requestAnimationFrame(()=>requestAnimationFrame(()=>renderPatterns(d)));}
+  if(id==='tab-chart'){
+    setTimeout(()=>{renderCharts(d);setTimeout(()=>renderCharts(d),200);},50);
+  }
+  if(id==='tab-pattern'){
+    setTimeout(()=>{forceRenderPatterns(d);},80);
+  }
 }
 
 // ── init
 const d0=analyze(DATA.order_sessions);
 renderStats(d0);renderDaily();renderRanks(d0);renderMatrix(d0);renderJson();renderRec();
-window.addEventListener('load',()=>{setTimeout(()=>renderCharts(d0),120);});
-window.addEventListener('resize',()=>{const d=analyze(filterSessions(currentPeriod));if(document.getElementById('tab-chart').classList.contains('active'))renderCharts(d);if(document.getElementById('tab-pattern').classList.contains('active'))renderPatterns(d);});
+window.addEventListener('load',()=>{setTimeout(()=>renderCharts(d0),150);});
+window.addEventListener('resize',()=>{const d=analyze(filterSessions(currentPeriod));if(document.getElementById('tab-chart').classList.contains('active'))setTimeout(()=>renderCharts(d),100);if(document.getElementById('tab-pattern').classList.contains('active'))setTimeout(()=>forceRenderPatterns(d),100);});
 </script>
 </body>
 </html>
