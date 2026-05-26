@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>인시스 전주공장 이전 일정표 v2.6</title>
+<title>인시스 전주공장 이전 일정표 v3.3</title>
 <!-- Firebase SDK -->
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -54,8 +54,8 @@
   --p4c:#9a1f5c; --p4bg:#fdf0f6; --p4b:linear-gradient(90deg,#c0336e,#d9588a);
   --p5c:#5228a0; --p5bg:#f5f0fd; --p5b:linear-gradient(90deg,#6840c8,#8b6de0);
   --ms:#b86e10;
-  --row-h:26px; --hdr-h:46px; --label-w:480px; --cell-w:26px;
-  --status-w:66px; --exec-w:82px;
+  --row-h:26px; --hdr-h:46px; --label-w:530px; --cell-w:26px;
+  --status-w:66px; --exec-w:82px; --pred-w:40px;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);font-size:12px;}
@@ -122,6 +122,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 .lh-status{width:var(--status-w);text-align:center;}
 .lh-assign{width:68px;text-align:center;}
 .lh-exec{width:var(--exec-w);text-align:center;}
+.lh-pred{width:var(--pred-w);text-align:center;}
 
 /* ── 라벨 행 ── */
 .label-row{height:var(--row-h);display:flex;align-items:center;padding:0 6px 0 0;
@@ -151,6 +152,10 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 .row-exec:hover{background:#dbeafe;color:#1d4ed8;}
 .row-exec.vendor{color:#166534;background:#f0fdf4;}
 .row-exec.vendor:hover{background:#dcfce7;}
+.row-pred{width:var(--pred-w);flex-shrink:0;font-size:10px;color:#5a6680;font-weight:600;
+  text-align:center;cursor:pointer;border-radius:4px;padding:1px 2px;}
+.row-pred:hover{background:#f0f3f8;color:var(--accent);}
+.row-pred.has-pred{color:#1d61c8;background:#eef4ff;}
 
 /* ── 차트 헤더 ── */
 .chart-header{height:var(--hdr-h);display:flex;align-items:stretch;border-bottom:none;
@@ -244,7 +249,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 <!-- 툴바 -->
 <div class="toolbar">
   <div class="tb-group">
-    <span class="tb-title">인시스 전주공장 이전 마스터 일정표 <span style="font-size:12px;font-weight:500;color:#93c5fd;margin-left:6px;" id="verBadge">v2.6</span></span>
+    <span class="tb-title">인시스 전주공장 이전 마스터 일정표 <span style="font-size:12px;font-weight:500;color:#93c5fd;margin-left:6px;" id="verBadge">v3.3</span></span>
   </div>
   <div class="tb-group">
     <span id="fbStatus" style="font-size:11px;font-weight:600;color:#94a3b8;">⚪ Firebase 연결 중...</span>
@@ -308,7 +313,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
     </tbody>
   </table>
   <svg class="dep-svg" id="depSvg" style="position:absolute;top:0;left:0;pointer-events:none;z-index:25;overflow:visible;"></svg>
-  <div class="today-line" id="todayLine"></div>
+  
 </div>
 
 <div class="tooltip" id="tooltip"></div>
@@ -335,7 +340,7 @@ const _autoEnd = new Date(TODAY); _autoEnd.setDate(_autoEnd.getDate()+60);
 const END = _autoEnd > _minEnd ? _autoEnd : _minEnd;
 const CW    = 26;
 const RH    = 26;
-const VERSION = 'v2.6';
+const VERSION = 'v3.3';
 
 function hexToRgba(hex,a){
   const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
@@ -382,7 +387,7 @@ const TASKS=[
   {id:'t24',   ph:'p1',name:'에어배관 현장 확인',        s:d(2026,6,25),e:d(2026,6,28),a:'손홍필소장',x:'시공업체',status:'todo',note:'기존 배관 재활용 가능 여부'},
   {id:'t25',   ph:'p1',name:'간판 상태 확인',            s:d(2026,6,25),e:d(2026,6,30),a:'최준영대리',x:'시행처',status:'todo',note:'기존 간판 재활용 여부 결정'},
   // PHASE 2
-  {id:'m_명도', ph:'p2',name:'이전 공장 명도 ★',  s:d(2026,6,25),e:d(2026,6,25),a:'손홍필소장',x:'손홍필소장',ms:true,status:'todo',note:'6/25 장비 철수 완료 + 내부 철거 시작'},
+  {id:'m_명도', ph:'p2',name:'이전 공장 명도 ★',  s:d(2026,6,25),e:d(2026,6,25),a:'엘티씨',x:'엘티씨',ms:true,status:'todo',note:'6/25 장비 철수 완료 + 내부 철거 시작'},
   {id:'t30',   ph:'p2',name:'A동 내부 패널 구조물 철거',s:d(2026,6,25),e:d(2026,6,27),a:'엘티씨',x:'엘티씨',status:'todo',note:'검사실·측정실 패널 철거 2~3일',deps:['m_명도']},
   {id:'t31',   ph:'p2',name:'B동 화장실·사무소 철거',   s:d(2026,6,25),e:d(2026,7,5), a:'최준영대리',x:'시공업체',status:'todo',note:'장마·폭염 전 선행 권장',deps:['m_명도']},
   {id:'t32',   ph:'p2',name:'외벽 도색 착수 (A·B동)',   s:d(2026,6,29),e:d(2026,7,14),a:'김양섭이사',x:'인원케미텍',status:'todo',note:'이천공장 동일 색상 / 단계별',deps:['t30']},
@@ -505,10 +510,25 @@ function buildCols(){
 const COLS=buildCols();
 
 // ─── 전역 행 맵 ───
-let ROW_MAP={};// taskId → rowIndex (0-based within chartBody)
+let ROW_MAP={};   // taskId → rowIndex
+let TASK_NUM={};  // taskId → 전체 고유번호 (1부터)
+let NUM_TO_ID={};  // 번호 → taskId
+
+function buildTaskNums(){
+  TASK_NUM={};NUM_TO_ID={};
+  let n=0;
+  PHASES.forEach(ph=>{
+    TASKS.filter(t=>t.ph===ph.id).forEach(t=>{
+      n++;
+      TASK_NUM[t.id]=n;
+      NUM_TO_ID[n]=t.id;
+    });
+  });
+}
 
 // ─── 전체 렌더 ───
 function render(){
+  buildTaskNums();
   document.getElementById('labelHeader').innerHTML='';
   document.getElementById('chartHeader').innerHTML='';
   document.getElementById('ganttTbody').innerHTML='';
@@ -531,6 +551,7 @@ function renderHeader(){
     <div class="lh-col lh-status">상태</div>
     <div class="lh-col lh-assign">담당자</div>
     <div class="lh-col lh-exec">시행처</div>
+    <div class="lh-col lh-pred">선행</div>
   </div>`;
 
   const months=[];let cur=null;
@@ -561,6 +582,8 @@ function renderBody(){
   const totalW=COLS.length*CW;
   const phMap={};PHASES.forEach(p=>{phMap[p.id]=p;});
   let rowIdx=1; // thead가 row 0
+
+  // TASK_NUM은 전역 buildTaskNums()에서 관리
 
   PHASES.forEach(ph=>{
     const tasks=TASKS.filter(t=>t.ph===ph.id);
@@ -597,6 +620,7 @@ function renderBody(){
       const stClass=isOverdue?'overdue':st;
       const execVal=task.x||'-';
       const isVendor=execVal!=='-'&&execVal!==task.a&&execVal!=='경영지원실'&&execVal!=='R&D센터';
+      const predNums=(task.deps||[]).map(d=>TASK_NUM[d]).filter(Boolean).join(',');
 
       const tr2=document.createElement('tr');
       // 라벨 셀 (sticky)
@@ -605,7 +629,7 @@ function renderBody(){
         background:#fff;border-right:2px solid var(--border);
         border-bottom:1px solid var(--border2);`;
       tdL2.innerHTML=`<div class="label-row">
-        <div class="row-num" style="color:#3a4560;font-weight:600;">${ti+1}</div>
+        <div class="row-num" style="color:#3a4560;font-weight:600;">${TASK_NUM[task.id]}</div>
         <div class="row-bar" style="background:${ph.col}"></div>
         <div class="row-name" title="${task.name}">${task.ms?'◆ ':''}${task.name}</div>
         <div class="row-status">
@@ -617,6 +641,7 @@ function renderBody(){
         </div>
         <div class="row-assignee" data-tid="${task.id}" title="클릭: 담당자 수정">${task.a||'-'}</div>
         <div class="row-exec ${isVendor?'vendor':''}" data-etid="${task.id}" title="클릭: 시행처 수정">${execVal}</div>
+        <div class="row-pred ${predNums?'has-pred':''}" data-ptid="${task.id}" title="클릭: 선행작업 수정">${predNums||'-'}</div>
       </div>`;
       tr2.appendChild(tdL2);
 
@@ -658,114 +683,24 @@ function renderBody(){
 }
 
 // ─── SVG 화살표 ───
-function renderArrows(){
-  const svg=document.getElementById('depSvg');
-  svg.querySelectorAll('path').forEach(p=>p.remove());
-  const LW=480; // label-w
-  const totalW=LW+COLS.length*CW+100;
-  const totalH=(Object.keys(ROW_MAP).length+PHASES.length+2)*RH;
-  svg.setAttribute('width',totalW);svg.setAttribute('height',totalH);
-
-  if(!svg.querySelector('defs')){
-    const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
-    const mk=document.createElementNS('http://www.w3.org/2000/svg','marker');
-    mk.setAttribute('id','arr');mk.setAttribute('markerWidth','7');mk.setAttribute('markerHeight','7');
-    mk.setAttribute('refX','6');mk.setAttribute('refY','3.5');mk.setAttribute('orient','auto');
-    const pl=document.createElementNS('http://www.w3.org/2000/svg','polygon');
-    pl.setAttribute('points','0 0, 7 3.5, 0 7');pl.setAttribute('fill','rgba(60,80,130,0.4)');
-    mk.appendChild(pl);defs.appendChild(mk);svg.appendChild(defs);
-  }
-
-  const byId={};TASKS.forEach(t=>{byId[t.id]=t;});
-  TASKS.forEach(task=>{
-    (task.deps||[]).forEach(depId=>{
-      const dep=byId[depId];if(!dep)return;
-      const fr=ROW_MAP[dep.id],tr=ROW_MAP[task.id];
-      if(fr===undefined||tr===undefined)return;
-      const x1=LW+(colOf(dep.e)+1)*CW, y1=fr*RH+RH/2;
-      const x2=LW+colOf(task.s)*CW,    y2=tr*RH+RH/2;
-      const path=document.createElementNS('http://www.w3.org/2000/svg','path');
-      const mx=(x1+x2)/2;
-      path.setAttribute('d',`M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`);
-      path.setAttribute('stroke','rgba(60,80,130,0.3)');path.setAttribute('stroke-width','1.5');
-      path.setAttribute('fill','none');path.setAttribute('marker-end','url(#arr)');
-      svg.appendChild(path);
-    });
-  });
-}
+function renderArrows(){ /* 연결선 비활성 */ }
 
 // ─── 오늘선 ───
-function setTodayLine(){
+function setTodayLine(){ return; // 별도 처리
+  const tl2=document.getElementById('todayLine2');
   const tl=document.getElementById('todayLine');
   if(!tl)return;
   const LW=480;
   tl.style.cssText=`position:absolute;left:${LW+colOf(TODAY)*CW+CW/2}px;top:0;
     width:2px;background:var(--accent);opacity:0.6;pointer-events:none;z-index:25;
     height:${(Object.keys(ROW_MAP).length+PHASES.length+2)*RH}px;`;
-  // TODAY 라벨
   tl.innerHTML='<span style="position:absolute;top:0;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;font-size:9px;font-weight:700;padding:1px 4px;border-radius:0 0 3px 3px;white-space:nowrap;">TODAY</span>';
 }
 
-// ─── SVG 화살표 — ROW_MAP + colOf 절대 좌표 계산 ───
 function refreshArrows(){
+  // 연결선 비활성화
   const svg=document.getElementById('depSvg');
-  svg.querySelectorAll('path').forEach(p=>p.remove());
-
-  // SVG 크기 설정
-  const tbl=document.getElementById('ganttTable');
-  const LW=tbl ? tbl.querySelector('th').offsetWidth : 480;
-  const totalW=LW+COLS.length*CW+100;
-  const totalH=(Object.keys(ROW_MAP).length+PHASES.length+2)*RH+100;
-  svg.setAttribute('width',totalW);
-  svg.setAttribute('height',totalH);
-
-  // defs / marker
-  if(!svg.querySelector('defs')){
-    const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
-    const mk=document.createElementNS('http://www.w3.org/2000/svg','marker');
-    mk.setAttribute('id','arr2');mk.setAttribute('markerWidth','6');mk.setAttribute('markerHeight','6');
-    mk.setAttribute('refX','5');mk.setAttribute('refY','3');mk.setAttribute('orient','auto');
-    const pl=document.createElementNS('http://www.w3.org/2000/svg','polygon');
-    pl.setAttribute('points','0 0,6 3,0 6');pl.setAttribute('fill','rgba(80,100,160,0.6)');
-    mk.appendChild(pl);defs.appendChild(mk);svg.appendChild(defs);
-  }
-
-  const byId={};TASKS.forEach(t=>{byId[t.id]=t;});
-
-  TASKS.forEach(task=>{
-    (task.deps||[]).forEach(depId=>{
-      const dep=byId[depId];if(!dep)return;
-      const fromRow=ROW_MAP[dep.id];
-      const toRow  =ROW_MAP[task.id];
-      if(fromRow===undefined||toRow===undefined)return;
-
-      // 출발: dep 바의 오른쪽 끝
-      const x1 = LW + (colOf(dep.e)+1)*CW;
-      const y1 = fromRow*RH + RH/2;
-      // 도착: task 바의 왼쪽 끝
-      const x2 = LW + colOf(task.s)*CW;
-      const y2 = toRow*RH + RH/2;
-
-      // 너무 짧거나 역방향이면 꺾임선으로
-      const path=document.createElementNS('http://www.w3.org/2000/svg','path');
-      let d;
-      if(x2 > x1+10){
-        // 순방향: 부드러운 곡선
-        const mx=(x1+x2)/2;
-        d=`M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`;
-      } else {
-        // 역방향(위로 올라가는 경우): 꺾임선
-        const midX=Math.max(x1,x2)+40;
-        d=`M ${x1} ${y1} H ${midX} V ${y2} H ${x2}`;
-      }
-      path.setAttribute('d',d);
-      path.setAttribute('stroke','rgba(80,100,180,0.4)');
-      path.setAttribute('stroke-width','1.5');
-      path.setAttribute('fill','none');
-      path.setAttribute('marker-end','url(#arr2)');
-      svg.appendChild(path);
-    });
-  });
+  if(svg) svg.style.display='none';
 }
 
 // ─── 연결된 후행 태스크 자동 이동 ───
