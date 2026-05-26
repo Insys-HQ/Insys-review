@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>인시스 전주공장 이전 일정표</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap');
+:root {
+  --bg:#f0f3f8; --surface:#fff; --surface2:#e8edf5; --border:#c8d0e0; --border2:#dde3ee;
+  --text:#1a2035; --text-md:#3a4560; --text-sm:#5a6480; --accent:#1d61c8;
+  --p0c:#b86e10; --p0b:linear-gradient(90deg,#e8921a,#f0ad30);
+  --p1c:#1d61c8; --p1b:linear-gradient(90deg,#2563eb,#4a86f5);
+  --p2c:#156e47; --p2b:linear-gradient(90deg,#1a9463,#28c07a);
+  --p3c:#bf4d10; --p3b:linear-gradient(90deg,#e05a14,#f07838);
+  --p4c:#9a1f5c; --p4b:linear-gradient(90deg,#c0336e,#d9588a);
+  --p5c:#5228a0; --p5b:linear-gradient(90deg,#6840c8,#8b6de0);
+  --ms:#b86e10;
+  --row-h:26px; --hdr-h:46px; --label-w:480px; --cell-w:26px;
+  --status-w:66px; --exec-w:82px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);font-size:12px;}
+
+/* ── 툴바 ── */
+.toolbar{background:#1a2035;color:#e8ecf5;padding:0 16px;display:flex;align-items:center;
+  gap:0;border-bottom:2px solid #0e1525;position:sticky;top:0;z-index:200;height:48px;}
+.tb-group{display:flex;align-items:center;gap:4px;padding:0 10px;border-right:1px solid #2e3a55;}
+.tb-group:last-child{border-right:none;margin-left:auto;}
+.tb-title{font-size:16px;font-weight:800;color:#ffffff;letter-spacing:-0.3px;
+  text-shadow:0 0 20px rgba(120,160,255,0.6);white-space:nowrap;}
+.tb-btn{background:#2a3550;color:#c8d0e8;border:1px solid #3a4565;border-radius:5px;
+  padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;
+  white-space:nowrap;transition:background 0.15s;}
+.tb-btn:hover{background:#3a4870;color:#fff;}
+.tb-btn.primary{background:#1d61c8;color:#fff;border-color:#2563eb;}
+.tb-btn.primary:hover{background:#2563eb;}
+.tb-btn.danger{background:#7a1a1a;color:#fca5a5;border-color:#9a2a2a;}
+.tb-btn.danger:hover{background:#9a2a2a;}
+
+/* ── 도움말 바 ── */
+.help-bar{background:#f0f5ff;border-bottom:1px solid #c8d0e0;padding:4px 16px;
+  display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
+.help-item{display:flex;align-items:center;gap:5px;font-size:11px;color:#2a3560;font-weight:600;font-family:'Noto Sans KR',sans-serif;}
+.help-item span{font-weight:500;color:#3a4570;}
+.help-key{background:#fff;border:1px solid #b0b8cc;border-radius:3px;padding:1px 6px;
+  font-size:11px;font-weight:700;color:#1a2035;font-family:'Noto Sans KR',sans-serif;
+  box-shadow:0 1px 2px rgba(0,0,0,0.08);}
+
+/* ── 범례 ── */
+.legend{display:flex;gap:12px;flex-wrap:wrap;padding:5px 16px;background:#fff;
+  border-bottom:1px solid var(--border);align-items:center;}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text-md);font-weight:500;}
+.legend-dot{width:10px;height:10px;border-radius:2px;}
+
+/* ── 메인 ── */
+.gantt-outer{display:flex;flex-direction:column;overflow:hidden;}
+.gantt-wrapper{display:flex;overflow:hidden;height:calc(100vh - 140px);}
+.label-panel{min-width:var(--label-w);max-width:var(--label-w);background:#fff;
+  border-right:2px solid var(--border);flex-shrink:0;overflow-y:hidden;overflow-x:hidden;}
+.label-panel::-webkit-scrollbar{width:0;}
+.chart-panel{flex:1;overflow:auto;position:relative;}
+.chart-panel::-webkit-scrollbar{height:8px;width:8px;}
+.chart-panel::-webkit-scrollbar-track{background:#eef0f5;}
+.chart-panel::-webkit-scrollbar-thumb{background:#b0bcd0;border-radius:4px;}
+
+/* ── 라벨 헤더 ── */
+.label-header{height:var(--hdr-h);display:flex;align-items:flex-end;padding:0 8px 7px;
+  border-bottom:2px solid var(--border);background:#e8edf5;position:sticky;top:0;z-index:10;}
+.lh-col{font-size:10px;font-weight:700;color:var(--text-md);text-transform:uppercase;letter-spacing:0.5px;}
+.lh-name{flex:1;}
+.lh-status{width:var(--status-w);text-align:center;}
+.lh-assign{width:68px;text-align:center;}
+.lh-exec{width:var(--exec-w);text-align:center;}
+
+/* ── 라벨 행 ── */
+.label-row{height:var(--row-h);display:flex;align-items:center;padding:0 6px 0 0;
+  border-bottom:1px solid var(--border2);cursor:default;}
+.label-row:hover:not(.phase-hdr){background:#f5f8fd;}
+.label-row.phase-hdr{background:#e2e8f2;border-bottom:1px solid var(--border);}
+.row-num{min-width:26px;text-align:center;font-size:10px;color:var(--text-sm);font-weight:600;}
+.row-bar{width:4px;min-width:4px;height:100%;margin-right:6px;}
+.row-name{flex:1;font-size:11px;color:var(--text);font-weight:500;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:4px;line-height:1;}
+.row-name.phase-title{font-size:10px;font-weight:700;color:var(--text-md);text-transform:uppercase;letter-spacing:0.5px;}
+.row-status{width:var(--status-w);flex-shrink:0;}
+.status-sel{width:100%;border:1px solid #c8d0e0;border-radius:8px;
+  padding:1px 3px;font-size:10px;font-weight:600;font-family:inherit;cursor:pointer;
+  background:#fff;color:var(--text-md);outline:none;text-align:center;}
+.status-sel.done{background:#dcfce7;color:#166534;border-color:#86efac;}
+.status-sel.inprogress{background:#dbeafe;color:#1e40af;border-color:#93c5fd;}
+.status-sel.todo{background:#f1f5f9;color:#475569;border-color:#cbd5e1;}
+.status-sel.overdue{background:#fee2e2;color:#991b1b;border-color:#fca5a5;font-weight:700;}
+.row-assignee{width:68px;flex-shrink:0;font-size:11px;color:var(--text);font-weight:600;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;
+  cursor:pointer;border-radius:6px;padding:1px 4px;}
+.row-assignee:hover{background:#e8edf5;color:var(--accent);}
+.row-exec{width:var(--exec-w);flex-shrink:0;font-size:10px;color:#2a5a9a;font-weight:600;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;
+  cursor:pointer;border-radius:6px;padding:1px 4px;background:#eef4ff;}
+.row-exec:hover{background:#dbeafe;color:#1d4ed8;}
+.row-exec.vendor{color:#166534;background:#f0fdf4;}
+.row-exec.vendor:hover{background:#dcfce7;}
+
+/* ── 차트 헤더 ── */
+.chart-header{height:var(--hdr-h);display:flex;align-items:stretch;border-bottom:2px solid var(--border);
+  background:#e8edf5;position:sticky;top:0;z-index:10;}
+.month-group{display:flex;flex-direction:column;border-right:1px solid var(--border);}
+.month-label{font-size:11px;font-weight:700;color:var(--text);padding:6px 0 3px;
+  text-align:center;border-bottom:1px solid var(--border);background:#dde3ef;}
+.day-labels{display:flex;}
+.day-label{width:var(--cell-w);text-align:center;font-size:10px;color:var(--text-sm);font-weight:500;
+  line-height:var(--row-h);border-right:1px solid var(--border2);}
+.day-label.weekend{color:#c04040;background:#fdf5f5;}
+.day-label.today-col{color:var(--accent);font-weight:700;background:#dbeafe;}
+
+/* ── 차트 바디 ── */
+.chart-body{position:relative;}
+.chart-row{height:var(--row-h);display:flex;align-items:center;border-bottom:1px solid var(--border2);position:relative;}
+.chart-row.phase-hdr{background:#e2e8f2;border-bottom:1px solid var(--border);}
+.chart-row:hover:not(.phase-hdr){background:#f5f8fd;}
+.chart-cell{width:var(--cell-w);min-width:var(--cell-w);height:100%;border-right:1px solid #edf0f7;flex-shrink:0;}
+.chart-cell.weekend{background:#fdf8f8;}
+.chart-cell.today-col{background:#eef4ff;}
+.chart-cell.month-end{border-right:1px solid var(--border);}
+
+/* ── 간트 바 ── */
+.gantt-bar{position:absolute;height:16px;border-radius:3px;top:50%;transform:translateY(-50%);
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700;color:#fff;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 5px;
+  cursor:grab;z-index:10;box-shadow:0 1px 3px rgba(0,0,0,0.15);}
+.gantt-bar:hover{filter:brightness(1.08);box-shadow:0 2px 8px rgba(0,0,0,0.2);z-index:20;}
+.gantt-bar.dragging{opacity:0.85;cursor:grabbing;z-index:30;}
+.gantt-bar.milestone-bar{width:12px !important;height:12px;border-radius:2px;
+  transform:translateY(-50%) rotate(45deg);padding:0;cursor:default;box-shadow:0 1px 5px rgba(0,0,0,0.2);}
+.resize-handle-l,.resize-handle-r{position:absolute;top:0;bottom:0;width:10px;cursor:ew-resize;z-index:3;
+  display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.15s;}
+.resize-handle-l{left:0;border-radius:3px 0 0 3px;}
+.resize-handle-r{right:0;border-radius:0 3px 3px 0;}
+.resize-handle-l::after,.resize-handle-r::after{content:'';width:2px;height:10px;
+  background:rgba(255,255,255,0.85);border-radius:1px;}
+.gantt-bar:hover .resize-handle-l,
+.gantt-bar:hover .resize-handle-r{opacity:1;}
+
+/* 드래그 중 날짜 표시 */
+.drag-date-tip{position:fixed;background:#1a2035;color:#fff;font-size:11px;font-weight:700;
+  padding:4px 9px;border-radius:5px;z-index:999;pointer-events:none;display:none;
+  box-shadow:0 2px 8px rgba(0,0,0,0.25);white-space:nowrap;}
+
+/* ── 오늘선 ── */
+.today-line{position:absolute;top:0;bottom:0;width:2px;background:var(--accent);
+  z-index:25;pointer-events:none;opacity:0.6;}
+.today-line::before{content:'TODAY';position:absolute;top:0;left:50%;transform:translateX(-50%);
+  background:var(--accent);color:#fff;font-size:9px;font-weight:700;
+  padding:1px 4px;border-radius:0 0 3px 3px;white-space:nowrap;}
+
+/* ── SVG 화살표 ── */
+.dep-svg{position:absolute;top:0;left:0;pointer-events:none;z-index:15;overflow:visible;}
+
+/* ── 툴팁 ── */
+.tooltip{position:fixed;background:#fff;border:1px solid var(--border);border-radius:8px;
+  padding:10px 14px;font-size:11px;z-index:500;pointer-events:none;display:none;
+  max-width:280px;box-shadow:0 6px 24px rgba(0,0,0,0.12);}
+.tt-title{font-weight:700;color:var(--text);margin-bottom:5px;font-size:12px;}
+.tt-row{display:flex;justify-content:space-between;gap:14px;margin-top:3px;color:var(--text-sm);}
+.tt-val{color:var(--text-md);font-weight:600;}
+
+/* ── 팝업 공통 ── */
+.popup-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.15);z-index:400;display:none;}
+.popup-box{position:fixed;background:#fff;border:1px solid var(--border);border-radius:10px;
+  padding:14px 16px;z-index:401;box-shadow:0 8px 32px rgba(0,0,0,0.14);min-width:220px;display:none;}
+.popup-title{font-size:11px;font-weight:700;color:var(--text-sm);text-transform:uppercase;
+  letter-spacing:0.5px;margin-bottom:8px;}
+.popup-sub{font-size:10px;color:#9090a8;margin-bottom:8px;}
+.popup-input{width:100%;border:1px solid var(--border);border-radius:6px;padding:6px 10px;
+  font-size:12px;font-family:inherit;outline:none;color:var(--text);}
+.popup-input:focus{border-color:var(--accent);}
+.popup-btns{display:flex;gap:7px;margin-top:10px;}
+.popup-btn{flex:1;border:none;border-radius:6px;padding:7px 0;font-size:11px;
+  font-weight:700;cursor:pointer;font-family:inherit;}
+.popup-btn.save{background:var(--accent);color:#fff;}
+.popup-btn.save:hover{background:#2563eb;}
+.popup-btn.cancel{background:#f0f3f8;color:var(--text-sm);}
+
+/* ── 토스트 ── */
+.toast{position:fixed;bottom:24px;right:24px;background:#166534;color:#fff;
+  font-size:12px;font-weight:700;padding:10px 20px;border-radius:8px;z-index:9999;
+  box-shadow:0 4px 16px rgba(0,0,0,0.15);opacity:0;transition:opacity 0.35s;pointer-events:none;}
+</style>
+</head>
+<body>
+
+<!-- 툴바 -->
+<div class="toolbar">
+  <div class="tb-group">
+    <span class="tb-title">인시스 전주공장 이전 마스터 일정표</span>
+  </div>
+  <div class="tb-group">
+    <button class="tb-btn primary" id="btnSave">💾 저장</button>
+    <button class="tb-btn danger" id="btnReset">↺ 초기화</button>
+  </div>
+  <div class="tb-group">
+    <span style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;border-radius:5px;padding:4px 10px;font-size:11px;font-weight:700;">잔금 D-2 (5/14)</span>
+    <span style="background:#dbeafe;color:#1e40af;border:1px solid #93c5fd;border-radius:5px;padding:4px 10px;font-size:11px;font-weight:700;margin-left:4px;">명도 6/25</span>
+    <span style="background:#dcfce7;color:#166534;border:1px solid #86efac;border-radius:5px;padding:4px 10px;font-size:11px;font-weight:700;margin-left:4px;">세척기 목표 7/14</span>
+  </div>
+</div>
+
+<!-- 도움말 바 -->
+<div class="help-bar">
+  <div class="help-item">📌 <span>일정 이동:</span> <kbd class="help-key">간트 바 드래그</kbd></div>
+  <div class="help-item">↔ <span>기간 조정:</span> <kbd class="help-key">바 양끝 드래그</kbd></div>
+  <div class="help-item">👤 <span>담당자 수정:</span> <kbd class="help-key">담당자 클릭</kbd></div>
+  <div class="help-item">📋 <span>진행상태:</span> <kbd class="help-key">상태 드롭다운 선택</kbd></div>
+  <div class="help-item">🔗 <span>연결 항목 자동 이동:</span> 선행 완료일 변경 시 후행 시작일 자동 조정</div>
+</div>
+
+<!-- 범례 -->
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#e8921a"></div>계약·준비</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#2563eb"></div>업체선정·협의</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#1a9463"></div>철거·도색</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#e05a14"></div>설비이전·시공</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#c0336e"></div>마무리·인테리어</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#6840c8"></div>행정·등록</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#b86e10;transform:rotate(45deg);border-radius:2px;width:9px;height:9px;"></div>마일스톤</div>
+  <div class="legend-item" style="margin-left:10px;">
+    <span style="background:#dcfce7;color:#166534;border:1px solid #86efac;border-radius:8px;padding:1px 7px;font-size:10px;font-weight:700;">완료</span>
+    <span style="background:#dbeafe;color:#1e40af;border:1px solid #93c5fd;border-radius:8px;padding:1px 7px;font-size:10px;font-weight:700;margin-left:4px;">진행중</span>
+    <span style="background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;border-radius:8px;padding:1px 7px;font-size:10px;font-weight:700;margin-left:4px;">시작전</span>
+    <span style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;border-radius:8px;padding:1px 7px;font-size:10px;font-weight:700;margin-left:4px;">⚠ 지연</span>
+  </div>
+</div>
+
+<!-- 간트 레이아웃 -->
+<div class="gantt-wrapper" id="ganttWrapper">
+  <div class="label-panel" id="labelPanel"></div>
+  <div class="chart-panel" id="chartPanel">
+    <div id="chartInner" style="position:relative;">
+      <div class="chart-header" id="chartHeader"></div>
+      <div class="chart-body" id="chartBody">
+        <svg class="dep-svg" id="depSvg"></svg>
+        <div class="today-line" id="todayLine"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+<div class="popup-overlay" id="popOverlay"></div>
+<div class="popup-box" id="assigneePopup">
+  <div class="popup-title">담당자 수정</div>
+  <div class="popup-sub" id="popTaskName"></div>
+  <input class="popup-input" id="popInput" placeholder="담당자 이름 입력">
+  <div class="popup-btns">
+    <button class="popup-btn save" id="popSave">저장</button>
+    <button class="popup-btn cancel" id="popCancel">취소</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<div class="drag-date-tip" id="dragDateTip"></div>
+
+<script>
+const START = new Date(2026,4,12);
+const END   = new Date(2026,7,31);
+const TODAY = new Date(2026,4,21);
+const CW    = 26;
+const RH    = 26;
+
+function d(y,m,day){return new Date(y,m-1,day);}
+function dayDiff(a,b){return Math.round((b-a)/86400000);}
+function colOf(dt){return dayDiff(START,dt);}
+function dateFromCol(c){const r=new Date(START);r.setDate(r.getDate()+c);return r;}
+function fmt(dt){return dt.toLocaleDateString('ko-KR',{month:'2-digit',day:'2-digit'}).replace(/ /g,'');}
+function fmtFull(dt){return dt.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'});}
+
+const PHASES=[
+  {id:'p0',label:'PHASE 0  |  계약·준비',        bar:'var(--p0b)',col:'var(--p0c)'},
+  {id:'p1',label:'PHASE 1  |  업체선정·협의',    bar:'var(--p1b)',col:'var(--p1c)'},
+  {id:'p2',label:'PHASE 2  |  철거·도색',         bar:'var(--p2b)',col:'var(--p2c)'},
+  {id:'p3',label:'PHASE 3  |  설비이전·시공',     bar:'var(--p3b)',col:'var(--p3c)'},
+  {id:'p4',label:'PHASE 4  |  마무리·인테리어',   bar:'var(--p4b)',col:'var(--p4c)'},
+  {id:'p5',label:'PHASE 5  |  행정·등록',         bar:'var(--p5b)',col:'var(--p5c)'},
+];
+
+const TASKS=[
+  // PHASE 0
+  {id:'m_잔금',ph:'p0',name:'잔금 납부 ★',       s:d(2026,5,14),e:d(2026,5,14),a:'경영지원실',x:'경영지원실',ms:true,status:'todo',note:'5/14(목) 잔금 납부'},
+  {id:'t01',   ph:'p0',name:'도색 최종 네고 견적',s:d(2026,5,14),e:d(2026,5,20),a:'김양섭이사',x:'인원케미텍',status:'inprogress',note:'㈜인원케미텍 최영옥 010-3177-7018'},
+  {id:'t02',   ph:'p0',name:'이천공장 색상코드 확인',s:d(2026,5,14),e:d(2026,5,21),a:'김양섭이사',x:'시행처',status:'inprogress',note:'RAL/KS번호 사진+문서화 → 도색업체 전달'},
+  {id:'t03',   ph:'p0',name:'가스탱크 매각 진행', s:d(2026,5,14),e:d(2026,6,15),a:'손홍필소장',x:'가스업체',status:'todo',note:'기존 공장 가스탱크 매각',deps:['m_잔금']},
+  // PHASE 1
+  {id:'t10',   ph:'p1',name:'도색업체 외벽 일정 확정', s:d(2026,5,21),e:d(2026,5,28),a:'김양섭이사',x:'시행처',status:'todo',note:'6/29 착수 가능 여부 확인',deps:['t01']},
+  {id:'t11',   ph:'p1',name:'트랜치 시공업체 선정',    s:d(2026,5,14),e:d(2026,5,31),a:'손홍필소장',x:'시행처',status:'inprogress',note:'세척기 주변 배수로 — 에폭시 전 선시공 필수'},
+  {id:'t12',   ph:'p1',name:'전기보일러 업체 선정',    s:d(2026,5,14),e:d(2026,5,31),a:'손홍필소장',x:'시행처',status:'inprogress',note:'신규 전기보일러 설치'},
+  {id:'t13',   ph:'p1',name:'폐수탱크 업체 선정',      s:d(2026,5,14),e:d(2026,5,31),a:'손홍필소장',x:'시행처',status:'inprogress',note:'컴프레셔실(6000×6000) 내 신규 제작'},
+  {id:'t14',   ph:'p1',name:'집진기·덕트 업체 협의',   s:d(2026,5,14),e:d(2026,5,31),a:'손홍필소장',x:'시행처',status:'inprogress',note:'집진기 이전 + 세척기↔집진기 덕트 신규 시공'},
+  {id:'t15',   ph:'p1',name:'건조실 업체 선정',         s:d(2026,5,14),e:d(2026,5,31),a:'손홍필소장',x:'시행처',status:'inprogress',note:'샌드위치패널 2구역·출입구·난방기·제습기'},
+  {id:'t16',   ph:'p1',name:'세척기 이전 일정 확정',   s:d(2026,5,14),e:d(2026,5,28),a:'손홍필소장',x:'시행처',status:'inprogress',note:'한마기계 김상철 부장 010-3550-8064'},
+  {id:'t17',   ph:'p1',name:'렉 이전업체 선정',         s:d(2026,5,14),e:d(2026,5,31),a:'손홍필소장',x:'시행처',status:'todo',note:'기존 렉 해체·이전·재설치 + 부족분 추가'},
+  {id:'t18',   ph:'p1',name:'전기공사업체 선정',        s:d(2026,5,14),e:d(2026,5,31),a:'손홍필소장',x:'시행처',status:'todo',note:'분전반·배선·설비 전기 연결'},
+  {id:'t19',   ph:'p1',name:'B동 철거업체 선정',        s:d(2026,5,14),e:d(2026,5,31),a:'최준영대리',x:'시행처',status:'todo',note:'화장실·임시사무소 철거'},
+  {id:'t20',   ph:'p1',name:'소방시설 점검·업체 선정', s:d(2026,5,14),e:d(2026,6,10),a:'경영지원실',x:'소방업체',status:'todo',note:'법적 기준 확인 후 소방완비증명서'},
+  {id:'t21',   ph:'p1',name:'지게차 렌탈 예약',         s:d(2026,6,15),e:d(2026,7,15),a:'손홍필소장',x:'렌탈업체',status:'todo',note:'설비 이전 기간 상주 필수'},
+  {id:'t22',   ph:'p1',name:'온풍기·제습기 용량 확인', s:d(2026,5,21),e:d(2026,6,15),a:'손홍필소장',x:'시행처',status:'todo',note:'기존 장비 용량 파악 → 부족분 발주'},
+  {id:'t23',   ph:'p1',name:'캡작업실 배수구 파악',     s:d(2026,5,21),e:d(2026,6,15),a:'손홍필소장',x:'시행처',status:'todo',note:'필요 여부 현장 확인 후 결정'},
+  {id:'t24',   ph:'p1',name:'에어배관 현장 확인',        s:d(2026,6,25),e:d(2026,6,28),a:'손홍필소장',x:'시공업체',status:'todo',note:'기존 배관 재활용 가능 여부'},
+  {id:'t25',   ph:'p1',name:'간판 상태 확인',            s:d(2026,6,25),e:d(2026,6,30),a:'최준영대리',x:'시행처',status:'todo',note:'기존 간판 재활용 여부 결정'},
+  // PHASE 2
+  {id:'m_명도', ph:'p2',name:'이전 공장 명도 ★',  s:d(2026,6,25),e:d(2026,6,25),a:'손홍필소장',x:'손홍필소장',ms:true,status:'todo',note:'6/25 장비 철수 완료 + 내부 철거 시작'},
+  {id:'t30',   ph:'p2',name:'A동 내부 패널 구조물 철거',s:d(2026,6,25),e:d(2026,6,27),a:'손홍필소장',x:'시공업체',status:'todo',note:'검사실·측정실 패널 철거 2~3일',deps:['m_명도']},
+  {id:'t31',   ph:'p2',name:'B동 화장실·사무소 철거',   s:d(2026,6,25),e:d(2026,7,5), a:'최준영대리',x:'시공업체',status:'todo',note:'장마·폭염 전 선행 권장',deps:['m_명도']},
+  {id:'t32',   ph:'p2',name:'외벽 도색 착수 (A·B동)',   s:d(2026,6,29),e:d(2026,7,14),a:'김양섭이사',x:'인원케미텍',status:'todo',note:'이천공장 동일 색상 / 단계별',deps:['t30']},
+  {id:'t33',   ph:'p2',name:'트랜치 시공',               s:d(2026,6,28),e:d(2026,7,3), a:'손홍필소장',x:'시공업체',status:'todo',note:'에폭시 전 반드시 완료',deps:['t30','t11']},
+  {id:'t34',   ph:'p2',name:'트랜치 양생 (3~4일)',       s:d(2026,7,4), e:d(2026,7,7), a:'손홍필소장',x:'시공업체',status:'todo',note:'시멘트 양생',deps:['t33']},
+  {id:'t35',   ph:'p2',name:'A동 에폭시 (트랜치 반대)',  s:d(2026,7,1), e:d(2026,7,6), a:'김양섭이사',x:'인원케미텍',status:'todo',note:'트랜치 반대쪽 먼저 시공',deps:['t30']},
+  {id:'t36',   ph:'p2',name:'A동 에폭시 (트랜치 구역)', s:d(2026,7,8), e:d(2026,7,10),a:'김양섭이사',x:'인원케미텍',status:'todo',note:'양생 완료 후 마무리',deps:['t34','t35']},
+  {id:'m_도색', ph:'p2',name:'A동 바닥 도색 완료 ★',   s:d(2026,7,10),e:d(2026,7,10),a:'-',x:'-',ms:true,status:'todo',note:'설비 반입 가능 시점',deps:['t36']},
+  {id:'t37',   ph:'p2',name:'물 배관 시공',              s:d(2026,6,28),e:d(2026,7,5), a:'손홍필소장',x:'시공업체',status:'todo',note:'뒤쪽 중간 인입 / 세척기·보일러·필터',deps:['t30']},
+  // PHASE 3
+  {id:'t40',   ph:'p3',name:'렉 해체·이전·재설치',       s:d(2026,7,10),e:d(2026,7,13),a:'손홍필소장',x:'시공업체',status:'todo',note:'부족분 추가',deps:['m_도색']},
+  {id:'t41',   ph:'p3',name:'집진기 이전 + 덕트 시공',   s:d(2026,7,10),e:d(2026,7,14),a:'손홍필소장',x:'시공업체',status:'todo',deps:['m_도색']},
+  {id:'t42',   ph:'p3',name:'전기보일러 설치',            s:d(2026,7,10),e:d(2026,7,13),a:'손홍필소장',x:'시공업체',status:'todo',deps:['m_도색']},
+  {id:'t43',   ph:'p3',name:'컴프레셔·쿨러·필터 설치',   s:d(2026,7,10),e:d(2026,7,13),a:'손홍필소장',x:'시공업체',status:'todo',note:'컴프레셔실(6000×6000)',deps:['m_도색']},
+  {id:'t44',   ph:'p3',name:'폐수탱크 신규 제작·설치',   s:d(2026,7,10),e:d(2026,7,14),a:'손홍필소장',x:'시공업체',status:'todo',note:'컴프레셔실 내부',deps:['m_도색']},
+  {id:'t45',   ph:'p3',name:'세척기 이전·재설치 ★',      s:d(2026,7,10),e:d(2026,7,13),a:'손홍필소장',x:'한마기계',status:'todo',note:'건조부 제거 / 보호커버',deps:['t41','m_도색']},
+  {id:'t46',   ph:'p3',name:'세척기 배관·전기 연결',     s:d(2026,7,13),e:d(2026,7,14),a:'손홍필소장',x:'한마기계',status:'todo',deps:['t45']},
+  {id:'t47',   ph:'p3',name:'전기공사 (분전반·배선)',     s:d(2026,7,10),e:d(2026,7,14),a:'손홍필소장',x:'시공업체',status:'todo',deps:['m_도색']},
+  {id:'t48',   ph:'p3',name:'건조실 시공 (샌드위치패널)', s:d(2026,7,10),e:d(2026,7,16),a:'손홍필소장',x:'시공업체',status:'todo',note:'2구역·출입구·난방기·제습기',deps:['m_도색']},
+  {id:'t49',   ph:'p3',name:'패드 작업대 이전',           s:d(2026,7,10),e:d(2026,7,12),a:'손홍필소장',x:'시공업체',status:'todo',deps:['m_도색']},
+  {id:'t50',   ph:'p3',name:'온풍기·제습기 이전·추가',   s:d(2026,7,10),e:d(2026,7,14),a:'손홍필소장',x:'시공업체',status:'todo',deps:['t48']},
+  {id:'t51',   ph:'p3',name:'세척기 시운전·품질 검증',   s:d(2026,7,14),e:d(2026,7,15),a:'손홍필소장',x:'한마기계',status:'todo',note:'셰플러 납품 기준 합격 확인',deps:['t46','t47']},
+  {id:'m_세척기',ph:'p3',name:'세척기 정상 가동 ★',     s:d(2026,7,14),e:d(2026,7,14),a:'-',x:'-',ms:true,status:'todo',note:'목표 7/14 — 핵심 마일스톤',deps:['t51']},
+  {id:'m_기존', ph:'p3',name:'기존 전주공장 명도 ★',    s:d(2026,7,15),e:d(2026,7,15),a:'최준영대리',x:'최준영대리',ms:true,status:'todo',note:'7/15 명도 완료',deps:['m_세척기']},
+  // PHASE 4
+  {id:'t60',   ph:'p4',name:'B동 재고 → A동 이동',       s:d(2026,7,15),e:d(2026,7,18),a:'손홍필소장',x:'시공업체',status:'todo',deps:['m_도색']},
+  {id:'t61',   ph:'p4',name:'B동 바닥 도색',             s:d(2026,7,19),e:d(2026,7,24),a:'김양섭이사',x:'인원케미텍',status:'todo',note:'고객사 임대용 창고',deps:['t60','t31']},
+  {id:'t62',   ph:'p4',name:'사무동 외벽 도색',          s:d(2026,7,20),e:d(2026,7,31),a:'김양섭이사',x:'인원케미텍',status:'todo',deps:['t32']},
+  {id:'t63',   ph:'p4',name:'A동 사무실·소장실 인테리어',s:d(2026,7,15),e:d(2026,7,31),a:'경영지원실',x:'시공업체',status:'todo',note:'인터넷·전화 선로 이동 포함',deps:['m_세척기']},
+  {id:'t64',   ph:'p4',name:'A동 2층 탈의실·화장실 수리',s:d(2026,7,20),e:d(2026,8,10),a:'손홍필소장',x:'시공업체',status:'todo',deps:['m_세척기']},
+  {id:'t65',   ph:'p4',name:'사무동 내부 인테리어 (단계)',s:d(2026,8,1), e:d(2026,8,31),a:'경영지원실',x:'시공업체',status:'todo',deps:['t62']},
+  {id:'t66',   ph:'p4',name:'간판 이전 또는 신규 설치',  s:d(2026,7,20),e:d(2026,8,10),a:'최준영대리',x:'간판업체',status:'todo',deps:['t25']},
+  // PHASE 5
+  {id:'t70',   ph:'p5',name:'산단 입주 허가 신청',       s:d(2026,5,14),e:d(2026,6,20),a:'경영지원실',x:'경영지원실',status:'inprogress',note:'주업종 29141 + 부업종 세척업',deps:['m_잔금']},
+  {id:'t70a',  ph:'p5',name:'제조업 등록 전 세척장 가동 가능 여부 확인',s:d(2026,5,14),e:d(2026,6,10),a:'경영지원실',x:'경영지원실',status:'inprogress',note:'산단 관리기관·전주시 담당부서 사전 상담 — 제조업 공장등록 인허가 전 세척장 운영 허용 여부 확인 필수',deps:['m_잔금']},
+  {id:'t71',   ph:'p5',name:'폐수배출시설 신고',         s:d(2026,6,25),e:d(2026,7,10),a:'경영지원실',x:'경영지원실',status:'todo',note:'폐수 전량 외부위탁 계약서',deps:['t70']},
+  {id:'t72',   ph:'p5',name:'공장등록 신청 (제조업)',    s:d(2026,7,14),e:d(2026,7,21),a:'경영지원실',x:'경영지원실',status:'todo',note:'주업종 29141 구름베어링 제조업 기준 등록',deps:['m_세척기','t70a']},
+  {id:'m_등록', ph:'p5',name:'공장등록 완료 ★',         s:d(2026,7,21),e:d(2026,7,21),a:'-',x:'-',ms:true,status:'todo',deps:['t72']},
+  {id:'t73',   ph:'p5',name:'계약전력 하향 신청 (한전)', s:d(2026,7,21),e:d(2026,7,31),a:'경영지원실',x:'한전',status:'todo',note:'500kW → 적정 수준 하향',deps:['m_등록']},
+  {id:'t74',   ph:'p5',name:'사업자 주소 변경',          s:d(2026,7,21),e:d(2026,7,25),a:'경영지원실',x:'경영지원실',status:'todo',deps:['m_등록']},
+  {id:'t75',   ph:'p5',name:'각종 보험 주소 변경',       s:d(2026,7,21),e:d(2026,7,31),a:'경영지원실',   status:'todo',deps:['m_등록']},
+  {id:'t76',   ph:'p5',name:'인터넷·전화 선로 이전',     s:d(2026,6,25),e:d(2026,7,14),a:'경영지원실',x:'통신업체',status:'todo',deps:['m_명도']},
+  {id:'t77',   ph:'p5',name:'기존 공장 매각 잔무',       s:d(2026,6,1), e:d(2026,7,15),a:'최준영대리',x:'최준영대리',status:'todo',note:'간판·명패 철거 등'},
+  {id:'t78',   ph:'p5',name:'고객사 이전 완료 통보',     s:d(2026,7,14),e:d(2026,7,17),a:'손홍필소장',x:'손홍필소장',status:'todo',deps:['m_세척기']},
+  {id:'t79',   ph:'p5',name:'기계가공 설비 구입·설치 (제조업 등록용)',s:d(2026,6,25),e:d(2026,7,21),a:'R&D센터',x:'R&D센터',status:'todo',
+    note:'세척장 좌측 출입구 안쪽 공간 — 드릴링머신·밀링머신·작업대·공구대 구입 및 설치 / 제조업 공장등록 요건 충족용',deps:['m_명도']},
+];
+
+// ─── 로컬스토리지 ───
+function saveData(){
+  const d=TASKS.map(t=>({id:t.id,s:t.s.getTime(),e:t.e.getTime(),a:t.a,x:t.x,status:t.status||'todo'}));
+  localStorage.setItem('insys_g2',JSON.stringify(d));
+  showToast('✅ 저장 완료');
+}
+function loadData(){
+  try{
+    const raw=localStorage.getItem('insys_g2');
+    if(!raw)return;
+    JSON.parse(raw).forEach(item=>{
+      const t=TASKS.find(x=>x.id===item.id);
+      if(t){t.s=new Date(item.s);t.e=new Date(item.e);t.a=item.a;t.x=item.x||t.x;t.status=item.status||'todo';}
+    });
+  }catch(e){}
+}
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.style.opacity='1';
+  clearTimeout(t._t);t._t=setTimeout(()=>{t.style.opacity='0';},2000);
+}
+loadData();
+
+// ─── 날짜 컬럼 빌드 ───
+function buildCols(){
+  const cols=[];const cur=new Date(START);
+  while(cur<=END){
+    const dow=cur.getDay();
+    cols.push({date:new Date(cur),day:cur.getDate(),month:cur.getMonth()+1,year:cur.getFullYear(),
+      isWeekend:dow===0||dow===6,isToday:cur.toDateString()===TODAY.toDateString(),
+      isMonthEnd:new Date(cur.getFullYear(),cur.getMonth()+1,0).getDate()===cur.getDate()});
+    cur.setDate(cur.getDate()+1);
+  }
+  return cols;
+}
+const COLS=buildCols();
+
+// ─── 전역 행 맵 ───
+let ROW_MAP={};// taskId → rowIndex (0-based within chartBody)
+
+// ─── 전체 렌더 ───
+function render(){
+  document.getElementById('labelPanel').innerHTML='';
+  document.getElementById('chartBody').innerHTML='<svg class="dep-svg" id="depSvg"></svg><div class="today-line" id="todayLine"></div>';
+  document.getElementById('chartHeader').innerHTML='';
+  ROW_MAP={};
+  renderHeader();
+  renderBody();
+  renderArrows();
+  setTodayLine();
+  patchInteractive();
+}
+
+// ─── 헤더 ───
+function renderHeader(){
+  const hdr=document.getElementById('chartHeader');
+  const months=[];let cur=null;
+  COLS.forEach((c,i)=>{
+    const k=`${c.year}-${c.month}`;
+    if(!cur||cur.k!==k){cur={k,month:c.month,year:c.year,days:[]};months.push(cur);}
+    cur.days.push({...c,idx:i});
+  });
+  const mn=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  months.forEach(m=>{
+    const mg=document.createElement('div');mg.className='month-group';
+    mg.style.width=(m.days.length*CW)+'px';
+    const ml=document.createElement('div');ml.className='month-label';
+    ml.textContent=`${m.year}년 ${mn[m.month-1]}`;mg.appendChild(ml);
+    const dl=document.createElement('div');dl.className='day-labels';
+    m.days.forEach(c=>{
+      const dc=document.createElement('div');
+      dc.className='day-label'+(c.isWeekend?' weekend':'')+(c.isToday?' today-col':'');
+      dc.textContent=c.day;dl.appendChild(dc);
+    });
+    mg.appendChild(dl);hdr.appendChild(mg);
+  });
+}
+
+// ─── 바디 ───
+function renderBody(){
+  const lp=document.getElementById('labelPanel');
+  const cb=document.getElementById('chartBody');
+  const totalW=COLS.length*CW;
+
+  // 라벨 헤더
+  const lh=document.createElement('div');lh.className='label-header';
+  lh.innerHTML=`<div class="lh-col lh-name" style="padding-left:36px;">작업 항목</div>
+    <div class="lh-col lh-status">상태</div>
+    <div class="lh-col lh-assign">담당자</div>
+    <div class="lh-col lh-exec">시행처</div>`;
+  lp.appendChild(lh);
+
+  const phMap={};PHASES.forEach(p=>{phMap[p.id]=p;});
+  let rowIdx=0;
+
+  PHASES.forEach(ph=>{
+    const tasks=TASKS.filter(t=>t.ph===ph.id);
+    if(!tasks.length)return;
+
+    // Phase 헤더
+    const lr=document.createElement('div');lr.className='label-row phase-hdr';
+    lr.innerHTML=`<div class="row-num"></div><div class="row-bar" style="background:${ph.col}"></div>
+      <div class="row-name phase-title">${ph.label}</div>`;
+    lp.appendChild(lr);
+    const cr=document.createElement('div');cr.className='chart-row phase-hdr';
+    cr.style.width=totalW+'px';
+    COLS.forEach(c=>{
+      const cell=document.createElement('div');
+      cell.className='chart-cell'+(c.isWeekend?' weekend':'')+(c.isToday?' today-col':'')+(c.isMonthEnd?' month-end':'');
+      cr.appendChild(cell);
+    });
+    cb.appendChild(cr);rowIdx++;
+
+    tasks.forEach((task,ti)=>{
+      ROW_MAP[task.id]=rowIdx;
+      // 라벨 행
+      const lr2=document.createElement('div');lr2.className='label-row';
+      const st=task.status||'todo';
+      // 지연 판단: 시작일이 오늘보다 이전인데 시작전 상태 → 지연(overdue)
+      const isOverdue = (st==='todo') && (task.s < TODAY) && !task.ms;
+      const stClass = isOverdue ? 'overdue' : st;
+      const execVal = task.x || '-';
+      const isVendor = execVal !== '-' && execVal !== task.a && execVal !== '경영지원실' && execVal !== 'R&D센터';
+      lr2.innerHTML=`
+        <div class="row-num" style="color:#3a4560;font-weight:600;">${ti+1}</div>
+        <div class="row-bar" style="background:${ph.col}"></div>
+        <div class="row-name" title="${task.name}">${task.ms?'◆ ':''}${task.name}</div>
+        <div class="row-status">
+          <select class="status-sel ${stClass}" data-tid="${task.id}">
+            <option value="todo" ${st==='todo'?'selected':''}>시작전</option>
+            <option value="inprogress" ${st==='inprogress'?'selected':''}>진행중</option>
+            <option value="done" ${st==='done'?'selected':''}>완료</option>
+          </select>
+        </div>
+        <div class="row-assignee" data-tid="${task.id}" title="클릭하여 담당자 수정">${task.a||'-'}</div>
+        <div class="row-exec ${isVendor?'vendor':''}" data-etid="${task.id}" title="클릭하여 시행처 수정">${execVal}</div>`;
+      lp.appendChild(lr2);
+
+      // 차트 행
+      const cr2=document.createElement('div');cr2.className='chart-row';
+      cr2.style.width=totalW+'px';
+      COLS.forEach(c=>{
+        const cell=document.createElement('div');
+        cell.className='chart-cell'+(c.isWeekend?' weekend':'')+(c.isToday?' today-col':'')+(c.isMonthEnd?' month-end':'');
+        cr2.appendChild(cell);
+      });
+      cb.appendChild(cr2);
+
+      // 간트 바
+      if(!task.ms){
+        const bar=document.createElement('div');bar.className='gantt-bar';
+        bar.dataset.tid=task.id;
+        const sc=colOf(task.s),ec=colOf(task.e);
+        const left=sc*CW,width=(ec-sc+1)*CW-2;
+        bar.style.left=left+'px';bar.style.width=width+'px';
+        bar.style.top=(rowIdx*RH+RH/2)+'px';
+        // 지연 항목 → 붉은 바
+        const isOD=(task.status||'todo')==='todo' && task.s<TODAY;
+        bar.style.background=isOD?'linear-gradient(90deg,#dc2626,#ef4444)':ph.bar;
+        if(isOD)bar.style.boxShadow='0 1px 6px rgba(220,38,38,0.35)';
+        if(width>36)bar.textContent=task.name.replace('★','').trim();
+        // 리사이즈 핸들
+        const hl=document.createElement('div');hl.className='resize-handle-l';hl.dataset.tid=task.id;hl.dataset.side='l';
+        const hr2=document.createElement('div');hr2.className='resize-handle-r';hr2.dataset.tid=task.id;hr2.dataset.side='r';
+        bar.appendChild(hl);bar.appendChild(hr2);
+        cb.appendChild(bar);
+      } else {
+        const ms=document.createElement('div');ms.className='gantt-bar milestone-bar';
+        ms.dataset.tid=task.id;
+        ms.style.left=(colOf(task.s)*CW+CW/2-7)+'px';
+        ms.style.top=(rowIdx*RH+RH/2)+'px';
+        ms.style.background='#c07010';
+        cb.appendChild(ms);
+      }
+      rowIdx++;
+    });
+  });
+}
+
+// ─── SVG 화살표 ───
+function renderArrows(){
+  const svg=document.getElementById('depSvg');
+  svg.querySelectorAll('path').forEach(p=>p.remove());
+  const totalW=COLS.length*CW;
+  const totalH=Object.keys(ROW_MAP).length*RH+PHASES.length*RH+100;
+  svg.setAttribute('width',totalW);svg.setAttribute('height',totalH);
+
+  if(!svg.querySelector('defs')){
+    const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
+    const mk=document.createElementNS('http://www.w3.org/2000/svg','marker');
+    mk.setAttribute('id','arr');mk.setAttribute('markerWidth','7');mk.setAttribute('markerHeight','7');
+    mk.setAttribute('refX','6');mk.setAttribute('refY','3.5');mk.setAttribute('orient','auto');
+    const pl=document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    pl.setAttribute('points','0 0, 7 3.5, 0 7');pl.setAttribute('fill','rgba(60,80,130,0.4)');
+    mk.appendChild(pl);defs.appendChild(mk);svg.appendChild(defs);
+  }
+
+  const byId={};TASKS.forEach(t=>{byId[t.id]=t;});
+  TASKS.forEach(task=>{
+    (task.deps||[]).forEach(depId=>{
+      const dep=byId[depId];if(!dep)return;
+      const fr=ROW_MAP[dep.id],tr=ROW_MAP[task.id];
+      if(fr===undefined||tr===undefined)return;
+      const x1=(colOf(dep.e)+1)*CW,y1=fr*RH+RH/2;
+      const x2=colOf(task.s)*CW,  y2=tr*RH+RH/2;
+      const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+      const mx=(x1+x2)/2;
+      path.setAttribute('d',`M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`);
+      path.setAttribute('stroke','rgba(60,80,130,0.35)');path.setAttribute('stroke-width','1.5');
+      path.setAttribute('fill','none');path.setAttribute('marker-end','url(#arr)');
+      svg.appendChild(path);
+    });
+  });
+}
+
+// ─── 오늘선 ───
+function setTodayLine(){
+  const tl=document.getElementById('todayLine');
+  if(!tl)return;
+  tl.style.left=(colOf(TODAY)*CW+CW/2)+'px';
+  tl.style.height=(Object.keys(ROW_MAP).length+PHASES.length)*RH+'px';
+}
+
+// ─── 연결된 후행 태스크 자동 이동 ───
+function propagateDeps(changedId, delta){
+  const byId={};TASKS.forEach(t=>{byId[t.id]=t;});
+  const visited=new Set();
+  function propagate(id){
+    if(visited.has(id))return;visited.add(id);
+    TASKS.forEach(t=>{
+      if((t.deps||[]).includes(id)&&!t.ms){
+        const dur=dayDiff(t.s,t.e);
+        t.s=new Date(t.s);t.s.setDate(t.s.getDate()+delta);
+        t.e=new Date(t.s);t.e.setDate(t.e.getDate()+dur);
+        propagate(t.id);
+      }
+    });
+  }
+  propagate(changedId);
+}
+
+// ─── 인터랙티브 연결 ───
+function patchInteractive(){
+  const cb=document.getElementById('chartBody');
+  const tooltip=document.getElementById('tooltip');
+
+  // 간트 바 드래그
+  cb.addEventListener('mousedown',function(e){
+    const bar=e.target.closest('.gantt-bar');
+    const handle=e.target.closest('.resize-handle-l,.resize-handle-r');
+    if(!bar&&!handle)return;
+    e.preventDefault();e.stopPropagation();
+    tooltip.style.display='none';
+
+    const tid=handle?handle.dataset.tid:bar.dataset.tid;
+    const task=TASKS.find(t=>t.id===tid);
+    if(!task||task.ms)return;
+
+    const origS=new Date(task.s),origE=new Date(task.e);
+    const startX=e.clientX;
+    const side=handle?handle.dataset.side:null;
+    const mode=side?`resize-${side}`:'move';
+    const dateTip=document.getElementById('dragDateTip');
+
+    bar.classList.add('dragging');
+    document.body.style.cursor=mode==='move'?'grabbing':'ew-resize';
+    document.body.style.userSelect='none';
+    dateTip.style.display='block';
+
+    function updateDateTip(ev, s, e2){
+      const tipText = mode==='resize-r'
+        ? `완료: ${fmtFull(e2)}`
+        : mode==='resize-l'
+        ? `시작: ${fmtFull(s)}`
+        : `${fmtFull(s)} ~ ${fmtFull(e2)}`;
+      dateTip.textContent=tipText;
+      dateTip.style.left=(ev.clientX+14)+'px';
+      dateTip.style.top=(ev.clientY-28)+'px';
+    }
+
+    function onMove(ev){
+      const dx=ev.clientX-startX;
+      const dd=Math.round(dx/CW);
+      const el=cb.querySelector(`.gantt-bar[data-tid="${tid}"]`);
+      if(mode==='move'){
+        const dur=dayDiff(origS,origE);
+        task.s=new Date(origS);task.s.setDate(task.s.getDate()+dd);
+        task.e=new Date(task.s);task.e.setDate(task.e.getDate()+dur);
+        if(el) el.style.left=(colOf(task.s)*CW)+'px';
+        updateDateTip(ev,task.s,task.e);
+      } else if(mode==='resize-r'){
+        const ne=new Date(origE);ne.setDate(ne.getDate()+dd);
+        if(ne>task.s){
+          task.e=ne;
+          if(el) el.style.width=((colOf(task.e)-colOf(task.s)+1)*CW-2)+'px';
+        }
+        updateDateTip(ev,task.s,task.e);
+      } else if(mode==='resize-l'){
+        const ns=new Date(origS);ns.setDate(ns.getDate()+dd);
+        if(ns<task.e){
+          task.s=ns;
+          if(el){
+            el.style.left=(colOf(task.s)*CW)+'px';
+            el.style.width=((colOf(task.e)-colOf(task.s)+1)*CW-2)+'px';
+          }
+        }
+        updateDateTip(ev,task.s,task.e);
+      }
+    }
+
+    function onUp(){
+      bar.classList.remove('dragging');
+      document.body.style.cursor='';
+      document.body.style.userSelect='';
+      dateTip.style.display='none';
+      const delta=dayDiff(origE,task.e);
+      if(delta!==0) propagateDeps(tid,delta);
+      document.removeEventListener('mousemove',onMove);
+      document.removeEventListener('mouseup',onUp);
+      render();saveData();
+    }
+    document.addEventListener('mousemove',onMove);
+    document.addEventListener('mouseup',onUp);
+  });
+
+  // 툴팁
+  cb.addEventListener('mouseover',function(e){
+    const bar=e.target.closest('.gantt-bar');
+    if(!bar)return;
+    const tid=bar.dataset.tid;
+    const task=TASKS.find(t=>t.id===tid);
+    if(!task)return;
+    tooltip.innerHTML=`<div class="tt-title">${task.name}</div>
+      <div class="tt-row"><span>시작</span><span class="tt-val">${fmtFull(task.s)}</span></div>
+      <div class="tt-row"><span>완료</span><span class="tt-val">${fmtFull(task.e)}</span></div>
+      <div class="tt-row"><span>담당</span><span class="tt-val">${task.a||'-'}</span></div>
+      ${task.note?`<div class="tt-row"><span>비고</span><span class="tt-val" style="max-width:150px;text-align:right;white-space:normal;">${task.note}</span></div>`:''}`;
+    tooltip.style.display='block';
+  });
+  cb.addEventListener('mousemove',function(e){
+    if(tooltip.style.display==='block'){
+      tooltip.style.left=(e.clientX+14)+'px';tooltip.style.top=(e.clientY-8)+'px';}
+  });
+  cb.addEventListener('mouseout',function(e){
+    if(!e.target.closest('.gantt-bar'))tooltip.style.display='none';
+  });
+
+  // 상태 드롭다운
+  document.getElementById('labelPanel').addEventListener('change',function(e){
+    const sel=e.target.closest('.status-sel');if(!sel)return;
+    const tid=sel.dataset.tid;const task=TASKS.find(t=>t.id===tid);if(!task)return;
+    task.status=sel.value;
+    // 지연 재판단
+    const isOD=sel.value==='todo' && task.s<TODAY && !task.ms;
+    sel.className='status-sel '+(isOD?'overdue':sel.value);
+    // 간트 바도 갱신
+    const bar=document.querySelector(`.gantt-bar[data-tid="${tid}"]`);
+    if(bar){
+      const ph=PHASES.find(p=>p.id===task.ph);
+      bar.style.background=isOD?'linear-gradient(90deg,#dc2626,#ef4444)':(ph?ph.bar:'#888');
+      bar.style.boxShadow=isOD?'0 1px 6px rgba(220,38,38,0.35)':'0 1px 3px rgba(0,0,0,0.15)';
+    }
+    saveData();
+  });
+
+  // 담당자 클릭
+  document.getElementById('labelPanel').addEventListener('click',function(e){
+    const el=e.target.closest('.row-assignee[data-tid]');
+    const el2=e.target.closest('.row-exec[data-etid]');
+    const target = el || el2;
+    if(!target)return;
+    const tid=el?el.dataset.tid:el2.dataset.etid;
+    const task=TASKS.find(t=>t.id===tid);if(!task)return;
+    const isExec=!!el2;
+    const popup=document.getElementById('assigneePopup');
+    const overlay=document.getElementById('popOverlay');
+    document.getElementById('popTaskName').textContent=(isExec?'[시행처] ':'[담당자] ')+task.name;
+    document.getElementById('popInput').value=isExec?(task.x||''):(task.a||'');
+    const rect=target.getBoundingClientRect();
+    popup.style.left=Math.min(rect.left,window.innerWidth-240)+'px';
+    popup.style.top=(rect.bottom+4)+'px';
+    popup.style.display='block';overlay.style.display='block';
+    document.getElementById('popInput').focus();
+    document.getElementById('popSave').onclick=()=>{
+      const val=document.getElementById('popInput').value.trim();
+      if(isExec) task.x=val; else task.a=val;
+      popup.style.display='none';overlay.style.display='none';
+      render();saveData();
+    };
+    document.getElementById('popCancel').onclick=()=>{popup.style.display='none';overlay.style.display='none';};
+    document.getElementById('popInput').onkeydown=(ev)=>{
+      if(ev.key==='Enter')document.getElementById('popSave').click();
+      if(ev.key==='Escape')document.getElementById('popCancel').click();
+    };
+  });
+  document.getElementById('popOverlay').onclick=()=>{
+    document.getElementById('assigneePopup').style.display='none';
+    document.getElementById('popOverlay').style.display='none';
+  };
+}
+
+// ─── 마우스 휠 동기화 ───
+function syncScroll(){
+  const lp=document.getElementById('labelPanel');
+  const cp=document.getElementById('chartPanel');
+
+  // 차트 스크롤 시 → 라벨 항상 동기화 (라벨은 overflow:hidden이라 scrollTop만 JS로 제어)
+  cp.addEventListener('scroll',()=>{
+    lp.scrollTop=cp.scrollTop;
+  });
+
+  // 라벨 위에서 마우스 휠 → 차트로 전달
+  lp.addEventListener('wheel',(e)=>{
+    e.preventDefault();
+    cp.scrollTop += e.deltaY;
+    cp.scrollLeft += e.deltaX;
+  },{passive:false});
+}
+
+// ─── 버튼 이벤트 ───
+document.getElementById('btnSave').onclick=()=>saveData();
+document.getElementById('btnReset').onclick=()=>{
+  if(confirm('저장된 편집 내용을 초기화할까요?\n원래 일정으로 되돌아갑니다.')){
+    localStorage.removeItem('insys_g2');location.reload();}
+};
+
+// ─── 초기화 ───
+render();
+syncScroll();
+
+// 오늘 위치로 스크롤
+const chartPanel=document.getElementById('chartPanel');
+chartPanel.scrollLeft=Math.max(0,colOf(TODAY)*CW-200);
+</script>
+</body>
+</html>
