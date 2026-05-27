@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>인시스 전주공장 이전 일정표 v3.3</title>
+<title>인시스 전주공장 이전 일정표 v4.0</title>
 <!-- Firebase SDK -->
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -249,7 +249,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 <!-- 툴바 -->
 <div class="toolbar">
   <div class="tb-group">
-    <span class="tb-title">인시스 전주공장 이전 마스터 일정표 <span style="font-size:12px;font-weight:500;color:#93c5fd;margin-left:6px;" id="verBadge">v3.3</span></span>
+    <span class="tb-title">인시스 전주공장 이전 마스터 일정표 <span style="font-size:12px;font-weight:500;color:#93c5fd;margin-left:6px;" id="verBadge">v4.0</span></span>
   </div>
   <div class="tb-group">
     <span id="fbStatus" style="font-size:11px;font-weight:600;color:#94a3b8;">⚪ Firebase 연결 중...</span>
@@ -331,16 +331,16 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 <div class="drag-date-tip" id="dragDateTip"></div>
 
 <script>
-const TODAY = new Date(); TODAY.setHours(0,0,0,0);
+var TODAY = new Date(); TODAY.setHours(0,0,0,0);
 // START: 태스크 중 가장 이른 날짜 기준 (또는 오늘 - 30일)
-const START = new Date(2026,4,12); // 프로젝트 시작 고정
+var START = new Date(2026,4,12);
 // END: 오늘 기준으로 항상 충분히 표시 (최소 2026-08-31 또는 오늘+60일 중 더 늦은 날짜)
-const _minEnd = new Date(2026,7,31);
-const _autoEnd = new Date(TODAY); _autoEnd.setDate(_autoEnd.getDate()+60);
-const END = _autoEnd > _minEnd ? _autoEnd : _minEnd;
-const CW    = 26;
-const RH    = 26;
-const VERSION = 'v3.3';
+var _minEnd = new Date(2026,7,31);
+var _autoEnd = new Date(TODAY); _autoEnd.setDate(_autoEnd.getDate()+60);
+var END = _autoEnd > _minEnd ? _autoEnd : _minEnd;
+var CW = 26;
+var RH = 26;
+var VERSION = 'v4.0';
 
 function hexToRgba(hex,a){
   const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
@@ -354,7 +354,7 @@ function dateFromCol(c){const r=new Date(START);r.setDate(r.getDate()+c);return 
 function fmt(dt){return dt.toLocaleDateString('ko-KR',{month:'2-digit',day:'2-digit'}).replace(/ /g,'');}
 function fmtFull(dt){return dt.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'});}
 
-const PHASES=[
+var PHASES=[
   {id:'p0',label:'PHASE 0  |  계약·준비',        bar:'var(--p0b)',col:'var(--p0c)'},
   {id:'p1',label:'PHASE 1  |  업체선정·협의',    bar:'var(--p1b)',col:'var(--p1c)'},
   {id:'p2',label:'PHASE 2  |  철거·도색',         bar:'var(--p2b)',col:'var(--p2c)'},
@@ -363,7 +363,7 @@ const PHASES=[
   {id:'p5',label:'PHASE 5  |  행정·등록',         bar:'var(--p5b)',col:'var(--p5c)'},
 ];
 
-const TASKS=[
+var TASKS=[
   // PHASE 0
   {id:'m_잔금',ph:'p0',name:'잔금 납부 ★',       s:d(2026,5,14),e:d(2026,5,14),a:'경영지원실',x:'경영지원실',ms:true,status:'todo',note:'5/14(목) 잔금 납부'},
   {id:'t01',   ph:'p0',name:'도색 최종 네고 견적',s:d(2026,5,14),e:d(2026,5,20),a:'김양섭이사',x:'인원케미텍',status:'inprogress',note:'㈜인원케미텍 최영옥 010-3177-7018'},
@@ -445,11 +445,22 @@ function getTaskData(){
 }
 function applyTaskData(arr){
   if(!arr) return;
-  const list = Array.isArray(arr) ? arr : Object.values(arr);
-  list.forEach(item=>{
-    const t=TASKS.find(x=>x.id===item.id);
-    if(t){ t.s=new Date(item.s); t.e=new Date(item.e);
-           t.a=item.a; t.x=item.x||t.x; t.status=item.status||'todo'; }
+  var list = Array.isArray(arr) ? arr : Object.values(arr);
+  list.forEach(function(item){
+    var t=TASKS.find(function(x){return x.id===item.id;});
+    if(t){
+      t.s=new Date(item.s);
+      t.e=new Date(item.e);
+      t.a=item.a;
+      t.x=item.x||t.x;
+      t.status=item.status||'todo';
+      // Firebase는 배열을 객체({0:'val',1:'val'})로 변환 → 다시 배열로 복원
+      if(item.deps!=null){
+        t.deps=Array.isArray(item.deps)?item.deps:Object.values(item.deps);
+      } else {
+        t.deps=t.deps||[];
+      }
+    }
   });
 }
 function saveData(){
@@ -464,7 +475,7 @@ function saveData(){
   }
 }
 function loadData(){
-  // localStorage로 즉시 복원 (Firebase 로드 전 빈 화면 방지)
+  // localStorage 임시 복원 (Firebase 로드 전 빈 화면 방지)
   try{
     const raw=localStorage.getItem('insys_g2');
     if(raw) applyTaskData(JSON.parse(raw));
@@ -476,24 +487,25 @@ function showToast(msg, dur=2200){
   clearTimeout(t._t); t._t=setTimeout(()=>{ t.style.opacity='0'; }, dur);
 }
 
-// Firebase 최초 1회 로드
-let _isSaving = false;
+// Firebase 연결 후 데이터 갱신
 function connectFirebase(){
   if(!window._fbLoad) return;
-  const fbSt = document.getElementById('fbStatus');
+  var fbSt=document.getElementById('fbStatus');
   if(fbSt) fbSt.innerHTML='🟡 연결 중...';
-  window._fbLoad((data)=>{
+  window._fbLoad(function(data){
     if(fbSt) fbSt.innerHTML='🟢 Firebase 연결됨';
-    if(!data){ return; }
-    applyTaskData(data);
-    render();
-    showToast('☁️ 최신 데이터 로드 완료', 1500);
+    if(data){
+      applyTaskData(data);
+      localStorage.setItem('insys_g2', JSON.stringify(
+        TASKS.map(function(t){return {id:t.id,s:t.s.getTime(),e:t.e.getTime(),a:t.a,x:t.x||'',status:t.status||'todo',deps:t.deps||[]};})
+      ));
+      render();
+      showToast('☁️ Firebase 데이터 로드 완료', 1500);
+    } else {
+      showToast('📋 기본 데이터 사용 중', 1500);
+    }
   });
 }
-
-loadData(); // localStorage 즉시 적용
-if(window._fbReady){ connectFirebase(); }
-else { document.addEventListener('firebase-ready', connectFirebase); }
 
 // ─── 날짜 컬럼 빌드 ───
 function buildCols(){
@@ -507,16 +519,16 @@ function buildCols(){
   }
   return cols;
 }
-const COLS=buildCols();
+var COLS=buildCols();
 
 // ─── 전역 행 맵 ───
-let ROW_MAP={};   // taskId → rowIndex
-let TASK_NUM={};  // taskId → 전체 고유번호 (1부터)
-let NUM_TO_ID={};  // 번호 → taskId
+var ROW_MAP={};
+var TASK_NUM={};
+var NUM_TO_ID={};
 
 function buildTaskNums(){
   TASK_NUM={};NUM_TO_ID={};
-  let n=0;
+  var n=0;
   PHASES.forEach(ph=>{
     TASKS.filter(t=>t.ph===ph.id).forEach(t=>{
       n++;
@@ -690,7 +702,7 @@ function setTodayLine(){ return; // 별도 처리
   const tl2=document.getElementById('todayLine2');
   const tl=document.getElementById('todayLine');
   if(!tl)return;
-  const LW=480;
+  var LW=480;
   tl.style.cssText=`position:absolute;left:${LW+colOf(TODAY)*CW+CW/2}px;top:0;
     width:2px;background:var(--accent);opacity:0.6;pointer-events:none;z-index:25;
     height:${(Object.keys(ROW_MAP).length+PHASES.length+2)*RH}px;`;
@@ -853,28 +865,29 @@ function patchInteractive(){
     if(!e.target.closest('.gantt-bar'))tooltip.style.display='none';
   });
 
-  // 상태 드롭다운
-  document.getElementById('ganttTable').addEventListener('change',function(e){
-    const sel=e.target.closest('.status-sel');if(!sel)return;
-    const tid=sel.dataset.tid;const task=TASKS.find(t=>t.id===tid);if(!task)return;
-    task.status=sel.value;
-    // 지연 재판단
-    const isOD=sel.value==='todo' && task.s<TODAY && !task.ms;
-    sel.className='status-sel '+(isOD?'overdue':sel.value);
-    // 간트 바도 갱신
-    const bar=document.querySelector(`.gantt-bar[data-tid="${tid}"]`);
-    if(bar){
-      const ph=PHASES.find(p=>p.id===task.ph);
-      bar.style.background=isOD?'linear-gradient(90deg,#dc2626,#ef4444)':(ph?ph.bar:'#888');
-      bar.style.boxShadow=isOD?'0 1px 6px rgba(220,38,38,0.35)':'0 1px 3px rgba(0,0,0,0.15)';
-    }
-    saveData();
-  });
+  // 상태 드롭다운 (이미 등록 안됐을 때만)
+  if(!document.getElementById('ganttTable')._evtBound){
+    document.getElementById('ganttTable')._evtBound=true;
 
-  // 담당자 클릭
-  document.getElementById('ganttTable').addEventListener('click',function(e){
-    const el=e.target.closest('.row-assignee[data-tid]');
-    const el2=e.target.closest('.row-exec[data-etid]');
+    document.getElementById('ganttTable').addEventListener('change',function(e){
+      const sel=e.target.closest('.status-sel');if(!sel)return;
+      const tid=sel.dataset.tid;const task=TASKS.find(t=>t.id===tid);if(!task)return;
+      task.status=sel.value;
+      const isOD=sel.value==='todo' && task.s<TODAY && !task.ms;
+      sel.className='status-sel '+(isOD?'overdue':sel.value);
+      const bar=document.querySelector(`.gantt-bar[data-tid="${tid}"]`);
+      if(bar){
+        const ph=PHASES.find(p=>p.id===task.ph);
+        bar.style.background=isOD?'linear-gradient(90deg,#dc2626,#ef4444)':(ph?ph.bar:'#888');
+        bar.style.boxShadow=isOD?'0 1px 6px rgba(220,38,38,0.35)':'0 1px 3px rgba(0,0,0,0.15)';
+      }
+      saveData();
+    });
+
+    // 담당자 클릭
+    document.getElementById('ganttTable').addEventListener('click',function(e){
+      const el=e.target.closest('.row-assignee[data-tid]');
+      const el2=e.target.closest('.row-exec[data-etid]');
     const target = el || el2;
     if(!target)return;
     const tid=el?el.dataset.tid:el2.dataset.etid;
@@ -901,6 +914,59 @@ function patchInteractive(){
       if(ev.key==='Escape')document.getElementById('popCancel').click();
     };
   });
+    // 선행작업 클릭 편집
+    document.getElementById('ganttTable').addEventListener('click',function(e){
+      const el=e.target.closest('.row-pred[data-ptid]');
+      if(!el)return;
+      e.stopPropagation();
+      const tid=el.dataset.ptid;
+      const task=TASKS.find(t=>t.id===tid);if(!task)return;
+      const popup=document.getElementById('assigneePopup');
+      const overlay=document.getElementById('popOverlay');
+      const curPred=(task.deps||[]).map(d=>TASK_NUM[d]).filter(Boolean).join(',');
+      document.getElementById('popTaskName').textContent=`[${TASK_NUM[task.id]}번] ${task.name} — 선행작업 번호`;
+      document.getElementById('popInput').value=curPred;
+      document.getElementById('popInput').placeholder='예: 3,5  (없으면 빈칸)';
+      const rect=el.getBoundingClientRect();
+      popup.style.left=Math.min(rect.left,window.innerWidth-240)+'px';
+      popup.style.top=(rect.bottom+4)+'px';
+      popup.style.display='block';
+      overlay.style.display='block';
+      document.getElementById('popInput').focus();
+      document.getElementById('popSave').onclick=()=>{
+        const val=document.getElementById('popInput').value.trim();
+        task.deps=val===''?[]:val.split(',').map(n=>NUM_TO_ID[parseInt(n.trim())]).filter(Boolean);
+        // 선행 완료일 다음날로 시작일 자동 이동
+        if(task.deps.length>0 && !task.ms){
+          var maxEnd=new Date(0);
+          task.deps.forEach(function(depId){
+            var dep=TASKS.find(function(t){return t.id===depId;});
+            if(dep && dep.e>maxEnd) maxEnd=dep.e;
+          });
+          if(maxEnd>new Date(0)){
+            var dur=dayDiff(task.s,task.e);
+            var ns=new Date(maxEnd);
+            ns.setDate(ns.getDate()+1);
+            // 주말 건너뜀
+            while(ns.getDay()===0||ns.getDay()===6) ns.setDate(ns.getDate()+1);
+            task.s=new Date(ns);
+            task.e=new Date(ns);
+            task.e.setDate(task.e.getDate()+dur);
+          }
+        }
+        popup.style.display='none';overlay.style.display='none';
+        render();saveData();
+      };
+      document.getElementById('popCancel').onclick=()=>{
+        popup.style.display='none';overlay.style.display='none';};
+      document.getElementById('popInput').onkeydown=(ev)=>{
+        if(ev.key==='Enter')document.getElementById('popSave').click();
+        if(ev.key==='Escape')document.getElementById('popCancel').click();
+      };
+    });
+
+  } // end _evtBound
+
   const _ov=document.getElementById('popOverlay');
   if(_ov) _ov.onclick=()=>{
     document.getElementById('assigneePopup').style.display='none';
@@ -914,22 +980,33 @@ function syncScroll(){
 }
 
 // ─── 버튼 이벤트 ───
-const _btnSave = document.getElementById('btnSave');
-const _btnReset = document.getElementById('btnReset');
+var _btnSave = document.getElementById('btnSave');
+var _btnReset = document.getElementById('btnReset');
 if(_btnSave) _btnSave.onclick=()=>saveData();
 if(_btnReset) _btnReset.onclick=()=>{
-  if(confirm('저장된 편집 내용을 초기화할까요?\n원래 일정으로 되돌아갑니다.')){
-    localStorage.removeItem('insys_g2');location.reload();}
+  if(confirm('Firebase 및 로컬 저장 데이터를 초기화할까요?\n파일 기본값으로 되돌아갑니다.')){
+    localStorage.removeItem('insys_g2');
+    // Firebase도 삭제
+    if(window._fbSave){
+      window._fbSave(null).then(()=>{ location.reload(); });
+    } else {
+      location.reload();
+    }
+  }
 };
 
-// ─── 초기화 ───
+// ─── 초기화 순서 완전 정리 ───
+// 1단계: localStorage로 즉시 복원 후 렌더
+loadData();
 render();
 syncScroll();
-
-// 오늘 위치로 스크롤
-const gw=document.getElementById('ganttWrapper');
-const LW=480;
+var gw=document.getElementById('ganttWrapper');
+var LW=480;
 gw.scrollLeft=Math.max(0,LW+colOf(TODAY)*CW-300);
+
+// 2단계: Firebase 준비되면 데이터 갱신 후 재렌더
+if(window._fbReady){ connectFirebase(); }
+else { document.addEventListener('firebase-ready', connectFirebase); }
 </script>
 </body>
 </html>
