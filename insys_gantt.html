@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>인시스 전주공장 이전 일정표 v4.2</title>
+<title>인시스 전주공장 이전 일정표 v4.7</title>
 <!-- Firebase SDK -->
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -93,10 +93,18 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 
 /* ── 메인 ── */
 .gantt-outer{display:flex;flex-direction:column;overflow:hidden;}
+
+/* ── 행 추가 버튼 ── */
+.add-row-btn{display:inline-flex;align-items:center;gap:3px;
+  font-size:10px;font-weight:600;color:var(--accent);background:rgba(29,97,200,0.08);
+  border:1px dashed var(--accent);border-radius:4px;padding:2px 8px;
+  cursor:pointer;margin-left:8px;white-space:nowrap;}
+.add-row-btn:hover{background:rgba(29,97,200,0.15);}
+
 /* ── 간트 전체 래퍼 ── */
 .gantt-wrapper{
   height:calc(100vh - 140px);
-  overflow:auto;          /* 단 하나의 스크롤 컨테이너 */
+  overflow:auto;
   position:relative;
 }
 .gantt-wrapper::-webkit-scrollbar{height:8px;width:8px;}
@@ -249,7 +257,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 <!-- 툴바 -->
 <div class="toolbar">
   <div class="tb-group">
-    <span class="tb-title">인시스 전주공장 이전 마스터 일정표 <span style="font-size:12px;font-weight:500;color:#93c5fd;margin-left:6px;" id="verBadge">v4.2</span></span>
+    <span class="tb-title">인시스 전주공장 이전 마스터 일정표 <span style="font-size:12px;font-weight:500;color:#93c5fd;margin-left:6px;" id="verBadge">v4.7</span></span>
   </div>
   <div class="tb-group">
     <span id="fbStatus" style="font-size:11px;font-weight:600;color:#94a3b8;">⚪ Firebase 연결 중...</span>
@@ -293,15 +301,13 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 
 <!-- 간트 레이아웃: 단일 스크롤 컨테이너 -->
 <div class="gantt-wrapper" id="ganttWrapper">
-  <table id="ganttTable" style="border-collapse:collapse;table-layout:fixed;">
+  <table id="ganttTable" style="border-collapse:collapse;table-layout:fixed;position:relative;">
     <thead id="ganttThead">
       <tr>
-        <!-- 라벨 헤더 고정 -->
         <th id="labelHeader" style="position:sticky;left:0;top:0;z-index:60;
           width:var(--label-w);min-width:var(--label-w);padding:0;
           background:#e8edf7;border-right:2px solid var(--border);
           border-bottom:2px solid var(--border);vertical-align:bottom;"></th>
-        <!-- 차트 헤더 -->
         <th style="position:sticky;top:0;z-index:40;padding:0;
           background:#e8edf7;border-bottom:2px solid var(--border);vertical-align:top;">
           <div class="chart-header" id="chartHeader"></div>
@@ -309,11 +315,10 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
       </tr>
     </thead>
     <tbody id="ganttTbody">
-      <!-- JS로 채움 -->
     </tbody>
   </table>
-  <svg class="dep-svg" id="depSvg" style="position:absolute;top:0;left:0;pointer-events:none;z-index:25;overflow:visible;"></svg>
-  <div class="today-line" id="todayLine"></div>
+  <svg class="dep-svg" id="depSvg" style="position:absolute;top:0;left:0;pointer-events:none;z-index:25;overflow:visible;display:none;"></svg>
+  <div class="today-line" id="todayLine" style="position:absolute;top:0;pointer-events:none;z-index:35;"></div>
   
 </div>
 
@@ -341,7 +346,7 @@ var _autoEnd = new Date(TODAY); _autoEnd.setDate(_autoEnd.getDate()+60);
 var END = _autoEnd > _minEnd ? _autoEnd : _minEnd;
 var CW = 26;
 var RH = 26;
-var VERSION = 'v4.2';
+var VERSION = 'v4.7';
 
 function hexToRgba(hex,a){
   const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
@@ -372,7 +377,6 @@ var TASKS=[
   {id:'t03',   ph:'p0',name:'가스탱크 매각 진행', s:d(2026,5,14),e:d(2026,6,15),a:'손홍필소장',x:'가스업체',status:'todo',note:'기존 공장 가스탱크 매각',deps:['m_잔금']},
   // PHASE 1
   {id:'t10',   ph:'p1',name:'도색업체 외벽 일정 확정', s:d(2026,5,21),e:d(2026,5,28),a:'김양섭이사',x:'시행처',status:'todo',note:'6/29 착수 가능 여부 확인',deps:['t01']},
-  {id:'t11',   ph:'p1',name:'트랜치 시공업체 선정',    s:d(2026,5,14),e:d(2026,5,31),a:'손홍필소장',x:'시행처',status:'inprogress',note:'세척기 주변 배수로 — 에폭시 전 선시공 필수'},
   {id:'t12',   ph:'p1',name:'전기보일러 업체 선정',    s:d(2026,5,14),e:d(2026,5,31),a:'손홍필소장',x:'시행처',status:'inprogress',note:'신규 전기보일러 설치'},
   {id:'t13',   ph:'p1',name:'폐수탱크 업체 선정',      s:d(2026,5,14),e:d(2026,5,31),a:'손홍필소장',x:'시행처',status:'inprogress',note:'컴프레셔실(6000×6000) 내 신규 제작'},
   {id:'t14',   ph:'p1',name:'집진기·덕트 업체 협의',   s:d(2026,5,14),e:d(2026,5,31),a:'손홍필소장',x:'시행처',status:'inprogress',note:'집진기 이전 + 세척기↔집진기 덕트 신규 시공'},
@@ -392,11 +396,10 @@ var TASKS=[
   {id:'t30',   ph:'p2',name:'A동 내부 패널 구조물 철거',s:d(2026,6,25),e:d(2026,6,27),a:'엘티씨',x:'엘티씨',status:'todo',note:'검사실·측정실 패널 철거 2~3일',deps:['m_명도']},
   {id:'t31',   ph:'p2',name:'B동 화장실·사무소 철거',   s:d(2026,6,25),e:d(2026,7,5), a:'최준영대리',x:'시공업체',status:'todo',note:'장마·폭염 전 선행 권장',deps:['m_명도']},
   {id:'t32',   ph:'p2',name:'외벽 도색 착수 (A·B동)',   s:d(2026,6,29),e:d(2026,7,14),a:'김양섭이사',x:'인원케미텍',status:'todo',note:'이천공장 동일 색상 / 단계별',deps:['t30']},
-  {id:'t33',   ph:'p2',name:'트랜치 시공',               s:d(2026,6,28),e:d(2026,7,3), a:'손홍필소장',x:'시공업체',status:'todo',note:'에폭시 전 반드시 완료',deps:['t30','t11']},
-  {id:'t34',   ph:'p2',name:'트랜치 양생 (3~4일)',       s:d(2026,7,4), e:d(2026,7,7), a:'손홍필소장',x:'시공업체',status:'todo',note:'시멘트 양생',deps:['t33']},
-  {id:'t35',   ph:'p2',name:'A동 에폭시 (트랜치 반대)',  s:d(2026,7,1), e:d(2026,7,6), a:'김양섭이사',x:'인원케미텍',status:'todo',note:'트랜치 반대쪽 먼저 시공',deps:['t30']},
-  {id:'t36',   ph:'p2',name:'A동 에폭시 (트랜치 구역)', s:d(2026,7,8), e:d(2026,7,10),a:'김양섭이사',x:'인원케미텍',status:'todo',note:'양생 완료 후 마무리',deps:['t34','t35']},
+  {id:'t35',   ph:'p2',name:'A동 에폭시 바닥 도색',      s:d(2026,7,1), e:d(2026,7,8), a:'김양섭이사',x:'인원케미텍',status:'todo',note:'A동 전체 에폭시 도색',deps:['t30']},
   {id:'m_도색', ph:'p2',name:'A동 바닥 도색 완료 ★',   s:d(2026,7,10),e:d(2026,7,10),a:'-',x:'-',ms:true,status:'todo',note:'설비 반입 가능 시점',deps:['t36']},
+  {id:'t_trench1',ph:'p2',name:'C동 창고동 증축 트랜치 시공', s:d(2026,7,11),e:d(2026,7,16),a:'손홍필소장',x:'예은건설',status:'todo',note:'A동 바닥 도색 완료 후 시공 — C동 증축 관련 배수로',deps:['m_도색']},
+  {id:'t_trench2',ph:'p2',name:'C동 창고동 증축 트랜치 양생', s:d(2026,7,17),e:d(2026,7,20),a:'손홍필소장',x:'예은건설',status:'todo',note:'시멘트 양생 3~4일',deps:['t_trench1']},
   {id:'t37',   ph:'p2',name:'물 배관 시공',              s:d(2026,6,28),e:d(2026,7,5), a:'손홍필소장',x:'시공업체',status:'todo',note:'뒤쪽 중간 인입 / 세척기·보일러·필터',deps:['t30']},
   // PHASE 3
   {id:'t40',   ph:'p3',name:'렉 해체·이전·재설치',       s:d(2026,7,10),e:d(2026,7,13),a:'최준영대리',x:'시공업체',status:'todo',note:'부족분 추가',deps:['m_도색']},
@@ -450,6 +453,22 @@ function getTaskData(){
 function applyTaskData(arr){
   if(!arr) return;
   var list = Array.isArray(arr) ? arr : Object.values(arr);
+  // 신규 추가 태스크 복원 (custom_ ID)
+  list.forEach(function(item){
+    if(item.id && item.id.indexOf('custom_')===0){
+      var exists=TASKS.find(function(t){return t.id===item.id;});
+      if(!exists && item.ph && item.name){
+        TASKS.push({
+          id:item.id, ph:item.ph, name:item.name,
+          s:new Date(item.s), e:new Date(item.e),
+          a:item.a||'-', x:item.x||'-',
+          status:item.status||'todo',
+          deps:Array.isArray(item.deps)?item.deps:Object.values(item.deps||{}),
+          ms:false, note:item.note||''
+        });
+      }
+    }
+  });
   list.forEach(function(item){
     var t=TASKS.find(function(x){return x.id===item.id;});
     if(t){
@@ -458,6 +477,7 @@ function applyTaskData(arr){
       t.a=item.a;
       t.x=item.x||t.x;
       t.status=item.status||'todo';
+      if(item.name) t.name=item.name;
       // Firebase는 배열을 객체({0:'val',1:'val'})로 변환 → 다시 배열로 복원
       if(item.deps!=null){
         t.deps=Array.isArray(item.deps)?item.deps:Object.values(item.deps);
@@ -542,6 +562,55 @@ function buildTaskNums(){
   });
 }
 
+
+// ─── Phase에 새 태스크 추가 ───
+function addTaskToPhase(phaseId){
+  var ph = PHASES.find(function(p){return p.id===phaseId;});
+  if(!ph) return;
+
+  // 해당 Phase의 마지막 태스크 날짜 기준으로 기본값
+  var phaseTasks = TASKS.filter(function(t){return t.ph===phaseId;});
+  var defaultS = new Date(TODAY);
+  var defaultE = new Date(TODAY);
+  defaultE.setDate(defaultE.getDate()+3);
+  if(phaseTasks.length>0){
+    var lastTask = phaseTasks[phaseTasks.length-1];
+    defaultS = new Date(lastTask.s);
+    defaultE = new Date(lastTask.e);
+  }
+
+  // 고유 ID 생성
+  var newId = 'custom_' + Date.now();
+
+  var newTask = {
+    id: newId,
+    ph: phaseId,
+    name: '새 항목',
+    s: defaultS,
+    e: defaultE,
+    a: '-',
+    x: '-',
+    status: 'todo',
+    deps: [],
+    ms: false,
+    note: ''
+  };
+
+  // TASKS 배열에서 해당 Phase 마지막 위치에 삽입
+  var lastIdx = -1;
+  TASKS.forEach(function(t, i){ if(t.ph===phaseId) lastIdx=i; });
+  if(lastIdx>=0){
+    TASKS.splice(lastIdx+1, 0, newTask);
+  } else {
+    TASKS.push(newTask);
+  }
+
+  buildTaskNums();
+  render();
+  saveData();
+  showToast('✅ 새 항목이 추가됐어요. 항목명을 클릭해서 수정하세요.', 3000);
+}
+
 // ─── 전체 렌더 ───
 function render(){
   buildTaskNums();
@@ -616,6 +685,7 @@ function renderBody(){
       <div class="row-num"></div>
       <div class="row-bar" style="background:${ph.col}"></div>
       <div class="row-name phase-title" style="color:${ph.col}">${ph.label}</div>
+      <span class="add-row-btn" data-phase="${ph.id}" title="이 Phase에 항목 추가">＋ 추가</span>
     </div>`;
     tr.appendChild(tdL);
     // 차트 셀
@@ -705,14 +775,16 @@ function renderArrows(){ /* 연결선 비활성 */ }
 function setTodayLine(){
   var tl=document.getElementById('todayLine');
   if(!tl) return;
-  var LW2=530;
-  var totalH=(Object.keys(ROW_MAP).length+PHASES.length+3)*RH;
-  tl.style.cssText='position:absolute;left:'+(LW2+colOf(TODAY)*CW+CW/2)+'px;top:0;'+
-    'width:2px;background:var(--accent);opacity:0.7;pointer-events:none;z-index:25;'+
+  var LW=530;
+  var tbl=document.getElementById('ganttTable');
+  var totalH=tbl ? tbl.offsetHeight+100 : (Object.keys(ROW_MAP).length+PHASES.length+3)*RH;
+  var xPos=LW+colOf(TODAY)*CW+CW/2;
+  tl.style.cssText='position:absolute;left:'+xPos+'px;top:0;'+
+    'width:2px;background:var(--accent);opacity:0.8;pointer-events:none;z-index:35;'+
     'height:'+totalH+'px;';
   tl.innerHTML='<span style="position:absolute;top:0;left:50%;transform:translateX(-50%);'+
     'background:var(--accent);color:#fff;font-size:9px;font-weight:700;'+
-    'padding:1px 4px;border-radius:0 0 3px 3px;white-space:nowrap;">TODAY</span>';
+    'padding:1px 5px;border-radius:0 0 4px 4px;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,0.2);">TODAY</span>';
 }
 
 function refreshArrows(){
@@ -873,6 +945,43 @@ function patchInteractive(){
 
   // 상태 드롭다운 (이미 등록 안됐을 때만)
   if(!document.getElementById('ganttTable')._evtBound){
+
+    // Phase 추가 버튼 클릭
+    document.getElementById('ganttTable').addEventListener('click',function(e){
+      var btn=e.target.closest('.add-row-btn[data-phase]');
+      if(!btn)return;
+      addTaskToPhase(btn.dataset.phase);
+    });
+
+    // 항목명 클릭 편집
+    document.getElementById('ganttTable').addEventListener('click',function(e){
+      var el=e.target.closest('.row-name[data-nid]');
+      if(!el)return;
+      var tid=el.dataset.nid;
+      var task=TASKS.find(function(t){return t.id===tid;});if(!task)return;
+      var popup=document.getElementById('assigneePopup');
+      var overlay=document.getElementById('popOverlay');
+      document.getElementById('popTaskName').textContent='[항목명 수정] '+TASK_NUM[task.id]+'번';
+      document.getElementById('popInput').value=task.name;
+      document.getElementById('popInput').placeholder='항목명 입력';
+      var rect=el.getBoundingClientRect();
+      popup.style.left=Math.min(rect.left,window.innerWidth-240)+'px';
+      popup.style.top=(rect.bottom+4)+'px';
+      popup.style.display='block';overlay.style.display='block';
+      document.getElementById('popInput').focus();
+      document.getElementById('popSave').onclick=function(){
+        task.name=document.getElementById('popInput').value.trim()||task.name;
+        popup.style.display='none';overlay.style.display='none';
+        render();saveData();
+      };
+      document.getElementById('popCancel').onclick=function(){
+        popup.style.display='none';overlay.style.display='none';};
+      document.getElementById('popInput').onkeydown=function(ev){
+        if(ev.key==='Enter')document.getElementById('popSave').click();
+        if(ev.key==='Escape')document.getElementById('popCancel').click();
+      };
+    });
+
     document.getElementById('ganttTable')._evtBound=true;
 
     document.getElementById('ganttTable').addEventListener('change',function(e){
