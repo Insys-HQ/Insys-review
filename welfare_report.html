@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>인시스그룹 복리후생제도 개선 설문 분석 보고서 v1.0</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --primary: #1a3c6e;
+    --primary-light: #2a5298;
+    --accent: #e8f0fe;
+    --accent2: #fff3e0;
+    --accent3: #e8f5e9;
+    --accent4: #fce4ec;
+    --accent5: #f3e5f5;
+    --danger: #c62828;
+    --warning: #e65100;
+    --success: #2e7d32;
+    --text: #1a2332;
+    --text-sub: #3a4a5c;
+    --text-muted: #6b7a8d;
+    --border: #dce4ef;
+    --bg: #f4f7fb;
+    --card: #ffffff;
+    --shadow: 0 2px 12px rgba(26,60,110,0.10);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  /* === 커버 === */
+  .cover {
+    background: linear-gradient(135deg, #1a3c6e 0%, #2a5298 60%, #1565c0 100%);
+    color: #fff;
+    padding: 60px 60px 50px;
+    position: relative;
+    overflow: hidden;
+  }
+  .cover::before {
+    content: '';
+    position: absolute;
+    right: -80px; top: -80px;
+    width: 400px; height: 400px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.05);
+  }
+  .cover::after {
+    content: '';
+    position: absolute;
+    right: 80px; bottom: -60px;
+    width: 260px; height: 260px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.04);
+  }
+  .cover-badge {
+    display: inline-block;
+    background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.35);
+    border-radius: 20px;
+    padding: 5px 16px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    margin-bottom: 22px;
+  }
+  .cover h1 {
+    font-size: 28px;
+    font-weight: 900;
+    line-height: 1.3;
+    margin-bottom: 10px;
+    position: relative; z-index:1;
+  }
+  .cover-sub {
+    font-size: 14px;
+    opacity: 0.85;
+    margin-bottom: 32px;
+    position: relative; z-index:1;
+  }
+  .cover-meta {
+    display: flex;
+    gap: 30px;
+    flex-wrap: wrap;
+    position: relative; z-index:1;
+  }
+  .cover-meta-item { font-size: 12px; opacity: 0.82; }
+  .cover-meta-item span { font-weight: 700; font-size: 13px; opacity:1; }
+
+  /* === 요약 KPI === */
+  .kpi-bar {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0;
+    background: var(--primary);
+  }
+  .kpi-item {
+    padding: 18px 20px;
+    text-align: center;
+    border-right: 1px solid rgba(255,255,255,0.12);
+    color: #fff;
+  }
+  .kpi-item:last-child { border-right: none; }
+  .kpi-num {
+    font-size: 24px;
+    font-weight: 900;
+    display: block;
+    color: #a8d4ff;
+  }
+  .kpi-label { font-size: 11px; opacity: 0.82; margin-top: 2px; }
+
+  /* === 본문 === */
+  .container { max-width: 1100px; margin: 0 auto; padding: 32px 28px; }
+
+  .section-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--primary);
+    border-left: 4px solid var(--primary);
+    padding-left: 12px;
+    margin-bottom: 18px;
+    margin-top: 40px;
+  }
+  .section-title:first-child { margin-top: 0; }
+
+  /* === 카드 === */
+  .card {
+    background: var(--card);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    padding: 22px 24px;
+    margin-bottom: 18px;
+  }
+  .card-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--primary-light);
+    flex-shrink: 0;
+  }
+
+  /* === 그리드 === */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+
+  /* === 차트 컨테이너 === */
+  .chart-wrap { position: relative; }
+  .chart-wrap canvas { max-height: 280px; }
+  .chart-wrap-sm canvas { max-height: 200px; }
+  .chart-wrap-lg canvas { max-height: 340px; }
+
+  /* === 표 === */
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th {
+    background: #eef2fa;
+    color: var(--primary);
+    font-weight: 700;
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 2px solid var(--border);
+  }
+  td {
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: middle;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) td { background: #f8fafd; }
+
+  /* === 배지 === */
+  .badge {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .badge-red { background: #fce4ec; color: #c62828; }
+  .badge-orange { background: #fff3e0; color: #e65100; }
+  .badge-blue { background: #e3f2fd; color: #1565c0; }
+  .badge-green { background: #e8f5e9; color: #2e7d32; }
+  .badge-gray { background: #eceff1; color: #546e7a; }
+
+  /* === 진행바 === */
+  .prog-row { margin-bottom: 8px; }
+  .prog-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    margin-bottom: 3px;
+    color: var(--text-sub);
+  }
+  .prog-label strong { color: var(--primary); font-weight: 700; }
+  .prog-bg {
+    background: #e8edf5;
+    border-radius: 4px;
+    height: 10px;
+    overflow: hidden;
+  }
+  .prog-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.6s ease;
+  }
+
+  /* === 의견 카드 === */
+  .opinion-card {
+    background: #f8fafd;
+    border-left: 3px solid var(--primary-light);
+    border-radius: 0 8px 8px 0;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    font-size: 12px;
+    color: var(--text-sub);
+    line-height: 1.7;
+  }
+  .opinion-card strong {
+    display: block;
+    font-size: 11px;
+    color: var(--primary);
+    margin-bottom: 3px;
+    font-weight: 700;
+  }
+
+  /* === 가이드 박스 === */
+  .guide-item {
+    background: var(--card);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+    margin-bottom: 14px;
+    box-shadow: var(--shadow);
+  }
+  .guide-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 18px;
+  }
+  .guide-icon {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .guide-title { font-size: 14px; font-weight: 700; color: var(--text); }
+  .guide-subtitle { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+  .guide-body { padding: 0 18px 14px; }
+  .guide-body ul { padding-left: 16px; }
+  .guide-body li { font-size: 12px; color: var(--text-sub); line-height: 1.8; }
+  .guide-body li::marker { color: var(--primary-light); }
+
+  .priority-urgent { border-top: 3px solid #c62828; }
+  .priority-urgent .guide-header { background: #fff5f5; }
+  .priority-urgent .guide-icon { background: #fce4ec; }
+  .priority-high { border-top: 3px solid #e65100; }
+  .priority-high .guide-header { background: #fffbf5; }
+  .priority-high .guide-icon { background: #fff3e0; }
+  .priority-mid { border-top: 3px solid #1565c0; }
+  .priority-mid .guide-header { background: #f5f8ff; }
+  .priority-mid .guide-icon { background: #e3f2fd; }
+
+  /* === 요약 테이블 === */
+  .summary-table th { background: #dce6f5; }
+
+  /* === 버전/푸터 === */
+  .footer {
+    background: var(--primary);
+    color: rgba(255,255,255,0.75);
+    text-align: center;
+    padding: 18px;
+    font-size: 11px;
+    margin-top: 40px;
+  }
+
+  .highlight-box {
+    background: linear-gradient(135deg, #e8f0fe, #f0f4ff);
+    border: 1px solid #b8cfff;
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 14px;
+  }
+  .highlight-box p { font-size: 12px; color: var(--primary); line-height: 1.8; }
+
+  @media print {
+    .cover { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .kpi-bar { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== 커버 ===== -->
+<div class="cover">
+  <div class="cover-badge">인시스 그룹 AI혁신 R&D센터 · 경영지원실</div>
+  <h1>복리후생제도 개선 및<br>의견수렴 설문 분석 보고서</h1>
+  <p class="cover-sub">2026년 5월 설문 결과 종합 분석 및 경영진 가이드라인</p>
+  <div class="cover-meta">
+    <div class="cover-meta-item">작성일 <span>2026. 05. 28</span></div>
+    <div class="cover-meta-item">설문기간 <span>2026. 05. 19 ~ 05. 23</span></div>
+    <div class="cover-meta-item">응답인원 <span>22명</span></div>
+    <div class="cover-meta-item">버전 <span>v1.0</span></div>
+    <div class="cover-meta-item">작성자 <span>ys.kim@in-sys.co.kr</span></div>
+  </div>
+</div>
+
+<!-- ===== KPI 바 ===== -->
+<div class="kpi-bar">
+  <div class="kpi-item">
+    <span class="kpi-num">22명</span>
+    <div class="kpi-label">총 응답자</div>
+  </div>
+  <div class="kpi-item">
+    <span class="kpi-num">3개소</span>
+    <div class="kpi-label">참여 사업장</div>
+  </div>
+  <div class="kpi-item">
+    <span class="kpi-num">64%</span>
+    <div class="kpi-label">복지제도 인지 평균</div>
+  </div>
+  <div class="kpi-item">
+    <span class="kpi-num">3.3점</span>
+    <div class="kpi-label">전체 만족도 평균 (5점)</div>
+  </div>
+  <div class="kpi-item">
+    <span class="kpi-num">6건</span>
+    <div class="kpi-label">자유 의견 제출</div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ===== 1. 응답자 현황 ===== -->
+  <div class="section-title">1. 응답자 현황</div>
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>근무 사업장</div>
+      <div class="chart-wrap chart-wrap-sm">
+        <canvas id="chartSite"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>직급 분포</div>
+      <div class="chart-wrap chart-wrap-sm">
+        <canvas id="chartRank"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>근속연수</div>
+      <div class="chart-wrap chart-wrap-sm">
+        <canvas id="chartTenure"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 2. 복지제도 인지 및 수혜 현황 ===== -->
+  <div class="section-title">2. 복지제도 인지 및 수혜 현황 (Q4)</div>
+  <div class="card">
+    <div class="card-title"><span class="dot"></span>항목별 수혜 여부 (응답자 22명 기준)</div>
+    <div class="chart-wrap chart-wrap-lg">
+      <canvas id="chartQ4"></canvas>
+    </div>
+  </div>
+  <div class="card" style="margin-top:0;">
+    <table>
+      <thead>
+        <tr>
+          <th>복지 항목</th>
+          <th>잘 알고 수혜함</th>
+          <th>알고 있으나 미수혜</th>
+          <th>내용을 잘 모름</th>
+          <th>수혜율</th>
+          <th>평가</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>식대 지원</td><td>19명 (86%)</td><td>3명</td><td>-</td><td><strong>86%</strong></td><td><span class="badge badge-green">우수</span></td></tr>
+        <tr><td>연차 유급휴가</td><td>17명 (77%)</td><td>5명</td><td>-</td><td><strong>77%</strong></td><td><span class="badge badge-green">양호</span></td></tr>
+        <tr><td>명절 선물/기념일 지원</td><td>18명 (82%)</td><td>1명</td><td>3명</td><td><strong>82%</strong></td><td><span class="badge badge-green">양호</span></td></tr>
+        <tr><td>7층 휴게공간(본사)</td><td>16명 (73%)</td><td>4명</td><td>2명</td><td><strong>73%</strong></td><td><span class="badge badge-blue">보통</span></td></tr>
+        <tr><td>4대보험/퇴직연금</td><td>16명 (73%)</td><td>5명</td><td>1명</td><td><strong>73%</strong></td><td><span class="badge badge-blue">보통</span></td></tr>
+        <tr><td>법정 건강검진</td><td>7명 (32%)</td><td>12명</td><td>3명</td><td><strong>32%</strong></td><td><span class="badge badge-orange">미흡</span></td></tr>
+        <tr><td>경조사비 지원</td><td>8명 (36%)</td><td>9명</td><td>5명</td><td><strong>36%</strong></td><td><span class="badge badge-orange">미흡</span></td></tr>
+        <tr><td>출산/육아 관련 휴가</td><td>2명 (9%)</td><td>16명</td><td>4명</td><td><strong>9%</strong></td><td><span class="badge badge-red">취약</span></td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:11px;color:var(--text-muted);margin-top:8px;">※ 건강검진·경조사비·출산휴가는 수혜율이 낮거나 인지도 자체가 낮아 홍보 강화가 필요합니다.</p>
+  </div>
+
+  <!-- ===== 3. 현행 제도 만족도 ===== -->
+  <div class="section-title">3. 현행 제도 항목별 만족도 (Q5)</div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>만족도 분포 (스택 바)</div>
+      <div class="chart-wrap chart-wrap-lg">
+        <canvas id="chartQ5stack"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>평균 만족도 점수 (5점 환산)</div>
+      <div class="chart-wrap chart-wrap-lg">
+        <canvas id="chartQ5avg"></canvas>
+      </div>
+      <div style="margin-top:14px;">
+        <div class="prog-row">
+          <div class="prog-label"><span>명절 선물 구성</span><strong>3.9점</strong></div>
+          <div class="prog-bg"><div class="prog-fill" style="width:78%;background:#2a5298;"></div></div>
+        </div>
+        <div class="prog-row">
+          <div class="prog-label"><span>식대 수준</span><strong>3.8점</strong></div>
+          <div class="prog-bg"><div class="prog-fill" style="width:76%;background:#1565c0;"></div></div>
+        </div>
+        <div class="prog-row">
+          <div class="prog-label"><span>경조사비 금액</span><strong>3.3점</strong></div>
+          <div class="prog-bg"><div class="prog-fill" style="width:66%;background:#1976d2;"></div></div>
+        </div>
+        <div class="prog-row">
+          <div class="prog-label"><span>신청 절차 편의성</span><strong>3.1점</strong></div>
+          <div class="prog-bg"><div class="prog-fill" style="width:62%;background:#42a5f5;"></div></div>
+        </div>
+        <div class="prog-row">
+          <div class="prog-label"><span>건강검진 수준</span><strong>2.9점</strong></div>
+          <div class="prog-bg"><div class="prog-fill" style="width:58%;background:#ef9a9a;"></div></div>
+        </div>
+      </div>
+      <p style="font-size:11px;color:var(--text-muted);margin-top:10px;">건강검진(2.9점)이 유일한 3점 미만 항목으로 집중 개선 필요</p>
+    </div>
+  </div>
+
+  <!-- ===== 4. 시급 개선 항목 ===== -->
+  <div class="section-title">4. 시급 개선 필요 항목 (Q6 · 복수선택)</div>
+  <div class="card">
+    <div class="card-title"><span class="dot"></span>개선 요구 빈도 (복수 선택, N=22)</div>
+    <div class="chart-wrap chart-wrap-lg">
+      <canvas id="chartQ6"></canvas>
+    </div>
+  </div>
+
+  <!-- ===== 5. 신규 도입 희망 제도 ===== -->
+  <div class="section-title">5. 신규 도입 희망 제도 (Q7 · 최대 3개 선택)</div>
+  <div class="card">
+    <div class="card-title"><span class="dot"></span>도입 희망 빈도 (N=22)</div>
+    <div class="chart-wrap chart-wrap-lg">
+      <canvas id="chartQ7"></canvas>
+    </div>
+  </div>
+
+  <!-- ===== 6. 선호 복지 형태 ===== -->
+  <div class="section-title">6. 선호하는 복지 지원 형태 (Q8)</div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>복지 형태 선호도</div>
+      <div class="chart-wrap">
+        <canvas id="chartQ8"></canvas>
+      </div>
+    </div>
+    <div class="card" style="display:flex;flex-direction:column;justify-content:center;">
+      <div class="highlight-box">
+        <p>📌 <strong>응답자의 82%(18명)</strong>가 현금성 지원(급여 포함 또는 현금 수당)을 가장 선호합니다.<br>
+        복지 포인트 제도나 수당 형태로 전환 시 체감 만족도 상승 가능성이 높습니다.</p>
+      </div>
+      <table>
+        <thead><tr><th>형태</th><th>응답수</th><th>비율</th></tr></thead>
+        <tbody>
+          <tr><td>현금성 지원 (급여/수당)</td><td>18명</td><td><span class="badge badge-blue">82%</span></td></tr>
+          <tr><td>시간적 지원 (추가 휴가/유연근무)</td><td>3명</td><td><span class="badge badge-gray">14%</span></td></tr>
+          <tr><td>현물 지원 (기프티콘/상품권)</td><td>1명</td><td><span class="badge badge-gray">4%</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== 7. 자유 의견 ===== -->
+  <div class="section-title">7. 직원 자유 의견 (Q9-1 · 6건)</div>
+  <div class="card">
+    <div class="card-title"><span class="dot"></span>주요 건의사항 (원문 요약)</div>
+    <div class="opinion-card">
+      <strong>🏆 장기근속 포상 및 호봉제 도입 (차장급 추정)</strong>
+      5년·10년·15년 근속 시 휴가+포상금 지급 제안 (5년→50만원+2박3일 휴가, 10년→100만원+3박4일, 15년→200만원+5박6일). 현재 급여가 근속과 연동되지 않아 장기근속자 이탈이 증가 중. 호봉제 검토 요청.
+    </div>
+    <div class="opinion-card">
+      <strong>📅 하계휴가 유급 전환 및 연차 별도 운영 (복수 건의)</strong>
+      하계휴가 2일 유급 변경 제안. 현재 여름휴가가 연차 차감으로 운영되는 것에 불만. 명절상여·하계휴가비 별도 지급 요청.
+    </div>
+    <div class="opinion-card">
+      <strong>👥 인원 증원 요청 (전략기획실 추정)</strong>
+      담당 업체 수 증가 대비 인원 부족으로 업무 전문성 저하. 사업장 확대에 맞는 인원 배정 요청.
+    </div>
+    <div class="opinion-card">
+      <strong>🚗 외근 과태료 지원 제안</strong>
+      외근 중 발생한 주정차 과태료에 대해 연 3회 또는 10만원 한도 내 지원 요청.
+    </div>
+    <div class="opinion-card">
+      <strong>🖥️ 업무 환경 개선 (모니터 추가)</strong>
+      엑셀 작업 중 눈 피로 및 불편함으로 듀얼 모니터 지원 요청.
+    </div>
+    <div class="opinion-card">
+      <strong>☕ 손님 응대 음료 비치 제안</strong>
+      직원이 커피를 직접 내주는 방식 대신, 비타500 등 간편 음료를 손님용 테이블에 구비 제안.
+    </div>
+  </div>
+
+  <!-- ===== 8. 종합 분석 및 경영진 가이드 ===== -->
+  <div class="section-title">8. 종합 분석 및 경영진 행동 가이드라인</div>
+
+  <div class="highlight-box" style="margin-bottom:18px;">
+    <p>
+      📊 <strong>핵심 인사이트:</strong> 직원들은 현재 복지제도의 존재는 알지만 <strong>체감 만족도가 낮고(3.3/5점)</strong>, 
+      제도 인지·수혜율도 평균 64%에 불과합니다. 개선 우선순위는 ① 홍보·접근성, ② 건강검진, ③ 장기근속 보상, ④ 현금성 복지 신설 순입니다.
+    </p>
+  </div>
+
+  <div class="guide-item priority-urgent">
+    <div class="guide-header">
+      <div class="guide-icon">🔴</div>
+      <div>
+        <div class="guide-title">【즉시 시행】 복지제도 홍보 및 접근성 개선</div>
+        <div class="guide-subtitle">Q6 개선 1위 (14명 · 64%) · 비용 최소 / 효과 최대</div>
+      </div>
+    </div>
+    <div class="guide-body">
+      <ul>
+        <li>전 직원 대상 <strong>복지 안내 책자(또는 PDF) 배포</strong> — 항목별 신청 방법·대상·금액 명확히 기재</li>
+        <li>사내 그룹웨어·카카오톡 채널 등에 <strong>복지 캘린더 고정</strong> (경조사비 신청 기한, 건강검진 일정 등)</li>
+        <li>복지 신청을 <strong>모바일·ERP 전산화</strong>로 간소화 (Q6 4위, 6명 요구)</li>
+        <li>외주라인·지방 사업장 직원들도 동일한 정보 접근 가능하도록 공지 채널 확대</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="guide-item priority-urgent">
+    <div class="guide-header">
+      <div class="guide-icon">🔴</div>
+      <div>
+        <div class="guide-title">【즉시 시행】 건강검진 제도 전면 개선</div>
+        <div class="guide-subtitle">Q6 개선 2위(11명) · 만족도 최하위(2.9점) · Q7 4위 신규도입 희망(10명)</div>
+      </div>
+    </div>
+    <div class="guide-body">
+      <ul>
+        <li>수혜율 32%에 불과 → <strong>미수혜자 12명 파악 후 일괄 예약 지원</strong> 시행</li>
+        <li>법정 건강검진(기본 항목)에 <strong>정밀검진 항목 추가</strong> (위내시경, CT 등) — 대상 직급·근속연수 기준 설정</li>
+        <li>외주라인·지방 근무자는 <strong>인근 지정병원 리스트 제공</strong> 및 비용 직접 지원 방식 검토</li>
+        <li>연간 1회 정기 건강검진 <strong>의무화</strong> 및 일정 공지 체계 마련</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="guide-item priority-high">
+    <div class="guide-header">
+      <div class="guide-icon">🟠</div>
+      <div>
+        <div class="guide-title">【단기 시행 · 3개월 내】 리프레시 휴가 및 생일 휴가 도입</div>
+        <div class="guide-subtitle">Q7 신규 도입 1위: 리프레시 휴가(13명) · 3위: 생일 축하(8명)</div>
+      </div>
+    </div>
+    <div class="guide-body">
+      <ul>
+        <li><strong>리프레시 휴가:</strong> 3년 이상 근속 시 1~3일 유급 휴가 + 소정의 휴가비(30~50만원) 지급</li>
+        <li><strong>생일 축하:</strong> 생일 당일(또는 해당 주) 반일 조기 퇴근 또는 소정의 기프티콘 지급</li>
+        <li>하계휴가 <strong>별도 유급 운영</strong> 검토 (현재 연차 차감 방식 불만 다수)</li>
+        <li>장기근속자 이탈 방지를 위한 <strong>근속 포상 체계 수립</strong> (5년·10년·15년 단계별)</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="guide-item priority-high">
+    <div class="guide-header">
+      <div class="guide-icon">🟠</div>
+      <div>
+        <div class="guide-title">【단기 시행 · 3개월 내】 복지 포인트 제도 도입</div>
+        <div class="guide-subtitle">Q7 신규 도입 2위(11명) · Q8 현금성 지원 선호 82%와 연계</div>
+      </div>
+    </div>
+    <div class="guide-body">
+      <ul>
+        <li>연간 일정 금액(예: 50~100만원) 내 <strong>자율 사용 복지 포인트</strong> 지급</li>
+        <li>사용처: 도서·학원·여행·건강·생활용품 등 — 기존 현물 지원보다 체감 만족도 높음</li>
+        <li>식대 지원 금액 <strong>현실화</strong> 검토 (Q6 3위, 5명 요구 / 현재 지급 수준 점검)</li>
+        <li>경조사비 <strong>지급 범위 확대 및 금액 상향</strong> 검토 (Q6 3위, 6명 요구)</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="guide-item priority-mid">
+    <div class="guide-header">
+      <div class="guide-icon">🔵</div>
+      <div>
+        <div class="guide-title">【중기 시행 · 6개월 내】 자기계발 지원 및 유연근무제 검토</div>
+        <div class="guide-subtitle">Q7 자기계발 지원 4위 공동(10명) · 유연근무제 5위(5명)</div>
+      </div>
+    </div>
+    <div class="guide-body">
+      <ul>
+        <li><strong>자기계발비 지원:</strong> 연간 일정액 내 도서·자격증·학원비 지원 (영수증 정산 방식)</li>
+        <li><strong>유연근무제:</strong> 코어 타임(10:00~16:00) 설정 후 출퇴근 시간 1시간 범위 내 자율 조정 파일럿 운영</li>
+        <li><strong>자녀 학자금:</strong> 자녀 학자금 지원 대상 범위 확대 검토 (중고등·대학교 단계별)</li>
+        <li><strong>호봉제 또는 연봉 밴드 체계:</strong> 근속연수 반영 급여 체계 도입 검토 (장기근속 유도)</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===== 9. 우선순위 요약표 ===== -->
+  <div class="section-title">9. 실행 우선순위 요약</div>
+  <div class="card">
+    <table class="summary-table">
+      <thead>
+        <tr>
+          <th>우선순위</th>
+          <th>과제</th>
+          <th>근거</th>
+          <th>예상 비용</th>
+          <th>시행 시기</th>
+          <th>담당</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge badge-red">긴급</span></td>
+          <td>복지 안내 책자 배포 + 전산 신청 시스템 구축</td>
+          <td>Q6 1위 (14명, 64%)</td>
+          <td>低</td>
+          <td>1개월 내</td>
+          <td>경영지원실</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-red">긴급</span></td>
+          <td>건강검진 미수혜자 일괄 지원 + 검진 항목 확대</td>
+          <td>만족도 최하(2.9점) / Q6 2위</td>
+          <td>中</td>
+          <td>2개월 내</td>
+          <td>경영지원실</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-orange">높음</span></td>
+          <td>경조사비 금액 상향 및 지급 범위 확대</td>
+          <td>Q6 3위 (6명)</td>
+          <td>低~中</td>
+          <td>2개월 내</td>
+          <td>경영지원실</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-orange">높음</span></td>
+          <td>리프레시 휴가 제도 신설</td>
+          <td>Q7 1위 (13명, 59%)</td>
+          <td>中</td>
+          <td>3개월 내</td>
+          <td>경영지원실</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-orange">높음</span></td>
+          <td>복지 포인트 제도 도입</td>
+          <td>Q7 2위 (11명) + Q8 현금선호 82%</td>
+          <td>中~高</td>
+          <td>3개월 내</td>
+          <td>경영지원실·전략기획실</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-orange">높음</span></td>
+          <td>하계휴가 유급 전환 검토</td>
+          <td>자유의견 복수 건의</td>
+          <td>低</td>
+          <td>3개월 내</td>
+          <td>경영지원실</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-blue">중간</span></td>
+          <td>자기계발비 지원 제도 신설</td>
+          <td>Q7 공동 4위 (10명)</td>
+          <td>中</td>
+          <td>6개월 내</td>
+          <td>전략기획실</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-blue">중간</span></td>
+          <td>장기근속 포상 체계 수립</td>
+          <td>자유의견 + 이탈 방지</td>
+          <td>中</td>
+          <td>6개월 내</td>
+          <td>경영지원실</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-gray">검토</span></td>
+          <td>유연근무제 파일럿 운영</td>
+          <td>Q7 5위 (5명)</td>
+          <td>低</td>
+          <td>6개월 후</td>
+          <td>전략기획실</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-gray">검토</span></td>
+          <td>호봉제/연봉 밴드 검토</td>
+          <td>자유의견 (장기근속 유도)</td>
+          <td>高</td>
+          <td>연간 계획</td>
+          <td>경영지원실·경영진</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</div><!-- /container -->
+
+<!-- 푸터 -->
+<div class="footer">
+  인시스 그룹 AI혁신 R&D센터 · 경영지원실 | 복리후생제도 개선 설문 분석 보고서 v1.0 | 2026. 05. 28<br>
+  GitHub: https://insys-hq.github.io/Insys-review/welfare_report.html
+</div>
+
+<script>
+// ===== 공통 옵션 =====
+const fontFamily = "'Noto Sans KR', sans-serif";
+Chart.defaults.font.family = fontFamily;
+Chart.defaults.color = '#3a4a5c';
+
+const palette = ['#1a3c6e','#2a5298','#1565c0','#1976d2','#42a5f5','#90caf9','#bbdefb','#e3f2fd'];
+const paletteWarm = ['#c62828','#e65100','#f57c00','#fbc02d','#388e3c','#1565c0','#6a1b9a','#4e342e'];
+
+// ===== Q1 사업장 =====
+new Chart(document.getElementById('chartSite'), {
+  type: 'doughnut',
+  data: {
+    labels: ['창원 본사', '창원 외주라인', '전주 외주라인'],
+    datasets: [{ data: [15, 5, 2], backgroundColor: ['#1a3c6e','#2a5298','#90caf9'], borderWidth: 2 }]
+  },
+  options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } } } }
+});
+
+// ===== Q2 직급 =====
+new Chart(document.getElementById('chartRank'), {
+  type: 'doughnut',
+  data: {
+    labels: ['사원/주임','대리','차장','임원','부장','과장'],
+    datasets: [{ data: [6,6,6,2,1,1], backgroundColor: ['#1a3c6e','#2a5298','#1565c0','#1976d2','#42a5f5','#90caf9'], borderWidth: 2 }]
+  },
+  options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } } } }
+});
+
+// ===== Q3 근속연수 =====
+new Chart(document.getElementById('chartTenure'), {
+  type: 'doughnut',
+  data: {
+    labels: ['1년 미만','1~3년','3~5년','5~10년','10년 이상'],
+    datasets: [{ data: [6,6,4,5,1], backgroundColor: ['#1a3c6e','#2a5298','#1565c0','#1976d2','#90caf9'], borderWidth: 2 }]
+  },
+  options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } } } }
+});
+
+// ===== Q4 수평 스택 바 =====
+new Chart(document.getElementById('chartQ4'), {
+  type: 'bar',
+  data: {
+    labels: ['식대 지원','연차 유급휴가','명절 선물/기념일','4대보험/퇴직연금','7층 휴게공간','경조사비 지원','법정 건강검진','출산/육아 휴가'],
+    datasets: [
+      { label: '잘 알고 수혜함', data: [19,17,18,16,16,8,7,2], backgroundColor: '#1a3c6e' },
+      { label: '알고 있으나 미수혜', data: [3,5,1,5,4,9,12,16], backgroundColor: '#90caf9' },
+      { label: '내용을 잘 모름', data: [0,0,3,1,2,5,3,4], backgroundColor: '#e0e0e0' }
+    ]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    scales: {
+      x: { stacked: true, max: 22, ticks: { font: { size: 11 } } },
+      y: { stacked: true, ticks: { font: { size: 11 } } }
+    },
+    plugins: {
+      legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } }
+    }
+  }
+});
+
+// ===== Q5 스택 =====
+new Chart(document.getElementById('chartQ5stack'), {
+  type: 'bar',
+  data: {
+    labels: ['식대 수준','경조사비 금액','명절 선물 구성','건강검진 수준','신청 절차 편의성'],
+    datasets: [
+      { label: '매우만족', data: [8,4,9,0,1], backgroundColor: '#1a3c6e' },
+      { label: '만족', data: [6,5,4,3,5], backgroundColor: '#2a5298' },
+      { label: '보통', data: [7,11,9,15,14], backgroundColor: '#90caf9' },
+      { label: '불만족', data: [1,1,0,3,1], backgroundColor: '#ef9a9a' },
+      { label: '매우불만족', data: [0,1,0,1,1], backgroundColor: '#c62828' }
+    ]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    scales: {
+      x: { stacked: true, max: 22, ticks: { font: { size: 11 } } },
+      y: { stacked: true, ticks: { font: { size: 11 } } }
+    },
+    plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } } }
+  }
+});
+
+// ===== Q5 평균 레이더 =====
+new Chart(document.getElementById('chartQ5avg'), {
+  type: 'radar',
+  data: {
+    labels: ['식대 수준','경조사비 금액','명절 선물 구성','건강검진 수준','신청 절차 편의성'],
+    datasets: [{
+      label: '평균 만족도',
+      data: [3.8, 3.3, 3.9, 2.9, 3.1],
+      backgroundColor: 'rgba(26,60,110,0.15)',
+      borderColor: '#1a3c6e',
+      pointBackgroundColor: '#1a3c6e',
+      borderWidth: 2
+    }]
+  },
+  options: {
+    scales: { r: { min: 1, max: 5, ticks: { font: { size: 10 } }, pointLabels: { font: { size: 11 } } } },
+    plugins: { legend: { display: false } }
+  }
+});
+
+// ===== Q6 수평 바 =====
+new Chart(document.getElementById('chartQ6'), {
+  type: 'bar',
+  data: {
+    labels: [
+      '복지 제도 공지·홍보 강화',
+      '건강검진 항목 확대·정밀화',
+      '경조사비 지급범위 확대·상향',
+      '복지 신청 절차 간소화',
+      '식대 지원 금액 인상',
+      '명절 선물 다양화·고급화'
+    ],
+    datasets: [{
+      label: '응답수',
+      data: [14, 11, 6, 6, 5, 4],
+      backgroundColor: ['#c62828','#e65100','#1976d2','#1976d2','#42a5f5','#90caf9'],
+      borderRadius: 4
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    scales: {
+      x: { max: 22, ticks: { font: { size: 11 } }, title: { display: true, text: '응답수 (중복 허용)', font: { size: 11 } } },
+      y: { ticks: { font: { size: 11 } } }
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.raw}명 (${Math.round(ctx.raw/22*100)}%)` } }
+    }
+  }
+});
+
+// ===== Q7 수평 바 =====
+new Chart(document.getElementById('chartQ7'), {
+  type: 'bar',
+  data: {
+    labels: [
+      '리프레시 휴가',
+      '복지 포인트 (자율 사용)',
+      '자기계발 지원',
+      '종합건강검진 확대',
+      '생일 축하 휴가',
+      '사내 대출 지원',
+      '자녀 학자금 지원',
+      '유연근무제'
+    ],
+    datasets: [{
+      label: '응답수',
+      data: [13, 11, 10, 10, 8, 7, 6, 5],
+      backgroundColor: ['#1a3c6e','#2a5298','#1565c0','#1565c0','#1976d2','#1976d2','#42a5f5','#90caf9'],
+      borderRadius: 4
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    scales: {
+      x: { max: 22, ticks: { font: { size: 11 } }, title: { display: true, text: '응답수 (최대 3개 선택)', font: { size: 11 } } },
+      y: { ticks: { font: { size: 11 } } }
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.raw}명 (${Math.round(ctx.raw/22*100)}%)` } }
+    }
+  }
+});
+
+// ===== Q8 =====
+new Chart(document.getElementById('chartQ8'), {
+  type: 'doughnut',
+  data: {
+    labels: ['현금성 지원 (급여/수당)', '시간적 지원 (휴가/유연근무)', '현물 지원 (기프티콘/상품권)'],
+    datasets: [{
+      data: [18, 3, 1],
+      backgroundColor: ['#1a3c6e', '#42a5f5', '#b0bec5'],
+      borderWidth: 2
+    }]
+  },
+  options: {
+    plugins: {
+      legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.raw}명 (${Math.round(ctx.raw/22*100)}%)` } }
+    }
+  }
+});
+</script>
+</body>
+</html>
