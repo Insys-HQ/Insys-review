@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
+<title>운영 주체 선택 비교 v1.1</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#1a3c6e;--blue:#1D4ED8;--lblue:#DBEAFE;
+  --teal:#0F766E;--lteal:#E6F4F1;
+  --green:#15803D;--lgreen:#DCFCE7;
+  --red:#B91C1C;--lred:#FEE2E2;
+  --gold:#B45309;--lgold:#FEF3C7;
+  --purp:#5B21B6;--lpurp:#EDE9FE;
+  --org:#C2410C;--lorg:#FFEDD5;
+  --ca:#1D4ED8;--ca-l:#EFF6FF;
+  --cb:#15803D;--cb-l:#F0FDF4;
+  --gray:#F8FAFC;--dgray:#1E293B;--mid:#475569;--line:#E2E8F0;
+}
+html{font-family:'Noto Sans KR',sans-serif;background:#F0F4F8;color:var(--dgray);-webkit-text-size-adjust:100%}
+body{max-width:480px;margin:0 auto;background:#F0F4F8;padding-bottom:72px}
+
+/* 헤더 */
+.top-hdr{background:var(--navy);padding:14px 16px 12px;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(15,45,94,.3)}
+.top-hdr .sub{font-size:10px;color:#93C5FD;font-weight:500;letter-spacing:.8px;margin-bottom:4px}
+.top-hdr h1{font-size:16px;font-weight:900;color:#fff;line-height:1.3}
+.meta{display:flex;gap:6px;margin-top:7px;flex-wrap:wrap}
+.chip{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:2px 9px;font-size:10px;color:#BFDBFE;font-weight:500}
+
+/* 탭 */
+.tabs{display:flex;background:#fff;border-bottom:2px solid var(--line);position:sticky;top:78px;z-index:99;box-shadow:0 2px 8px rgba(0,0,0,.06);overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:1;min-width:64px;padding:10px 4px;text-align:center;font-size:11px;font-weight:600;color:var(--mid);border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap;transition:all .2s}
+.tab.on{color:var(--navy);border-bottom-color:var(--blue)}
+.tab-icon{font-size:15px;display:block;margin-bottom:2px}
+
+/* 패널 */
+.panel{display:none;padding:14px 13px}
+.panel.on{display:block}
+
+/* 섹션 타이틀 */
+.stitle{font-size:12px;font-weight:700;color:var(--mid);letter-spacing:.5px;text-transform:uppercase;margin:18px 0 8px;padding-left:10px;border-left:3px solid var(--blue)}
+
+/* 카드 */
+.card{background:#fff;border-radius:13px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,.07);overflow:hidden}
+.card-hdr{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.card-num{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;text-align:center;line-height:1.2}
+.card-info h3{font-size:13px;font-weight:700;color:var(--dgray)}
+.card-info p{font-size:11px;color:var(--mid);margin-top:2px}
+.card-arr{font-size:18px;color:var(--line);margin-left:auto;flex-shrink:0;transition:transform .25s}
+.card.open .card-arr{transform:rotate(90deg)}
+.card-body{display:none;border-top:1px solid var(--line)}
+.card.open .card-body{display:block}
+
+/* 비교 블록 */
+.cmp-block{padding:11px 14px;border-bottom:1px solid var(--line)}
+.cmp-block:last-child{border-bottom:none}
+.opt-lbl{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;margin-bottom:6px}
+.opt-a{background:var(--ca-l);color:var(--ca)}
+.opt-b{background:var(--cb-l);color:var(--cb)}
+.opt-both{background:var(--gray);color:var(--mid)}
+
+/* 행 리스트 */
+.row-list{list-style:none}
+.row-item{display:flex;gap:9px;align-items:flex-start;padding:5px 0;border-bottom:1px dashed #F1F5F9;font-size:12px;line-height:1.5}
+.row-item:last-child{border-bottom:none}
+.row-dot{width:20px;height:20px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;flex-shrink:0;margin-top:1px}
+
+/* 비교표 */
+.cmp-table{width:100%;border-collapse:collapse;font-size:11px}
+.cmp-table th{background:var(--gray);color:var(--navy);font-weight:700;padding:6px 8px;text-align:center;border:1px solid var(--line);font-size:11px}
+.cmp-table td{padding:5px 8px;border:1px solid var(--line);vertical-align:top;line-height:1.5}
+.cmp-table tr:nth-child(even) td{background:#FAFBFC}
+.cmp-table .cat-row td{background:#EEF2F7;font-weight:700;color:var(--navy);font-size:11px}
+.ta{color:var(--ca);font-weight:700}
+.tb{color:var(--cb);font-weight:700}
+.tw{font-size:11px;font-weight:700;text-align:center}
+
+/* 콜아웃 */
+.callout{border-radius:10px;padding:10px 12px;font-size:11.5px;line-height:1.6;margin:8px 0}
+.callout b{display:block;font-size:12px;font-weight:700;margin-bottom:4px}
+.cl-blue{background:var(--lblue);border-left:4px solid var(--blue)}
+.cl-red{background:var(--lred);border-left:4px solid var(--red)}
+.cl-green{background:var(--lgreen);border-left:4px solid var(--green)}
+.cl-gold{background:var(--lgold);border-left:4px solid var(--gold)}
+.cl-purp{background:var(--lpurp);border-left:4px solid var(--purp)}
+.cl-navy{background:#EFF6FF;border-left:4px solid var(--navy)}
+
+/* 점수 바 */
+.score-bar{background:#fff;border-radius:10px;padding:10px 12px;margin-bottom:8px;box-shadow:0 1px 5px rgba(0,0,0,.06)}
+.score-label{font-size:11px;font-weight:600;color:var(--dgray);margin-bottom:6px}
+.score-row{display:flex;gap:4px;align-items:center;margin-bottom:4px}
+.score-name{font-size:10px;color:var(--mid);width:24px;flex-shrink:0}
+.score-fill{height:16px;border-radius:5px;display:flex;align-items:center;justify-content:flex-end;padding-right:5px;font-size:9px;font-weight:700;color:#fff;min-width:18px;transition:width .3s}
+.score-val{font-size:10px;font-weight:700;margin-left:4px}
+
+/* KPI 카드 */
+.kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.kpi{background:#fff;border-radius:11px;padding:12px 8px;text-align:center;box-shadow:0 2px 7px rgba(0,0,0,.06)}
+.kpi .kv{font-size:18px;font-weight:900;line-height:1}
+.kpi .kl{font-size:9.5px;color:var(--mid);margin-top:3px;line-height:1.4}
+
+/* 단계 카드 */
+.phase{background:#fff;border-radius:12px;margin-bottom:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.07)}
+.phase-hdr{display:flex;align-items:center;gap:10px;padding:12px 14px}
+.phase-num{width:42px;text-align:center;font-size:10px;font-weight:700;line-height:1.4}
+.phase-content{flex:1}
+.phase-content h4{font-size:13px;font-weight:700;color:var(--dgray)}
+.phase-content ul{margin-top:8px;list-style:none}
+.phase-content li{font-size:11.5px;color:var(--mid);padding:3px 0;padding-left:14px;position:relative;line-height:1.5}
+.phase-content li::before{content:"→";position:absolute;left:0;color:var(--blue);font-weight:700}
+
+/* 최종 결론 박스 */
+.conclusion{background:var(--navy);border-radius:14px;padding:16px 16px;margin-top:16px}
+.conclusion h3{font-size:14px;font-weight:700;color:#fff;margin-bottom:12px}
+.conclusion-step{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.1)}
+.conclusion-step:last-child{border-bottom:none}
+.c-step-num{width:56px;font-size:10px;font-weight:700;color:#93C5FD;flex-shrink:0;line-height:1.4}
+.c-step-txt{font-size:11.5px;color:#E2E8F0;line-height:1.5}
+
+.bottom-bar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:#fff;border-top:1px solid var(--line);padding:7px 14px 10px;box-shadow:0 -4px 14px rgba(0,0,0,.07);z-index:100;text-align:center;font-size:9.5px;color:var(--mid)}
+</style>
+</head>
+<body>
+
+<div class="top-hdr">
+  <div class="sub">INSYS GROUP · AI혁신 R&D센터 · 사업 검토 보고서</div>
+  <h1>스팟워크 플랫폼<br>운영 주체 선택 비교</h1>
+  <div class="meta">
+    <span class="chip">v1.1</span>
+    <span class="chip">2026.05.30</span>
+    <span class="chip">내부 검토용</span>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab on" onclick="showTab('overview')"><span class="tab-icon">📊</span>개요</div>
+  <div class="tab" onclick="showTab('compare')"><span class="tab-icon">⚖️</span>비교표</div>
+  <div class="tab" onclick="showTab('detail')"><span class="tab-icon">🔍</span>심층분석</div>
+  <div class="tab" onclick="showTab('hybrid')"><span class="tab-icon">💡</span>절충안</div>
+  <div class="tab" onclick="showTab('result')"><span class="tab-icon">🏆</span>최종</div>
+</div>
+
+<!-- ① 개요 -->
+<div class="panel on" id="panel-overview">
+  <div class="kpi-row" style="margin-top:6px">
+    <div class="kpi"><div class="kv" style="color:var(--navy)">22개</div><div class="kl">비교 항목</div></div>
+    <div class="kpi"><div class="kv" style="color:var(--ca)">옵션A</div><div class="kl">기존 인시스<br>법인 활용</div></div>
+    <div class="kpi"><div class="kv" style="color:var(--cb)">옵션B</div><div class="kl">신규 법인<br>설립</div></div>
+  </div>
+
+  <div class="callout cl-blue">
+    두 선택지의 <b>세무·회계·브랜드·리스크·운영</b> 관점 비교 검토서.<br>
+    최적 경로는 <b>하이브리드 구조 (A로 시작 → B로 전환)</b>로 권장.
+  </div>
+
+  <div class="stitle">두 옵션 핵심 요약</div>
+
+  <div style="display:flex;gap:8px;margin-bottom:12px">
+    <div style="flex:1;background:var(--ca-l);border:2px solid var(--ca);border-radius:12px;padding:14px 12px">
+      <div style="font-size:13px;font-weight:900;color:var(--ca);margin-bottom:6px">옵션 A</div>
+      <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:8px">기존 인시스 법인 활용</div>
+      <ul style="list-style:none;font-size:11px;color:var(--mid);line-height:1.8">
+        <li>✅ 설립비·자본금 없음</li>
+        <li>✅ 즉시 시작 가능</li>
+        <li>✅ 인프라 재활용</li>
+        <li>⚠️ 리스크 분리 안됨</li>
+        <li>⚠️ 법인세율 높음</li>
+      </ul>
+      <div style="margin-top:8px;text-align:center;font-size:18px;font-weight:900;color:var(--ca)">59점 / 90</div>
+    </div>
+    <div style="flex:1;background:var(--cb-l);border:2px solid var(--cb);border-radius:12px;padding:14px 12px">
+      <div style="font-size:13px;font-weight:900;color:var(--cb);margin-bottom:6px">옵션 B</div>
+      <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:8px">신규 법인 설립</div>
+      <ul style="list-style:none;font-size:11px;color:var(--mid);line-height:1.8">
+        <li>✅ 리스크 완전 분리</li>
+        <li>✅ 법인세 9%부터</li>
+        <li>✅ VC 투자·IPO 가능</li>
+        <li>⚠️ 자본금 5,000만원+</li>
+        <li>⚠️ 초기 비용 높음</li>
+      </ul>
+      <div style="margin-top:8px;text-align:center;font-size:18px;font-weight:900;color:var(--cb)">70점 / 90</div>
+    </div>
+  </div>
+
+  <div style="background:#F5F0FF;border:2px solid var(--purp);border-radius:12px;padding:14px 12px;text-align:center">
+    <div style="font-size:12px;font-weight:700;color:var(--purp);margin-bottom:4px">🏆 권장: 하이브리드 구조</div>
+    <div style="font-size:22px;font-weight:900;color:var(--purp)">80점 / 90</div>
+    <div style="font-size:11px;color:var(--mid);margin-top:4px">A로 파일럿 시작 → 6개월 후 B 전환</div>
+  </div>
+</div>
+
+<!-- ② 비교표 -->
+<div class="panel" id="panel-compare">
+  <div class="callout cl-blue" style="margin-top:6px">22개 항목을 5개 영역으로 분류하여 비교합니다.</div>
+
+  <table class="cmp-table" style="margin-top:10px">
+    <thead>
+      <tr>
+        <th style="width:34%">항목</th>
+        <th style="width:28%;color:var(--ca)">옵션 A</th>
+        <th style="width:28%;color:var(--cb)">옵션 B</th>
+        <th style="width:10%">우위</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="cat-row"><td colspan="4">【설립·허가】</td></tr>
+      <tr><td>법인 설립비</td><td class="ta">없음</td><td class="tb">50~150만원</td><td class="tw ta">A</td></tr>
+      <tr><td>설립 기간</td><td class="ta">정관변경 1~2주</td><td class="tb">법인 설립 3~4주</td><td class="tw ta">A</td></tr>
+      <tr><td>자본금</td><td class="ta">이미 충족</td><td class="tb">5,000만원+ 납입</td><td class="tw ta">A</td></tr>
+      <tr><td>직업소개업 등록</td><td>정관 추가 후 구청</td><td>신규 법인으로 구청</td><td class="tw" style="color:var(--mid)">동일</td></tr>
+
+      <tr class="cat-row"><td colspan="4">【세무·회계】</td></tr>
+      <tr><td>법인세율</td><td>기존 합산 → 세율 상승</td><td class="tb">독립 → 9%부터</td><td class="tw tb">B</td></tr>
+      <tr><td>손익 분리</td><td>본업 혼재 / 복잡</td><td class="tb">독립 P&L 명확</td><td class="tw tb">B</td></tr>
+      <tr><td>R&D 세액공제</td><td class="ta">25% 즉시 활용</td><td>신규 등록 6개월+</td><td class="tw ta">A</td></tr>
+      <tr><td>그룹 자금 지원</td><td class="ta">즉시 가능</td><td>이사회 결의 필요</td><td class="tw ta">A</td></tr>
+
+      <tr class="cat-row"><td colspan="4">【브랜드·마케팅】</td></tr>
+      <tr><td>초기 신뢰도</td><td class="ta">900억 그룹 신뢰</td><td>신생 플랫폼 제로</td><td class="tw ta">A</td></tr>
+      <tr><td>브랜드 독립성</td><td>인시스 이미지 종속</td><td class="tb">독립 전략 자유</td><td class="tw tb">B</td></tr>
+      <tr><td>이미지 리스크</td><td>분쟁 시 그룹 타격</td><td class="tb">독립 리스크 분리</td><td class="tw tb">B</td></tr>
+      <tr><td>외부 투자</td><td>VC 투자 어려움</td><td class="tb">VC·정부 투자 가능</td><td class="tw tb">B</td></tr>
+
+      <tr class="cat-row"><td colspan="4">【운영·인사】</td></tr>
+      <tr><td>인력 확보</td><td class="ta">기존 겸직 즉시</td><td>신규 채용 필요</td><td class="tw ta">A</td></tr>
+      <tr><td>의사결정 속도</td><td class="ta">기존 경영진 빠름</td><td>이사회 구성 필요</td><td class="tw ta">A</td></tr>
+      <tr><td>인프라 활용</td><td class="ta">AWS·Firebase 즉시</td><td>별도 계약 수개월</td><td class="tw ta">A</td></tr>
+      <tr><td>책임 범위</td><td>본사 연대 책임</td><td class="tb">독립 법인 한정</td><td class="tw tb">B</td></tr>
+
+      <tr class="cat-row"><td colspan="4">【성장·출구】</td></tr>
+      <tr><td>플랫폼 매각</td><td>사업부 분리 복잡</td><td class="tb">지분 매각 용이</td><td class="tw tb">B</td></tr>
+      <tr><td>IPO 가능성</td><td>사업부 단독 불가</td><td class="tb">독립 법인 상장 가능</td><td class="tw tb">B</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ③ 심층분석 -->
+<div class="panel" id="panel-detail">
+
+  <div class="card open" style="margin-top:6px">
+    <div class="card-hdr" onclick="toggle(this)">
+      <div class="card-num" style="background:var(--gold)">세무</div>
+      <div class="card-info"><h3>법인세율 절세 분석</h3><p>옵션별 세율 차이</p></div>
+      <div class="card-arr">›</div>
+    </div>
+    <div class="card-body">
+      <div class="cmp-block">
+        <table class="cmp-table">
+          <tr><th>과세표준</th><th>세율</th><th style="color:var(--ca)">옵션 A</th><th style="color:var(--cb)">옵션 B</th></tr>
+          <tr><td>2억원 이하</td><td style="text-align:center;font-weight:700">9%</td>
+              <td style="color:var(--red);font-weight:700">적용 불가<br>(기존 초과)</td>
+              <td style="color:var(--green);font-weight:700">초기 적용<br>절세 최대</td></tr>
+          <tr><td>2억~200억</td><td style="text-align:center;font-weight:700">19%</td>
+              <td>플랫폼 수익 이 구간</td><td>성장 후 진입</td></tr>
+        </table>
+        <div class="callout cl-gold" style="margin-top:8px;font-size:11px">
+          💡 신규 법인은 초기 9% 구간 적용 → 동일 수익에 세금 약 2배 차이 가능
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr" onclick="toggle(this)">
+      <div class="card-num" style="background:var(--red)">리스크</div>
+      <div class="card-info"><h3>리스크 분리 분석</h3><p>노무·산재·분쟁 관점</p></div>
+      <div class="card-arr">›</div>
+    </div>
+    <div class="card-body">
+      <div class="cmp-block">
+        <ul class="row-list">
+          <li class="row-item"><div class="row-dot" style="background:var(--red)">!</div><div><b>불법파견 판정 시</b><br>A: 인시스 그룹 전체 피고 / 기존 파견사업 타격<br>B: 신규 법인만 피고 / 본사 완전 차단</div></li>
+          <li class="row-item"><div class="row-dot" style="background:var(--red)">!</div><div><b>근로자 산재 사고</b><br>A: 인시스 대표이사 형사 책임 노출<br>B: 신규 법인 대표 한정 / 본사 보호</div></li>
+          <li class="row-item"><div class="row-dot" style="background:var(--red)">!</div><div><b>개인정보 침해</b><br>A: 인시스 전체 과태료 / 그룹 이미지 하락<br>B: 신규 법인 과태료 한정</div></li>
+          <li class="row-item"><div class="row-dot" style="background:var(--org)">!</div><div><b>기업 미납·채무</b><br>A: 인시스 자산 접근 가능 / 연대보증 위험<br>B: 신규 법인 자산 한도 / 본사 자산 보호</div></li>
+        </ul>
+        <div class="callout cl-red" style="margin-top:8px;font-size:11px">
+          ⚠️ 인시스는 이미 파견·아웃소싱 운영 중 → 리스크 분리 관점에서 신규 법인이 절대적으로 유리
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr" onclick="toggle(this)">
+      <div class="card-num" style="background:var(--teal)">브랜드</div>
+      <div class="card-info"><h3>브랜드 전략 분석</h3><p>플랫폼 포지셔닝</p></div>
+      <div class="card-arr">›</div>
+    </div>
+    <div class="card-body">
+      <div class="cmp-block">
+        <ul class="row-list">
+          <li class="row-item"><div class="row-dot" style="background:var(--ca)">A</div><div><b>초기 신뢰도</b>: 900억 그룹사 신뢰 → B2B 기업·고령 워커 신뢰도 유리</div></li>
+          <li class="row-item"><div class="row-dot" style="background:var(--cb)">B</div><div><b>브랜드 독립성</b>: 독립 플랫폼 브랜드 → VC 투자·전국·해외 확장 용이</div></li>
+          <li class="row-item"><div class="row-dot" style="background:var(--red)">!</div><div><b>이미지 리스크</b>: A는 분쟁 시 그룹 전체 이미지 타격 위험</div></li>
+          <li class="row-item"><div class="row-dot" style="background:var(--cb)">B</div><div><b>전국·해외 확장</b>: 창원 지역 이미지 한계 없음 / 일본·동남아 진출 용이</div></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr" onclick="toggle(this)">
+      <div class="card-num" style="background:var(--blue)">비용</div>
+      <div class="card-info"><h3>초기 비용 비교 (1년 차)</h3><p>실제 추가 소요 비용</p></div>
+      <div class="card-arr">›</div>
+    </div>
+    <div class="card-body">
+      <div class="cmp-block">
+        <table class="cmp-table">
+          <tr><th>항목</th><th style="color:var(--ca)">옵션 A</th><th style="color:var(--cb)">옵션 B</th></tr>
+          <tr><td>법인 설립비</td><td class="ta">없음</td><td class="tb">100~150만원</td></tr>
+          <tr><td>자본금 납입</td><td class="ta">없음</td><td class="tb">5,000만원+</td></tr>
+          <tr><td>사무실</td><td class="ta">HQ 내 무료</td><td class="tb">별도 임차</td></tr>
+          <tr><td>브랜딩</td><td class="ta">100~200만원</td><td class="tb">300~500만원</td></tr>
+          <tr><td>인력 추가</td><td class="ta">겸직 최소 비용</td><td class="tb">2명 채용 6,000~8,000만원</td></tr>
+          <tr><td style="font-weight:700">합계</td>
+              <td style="font-weight:700;color:var(--ca)">200~400만원</td>
+              <td style="font-weight:700;color:var(--cb)">7,000~9,000만원</td></tr>
+        </table>
+        <div class="callout cl-gold" style="margin-top:8px;font-size:11px">
+          ※ 자본금 5,000만원은 비용이 아닌 법인 자산 / 운전자금 활용 가능
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ④ 절충안 -->
+<div class="panel" id="panel-hybrid">
+  <div class="callout cl-purp" style="margin-top:6px">
+    <b>💡 하이브리드 구조 (최우선 추천)</b>
+    A의 빠른 시작·비용 절감 + B의 리스크 분리·세제 혜택을 단계별로 모두 취한다.
+  </div>
+
+  <div class="phase" style="margin-top:12px">
+    <div class="phase-hdr" style="background:var(--ca-l)">
+      <div class="phase-num" style="color:var(--ca)">1단계<br>M+1~6</div>
+      <div class="phase-content">
+        <h4>인시스 법인으로 파일럿 운영</h4>
+        <ul>
+          <li>인시스(주) 정관 추가 + 직업소개업 등록</li>
+          <li>창원 한정 파일럿 (워커 100명·기업 20곳)</li>
+          <li>AWS·Firebase·ERP 기존 인프라 재활용</li>
+          <li>사업 모델 검증 + 법무·노무 리스크 파악</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="phase-hdr" style="background:var(--cb-l)">
+      <div class="phase-num" style="color:var(--cb)">2단계<br>M+7~12</div>
+      <div class="phase-content">
+        <h4>파일럿 검증 후 신규 법인 전환</h4>
+        <ul>
+          <li>파일럿 KPI 달성 확인 (매칭·재이용률)</li>
+          <li>독립 법인 설립 (인시스 51% 주주 참여)</li>
+          <li>플랫폼·기술·데이터 법인 이전</li>
+          <li>인시스 → 전략적 투자자 포지션</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="phase-hdr" style="background:var(--lpurp)">
+      <div class="phase-num" style="color:var(--purp)">3단계<br>M+13~</div>
+      <div class="phase-content">
+        <h4>독립 법인 성장 및 투자 유치</h4>
+        <ul>
+          <li>독립 브랜드로 전국 확장</li>
+          <li>VC·정부 고령자 지원금 확보</li>
+          <li>계열사 7개사 B2B 안정 수익</li>
+          <li>장기: IPO 또는 전략적 매각</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ⑤ 최종 -->
+<div class="panel" id="panel-result">
+
+  <div class="stitle" style="margin-top:6px">항목별 평점 (10점 만점)</div>
+
+  <div class="score-bar">
+    <div class="score-label">초기 비용 효율</div>
+    <div class="score-row"><div class="score-name" style="color:var(--ca)">A</div><div class="score-fill" style="width:100%;background:var(--ca)">10</div></div>
+    <div class="score-row"><div class="score-name" style="color:var(--cb)">B</div><div class="score-fill" style="width:50%;background:var(--cb)">5</div></div>
+    <div class="score-row"><div class="score-name" style="color:var(--purp)">혼합</div><div class="score-fill" style="width:90%;background:var(--purp)">9</div></div>
+  </div>
+  <div class="score-bar">
+    <div class="score-label">세무·절세 효과</div>
+    <div class="score-row"><div class="score-name" style="color:var(--ca)">A</div><div class="score-fill" style="width:50%;background:var(--ca)">5</div></div>
+    <div class="score-row"><div class="score-name" style="color:var(--cb)">B</div><div class="score-fill" style="width:90%;background:var(--cb)">9</div></div>
+    <div class="score-row"><div class="score-name" style="color:var(--purp)">혼합</div><div class="score-fill" style="width:80%;background:var(--purp)">8</div></div>
+  </div>
+  <div class="score-bar">
+    <div class="score-label">리스크 분리</div>
+    <div class="score-row"><div class="score-name" style="color:var(--ca)">A</div><div class="score-fill" style="width:30%;background:var(--ca)">3</div></div>
+    <div class="score-row"><div class="score-name" style="color:var(--cb)">B</div><div class="score-fill" style="width:100%;background:var(--cb)">10</div></div>
+    <div class="score-row"><div class="score-name" style="color:var(--purp)">혼합</div><div class="score-fill" style="width:90%;background:var(--purp)">9</div></div>
+  </div>
+  <div class="score-bar">
+    <div class="score-label">장기 성장성</div>
+    <div class="score-row"><div class="score-name" style="color:var(--ca)">A</div><div class="score-fill" style="width:50%;background:var(--ca)">5</div></div>
+    <div class="score-row"><div class="score-name" style="color:var(--cb)">B</div><div class="score-fill" style="width:90%;background:var(--cb)">9</div></div>
+    <div class="score-row"><div class="score-name" style="color:var(--purp)">혼합</div><div class="score-fill" style="width:100%;background:var(--purp)">10⭐</div></div>
+  </div>
+
+  <div style="display:flex;gap:8px;margin:14px 0">
+    <div style="flex:1;background:var(--ca-l);border:2px solid var(--ca);border-radius:10px;padding:12px;text-align:center">
+      <div style="font-size:11px;font-weight:700;color:var(--ca)">옵션 A</div>
+      <div style="font-size:26px;font-weight:900;color:var(--ca)">59<span style="font-size:13px">/90</span></div>
+    </div>
+    <div style="flex:1;background:var(--cb-l);border:2px solid var(--cb);border-radius:10px;padding:12px;text-align:center">
+      <div style="font-size:11px;font-weight:700;color:var(--cb)">옵션 B</div>
+      <div style="font-size:26px;font-weight:900;color:var(--cb)">70<span style="font-size:13px">/90</span></div>
+    </div>
+    <div style="flex:1;background:var(--lpurp);border:2px solid var(--purp);border-radius:10px;padding:12px;text-align:center">
+      <div style="font-size:11px;font-weight:700;color:var(--purp)">하이브리드⭐</div>
+      <div style="font-size:26px;font-weight:900;color:var(--purp)">80<span style="font-size:13px">/90</span></div>
+    </div>
+  </div>
+
+  <div class="conclusion">
+    <h3>🏆 최종 결론 — 하이브리드 구조</h3>
+    <div class="conclusion-step">
+      <div class="c-step-num">STEP 1<br>지금 당장</div>
+      <div class="c-step-txt">인시스(주) 정관 추가 + 직업소개업 등록 + 창원 파일럿 착수</div>
+    </div>
+    <div class="conclusion-step">
+      <div class="c-step-num">STEP 2<br>6개월 후</div>
+      <div class="c-step-txt">파일럿 KPI 달성 확인 → 신규 법인 설립 (인시스 51% 주주)</div>
+    </div>
+    <div class="conclusion-step">
+      <div class="c-step-num">STEP 3<br>1년 후</div>
+      <div class="c-step-txt">독립 브랜드 정식 오픈 + 외부 투자 유치 + 전국 확장</div>
+    </div>
+    <div style="margin-top:10px;font-size:11px;color:#93C5FD;line-height:1.7">
+      ① 초기 비용 최소화  ② 리스크 분리  ③ 절세  ④ 외부 투자  ⑤ 장기 IPO — 모든 목표 동시 달성
+    </div>
+  </div>
+  <div style="margin-top:12px;background:var(--lred);border-radius:10px;padding:10px 12px;font-size:11px;color:var(--red)">
+    ⚠️ 본 검토서는 참고용이며 법률·세무 자문이 아닙니다. 실제 결정 전 세무사·공인노무사·법무법인 정식 자문 필수.
+  </div>
+</div>
+
+<div class="bottom-bar">
+  인시스 그룹 AI혁신 R&D센터 · 운영 주체 선택 비교 · v1.1 · 2026.05.30
+</div>
+
+<script>
+function showTab(id){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.getElementById('panel-'+id).classList.add('on');
+  event.currentTarget.classList.add('on');
+}
+function toggle(hdr){
+  hdr.closest('.card').classList.toggle('open');
+}
+</script>
+</body>
+</html>
