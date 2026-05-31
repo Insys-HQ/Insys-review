@@ -3,7 +3,7 @@
   신촌공장 재고관리 시스템 (Sinchon Factory WMS)
 ================================================================================
   파일명  : shinchon.html
-  버전    : v3.43
+  버전    : v3.29
   작성일  : 2026-04-28
   수정일  : 2026-04-28
 
@@ -13,35 +13,24 @@
   v3.0       2026-04-28     전면 리모델링 (반응형, 큰 폰트, 심플 UI)
   v3.2       2026-04-28     전체 폰트 맑은 고딕으로 통일
   v3.8       2026-05-06     전주공장 재고관리 탭 추가
-  v3.18      2026-05-08     재고 실사(무게→수량) 화면 추가
+  v3.29       2026-05-08     재고 실사(무게→수량) 화면 추가
+  v3.29      2026-05-20     출고 처리 개선 — 세척유무 선택·소분출고·잔량 재계근 추가
+  v3.29      2026-05-20     소분 출고 처리 완전 구현 — 잔량 재계근·세척반영·이력·라벨 자동연동
+  v3.29      2026-05-20     반품 처리 화면 추가 — 재고복원·저울계근·이력·전표
+  v3.29      2026-05-20     LOT이동표 출력 추가 (레이저프린터·A4·2부·바코드·EP1코드·세척유무)
+  v3.29      2026-05-20     LOT이동표 script 태그 파싱 오류 수정
+  v3.29      2026-05-20     단중 신규 등록 개선 — 샘플 계근·2차측정·자동계산·오차율 예측
+  v3.29      2026-05-20     엑셀 자동생성 다운로드 4종 추가 (SheetJS 기반)
+  v3.29      2026-05-20     레이아웃 근본 원인 수정 — pg-inbound 내 잉여 div 제거, 출하처리 이후 전 페이지 정상화
+  v3.29      2026-05-20     레이아웃 근본 수정 — sc-wrap/jj-wrap CSS flex:1 추가 (전 페이지 겹침 완전 해결)
+  v3.29      2026-05-20     엑셀 업로드 → WMS 자동반영 (입출고집계·납품명세서 2종)
+  v3.29      2026-05-20     Firebase Firestore 연동 — SDK초기화·실시간동기화·CRUD·로그인
                             — 단중 마스터 관리 (품목별 개당무게·포장재무게)
                             — MiGun ST RS-232 저울 자동 연동
                             — 실사 이력 저장 및 장부수량 비교
                             — 허용 오차 초과 시 관리자 확인 단계
                             — 헤더 공장 전환 탭 (신촌↔전주)
                             — 전주공장 독립 레이아웃 (사이드바·페이지 분리)
-  v3.25      2026-05-13     레이아웃 완전 수정 + 라벨 크기 개선
-  v3.42      2026-05-18     Firebase Firestore 연동 (영구 데이터 저장)
-  v3.43      2026-05-19     ZPL 이송 오류 수정 + 위치 조정 기능 복원
-                            — ^MMT, ^MNN, ^PQ1,0,1,Y 추가 (1장 정확 이송)
-                            — 상하/좌우 위치 조정 입력 UI 복원 (Firebase 저장/복원)
-                            — 입고/출고/라벨이력/재고/SEQ/프린터설정 Firebase 저장
-                            — 위치코드(창고) 전체 항목 삭제 (신촌·전주 공통)
-                            — Firebase CDN jsdelivr 변경 + 안전 초기화
-                            — v3.25: 수정할 때마다 버전 업데이트 규칙 적용
-                            — 라벨 미리보기·ZPL·인쇄 헤더 CHANCE WMS v3.43 통일
-                            — go() scrollIntoView 추가 — 확실한 상단 이동
-                            — ZPL 폰트 전면 재조정 (형번·수량 유지, 나머지 확대)
-                            — 하단 1.5cm 여백 해소 (로트·날짜 y값 하향)
-                            — html/body overflow:hidden → 페이지 스크롤 완전 차단
-                            — #sc-wrap/#jj-wrap display:flex;flex-direction:column 추가
-                            — .layout height:100% 추가 → 뷰포트 100% 채움
-                            — 모든 페이지 전환 시 scrollTop=0 초기화
-                            — go()/jjGo()/switchFactory() 스크롤 리셋 적용
-                            — 라벨 미리보기 형번 30px, 수량 38px 확대
-                            — browserPrint 형번 17pt, 수량 22pt 확대
-                            — ZPL 바코드 높이 140도트, 시작위치 x=310 확대
-                            — ZPL 한국어 → 영문 변환 (BIXOLON 깨짐 방지)
                             — 전주 대시보드·입고·출고·스캔·라벨·재고·불용재고
                             — 전주 품목: 6006·6007A·6008A·6304·6305 (하이순)
                             — 4월 실제 데이터: 재고 1,160,697PCS / 3.155억원
@@ -113,13 +102,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
-<title>WMS v3.43</title>
+<title>WMS v3.29</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js"></script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-<!-- ── Firebase SDK (compat) ── -->
-<script src="https://cdn.jsdelivr.net/npm/firebase@10.7.1/compat/app.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/firebase@10.7.1/compat/firestore.min.js"></script>
 <style>
 @font-face{font-family:'MG';src:local('맑은 고딕'),local('Malgun Gothic')}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -140,11 +126,10 @@
 }
 
 /* ═══ 기본 ═══════════════════════════════════════════════ */
-/* ★★★ 핵심: overflow:hidden 으로 html/body 레벨 스크롤 완전 차단
-   이것 없으면 body 전체가 스크롤 컨테이너가 되어
-   대시보드에서 스크롤 후 다른 메뉴 클릭 시 내용이 하단에 보이는 버그 발생 */
-html,body{height:100%;overflow:hidden;font-family:var(--f);background:var(--bg);color:var(--tx)}
+html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--tx)}
 body{display:flex;flex-direction:column;font-size:15px;line-height:1.5}
+
+/* ═══ 헤더 ═══════════════════════════════════════════════ */
 .hdr{
   height:var(--hh);min-height:var(--hh);flex-shrink:0;
   background:var(--s1);border-bottom:1px solid var(--bd);
@@ -164,27 +149,15 @@ body{display:flex;flex-direction:column;font-size:15px;line-height:1.5}
 #clk{font-family:var(--fm);font-size:14px;color:var(--c1)}
 
 /* ═══ 레이아웃 ═══════════════════════════════════════════ */
-#sc-wrap, #jj-wrap {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  overflow: hidden;
-}
-.layout {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-}
+.layout{display:flex;flex:1;overflow:hidden;min-height:0}
+#sc-wrap{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+#jj-wrap{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden}
 
-/* ─── 사이드바 ─── */
+/* ─── 사이드바 (태블릿·데스크톱) ─── */
 .sidebar{
-  width:200px; min-width:200px; flex-shrink:0;
-  background:var(--s1); border-right:1px solid var(--bd);
-  display:flex; flex-direction:column;
-  overflow-y:auto; overflow-x:hidden;
-  z-index:2;           /* 메인 위에 항상 표시 */
+  width:200px;min-width:200px;flex-shrink:0;
+  background:var(--s1);border-right:1px solid var(--bd);
+  display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;
 }
 .sb-group{padding:8px 14px 2px;font-size:10px;color:var(--tx2);
   letter-spacing:1px;text-transform:uppercase;font-weight:700}
@@ -198,15 +171,8 @@ body{display:flex;flex-direction:column;font-size:15px;line-height:1.5}
 .sb-item .ico{width:18px;text-align:center;font-size:14px;flex-shrink:0}
 
 /* ─── 메인 콘텐츠 ─── */
-.main{
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  overflow-anchor: none;   /* 페이지 전환시 scrollTop=0 이 유지됨 */
-}
-.pg{ display:none; }
-.pg.on{ display:block; padding:16px; }
+.main{flex:1;overflow-y:auto;overflow-x:hidden;padding:16px;
+  padding-bottom:16px;} /* 데스크탑 하단 여유 */
 
 /* ─── 하단 탭바 (모바일 전용) ─── */
 .tabbar{
@@ -237,6 +203,9 @@ body{display:flex;flex-direction:column;font-size:15px;line-height:1.5}
 .tb-more-menu .tb-m-item:last-child{border:none}
 .tb-more-menu .tb-m-item:hover{background:var(--s3);color:var(--tx)}
 .tb-more-menu .tb-m-item.on{color:var(--c1)}
+
+/* ═══ 페이지 ═════════════════════════════════════════════ */
+.pg{display:none}.pg.on{display:block}
 
 /* ═══ 카드 ══════════════════════════════════════════════ */
 .card{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);
@@ -355,18 +324,17 @@ tbody tr:hover td{background:rgba(255,255,255,.04)}
 
 
 /* ═══════════════════════════════════════════════════════════
-   라벨 100×60mm 가로형 미리보기 v3.42
-   카드 크기: 500×300px (5:3 비율, 100mm×60mm)
+   라벨 60×40mm 가로형 미리보기 v3.4
+   카드 크기: 420×280px (3:2 비율 유지, 충분한 공간 확보)
    ─────────────────────────────────────────────────────── */
 .label-wrap{
   background:#c8c8c8;border-radius:12px;padding:20px;
   display:flex;justify-content:center;align-items:center;
-  margin-bottom:14px;min-height:340px;
-  overflow-x:auto;
+  margin-bottom:14px;min-height:320px;
 }
 .label-card{
   background:#fff;
-  width:500px;height:300px;     /* 500:300 = 5:3, 100mm×60mm 비율 */
+  width:480px;height:320px;     /* 480:320 = 3:2, 60mm×40mm 비율 */
   border:2px solid #222;border-radius:4px;
   display:flex;flex-direction:column;
   font-family:'맑은 고딕','Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif;
@@ -374,54 +342,51 @@ tbody tr:hover td{background:rgba(255,255,255,.04)}
   overflow:hidden;flex-shrink:0;
 }
 
-/* ─ 헤더: 회사명 + 구분태그 ─ */
+/* ─ 헤더: 공장명 + 구분태그 ─ */
 .lbl-head{
   background:#0d1e30;color:#fff;
-  padding:5px 12px;flex-shrink:0;
+  padding:6px 14px;flex-shrink:0;
   display:flex;justify-content:space-between;align-items:center;
   border-bottom:3px solid #00d4ff;
 }
 .lbl-head-title{
   font-size:11px;font-weight:700;letter-spacing:.6px;
   font-family:'맑은 고딕','Malgun Gothic',sans-serif;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  flex:1;min-width:0;
 }
 .lbl-tag{
   font-size:11px;font-weight:700;padding:3px 10px;
   border-radius:4px;letter-spacing:.3px;
-  flex-shrink:0;
 }
 
-/* ─ 본문: 좌(핵심정보) + 우(바코드) ─ */
+/* ─ 본문: 좌(핵심정보 43%) + 우(바코드 57%) ─ */
 .lbl-body{
   display:flex;flex:1;overflow:hidden;min-height:0;
 }
 
-/* 좌측 — 자재번호·형번·수량·공급처 */
+/* 좌측 — 핵심 정보, 공간을 균등하게 분배 */
 .lbl-info{
-  width:200px;flex-shrink:0;
-  padding:8px 12px;
+  width:180px;flex-shrink:0;
+  padding:10px 14px;
   border-right:1.5px solid #e8e8e8;
   display:flex;flex-direction:column;
-  justify-content:space-evenly;
+  justify-content:space-evenly;   /* 균등 배분 */
   gap:0;
 }
-/* 자재번호 */
+/* 자재번호 — 코드체, 잘 보이게 */
 .lbl-matno-big{
-  font-size:14px;font-weight:700;color:#111;
+  font-size:12px;font-weight:700;color:#111;
   font-family:'Consolas','맑은 고딕','Malgun Gothic',sans-serif;
   letter-spacing:.4px;line-height:1.4;
   background:#f4f8fc;border-radius:3px;
-  padding:2px 4px;
+  padding:2px 5px;
 }
-/* 형번 — 유지 */
+/* 형번 — 가장 크게 */
 .lbl-model-big{
-  font-size:28px;font-weight:700;color:#0d1e30;
+  font-size:24px;font-weight:700;color:#0d1e30;
   font-family:'맑은 고딕','Malgun Gothic',sans-serif;
   line-height:1;letter-spacing:-.3px;
 }
-/* 수량 + 단위 — 유지 */
+/* 수량 + 단위 */
 .lbl-qty-row{
   display:flex;align-items:baseline;gap:4px;
 }
@@ -434,18 +399,18 @@ tbody tr:hover td{background:rgba(255,255,255,.04)}
   font-size:13px;color:#cc0000;font-weight:700;
   font-family:'맑은 고딕','Malgun Gothic',sans-serif;
 }
-/* 공급처 — 키움 */
+/* 공급처 */
 .lbl-vendor{
-  font-size:15px;color:#444;font-weight:600;
+  font-size:11px;color:#444;font-weight:600;
   font-family:'맑은 고딕','Malgun Gothic',sans-serif;
   border-left:3px solid #00d4ff;padding-left:6px;
 }
 
-/* 우측 — 바코드 */
+/* 우측 — 바코드, 공간 최대 활용 */
 .lbl-bc{
   flex:1;display:flex;flex-direction:column;
   align-items:center;justify-content:center;
-  padding:6px 8px;gap:3px;min-width:0;
+  padding:8px 10px;gap:4px;min-width:0;
 }
 .lbl-bc-lbl{
   font-size:9px;color:#aaa;letter-spacing:.5px;
@@ -462,18 +427,18 @@ tbody tr:hover td{background:rgba(255,255,255,.04)}
 /* ─ 하단 정보 3열: 규격 / 입고일+위치 / 로트 ─ */
 .lbl-btm{
   background:#edf2f7;border-top:1.5px solid #d0d8e0;
-  padding:6px 14px;flex-shrink:0;
+  padding:5px 14px;flex-shrink:0;
   display:grid;grid-template-columns:2fr 2fr 1.5fr;
   gap:0 12px;
 }
 .lbl-btm-item{display:flex;flex-direction:column;gap:2px}
 .lbl-btm-k{
-  font-size:10px;color:#666;font-weight:700;
+  font-size:9px;color:#666;font-weight:700;
   font-family:'맑은 고딕','Malgun Gothic',sans-serif;
   text-transform:uppercase;letter-spacing:.4px;
 }
 .lbl-btm-v{
-  font-size:13px;color:#111;font-weight:600;
+  font-size:11px;color:#111;font-weight:600;
   font-family:'Consolas','맑은 고딕','Malgun Gothic',sans-serif;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
@@ -481,9 +446,9 @@ tbody tr:hover td{background:rgba(255,255,255,.04)}
 /* ─ 푸터: 자재번호 / 출력일시 / SEQ ─ */
 .lbl-footer{
   background:#d8e4f0;border-top:1.5px solid #bfcfdf;
-  padding:5px 14px;flex-shrink:0;
+  padding:4px 14px;flex-shrink:0;
   display:flex;justify-content:space-between;align-items:center;
-  font-size:10px;color:#555;font-weight:600;
+  font-size:9px;color:#555;font-weight:600;
   font-family:'Consolas','맑은 고딕','Malgun Gothic',sans-serif;
 }
 .chart-box{position:relative;width:100%}
@@ -578,14 +543,14 @@ body.admin .admin-only{display:flex}
   .sidebar{display:none}
   .tabbar{display:grid}
   .tabbar{display:grid}
-  .pg.on{padding:12px;padding-bottom:calc(12px + var(--tbh))}
+  .main{padding:12px;padding-bottom:calc(12px + var(--tbh))}
   .kpi-grid.kg4{grid-template-columns:1fr 1fr}
   .kpi-grid.kg3{grid-template-columns:1fr 1fr}
   .g2,.g3{grid-template-columns:1fr}
   .form-grid.fg3{grid-template-columns:1fr 1fr}
   .kpi-val{font-size:22px}
   .printer-bar{flex-direction:column;align-items:flex-start}
-  .label-card{width:375px;height:225px}
+  .label-card{width:320px;height:213px}
 }
 @media (min-width:768px) and (max-width:1199px){
   .sidebar{width:56px;min-width:56px}
@@ -594,28 +559,97 @@ body.admin .admin-only{display:flex}
   .sb-item span:not(.ico){display:none}
   .sb-item .ico{width:56px;font-size:20px}
   .tabbar{display:none}
+  .main{padding-bottom:16px}
   .kpi-grid.kg4{grid-template-columns:1fr 1fr}
   .g3{grid-template-columns:1fr 1fr}
 }
 @media (min-width:1200px){
   .tabbar{display:none}
+  .main{padding-bottom:16px}
 }
 
-/* ★수정: 미리보기(우측)를 더 넓게 — 라벨카드(480px)가 잘리지 않도록 */
-#pg-label .g2{grid-template-columns:0.9fr 1.1fr}
+#pg-label .g2{grid-template-columns:1.1fr 0.9fr}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<!-- Firebase SDK (CDN) -->
+<script type="module">
+import { initializeApp }                        from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, collection, doc,
+         getDocs, getDoc, setDoc, addDoc,
+         updateDoc, deleteDoc, query,
+         where, orderBy, limit,
+         onSnapshot, serverTimestamp,
+         writeBatch }                           from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getAuth, signInWithEmailAndPassword,
+         signOut, onAuthStateChanged }          from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+
+// ── Firebase 초기화 ──────────────────────────────────────
+const firebaseConfig = {
+  apiKey:            "AIzaSyBRnBSrYXGv_vnl60_ZtU7Z4aj0szT0uOk",
+  authDomain:        "insys-wms.firebaseapp.com",
+  projectId:         "insys-wms",
+  storageBucket:     "insys-wms.firebasestorage.app",
+  messagingSenderId: "468364913196",
+  appId:             "1:468364913196:web:e04f7108304207ffc43f89",
+  measurementId:     "G-77760MG3WD"
+};
+
+const fbApp  = initializeApp(firebaseConfig);
+const db     = getFirestore(fbApp);
+const fbAuth = getAuth(fbApp);
+
+// ── 전역 노출 (기존 JS에서 사용) ────────────────────────
+window.db            = db;
+window.fbAuth        = fbAuth;
+window.fbCollection  = collection;
+window.fbDoc         = doc;
+window.fbGetDocs     = getDocs;
+window.fbGetDoc      = getDoc;
+window.fbSetDoc      = setDoc;
+window.fbAddDoc      = addDoc;
+window.fbUpdateDoc   = updateDoc;
+window.fbDeleteDoc   = deleteDoc;
+window.fbQuery       = query;
+window.fbWhere       = where;
+window.fbOrderBy     = orderBy;
+window.fbLimit       = limit;
+window.fbOnSnapshot  = onSnapshot;
+window.fbTimestamp   = serverTimestamp;
+window.fbBatch       = writeBatch;
+window.fbSignIn      = signInWithEmailAndPassword;
+window.fbSignOut     = signOut;
+
+// ── 인증 상태 감시 ───────────────────────────────────────
+onAuthStateChanged(fbAuth, user => {
+  window.fbUser = user;
+  const badge = document.getElementById('fb-status');
+  if(badge){
+    badge.textContent = user ? ('🔵 DB 연결됨 ('+(user.email||'익명')+')') : '⚪ DB 미연결';
+    badge.style.color = user ? 'var(--c2)' : 'var(--tx3)';
+  }
+  // 로그인 시 실시간 재고 구독 시작
+  if(user) window.fbStartSync && window.fbStartSync();
+});
+
+// ── Firestore 연결 확인 ──────────────────────────────────
+window.fbReady = true;
+console.log('✅ Firebase Firestore 초기화 완료 (insys-wms)');
+</script>
 </head>
 <body>
 
 <!-- ═══ 헤더 ════════════════════════════════════════════ -->
 <div class="hdr">
-  <div class="hdr-logo" id="hdr-logo">신촌공장 WMS<span>v3.43</span></div>
+  <div class="hdr-logo" id="hdr-logo">신촌공장 WMS<span>v3.29</span></div>
   <div class="factory-tabs">
     <div class="ftab on"    id="ftab-sc" onclick="switchFactory('sc')">🏭 신촌공장</div>
     <div class="ftab jj"   id="ftab-jj" onclick="switchFactory('jj')">🏭 전주공장</div>
   </div>
   <div class="hdr-right">
     <div class="admin-btn" id="admin-btn" onclick="toggleAdmin()">현장모드</div>
+    <span id="fb-status" onclick="window.fbUser?fbLogout():showFbLogin()"
+      style="font-size:11px;color:var(--tx3);white-space:nowrap;cursor:pointer" title="클릭: 로그인/로그아웃">⚪ DB 미연결</span>
     <span id="clk">--:--:--</span>
   </div>
 </div>
@@ -636,12 +670,14 @@ body.admin .admin-only{display:flex}
   <div class="sb-item" onclick="go('outbound',this)"><span class="ico">⬆</span><span>출하 처리</span></div>
   <div class="sb-item" onclick="go('scanner',this)"><span class="ico">⊙</span><span>스캐너</span></div>
   <div class="sb-item" onclick="go('label',this)"><span class="ico">🖨</span><span>라벨 출력</span></div>
+  <div class="sb-item" onclick="go('return',this)" style="color:#e87c3e"><span class="ico">↩</span><span>반품 처리</span></div>
   <div class="sb-group">조회</div>
   <div class="sb-item" onclick="go('stock',this)"><span class="ico">≡</span><span>전체 재고</span></div>
   <div class="sb-item" onclick="go('bymodel',this)"><span class="ico">⊞</span><span>기종별</span></div>
   <div class="sb-item" onclick="go('byvendor',this)"><span class="ico">♦</span><span>업체별</span></div>
   <div class="sb-item" onclick="go('report',this)"><span class="ico">◷</span><span>일별 집계</span></div>
   <div class="sb-item" onclick="go('deadstock',this)" style="color:var(--c4)"><span class="ico">⚠</span><span>불용재고</span></div>
+  <div class="sb-item" onclick="go('excel',this)" style="color:#27ae60"><span class="ico">📥</span><span>엑셀 다운로드</span></div>
   <div class="sb-group">실사</div>
   <div class="sb-item" onclick="go('inventory',this)" style="color:var(--c2)"><span class="ico">⚖</span><span>재고 실사</span></div>
   <div class="sb-item" onclick="go('weight',this)" style="color:var(--c2)"><span class="ico">⊟</span><span>단중 관리</span></div>
@@ -896,6 +932,15 @@ body.admin .admin-only{display:flex}
           </div>
           <div class="field admin-only"><label>단가 (원) <span class="badge">●관리자</span></label><input type="number" id="ib-price" value="103" onchange="uIb()"></div>
           <div class="field"><label>로트번호</label><input type="text" id="ib-lot" value="LOT-20260428-001"></div>
+          <div class="field"><label>위치코드</label>
+            <select id="ib-loc">
+              <option value="A-01-01">A-01-01</option><option value="A-01-02">A-01-02</option>
+              <option value="A-01-03" selected>A-01-03</option><option value="A-02-01">A-02-01</option>
+              <option value="B-01-01">B-01-01</option><option value="B-01-02">B-01-02</option>
+              <option value="B-02-01">B-02-01</option><option value="C-01-01">C-01-01</option>
+              <option value="D-01-01">D-01-01</option>
+            </select>
+          </div>
         </div>
         <div class="btn-row">
           <button class="btn b2" onclick="doIb()">⬇ 입고 등록</button>
@@ -918,6 +963,7 @@ body.admin .admin-only{display:flex}
             <div>금액: <strong style="color:var(--c3);font-family:var(--fm);font-size:18px" id="pv-total">14,420,000원</strong></div>
           </div>
           <div>로트: <strong style="color:var(--tx);font-family:var(--fm)" id="pv-lot">LOT-20260428-001</strong></div>
+          <div>위치: <strong style="color:var(--tx)" id="pv-loc">A-01-03</strong></div>
         </div>
       </div>
       <div class="card">
@@ -934,7 +980,6 @@ body.admin .admin-only{display:flex}
       </div>
     </div>
   </div>
-  </div><!-- /g2 -->
 </div><!-- /pg-inbound -->
 <div class="pg" id="pg-outbound">
   <div class="g2">
@@ -947,7 +992,7 @@ body.admin .admin-only{display:flex}
             <select id="ob-vendor"><option>인시스(0350)</option><option>찬스(위탁)</option></select>
           </div>
           <div class="field"><label>대표형번</label>
-            <select id="ob-model" onchange="uOb()">
+            <select id="ob-model" onchange="uOb();uObWash()">
               <option>OSD6203</option><option>6005</option><option>6004</option>
               <option>F-572665</option><option>F-679350</option>
             </select>
@@ -966,6 +1011,28 @@ body.admin .admin-only{display:flex}
           <div class="field admin-only"><label>출하단가 <span class="badge">●관리자</span></label><input type="number" id="ob-price" value="103" onchange="uOb()"></div>
           <div class="field"><label>전표번호</label><input type="text" id="ob-ref" value="SH-20260428-001"></div>
           <div class="field"><label>담당자</label><input type="text" value="재고담당"></div>
+          <div class="field"><label>세척 유무</label>
+            <select id="ob-wash" onchange="uObWash()" style="height:40px;background:var(--s2);border:1px solid var(--bd2);border-radius:8px;padding:0 12px;color:var(--tx);font-family:var(--fm);font-size:14px;outline:none;width:100%">
+              <option value="auto">자동 (링종류 기준)</option>
+              <option value="yes">세척 있음 (선삭품)</option>
+              <option value="no">세척 없음 (연삭품)</option>
+            </select>
+          </div>
+          <div class="field"><label>출고 구분</label>
+            <select id="ob-type" onchange="uObType()" style="height:40px;background:var(--s2);border:1px solid var(--bd2);border-radius:8px;padding:0 12px;color:var(--tx);font-family:var(--fm);font-size:14px;outline:none;width:100%">
+              <option value="full">전량 출고</option>
+              <option value="partial">소분 출고 (잔량 재계근)</option>
+            </select>
+          </div>
+          <div class="field" id="ob-remain-field" style="display:none">
+            <label>소분 후 잔량 수량 (PCS)</label>
+            <div style="display:flex;gap:6px;align-items:center">
+              <input type="number" id="ob-remain-qty" value="0" onchange="uOb()"
+                style="flex:1;height:40px;background:var(--s2);border:1px solid var(--c3);border-radius:8px;padding:0 12px;color:var(--c3);font-family:var(--fm);font-size:15px;outline:none">
+              <button class="btn bg" onclick="obRemainScale()" title="저울로 잔량 재계근"
+                style="height:40px;padding:0 10px;font-size:13px;white-space:nowrap;flex-shrink:0">⚖ 재계근</button>
+            </div>
+          </div>
         </div>
         <div style="background:var(--s2);border-radius:8px;padding:14px;margin-top:12px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
@@ -979,7 +1046,7 @@ body.admin .admin-only{display:flex}
         </div>
         <div class="btn-row">
           <button class="btn btn-lg b3" onclick="doOb()">⬆ 출하 처리</button>
-          <button class="btn b1" onclick="showModal('전표 출력','PDF 전표 생성 후 프린터 출력')">📄 전표</button>
+          <button class="btn b1" onclick="printLotSheet()">📋 LOT이동표</button>
           <button class="btn bg" onclick="go('label',null);prepLbl()">🖨 재출력</button>
         </div>
       </div>
@@ -995,6 +1062,8 @@ body.admin .admin-only{display:flex}
           </div>
           <div style="display:flex;justify-content:space-between"><span style="color:var(--tx2)">모델명</span><span id="sl-model">OSD6203</span></div>
           <div style="display:flex;justify-content:space-between"><span style="color:var(--tx2)">출하수량</span><span id="sl-qty" style="color:var(--c2);font-family:var(--fm)">50,000 PCS</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--tx2)">세 척</span><span id="sl-wash" style="color:var(--c1);font-weight:700">세척 있음</span></div>
+          <div id="sl-partial-wrap" style="display:none;justify-content:space-between"><span style="color:var(--tx2)">소분잔량</span><span id="sl-remain-qty" style="color:var(--c3);font-family:var(--fm)">—</span></div>
           <div class="admin-only" style="justify-content:space-between;border-top:1px solid var(--bd2);margin-top:8px;padding-top:8px;font-weight:700">
             <span>합계금액 <span class="badge" style="color:var(--c3)">●관리자</span></span>
             <span id="sl-total" style="color:var(--c3);font-family:var(--fm)">5,150,000원</span>
@@ -1009,9 +1078,9 @@ body.admin .admin-only{display:flex}
         <div class="card-title ct5">금일 출하 이력</div>
         <div class="tbl-wrap">
           <table>
-            <thead><tr><th>전표번호</th><th>모델</th><th class="num">수량</th></tr></thead>
+            <thead><tr><th>전표번호</th><th>모델</th><th class="num">수량</th><th>세척</th><th>구분</th></tr></thead>
             <tbody id="ob-hist">
-              <tr><td style="font-family:var(--fm);font-size:12px">SH-20260428-001</td><td>OSD6203</td><td class="num">35,000</td></tr>
+              <tr><td style="font-family:var(--fm);font-size:12px">SH-20260428-001</td><td>OSD6203</td><td class="num">35,000</td><td><span class="tag tg">있음</span></td><td>전량</td></tr>
             </tbody>
           </table>
         </div>
@@ -1101,15 +1170,6 @@ body.admin .admin-only{display:flex}
     <button class="btn bg" onclick="testPrinter()" style="height:40px;font-size:13px">🔌 연결테스트</button>
     <button class="btn bg" onclick="showZpl()" style="height:40px;font-size:13px">📋 ZPL보기</button>
     <span id="pc-status" style="font-size:13px;color:var(--tx2);font-family:var(--fm)">● 대기중</span>
-    <span style="margin-left:8px;font-size:12px;color:var(--tx2)">|</span>
-    <label style="font-size:12px;color:var(--tx2);white-space:nowrap">상하(↕)</label>
-    <input type="number" id="lp-lt" value="0" min="-200" max="200" step="5"
-      style="width:60px;padding:4px 6px;border-radius:6px;border:1px solid var(--bd);background:var(--s2);color:var(--tx);font-size:13px;text-align:center"
-      onchange="uLbl()" title="상하 위치 조정 (^LT, 단위:dot, +=아래, -=위)">
-    <label style="font-size:12px;color:var(--tx2);white-space:nowrap">좌우(↔)</label>
-    <input type="number" id="lp-ls" value="0" min="-200" max="200" step="5"
-      style="width:60px;padding:4px 6px;border-radius:6px;border:1px solid var(--bd);background:var(--s2);color:var(--tx);font-size:13px;text-align:center"
-      onchange="uLbl()" title="좌우 위치 조정 (^LS, 단위:dot, +=오른쪽, -=왼쪽)">
   </div>
 
   <div class="g2">
@@ -1125,6 +1185,15 @@ body.admin .admin-only{display:flex}
           <div class="field"><label>수량 (PCS)</label><input type="number" id="lqty" value="283000" onchange="uLbl()"></div>
           <div class="field"><label>입고일</label><input type="date" id="ldate" value="2026-04-28" onchange="uLbl()"></div>
           <div class="field"><label>로트번호</label><input type="text" id="llot" value="LOT-20260428-001" onchange="uLbl()"></div>
+          <div class="field"><label>위치코드</label>
+            <select id="lloc-sel" onchange="uLbl()">
+              <option value="A-01-01">A-01-01</option><option value="A-01-02">A-01-02</option>
+              <option value="A-01-03">A-01-03</option><option value="A-02-01">A-02-01</option>
+              <option value="B-01-01">B-01-01</option><option value="B-01-02">B-01-02</option>
+              <option value="B-02-01" selected>B-02-01</option><option value="C-01-01">C-01-01</option>
+              <option value="D-01-01">D-01-01</option>
+            </select>
+          </div>
           <div class="field"><label>구분</label>
             <select id="lgubun" onchange="uLbl()"><option>입고</option><option>재출력(잔여)</option><option>재고실사</option></select>
           </div>
@@ -1156,7 +1225,7 @@ body.admin .admin-only{display:flex}
 
             <!-- ① 헤더 -->
             <div class="lbl-head">
-              <div class="lbl-head-title">CHANCE WMS v3.43</div>
+              <div class="lbl-head-title">신촌공장 재고관리 WMS v3.29</div>
               <div class="lbl-tag" id="lp-gtag" style="background:#00f0a0;color:#000">입고</div>
             </div>
 
@@ -1190,8 +1259,8 @@ body.admin .admin-only{display:flex}
                 <span class="lbl-btm-v" id="lp-spec">AU.6203-B-2Z-8105</span>
               </div>
               <div class="lbl-btm-item">
-                <span class="lbl-btm-k">입고일</span>
-                <span class="lbl-btm-v" id="lp-dateloc">2026-04-28</span>
+                <span class="lbl-btm-k">입고일 / 위치</span>
+                <span class="lbl-btm-v" id="lp-dateloc">2026-04-28 / B-02-01</span>
               </div>
               <div class="lbl-btm-item">
                 <span class="lbl-btm-k">로트번호</span>
@@ -1222,6 +1291,107 @@ body.admin .admin-only{display:flex}
 </div>
 
 <!-- ⑧ 전체 재고 -->
+<!-- ⑦-B 반품 처리 -->
+<div class="pg" id="pg-return">
+  <div class="g2">
+    <!-- 좌: 반품 입력 -->
+    <div>
+      <div class="card">
+        <div class="card-title" style="color:#e87c3e">↩ 반품 정보 입력</div>
+        <div class="form-grid fg2">
+          <div class="field"><label>반품일자</label>
+            <input type="date" id="rt-date" value="2026-05-20" onchange="uRt()">
+          </div>
+          <div class="field"><label>공급처</label>
+            <select id="rt-vendor" onchange="uRt()">
+              <option>인시스(0350)</option><option>찬스(위탁)</option>
+            </select>
+          </div>
+          <div class="field"><label>대표형번</label>
+            <select id="rt-model" onchange="uRt()">
+              <option>OSD6203</option><option>6005</option><option>6004</option>
+              <option>F-572665</option><option>F-679350</option><option>6203</option>
+              <option>FAG6202</option><option>6200</option><option>6201</option><option>6204</option>
+            </select>
+          </div>
+          <div class="field"><label>현재고</label>
+            <input type="text" id="rt-stock" value="—" readonly style="color:var(--c2)">
+          </div>
+          <div class="field"><label>반품 수량 (PCS)</label>
+            <div style="display:flex;gap:6px;align-items:center">
+              <input type="number" id="rt-qty" value="0" onchange="uRt()"
+                style="flex:1;height:40px;background:var(--s2);border:1px solid var(--bd2);border-radius:8px;padding:0 12px;color:var(--tx);font-family:var(--fm);font-size:15px;outline:none">
+              <button class="btn bg" onclick="rtScaleRead()" title="저울 무게→수량"
+                style="height:40px;padding:0 10px;font-size:13px;white-space:nowrap;flex-shrink:0">⚖ 저울</button>
+            </div>
+          </div>
+          <div class="field"><label>반품 사유</label>
+            <select id="rt-reason" style="height:40px;background:var(--s2);border:1px solid var(--bd2);border-radius:8px;padding:0 12px;color:var(--tx);font-family:var(--fm);font-size:14px;outline:none;width:100%">
+              <option value="defect">불량 (Defect)</option>
+              <option value="overstock">과잉 입고</option>
+              <option value="wrong">오입고 (품목 오류)</option>
+              <option value="damaged">파손</option>
+              <option value="other">기타</option>
+            </select>
+          </div>
+          <div class="field"><label>전표번호</label>
+            <input type="text" id="rt-ref" value="RT-20260520-001">
+          </div>
+          <div class="field"><label>비고</label>
+            <input type="text" id="rt-note" placeholder="상세 사유 입력 (선택)">
+          </div>
+        </div>
+        <!-- 반품 후 재고 미리보기 -->
+        <div style="background:var(--s2);border-radius:8px;padding:14px;margin-top:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <span style="color:var(--tx2);font-size:14px">반품 후 복원 재고</span>
+            <span style="color:#e87c3e;font-family:var(--fm);font-size:24px;font-weight:700" id="rt-after">—</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="color:var(--tx2);font-size:13px">반품 수량</span>
+            <span style="color:var(--c2);font-family:var(--fm);font-size:16px" id="rt-qty-display">0 PCS</span>
+          </div>
+        </div>
+        <div class="btn-row" style="margin-top:14px">
+          <button class="btn btn-lg" style="background:#e87c3e;color:#fff;border:none" onclick="doReturn()">↩ 반품 처리</button>
+          <button class="btn b1" onclick="uRt()">↻ 갱신</button>
+        </div>
+        <div id="rt-msg" style="margin-top:10px"></div>
+      </div>
+    </div>
+    <!-- 우: 반품 전표 + 이력 -->
+    <div>
+      <div class="card">
+        <div class="card-title ct4">반품 전표</div>
+        <div style="background:var(--s2);border-radius:8px;padding:16px;font-size:15px;line-height:2.2">
+          <div style="text-align:center;font-size:18px;font-weight:700;color:#e87c3e;margin-bottom:12px">반 품 전 표</div>
+          <div style="border-top:1px solid var(--bd2);border-bottom:1px solid var(--bd2);padding:10px 0;margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--tx2)">전표번호</span><span id="rt-sl-ref" style="font-family:var(--fm)">RT-20260520-001</span></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--tx2)">반품일자</span><span id="rt-sl-date">2026-05-20</span></div>
+          </div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--tx2)">모델명</span><span id="rt-sl-model">—</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--tx2)">공급처</span><span id="rt-sl-vendor">—</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--tx2)">반품수량</span><span id="rt-sl-qty" style="color:#e87c3e;font-family:var(--fm)">0 PCS</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--tx2)">반품사유</span><span id="rt-sl-reason">—</span></div>
+          <div style="display:flex;justify-content:space-between;border-top:1px solid var(--bd2);margin-top:8px;padding-top:8px">
+            <span style="color:var(--tx2)">복원 후 재고</span>
+            <span id="rt-sl-after" style="color:var(--c2);font-family:var(--fm)">—</span>
+          </div>
+        </div>
+      </div>
+      <div class="card card-sm">
+        <div class="card-title ct5">반품 이력</div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>전표번호</th><th>모델</th><th class="num">수량</th><th>사유</th></tr></thead>
+            <tbody id="rt-hist"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="pg" id="pg-stock">
   <div class="kpi-grid kg4">
     <div class="kpi-card kv2"><div class="kpi-lbl">선삭링 재고</div><div class="kpi-val" style="color:var(--c2)">6,279,503</div><div class="kpi-sub">PCS</div></div>
@@ -1613,12 +1783,95 @@ body.admin .admin-only{display:flex}
 
 <!-- ⑭ 단중 관리 -->
 <div class="pg" id="pg-weight">
+
+  <!-- 신규 단중 등록 패널 -->
+  <div class="card" style="border-color:rgba(0,240,160,.3);background:rgba(0,240,160,.04);margin-bottom:14px">
+    <div class="card-title ct2">⚖ 신규 단중 등록 — 샘플 계근 자동 계산</div>
+    <div class="g2" style="gap:14px">
+      <!-- 좌: 입력 -->
+      <div>
+        <div class="form-grid fg2" style="margin-bottom:12px">
+          <div class="field"><label>형번 (신규)</label>
+            <input type="text" id="wt-new-key" placeholder="예: F-845827 AU"
+              style="height:40px;background:var(--s2);border:1px solid var(--bd2);border-radius:8px;padding:0 12px;color:var(--tx);font-family:var(--fm);font-size:14px;outline:none;width:100%">
+          </div>
+          <div class="field"><label>자재규격</label>
+            <input type="text" id="wt-new-spec" placeholder="예: AU.6203-2Z-2012"
+              style="height:40px;background:var(--s2);border:1px solid var(--bd2);border-radius:8px;padding:0 12px;color:var(--tx);font-family:var(--fm);font-size:14px;outline:none;width:100%">
+          </div>
+          <div class="field"><label>샘플 개수 (PCS)</label>
+            <input type="number" id="wt-sample-cnt" value="10" min="1" max="1000" onchange="wtCalcUnit()"
+              style="height:40px;background:var(--s2);border:1px solid var(--c2);border-radius:8px;padding:0 12px;color:var(--c2);font-family:var(--fm);font-size:15px;font-weight:700;outline:none;width:100%">
+          </div>
+          <div class="field"><label>샘플 총 무게 (g)</label>
+            <div style="display:flex;gap:6px">
+              <input type="number" id="wt-sample-wt" value="0" step="0.1" onchange="wtCalcUnit()"
+                style="flex:1;height:40px;background:var(--s2);border:1px solid var(--bd2);border-radius:8px;padding:0 12px;color:var(--tx);font-family:var(--fm);font-size:14px;outline:none">
+              <button class="btn bg" onclick="wtScaleRead()" title="저울 읽기"
+                style="height:40px;padding:0 10px;font-size:13px;flex-shrink:0">⚖ 저울</button>
+            </div>
+          </div>
+          <div class="field"><label>박스(포장재) 무게 (g)</label>
+            <input type="number" id="wt-new-pkg" value="1200" step="10" onchange="wtCalcUnit()"
+              style="height:40px;background:var(--s2);border:1px solid var(--bd2);border-radius:8px;padding:0 12px;color:var(--tx);font-family:var(--fm);font-size:14px;outline:none;width:100%">
+          </div>
+          <div class="field"><label>박스당 입수 (PCS)</label>
+            <input type="number" id="wt-new-box" value="500" step="100" onchange="wtCalcUnit()"
+              style="height:40px;background:var(--s2);border:1px solid var(--bd2);border-radius:8px;padding:0 12px;color:var(--tx);font-family:var(--fm);font-size:14px;outline:none;width:100%">
+          </div>
+        </div>
+        <!-- 2차 측정 (정밀도 향상) -->
+        <div style="background:var(--s2);border-radius:8px;padding:12px;margin-bottom:12px">
+          <div style="font-size:12px;color:var(--c2);font-weight:700;margin-bottom:8px">📐 2차 측정 (선택 — 평균으로 단중 계산)</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <span style="font-size:13px;color:var(--tx2)">2차 샘플 무게 (g):</span>
+            <input type="number" id="wt-sample-wt2" value="0" step="0.1" onchange="wtCalcUnit()"
+              style="width:120px;height:36px;background:var(--s1);border:1px solid var(--bd2);border-radius:6px;padding:0 8px;color:var(--tx);font-family:var(--fm);font-size:13px;outline:none">
+            <button class="btn bg" onclick="wtScaleRead2()" style="height:36px;padding:0 10px;font-size:12px">⚖ 저울2</button>
+            <span style="font-size:12px;color:var(--tx3)">0이면 1차만 사용</span>
+          </div>
+        </div>
+      </div>
+      <!-- 우: 계산 결과 미리보기 -->
+      <div>
+        <div style="background:var(--s2);border-radius:10px;padding:16px;height:100%;min-height:200px">
+          <div style="font-size:13px;color:var(--c2);font-weight:700;margin-bottom:12px">📊 계산 결과 미리보기</div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bd)">
+            <span style="color:var(--tx2);font-size:13px">1차 개당 단중</span>
+            <span id="wt-preview-1" style="color:var(--c2);font-family:var(--fm);font-weight:700">— g</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bd)">
+            <span style="color:var(--tx2);font-size:13px">2차 개당 단중</span>
+            <span id="wt-preview-2" style="color:var(--tx3);font-family:var(--fm)">— g</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bd)">
+            <span style="color:var(--tx);font-size:14px;font-weight:700">최종 단중 (평균)</span>
+            <span id="wt-preview-final" style="color:var(--c1);font-family:var(--fm);font-size:22px;font-weight:700">— g</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bd)">
+            <span style="color:var(--tx2);font-size:13px">박스 총 무게 (만재)</span>
+            <span id="wt-preview-box" style="color:var(--tx);font-family:var(--fm)">— g</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0">
+            <span style="color:var(--tx2);font-size:13px">수량 오차율 (예측)</span>
+            <span id="wt-preview-err" style="color:var(--c2);font-family:var(--fm)">— %</span>
+          </div>
+          <div id="wt-register-wrap" style="display:none;margin-top:14px">
+            <button class="btn btn-lg b2" onclick="wtRegister()" style="width:100%">
+              ✅ 단중 등록
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="card card-sm">
     <div class="card-title ct2">품목별 단중(개당 무게) 관리</div>
     <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
       <button class="btn b2" onclick="wtSaveAll()" style="height:40px">💾 전체 저장</button>
       <span style="font-size:13px;color:var(--tx2);align-self:center">
-        ⚠ 단중이 정확할수록 실사 수량 오차가 줄어듭니다 — 샘플 100개 측정 권장
+        ⚠ 단중이 정확할수록 실사 수량 오차가 줄어듭니다 — 샘플 10개 이상 측정 권장
       </span>
     </div>
     <div class="tbl-wrap">
@@ -1647,6 +1900,190 @@ body.admin .admin-only{display:flex}
   </div>
 </div>
 
+<!-- ⑭ 엑셀 자동생성 다운로드 -->
+<div class="pg" id="pg-excel">
+  <div class="card card-sm" style="margin-bottom:14px">
+    <div class="card-title" style="color:#27ae60">📥 엑셀 자동생성 다운로드</div>
+    <div style="font-size:13px;color:var(--tx2);margin-bottom:16px">
+      고객사 지정 양식으로 자동 생성합니다. 버튼 클릭 한 번으로 다운로드됩니다.
+    </div>
+    <div class="g2" style="gap:14px">
+
+      <!-- 카드 1: 입출고 현황 -->
+      <div style="background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:16px">
+        <div style="font-size:15px;font-weight:700;color:var(--c2);margin-bottom:8px">📊 인시스찬스_입출고현황</div>
+        <div style="font-size:12px;color:var(--tx2);line-height:1.8;margin-bottom:14px">
+          품목별 기초·입고·출고·현재고·금액<br>
+          선삭/연삭·인시스/찬스 구분
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+          <select id="xl-month" style="height:36px;background:var(--s1);border:1px solid var(--bd2);border-radius:6px;padding:0 10px;color:var(--tx);font-size:13px;outline:none">
+            <option value="1">2026년 1월</option>
+            <option value="2">2026년 2월</option>
+            <option value="3">2026년 3월</option>
+            <option value="4" selected>2026년 4월 (마감)</option>
+            <option value="5">2026년 5월</option>
+          </select>
+        </div>
+        <button class="btn b2" onclick="xlDownload('inout')" style="width:100%;height:40px">
+          ⬇ 다운로드
+        </button>
+      </div>
+
+      <!-- 카드 2: 챈스 선삭품 거래명세서 -->
+      <div style="background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:16px">
+        <div style="font-size:15px;font-weight:700;color:var(--c3);margin-bottom:8px">📋 챈스_선삭품_거래명세서</div>
+        <div style="font-size:12px;color:var(--tx2);line-height:1.8;margin-bottom:14px">
+          챈스(위탁) 선삭품 납품 내역<br>
+          EP1자재코드·형번·수량·단가·금액
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+          <select id="xl-chance-month" style="height:36px;background:var(--s1);border:1px solid var(--bd2);border-radius:6px;padding:0 10px;color:var(--tx);font-size:13px;outline:none">
+            <option value="1">2026년 1월</option>
+            <option value="2">2026년 2월</option>
+            <option value="3">2026년 3월</option>
+            <option value="4" selected>2026년 4월</option>
+            <option value="5">2026년 5월</option>
+          </select>
+        </div>
+        <button class="btn b3" onclick="xlDownload('chance')" style="width:100%;height:40px">
+          ⬇ 다운로드
+        </button>
+      </div>
+
+      <!-- 카드 3: 인시스 선삭품 납품명세서 -->
+      <div style="background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:16px">
+        <div style="font-size:15px;font-weight:700;color:var(--c1);margin-bottom:8px">📋 인시스_선삭품_납품명세서</div>
+        <div style="font-size:12px;color:var(--tx2);line-height:1.8;margin-bottom:14px">
+          인시스(0350) 선삭품 납품 내역<br>
+          EP1자재코드·형번·수량·단가·금액
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+          <select id="xl-insys-month" style="height:36px;background:var(--s1);border:1px solid var(--bd2);border-radius:6px;padding:0 10px;color:var(--tx);font-size:13px;outline:none">
+            <option value="1">2026년 1월</option>
+            <option value="2">2026년 2월</option>
+            <option value="3">2026년 3월</option>
+            <option value="4" selected>2026년 4월</option>
+            <option value="5">2026년 5월</option>
+          </select>
+        </div>
+        <button class="btn b1" onclick="xlDownload('insys')" style="width:100%;height:40px">
+          ⬇ 다운로드
+        </button>
+      </div>
+
+      <!-- 카드 4: JW·카일리 연삭품 납품명세서 -->
+      <div style="background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:16px">
+        <div style="font-size:15px;font-weight:700;color:#27ae60;margin-bottom:8px">📋 JW·카일리_연삭품_납품명세서</div>
+        <div style="font-size:12px;color:var(--tx2);line-height:1.8;margin-bottom:14px">
+          찬스(위탁) 연삭품 납품 내역<br>
+          EP1자재코드·형번·수량·단가·금액
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+          <select id="xl-jw-month" style="height:36px;background:var(--s1);border:1px solid var(--bd2);border-radius:6px;padding:0 10px;color:var(--tx);font-size:13px;outline:none">
+            <option value="1">2026년 1월</option>
+            <option value="2">2026년 2월</option>
+            <option value="3">2026년 3월</option>
+            <option value="4" selected>2026년 4월</option>
+            <option value="5">2026년 5월</option>
+          </select>
+        </div>
+        <button class="btn" onclick="xlDownload('jw')" style="width:100%;height:40px;background:#27ae60;color:#fff;border:none">
+          ⬇ 다운로드
+        </button>
+      </div>
+
+    </div>
+    <div id="xl-msg" style="margin-top:12px;font-size:13px;color:var(--c2)"></div>
+  </div>
+
+  <!-- 엑셀 업로드 → 데이터 반영 -->
+  <div class="card card-sm" style="margin-top:14px;border-color:rgba(0,212,255,.3);background:rgba(0,212,255,.03)">
+    <div class="card-title" style="color:var(--c1)">📂 엑셀 업로드 → WMS 데이터 자동 반영</div>
+    <div style="font-size:13px;color:var(--tx2);margin-bottom:14px;line-height:1.8">
+      실무자가 보내온 엑셀 파일을 업로드하면 <strong style="color:var(--tx)">재고현황·수불실적</strong>이 자동으로 업데이트됩니다.
+    </div>
+    <div class="g2" style="gap:14px">
+
+      <!-- 입출고 현황 파일 -->
+      <div style="background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:16px">
+        <div style="font-size:14px;font-weight:700;color:var(--c2);margin-bottom:6px">
+          📊 인시스찬스_입출고_YYYY년MM월.xlsx
+        </div>
+        <div style="font-size:12px;color:var(--tx2);line-height:1.8;margin-bottom:12px">
+          선삭링_집계·연삭링_집계 시트 자동 인식<br>
+          형번·규격·기초·입고·출고·현재고·금액 업데이트
+        </div>
+        <div style="margin-bottom:10px">
+          <label style="display:block;font-size:12px;color:var(--tx2);margin-bottom:4px">대상 월</label>
+          <select id="xl-up-month" style="height:36px;background:var(--s1);border:1px solid var(--bd2);border-radius:6px;padding:0 10px;color:var(--tx);font-size:13px;outline:none;width:100%">
+            <option value="1">2026년 1월</option><option value="2">2026년 2월</option>
+            <option value="3">2026년 3월</option><option value="4">2026년 4월</option>
+            <option value="5" selected>2026년 5월</option><option value="6">2026년 6월</option>
+          </select>
+        </div>
+        <label style="display:flex;align-items:center;justify-content:center;gap:8px;
+          background:var(--c1);color:#fff;border-radius:8px;height:40px;cursor:pointer;
+          font-size:14px;font-weight:700" for="xl-inout-file">
+          📂 파일 선택
+          <input type="file" id="xl-inout-file" accept=".xlsx,.xls" style="display:none"
+            onchange="xlImportInOut(this)">
+        </label>
+        <div id="xl-inout-status" style="margin-top:8px;font-size:12px;color:var(--tx2);min-height:20px"></div>
+      </div>
+
+      <!-- 납품명세서 파일 -->
+      <div style="background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:16px">
+        <div style="font-size:14px;font-weight:700;color:var(--c3);margin-bottom:6px">
+          📋 납품명세서_MM월.xlsx
+        </div>
+        <div style="font-size:12px;color:var(--tx2);line-height:1.8;margin-bottom:12px">
+          인시스·챈스·JW·카일리 납품명세서 지원<br>
+          날짜별 시트에서 형번·수량 자동 추출 → 출고 실적 반영
+        </div>
+        <div style="margin-bottom:10px">
+          <label style="display:block;font-size:12px;color:var(--tx2);margin-bottom:4px">공급처</label>
+          <select id="xl-up-vendor" style="height:36px;background:var(--s1);border:1px solid var(--bd2);border-radius:6px;padding:0 10px;color:var(--tx);font-size:13px;outline:none;width:100%">
+            <option value="insys">인시스(0350) — 선삭품 납품명세서</option>
+            <option value="chance">㈜찬스 — 선삭품 거래명세서</option>
+            <option value="jw">JW·카일리 — 연삭품 납품명세서</option>
+          </select>
+        </div>
+        <label style="display:flex;align-items:center;justify-content:center;gap:8px;
+          background:var(--c3);color:#000;border-radius:8px;height:40px;cursor:pointer;
+          font-size:14px;font-weight:700" for="xl-delivery-file">
+          📂 파일 선택
+          <input type="file" id="xl-delivery-file" accept=".xlsx,.xls" style="display:none"
+            onchange="xlImportDelivery(this)">
+        </label>
+        <div id="xl-delivery-status" style="margin-top:8px;font-size:12px;color:var(--tx2);min-height:20px"></div>
+      </div>
+
+    </div>
+
+    <!-- 업데이트 미리보기 / 결과 -->
+    <div id="xl-preview" style="display:none;margin-top:14px;background:var(--s2);border-radius:8px;padding:14px">
+      <div style="font-size:13px;font-weight:700;color:var(--c2);margin-bottom:10px" id="xl-preview-title">업데이트 미리보기</div>
+      <div class="tbl-wrap" style="max-height:300px;overflow-y:auto">
+        <table>
+          <thead><tr>
+            <th>공급처</th><th>형번</th><th>규격</th><th>륜</th>
+            <th class="num">기초</th><th class="num">입고</th>
+            <th class="num">출고</th><th class="num">현재고</th><th>변경</th>
+          </tr></thead>
+          <tbody id="xl-preview-body"></tbody>
+        </table>
+      </div>
+      <div class="btn-row" style="margin-top:12px">
+        <button class="btn btn-lg b2" onclick="xlApplyUpdate()">✅ WMS에 반영</button>
+        <button class="btn bg" onclick="document.getElementById('xl-preview').style.display='none'">✕ 취소</button>
+      </div>
+    </div>
+    <div id="xl-apply-msg" style="margin-top:8px;font-size:13px"></div>
+  </div>
+</div>
+
+
 </main><!-- /main -->
 </div><!-- /layout -->
 
@@ -1660,6 +2097,7 @@ body.admin .admin-only{display:flex}
     <span class="tbi">≡</span>더보기
     <div class="tb-more-menu" id="tb-more-menu">
       <div class="tb-m-item" onclick="go('label',this);closeTbMenu()"><span>🖨</span>라벨 출력</div>
+      <div class="tb-m-item" onclick="go('return',this);closeTbMenu()" style="color:#e87c3e"><span>↩</span>반품 처리</div>
       <div class="tb-m-item" onclick="go('monthly',this);closeTbMenu()"><span>📅</span>월간 입출고</div>
       <div class="tb-m-item" onclick="go('yearly',this);closeTbMenu()"><span>📊</span>년간 현황</div>
       <div class="tb-m-item" onclick="go('stock',this);closeTbMenu()"><span>≡</span>전체 재고</div>
@@ -1669,6 +2107,7 @@ body.admin .admin-only{display:flex}
       <div class="tb-m-item" onclick="go('deadstock',this);closeTbMenu()" style="color:var(--c4)"><span>⚠</span>불용재고</div>
       <div class="tb-m-item" onclick="go('inventory',this);closeTbMenu()" style="color:var(--c2)"><span>⚖</span>재고 실사</div>
       <div class="tb-m-item" onclick="go('weight',this);closeTbMenu()" style="color:var(--c2)"><span>⊟</span>단중 관리</div>
+      <div class="tb-m-item" onclick="go('excel',this);closeTbMenu()" style="color:#27ae60"><span>📥</span>엑셀 다운로드</div>
     </div>
   </div>
 </nav>
@@ -1797,6 +2236,14 @@ body.admin .admin-only{display:flex}
           </div>
           <div class="field admin-only"><label>단가 (원) <span class="badge">●관리자</span></label><input type="number" id="jj-ib-price" value="262" onchange="jjUib()"></div>
           <div class="field"><label>납품업체</label><input type="text" value="하이순 (Haishun)" readonly style="color:var(--tx2)"></div>
+          <div class="field"><label>위치코드</label>
+            <select id="jj-ib-loc">
+              <option value="A-01-01">A-01-01</option><option value="A-01-02">A-01-02</option>
+              <option value="A-02-01">A-02-01</option><option value="B-01-01">B-01-01</option>
+              <option value="B-01-02">B-01-02</option><option value="B-02-01">B-02-01</option>
+              <option value="C-01-01">C-01-01</option><option value="D-01-01">D-01-01</option>
+            </select>
+          </div>
           <div class="field"><label>로트번호</label><input type="text" id="jj-ib-lot" value="LOT-JJ-20260506-001"></div>
         </div>
         <div class="btn-row">
@@ -1817,7 +2264,7 @@ body.admin .admin-only{display:flex}
             <div>단가: <strong style="color:var(--c3);font-family:var(--fm)" id="jj-pv-price">262원</strong></div>
             <div>금액: <strong style="color:var(--c3);font-family:var(--fm);font-size:16px" id="jj-pv-total">13,100,000원</strong></div>
           </div>
-          <div>위치: <strong style="color:var(--tx)" id="jj-pv-loc" style="display:none"></strong></div>
+          <div>위치: <strong style="color:var(--tx)" id="jj-pv-loc">A-01-01</strong></div>
         </div>
       </div>
       <div class="card card-sm">
@@ -1990,6 +2437,13 @@ body.admin .admin-only{display:flex}
           <div class="field"><label>자재규격</label><input type="text" id="jj-lspec" value="AU.6006-2Z-1112" onchange="jjULbl()"></div>
           <div class="field"><label>수량 (PCS)</label><input type="number" id="jj-lqty" value="50000" onchange="jjULbl()"></div>
           <div class="field"><label>입고일</label><input type="date" id="jj-ldate" value="2026-05-06" onchange="jjULbl()"></div>
+          <div class="field"><label>위치코드</label>
+            <select id="jj-lloc" onchange="jjULbl()">
+              <option value="A-01-01" selected>A-01-01</option><option value="A-01-02">A-01-02</option>
+              <option value="A-02-01">A-02-01</option><option value="B-01-01">B-01-01</option>
+              <option value="B-02-01">B-02-01</option><option value="C-01-01">C-01-01</option>
+            </select>
+          </div>
           <div class="field"><label>로트번호</label><input type="text" id="jj-llot" value="LOT-JJ-20260506-001" onchange="jjULbl()"></div>
           <div class="field"><label>구분</label>
             <select id="jj-lgubun" onchange="jjULbl()"><option>입고</option><option>재출력</option></select>
@@ -2036,7 +2490,7 @@ body.admin .admin-only{display:flex}
               </div>
             </div>
             <div class="lbl-btm">
-              <div class="lbl-btm-item"><span class="lbl-btm-k">입고일</span><span class="lbl-btm-v" id="jj-lp-dateloc">2026-05-06</span></div>
+              <div class="lbl-btm-item"><span class="lbl-btm-k">입고일/위치</span><span class="lbl-btm-v" id="jj-lp-dateloc">2026-05-06/A-01-01</span></div>
               <div class="lbl-btm-item"><span class="lbl-btm-k">로트번호</span><span class="lbl-btm-v" id="jj-lp-lot">LOT-JJ-20260506-001</span></div>
               <div class="lbl-btm-item"><span class="lbl-btm-k">공장</span><span class="lbl-btm-v">전주공장</span></div>
             </div>
@@ -2096,103 +2550,6 @@ body.admin .admin-only{display:flex}
 </div>
 
 <script>
-// ══════════════════════════════════════════════════════
-//  Firebase 초기화 및 DB 연동
-// ══════════════════════════════════════════════════════
-const firebaseConfig = {
-  apiKey: "AIzaSyBRnBSrYXGv_vnl60_ZtU7Z4aj0szT0uOk",
-  authDomain: "insys-wms.firebaseapp.com",
-  projectId: "insys-wms",
-  storageBucket: "insys-wms.firebasestorage.app",
-  messagingSenderId: "468364913196",
-  appId: "1:468364913196:web:e04f7108304207ffc43f89"
-};
-let db = null;
-try {
-  firebase.initializeApp(firebaseConfig);
-  db = firebase.firestore();
-} catch(e) { console.warn('Firebase 초기화 실패:', e); }
-
-async function fbSave(col, data) {
-  if(!db) return;
-  try { await db.collection(col).add({ ...data, ts: firebase.firestore.FieldValue.serverTimestamp() }); }
-  catch(e) { console.warn('Firebase 저장 오류:', e); }
-}
-async function fbSet(col, docId, data) {
-  if(!db) return;
-  try { await db.collection(col).doc(docId).set(data, { merge: true }); }
-  catch(e) { console.warn('Firebase set 오류:', e); }
-}
-
-async function initWmsData() {
-  try {
-    // 1. SEQ 번호 + 프린터 설정 복원
-    const seqDoc = await db.collection('sc_settings').doc('shinchon').get();
-    if (seqDoc.exists) {
-      const cfg = seqDoc.data();
-      // SEQ 복원
-      if (cfg.lblSeq) {
-        lblSeq = cfg.lblSeq;
-        const el = document.getElementById('lp-seq');
-        if(el) el.textContent = `SEQ:${String(lblSeq).padStart(4,'0')}`;
-      }
-      // 프린터 URL 복원
-      if (cfg.printerUrl) {
-        const urlEl = document.getElementById('pc-server');
-        if(urlEl) urlEl.value = cfg.printerUrl;
-      }
-      // 위치 조정값 복원
-      if (cfg.lt !== undefined) {
-        const ltEl = document.getElementById('lp-lt');
-        if(ltEl) ltEl.value = cfg.lt;
-      }
-      if (cfg.ls !== undefined) {
-        const lsEl = document.getElementById('lp-ls');
-        if(lsEl) lsEl.value = cfg.ls;
-      }
-      // 프린터 방식 복원
-      if (cfg.printerMethod) {
-        const mtEl = document.getElementById('pc-method');
-        if(mtEl) { mtEl.value = cfg.printerMethod; togglePcM(); }
-      }
-    }
-    const stkSnap = await db.collection('sc_stock').get();
-    if (!stkSnap.empty) {
-      stkSnap.forEach(doc => { if(SDB[doc.id] !== undefined) SDB[doc.id] = { ...SDB[doc.id], ...doc.data() }; });
-    } else {
-      for (const [key, val] of Object.entries(SDB)) { await db.collection('sc_stock').doc(key).set(val); }
-    }
-    // 3. 입고 이력 복원
-    const ibSnap = await db.collection('sc_inbound').orderBy('ts','desc').limit(30).get();
-    const ibTbl = document.getElementById('ib-hist');
-    if(ibTbl) ibSnap.forEach(doc => {
-      const d = doc.data();
-      const row = document.createElement('tr');
-      row.innerHTML = `<td>${d.date||''}</td><td>${d.vendor||''}/${d.model||''}</td><td class="num">${(d.qty||0).toLocaleString()}</td><td><span class="tag tg">완료</span></td>`;
-      ibTbl.appendChild(row);
-    });
-    // 4. 출고 이력 복원
-    const obSnap = await db.collection('sc_outbound').orderBy('ts','desc').limit(30).get();
-    const obTbl = document.getElementById('ob-hist');
-    if(obTbl) obSnap.forEach(doc => {
-      const d = doc.data();
-      const row = document.createElement('tr');
-      row.innerHTML = `<td style="font-family:var(--fm);font-size:12px">${d.ref||''}</td><td>${d.model||''}</td><td class="num">${(d.qty||0).toLocaleString()}</td>`;
-      obTbl.appendChild(row);
-    });
-    // 5. 라벨 출력 이력 복원
-    const lblSnap = await db.collection('sc_labels').orderBy('ts','desc').limit(30).get();
-    const lblTbl = document.getElementById('lhist');
-    if(lblTbl) lblSnap.forEach(doc => {
-      const d = doc.data();
-      const row = document.createElement('tr');
-      row.innerHTML = `<td style="font-family:var(--fm)">${d.time||''}</td><td style="font-family:var(--fm);font-size:12px">${d.matno||''}</td><td>${(d.qty||0).toLocaleString()}</td><td><span class="tag tg">성공</span></td>`;
-      lblTbl.appendChild(row);
-    });
-    console.log('✅ Firebase 데이터 복원 완료');
-  } catch(e) { console.warn('Firebase 초기화 오류:', e); }
-}
-
 // ══════════════════════════════════════════════════
 //  데이터
 // ══════════════════════════════════════════════════
@@ -2289,19 +2646,16 @@ setInterval(()=>{
 
 // ── 페이지 전환 ────────────────────────────────────────
 function go(id,el){
-  document.querySelectorAll('#sc-wrap .pg').forEach(p=>p.classList.remove('on'));
-  document.querySelectorAll('#sc-wrap .sb-item, #tabbar .tb-item, #tabbar .tb-m-item').forEach(s=>s.classList.remove('on'));
-  const pg=document.getElementById('pg-'+id);
-  if(pg) pg.classList.add('on');
+  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.sb-item,.tb-item,.tb-m-item').forEach(s=>s.classList.remove('on'));
+  document.getElementById('pg-'+id).classList.add('on');
   if(el) el.classList.add('on');
-  // overflow-anchor:none 적용된 .main → scrollTop=0 이 브라우저에 덮어씌워지지 않음
-  const mainEl=document.querySelector('#sc-wrap .main');
-  if(mainEl) mainEl.scrollTop=0;
+  // 탭바 첫 4개 매핑
   const tbMap={dash:0,inbound:1,outbound:2,scanner:3};
   if(tbMap[id]!==undefined){
-    document.querySelectorAll('#tabbar .tb-item')[tbMap[id]]?.classList.add('on');
+    document.querySelectorAll('.tabbar .tb-item')[tbMap[id]]?.classList.add('on');
   }
-  ({monthly:uMon,yearly:initYr,bymodel:initByM,byvendor:initByV,stock:initStk,report:initRpt,deadstock:initDS,inventory:initInv,weight:initWeight}[id]||function(){})();
+  ({monthly:uMon,yearly:initYr,bymodel:initByM,byvendor:initByV,stock:initStk,report:initRpt,deadstock:initDS,inventory:initInv,weight:initWeight,return:uRt,excel:xlInitPage}[id]||function(){})();
 }
 
 function toggleTbMenu(){
@@ -2653,6 +3007,7 @@ function showSR(k){
       <div>자재번호: <strong style="color:var(--tx);font-family:var(--fm)">${d.matno}</strong></div>
       <div>공급처: <span class="tag ${d.vendor.includes('인시스')?'tb':'tp'}">${d.vendor}</span>&nbsp;<span class="tag ${d.ring==='선삭'?'tb':'tp'}">${d.ring}링</span></div>
       <div>현재고: <strong style="color:${sc};font-size:28px;font-family:var(--fm)">${d.stk.toLocaleString()}</strong> PCS</div>
+      <div>위치: <strong style="color:var(--tx)">${d.loc}</strong></div>
       <div>로트: <strong style="color:var(--tx);font-family:var(--fm)">${d.lot}</strong></div>
     </div>`;
 }
@@ -2674,10 +3029,10 @@ function genBC(matno){
   try{
     JsBarcode('#lbc-svg', matno, {
       format:'CODE128',
-      width:2.6,      /* ★ 30% 넓게 (2 → 2.6) */
-      height:110,
+      width:2,        /* 60mm 가로형 — 폭 충분 */
+      height:60,      /* 420px 카드 우측 영역에 맞게 확대 */
       displayValue:false,
-      margin:2,
+      margin:3,
       background:'#ffffff',
       lineColor:'#000000'
     });
@@ -2704,6 +3059,7 @@ function uLbl(){
   const qty    = parseInt(document.getElementById('lqty').value)||0;
   const date   = document.getElementById('ldate').value;
   const lot    = document.getElementById('llot').value;
+  const loc    = document.getElementById('lloc-sel').value;
   const gubun  = document.getElementById('lgubun').value;
   const spec   = document.getElementById('lspec').value;
   const vendor = document.getElementById('lvendor').value;
@@ -2714,7 +3070,7 @@ function uLbl(){
   document.getElementById('lp-vendor').textContent     = vendor;
   /* 규격: 18자 초과 시 줄임 */
   document.getElementById('lp-spec').textContent       = spec.length>18 ? spec.substring(0,18)+'…' : spec;
-  document.getElementById('lp-dateloc').textContent    = `${date}`;
+  document.getElementById('lp-dateloc').textContent    = `${date} / ${loc}`;
   document.getElementById('lp-lot').textContent        = lot;
   document.getElementById('lp-barcode-txt').textContent= matno;
   document.getElementById('lp-fmatno').textContent     = matno;
@@ -2737,68 +3093,44 @@ function prepLbl(){
 }
 
 // ── ZPL 생성 ──────────────────────────────────────────
-// 100×60mm 라벨, BIXOLON XD5-43t 300dpi
-// - 300dpi 기준: 1181×709 도트
-// - 10% 여백: 좌우 118, 상하 71 도트
-// - 좌측(x=130~570): 자재번호·형번·수량·공급처·규격
-// - 우측(x=600~1063): 바코드 (겹침 없음)
-// - 한국어 제외 (ZPL BIXOLON 깨짐 방지)
 function buildZpl(){
-  const matno  = document.getElementById('lmatno').value.trim();
-  const model  = document.getElementById('lmodel').value;
-  const spec   = document.getElementById('lspec').value;
-  const vendor = document.getElementById('lvendor').value;
-  const qty    = parseInt(document.getElementById('lqty').value)||0;
-  const date   = document.getElementById('ldate').value;
-  const lot    = document.getElementById('llot').value;
-  const gubun  = document.getElementById('lgubun').value;
-  const lt     = parseInt(document.getElementById('lp-lt')?.value)||0;
-  const ls     = parseInt(document.getElementById('lp-ls')?.value)||0;
-  const seq    = String(lblSeq).padStart(4,'0');
-  const now    = new Date();
-  const pdt    = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-  const g      = gubun==='입고'?'[IN]':gubun.includes('재출력')?'[REPRINT]':'[AUDIT]';
-  const vd     = vendor.includes('찬스')||vendor.includes('Chan')?'CHANCE':'INSYS';
-  const modelZ = model.length>8 ? model.substring(0,8) : model;
-  const specZ  = spec.length>18 ? spec.substring(0,18)+'..' : spec;
-
-  return `^XA
-^MMT
-^MNN
-^PW1181
-^LL709
-^LT${lt}
-^LS${ls}
-^FO0,0^GB1181,90,90^FS
-^FO70,18^CF0,50^FR^FDCHANCE WMS v3.43^FS
-^FO960,20^CF0,48^FR^FD${g}^FS
-^FO0,90^GB1181,4,4^FS
-^CF0,40
-^FO70,100^FD${matno}^FS
-^CF0,100
-^FO70,148^FD${modelZ}^FS
-^CF0,100
-^FO70,262^FD${qty.toLocaleString()}^FS
-^CF0,52
-^FO70,372^FDPCS^FS
-^CF0,44
-^FO70,432^FDVND:${vd}^FS
-^CF0,38
-^FO70,482^FDSPEC:${specZ}^FS
-^BY3
-^FO470,115^BCN,377,N,N,N^FD${matno}^FS
-^CF0,32
-^FO470,510^FD${matno}^FS
-^FO0,548^GB1181,5,5^FS
-^CF0,44
-^FO70,562^FDLOT:${lot}^FS
-^CF0,44
-^FO70,614^FDDATE:${date}^FS
-^FO0,664^GB1181,3,3^FS
-^CF0,30
-^FO70,672^FD${pdt}  SEQ:${seq}^FS
-^FO820,672^FDCHANCE WMS^FS
-^PQ1,0,1,Y
+  const matno=document.getElementById('lmatno').value.trim();
+  const model=document.getElementById('lmodel').value;
+  const spec=document.getElementById('lspec').value;
+  const vendor=document.getElementById('lvendor').value;
+  const qty=parseInt(document.getElementById('lqty').value)||0;
+  const date=document.getElementById('ldate').value;
+  const lot=document.getElementById('llot').value;
+  const loc=document.getElementById('lloc-sel').value;
+  const gubun=document.getElementById('lgubun').value;
+  const seq=String(lblSeq).padStart(4,'0');
+  const now=new Date();
+  const pdt=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  const g=gubun==='입고'?'[입고]':gubun.includes('재출력')?'[재출력]':'[실사]';
+  return`^XA
+^PW708
+^LL472
+^CI28
+^FO0,0^GB708,42,42^FS
+^FO8,8^CF0,22^FR^FD신촌공장 재고관리 WMS^FS
+^FO530,10^CF0,18^FR^FD\${g}^FS
+^FO0,42^GB708,2,2^FS
+^CF0,18
+^FO8,50^FD\${matno}^FS
+^CF0,16
+^FO8,72^FD형번: \${model}  규격: \${spec}^FS
+^FO8,92^FD공급: \${vendor}^FS
+^CF0,22
+^FO8,114^FD수량: \${qty.toLocaleString()} PCS^FS
+^FO380,46^BCN,80,N,N,N^FD\${matno}^FS
+^FO0,302^GB708,2,2^FS
+^CF0,16
+^FO8,308^FD로트: \${lot}^FS
+^FO8,326^FD입고: \${date}  위치: \${loc}^FS
+^FO0,346^GB708,2,2^FS
+^CF0,14
+^FO8,352^FD\${pdt}  SEQ:\${seq}^FS
+^FO560,352^FD신촌공장 WMS^FS
 ^XZ`;
 }
 
@@ -2817,18 +3149,12 @@ function copyZpl(){
 async function testPrinter(){
   const st=document.getElementById('pc-status');
   const m=document.getElementById('pc-method').value;
-  const url=document.getElementById('pc-server').value;
   st.style.color='var(--c3)';st.textContent='● 확인 중...';
-  if(m==='browser'){st.style.color='var(--c2)';st.textContent='● 브라우저 인쇄 (항상 사용 가능)';
-    const lt=parseInt(document.getElementById('lp-lt')?.value)||0;
-    const ls=parseInt(document.getElementById('lp-ls')?.value)||0;
-    fbSet('sc_settings','shinchon',{printerMethod:m,printerUrl:url,lt,ls});return;}
+  if(m==='browser'){st.style.color='var(--c2)';st.textContent='● 브라우저 인쇄 (항상 사용 가능)';return;}
   try{
+    const url=document.getElementById('pc-server').value;
     const res=await fetch(`${url}/ping`,{signal:AbortSignal.timeout(3000)});
-    if(res.ok){const d=await res.json();st.style.color='var(--c2)';st.textContent=`● 서버 OK — ${d.printer||'연결됨'}`;
-      const lt=parseInt(document.getElementById('lp-lt')?.value)||0;
-      const ls=parseInt(document.getElementById('lp-ls')?.value)||0;
-      fbSet('sc_settings','shinchon',{printerMethod:m,printerUrl:url,lt,ls});}
+    if(res.ok){const d=await res.json();st.style.color='var(--c2)';st.textContent=`● 서버 OK — ${d.printer||'연결됨'}`;}
     else throw new Error();
   }catch{st.style.color='var(--c4)';st.textContent='● 서버 연결 실패 — print_server.py 확인 필요';}
 }
@@ -2880,62 +3206,62 @@ async function prtLbl(){
   row.innerHTML=`<td style="font-family:var(--fm)">${ts}</td><td style="font-family:var(--fm);font-size:12px">${matno}</td><td>${qty.toLocaleString()}</td><td><span class="tag ${result}">${rtxt}</span></td>`;
   document.getElementById('lhist').prepend(row);
   setTimeout(()=>msg.innerHTML='',5000);
-  // ── Firebase 저장 (라벨 이력 + SEQ 동기화) ──
-  const curSeq=lblSeq-1;
-  fbSave('sc_labels',{time:ts,matno,qty,gubun,result:rtxt,seq:curSeq,factory:'shinchon'});
-  fbSet('sc_settings','shinchon',{lblSeq:lblSeq});
 }
 function browserPrint(){
   const lbl = document.getElementById('lp-label');
-  const w   = window.open('','_blank','width=760,height=540');
+  const w   = window.open('','_blank','width=640,height=440');
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
-<title>라벨 인쇄 — CHANCE WMS</title>
+<title>라벨 인쇄 — 신촌공장 WMS</title>
 <style>
+/* ── 공통 리셋 ── */
 *{margin:0;padding:0;box-sizing:border-box}
 body{
   background:#f0f0f0;
   display:flex;flex-direction:column;
   align-items:center;justify-content:center;
   min-height:100vh;padding:16px;
-  font-family:'맑은 고딕','Malgun Gothic',sans-serif;
+  font-family:'맑은 고딕','Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif;
 }
-/* 100mm×60mm 인쇄 설정 */
-@page{size:100mm 60mm;margin:0}
+/* ── 인쇄 설정: 60×40mm ── */
+@page{size:60mm 40mm;margin:0}
 @media print{
   body{background:#fff;min-height:unset;padding:0}
   .noprint{display:none}
 }
-/* 라벨 카드: 100mm×60mm */
+/* ── 라벨 카드: 60mm×40mm ── */
 .label-card{
-  background:#fff;width:100mm;height:60mm;
-  border:1px solid #333;border-radius:2px;
+  background:#fff;width:60mm;height:40mm;
+  border:1.5px solid #333;border-radius:2px;
   display:flex;flex-direction:column;overflow:hidden;
-  font-family:'맑은 고딕','Malgun Gothic',sans-serif;
+  font-family:'맑은 고딕','Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif;
   box-shadow:2px 2px 6px rgba(0,0,0,.2);
 }
-.lbl-head{background:#0d1e30;color:#fff;padding:1.8mm 3mm;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #00d4ff;flex-shrink:0}
-.lbl-head-title{font-size:8.5pt;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
-.lbl-tag{font-size:8.5pt;font-weight:700;padding:0.8mm 2mm;border-radius:2px;flex-shrink:0}
-.lbl-body{display:flex;flex:1;min-height:0;padding:1mm 3mm 1mm 3mm}
-.lbl-info{width:39mm;flex-shrink:0;padding-right:2mm;border-right:0.3mm solid #ddd;display:flex;flex-direction:column;justify-content:space-evenly}
-.lbl-matno-big{font-size:9.5pt;font-weight:700;color:#000;font-family:'Consolas','맑은 고딕',sans-serif;background:#f4f8fc;border-radius:1px;padding:0.5mm 1mm}
-.lbl-model-big{font-size:22pt;font-weight:700;color:#0d1e30;line-height:1}
-.lbl-qty-row{display:flex;align-items:baseline;gap:1mm}
-.lbl-qty-big{font-size:28pt;font-weight:700;color:#cc0000;font-family:'Consolas','맑은 고딕',sans-serif;line-height:1}
-.lbl-qty-unit{font-size:12pt;color:#cc0000;font-weight:700}
-.lbl-vendor{font-size:10.5pt;color:#444;font-weight:600;border-left:1mm solid #00d4ff;padding-left:1mm}
-.lbl-bc{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1mm 2mm;gap:0.8mm}
-.lbl-bc-lbl{font-size:6pt;color:#aaa;text-transform:uppercase}
+/* 헤더 */
+.lbl-head{background:#0d1e30;color:#fff;padding:3px 8px;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #00d4ff;flex-shrink:0}
+.lbl-head-title{font-size:7pt;font-weight:700;letter-spacing:.4px}
+.lbl-tag{font-size:7pt;font-weight:700;padding:2px 6px;border-radius:3px}
+.lbl-body{display:flex;flex:1;min-height:0}
+.lbl-info{width:26mm;flex-shrink:0;padding:3px 5px;border-right:0.5px solid #ddd;display:flex;flex-direction:column;justify-content:space-evenly}
+.lbl-matno-big{font-size:6pt;font-weight:700;color:#000;font-family:'Consolas','맑은 고딕',sans-serif;background:#f4f8fc;border-radius:2px;padding:1px 3px;letter-spacing:.2px}
+.lbl-model-big{font-size:13pt;font-weight:700;color:#0d1e30;font-family:'맑은 고딕','Malgun Gothic',sans-serif;line-height:1}
+.lbl-qty-row{display:flex;align-items:baseline;gap:2px}
+.lbl-qty-big{font-size:16pt;font-weight:700;color:#cc0000;font-family:'Consolas','맑은 고딕',sans-serif;line-height:1}
+.lbl-qty-unit{font-size:8pt;color:#cc0000;font-weight:700;font-family:'맑은 고딕',sans-serif}
+.lbl-vendor{font-size:7pt;color:#444;font-weight:600;font-family:'맑은 고딕',sans-serif;border-left:2px solid #00d4ff;padding-left:4px}
+.lbl-bc{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3px 4px;gap:2px}
+.lbl-bc-lbl{font-size:5.5pt;color:#aaa;text-transform:uppercase;letter-spacing:.4px}
 .lbl-bc svg{max-width:100%;height:auto;display:block}
-.lbl-bc-no{font-size:8pt;color:#333;font-weight:600;font-family:'Consolas',monospace}
-.lbl-btm{background:#edf2f7;border-top:0.3mm solid #d0d8e0;padding:1.2mm 3mm;flex-shrink:0;display:grid;grid-template-columns:2fr 2fr 1.5fr;gap:0 2mm}
-.lbl-btm-item{display:flex;flex-direction:column}
-.lbl-btm-k{font-size:6.5pt;color:#666;font-weight:700;text-transform:uppercase}
-.lbl-btm-v{font-size:9.5pt;color:#111;font-weight:600;font-family:'Consolas','맑은 고딕',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.lbl-footer{background:#d8e4f0;border-top:0.3mm solid #bfcfdf;padding:1mm 3mm;flex-shrink:0;display:flex;justify-content:space-between;font-size:7.5pt;color:#555;font-weight:600;font-family:'Consolas','맑은 고딕',sans-serif}
+.lbl-bc-no{font-size:6pt;color:#333;font-weight:600;font-family:'Consolas',monospace;letter-spacing:.4px}
+.lbl-btm{background:#edf2f7;border-top:0.5px solid #d0d8e0;padding:2px 6px;flex-shrink:0;display:grid;grid-template-columns:2fr 2fr 1.5fr;gap:0 6px}
+.lbl-btm-item{display:flex;flex-direction:column;gap:1px}
+.lbl-btm-k{font-size:5.5pt;color:#666;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+.lbl-btm-v{font-size:7pt;color:#111;font-weight:600;font-family:'Consolas','맑은 고딕',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lbl-footer{background:#d8e4f0;border-top:0.5px solid #bfcfdf;padding:2px 6px;flex-shrink:0;display:flex;justify-content:space-between;font-size:5.5pt;color:#555;font-weight:600;font-family:'Consolas','맑은 고딕',sans-serif}
+/* 버튼 */
 .btns{padding:14px;display:flex;gap:10px;justify-content:center}
 button{padding:10px 26px;font-size:14px;cursor:pointer;border:none;border-radius:5px;font-family:'맑은 고딕',sans-serif}
-.bp{background:#0d1e30;color:#fff}.bc{background:#e0e0e0;color:#333}
+.bp{background:#0d1e30;color:#fff}
+.bc{background:#e0e0e0;color:#333}
 </style></head><body>
 ${lbl.outerHTML}
 <div class="btns noprint">
@@ -2965,24 +3291,12 @@ function uIb(){
 function doIb(){
   const model=document.getElementById('ib-model').value,qty=parseInt(document.getElementById('ib-qty').value)||0;
   const vendor=document.getElementById('ib-vendor').value;
-  const matno=document.getElementById('ib-matno').value;
-  const lot=document.getElementById('ib-lot').value;
-  const loc=document.getElementById('ib-loc').value;
-  const ring=document.getElementById('ib-ring').value;
-  const price=parseInt(document.getElementById('ib-price')?.value)||0;
   const d=new Date(),ds=`${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
   const row=document.createElement('tr');
   row.innerHTML=`<td>${ds}</td><td>${vendor.split('(')[0]}/${model}</td><td class="num">${qty.toLocaleString()}</td><td><span class="tag tg">완료</span></td>`;
   document.getElementById('ib-hist').prepend(row);
   document.getElementById('ib-msg').innerHTML=`<div class="alert a-ok">✓ ${model} ${qty.toLocaleString()} PCS 입고 등록 완료</div>`;
   setTimeout(()=>document.getElementById('ib-msg').innerHTML='',3000);
-  // ── Firebase 저장 ──
-  fbSave('sc_inbound',{date:ds,vendor,model,matno,qty,price,lot,ring,factory:'shinchon'});
-  if(SDB[model]!==undefined){
-    SDB[model].stk=(SDB[model].stk||0)+qty;
-    SDB[model].lot=lot;
-    fbSet('sc_stock',model,{stk:SDB[model].stk,lot,vendor,ring});
-  }
 }
 function uOb(){
   const q=parseInt(document.getElementById('ob-qty').value)||0,p=parseInt(document.getElementById('ob-price').value)||0;
@@ -2994,22 +3308,476 @@ function uOb(){
   document.getElementById('sl-total').textContent=(q*p).toLocaleString()+'원';
   document.getElementById('sl-remain').textContent=rm.toLocaleString()+' PCS';
 }
-function doOb(){
-  const model=document.getElementById('ob-model').value,qty=parseInt(document.getElementById('ob-qty').value)||0;
-  const ref=document.getElementById('ob-ref').value;
-  const price=parseInt(document.getElementById('ob-price').value)||0;
-  const row=document.createElement('tr');
-  row.innerHTML=`<td style="font-family:var(--fm);font-size:12px">${ref}</td><td>${model}</td><td class="num">${qty.toLocaleString()}</td>`;
-  document.getElementById('ob-hist').prepend(row);
-  showModal('출하 처리 완료',`전표번호: ${ref}<br>모델: ${model}<br>수량: ${qty.toLocaleString()} PCS<br><br>✓ DB 재고 차감 완료<br>✓ 잔여재고 바코드 재출력 권장`);
-  // ── Firebase 저장 ──
-  const d=new Date(),ds=`${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
-  fbSave('sc_outbound',{date:ds,ref,model,qty,price,factory:'shinchon'});
-  if(SDB[model]!==undefined){
-    SDB[model].stk=Math.max(0,(SDB[model].stk||0)-qty);
-    fbSet('sc_stock',model,{stk:SDB[model].stk});
+// ── 세척유무 자동 설정 ─────────────────────────────────
+function uObWash(){
+  // 자동 모드일 때 링 종류 기반으로 표시
+  const wash = document.getElementById('ob-wash').value;
+  const model = document.getElementById('ob-model').value;
+  const slWash = document.getElementById('sl-wash');
+  if(!slWash) return;
+  let washText = '';
+  if(wash === 'auto'){
+    // 연삭품(6200,6201,6204,6201계열)은 세척없음, 나머지 선삭품은 세척있음
+    const noWashModels = ['6200','6201','6204','6202','6203 IR','6200 IR'];
+    const isNoWash = noWashModels.some(m => model.includes(m));
+    // 더 정확하게는 ring 타입으로 판단
+    const ringEl = document.querySelector('#pg-outbound #ob-model option:checked');
+    washText = isNoWash ? '세척 없음' : '세척 있음';
+  } else {
+    washText = wash === 'yes' ? '세척 있음' : '세척 없음';
+  }
+  slWash.textContent = washText;
+  slWash.style.color = washText === '세척 있음' ? 'var(--c2)' : 'var(--tx2)';
+}
+
+// ── 출고 구분 (전량/소분) ───────────────────────────────
+function uObType(){
+  const t = document.getElementById('ob-type').value;
+  const remField = document.getElementById('ob-remain-field');
+  const partialWrap = document.getElementById('sl-partial-wrap');
+  if(t === 'partial'){
+    remField.style.display = '';
+    if(partialWrap) partialWrap.style.display = 'flex';
+  } else {
+    remField.style.display = 'none';
+    if(partialWrap) partialWrap.style.display = 'none';
   }
 }
+
+// ── 소분 잔량 저울 재계근 ──────────────────────────────
+async function obRemainScale(){
+  const url = document.getElementById('pc-server').value;
+  try {
+    const r = await fetch(`${url}/scale/read`,{signal:AbortSignal.timeout(5000)});
+    const d = await r.json();
+    if(d.ok && d.value_kg > 0){
+      // 현재 선택 모델의 단중 조회
+      const model = document.getElementById('ob-model').value;
+      const wt = WT_DB.find(w => w.key === model);
+      if(wt){
+        const netG = d.value_kg * 1000 - wt.pkgG;
+        const qty = Math.round(netG / wt.unitG);
+        document.getElementById('ob-remain-qty').value = qty;
+        document.getElementById('sl-remain-qty').textContent = qty.toLocaleString() + ' PCS';
+        showToast(`잔량 재계근: ${qty.toLocaleString()} PCS`);
+      } else {
+        document.getElementById('ob-remain-qty').value = Math.round(d.value_kg * 1000);
+        showToast(`저울: ${d.value_kg}kg — 단중 미등록, 직접 입력하세요`,'warn');
+      }
+    }
+  } catch(e){ showToast('저울 연결 실패','err'); }
+}
+
+function doOb(){
+  const model   = document.getElementById('ob-model').value;
+  const qty     = parseInt(document.getElementById('ob-qty').value)||0;
+  const ref     = document.getElementById('ob-ref').value;
+  const date    = document.getElementById('ob-date').value;
+  const obType  = document.getElementById('ob-type').value;       // full / partial
+  const washSel = document.getElementById('ob-wash').value;       // auto / yes / no
+  const vendor  = document.getElementById('ob-vendor').value;
+
+  if(qty <= 0){ showToast('출하 수량을 입력하세요','err'); return; }
+
+  // 세척 유무 결정
+  let washText = '';
+  if(washSel === 'auto'){
+    // 링종류 확인: 선삭품(선삭) → 세척 있음, 연삭품(연삭) → 세척 없음
+    const row = D.stkRows.find(r => r[2]===model || r[4]===model);
+    const ring = row ? row[0] : '';
+    washText = ring === '선삭' ? '세척 있음' : '세척 없음';
+  } else {
+    washText = washSel === 'yes' ? '세척 있음' : '세척 없음';
+  }
+
+  // 소분 출고 처리
+  let partialQty = 0;
+  let partialMsg = '';
+  if(obType === 'partial'){
+    partialQty = parseInt(document.getElementById('ob-remain-qty').value)||0;
+    if(partialQty <= 0){ showToast('소분 후 잔량 수량을 입력하거나 재계근하세요','err'); return; }
+    if(partialQty >= qty){ showToast('잔량이 출하 수량보다 많습니다. 다시 확인하세요','err'); return; }
+    partialMsg = `<br>📦 잔량 수량: ${partialQty.toLocaleString()} PCS<br>✓ 잔량 라벨 재출력 필요`;
+  }
+
+  // 전표 패널 업데이트
+  const slWash = document.getElementById('sl-wash');
+  if(slWash){
+    slWash.textContent = washText;
+    slWash.style.color = washText === '세척 있음' ? 'var(--c2)' : 'var(--tx2)';
+  }
+  const slModel = document.getElementById('sl-model');
+  const slQty   = document.getElementById('sl-qty');
+  const slPWrap = document.getElementById('sl-partial-wrap');
+  const slPQty  = document.getElementById('sl-remain-qty');
+  if(slModel) slModel.textContent = model;
+  if(slQty)   slQty.textContent   = qty.toLocaleString() + ' PCS';
+  if(slPWrap) slPWrap.style.display = obType==='partial' ? 'flex' : 'none';
+  if(slPQty && obType==='partial') slPQty.textContent = partialQty.toLocaleString() + ' PCS';
+
+  // 이력 행 추가
+  const typeLabel = obType === 'partial' ? '소분' : '전량';
+  const washTag   = washText === '세척 있음'
+    ? '<span class="tag tg">있음</span>'
+    : '<span class="tag to">없음</span>';
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td style="font-family:var(--fm);font-size:12px">${ref}</td>
+    <td>${model}</td>
+    <td class="num">${qty.toLocaleString()}</td>
+    <td>${washTag}</td>
+    <td><span class="tag ${obType==='partial'?'tw':'tg'}">${typeLabel}</span></td>`;
+  document.getElementById('ob-hist').prepend(tr);
+
+  // 소분 출고 시 → 잔량 라벨 출력 안내 팝업
+  const modalMsg = obType === 'partial'
+    ? `전표번호: ${ref}<br>모델: ${model}<br>출하수량: ${qty.toLocaleString()} PCS<br>세척: ${washText}<br>${partialMsg}<br><br>
+       <div style="background:rgba(255,193,7,.15);border:1px solid var(--c3);border-radius:8px;padding:10px;margin-top:8px;font-size:13px">
+       ⚠ <strong>소분 출고</strong> — 잔량 ${partialQty.toLocaleString()} PCS 라벨을 재출력하세요<br>
+       라벨 출력 화면에서 <strong>[재출력(잔여)]</strong> 선택 후 수량 ${partialQty.toLocaleString()} 입력
+       </div>`
+    : `전표번호: ${ref}<br>모델: ${model}<br>출하수량: ${qty.toLocaleString()} PCS<br>세척: ${washText}<br><br>✓ 재고 차감 완료`;
+
+  showModal('출하 처리 완료', modalMsg);
+
+  // Firebase 출고 저장
+  if(window.db && window.fbUser){
+    fbSaveOutbound({
+      ref, model, vendor, qty, date,
+      wash: washText, type: typeLabel,
+      partialRemain: obType==='partial' ? partialQty : 0
+    });
+  }
+
+  // 소분 출고 후 잔량 라벨 바로 출력 버튼 활성화
+  if(obType === 'partial' && partialQty > 0){
+    // 라벨 화면으로 이동하면서 잔량 수량 자동 입력
+    setTimeout(()=>{
+      const goLbl = confirm(`잔량 ${partialQty.toLocaleString()} PCS 라벨을 지금 바로 출력하시겠습니까?`);
+      if(goLbl){
+        go('label', document.querySelector('.sb-item[onclick*="label"]'));
+        setTimeout(()=>{
+          const lqty = document.getElementById('lqty');
+          const lgubun = document.getElementById('lgubun');
+          if(lqty){ lqty.value = partialQty; }
+          if(lgubun){
+            // "재출력(잔여)" 옵션 선택
+            for(let i=0;i<lgubun.options.length;i++){
+              if(lgubun.options[i].text.includes('잔여')){ lgubun.selectedIndex=i; break; }
+            }
+          }
+          if(typeof uLbl === 'function') uLbl();
+          showToast(`잔량 ${partialQty.toLocaleString()} PCS — 라벨 출력 준비 완료`,'ok');
+        },300);
+      }
+    },500);
+  }
+}
+
+
+// ══════════════════════════════════════════════════════
+//  LOT 이동표 출력 (레이저프린터 · 고객사 지정양식)
+//  모델당 1장 × 2부 출력
+// ══════════════════════════════════════════════════════
+
+// 품목별 EP1 자재코드 매핑 (셰플러 지정코드)
+const EP1_MAP = {
+  'OSD6203':  {ep1:'098515705-0000', name:'OSD6203 (AU.6203-B-2Z-8105-L6)'},
+  '6005':     {ep1:'098515985-0000', name:'6005 (AU.6005-2012)'},
+  '6004':     {ep1:'098515322-0001', name:'6004 (AU.6004-2Z-2012)'},
+  'F-572665': {ep1:'098518765-0000', name:'F-572665 (AU.Q)'},
+  'F-576917': {ep1:'098519876-0000', name:'F-576917 (AU.6003)'},
+  'F-624888': {ep1:'098524888-0000', name:'F-624888 (AU.6005)'},
+  'F-679350': {ep1:'098567935-0000', name:'F-679350 (AU.KL-CO1)'},
+  '6203':     {ep1:'098520320-0000', name:'6203 (AU.6203-2Z-2012)'},
+  'FAG6202':  {ep1:'098520202-0000', name:'FAG6202 (AU.6202-2Z-1112)'},
+  '6200':     {ep1:'098527517-0000', name:'6200 (AU.6200-2Z-2011)'},
+  '6201':     {ep1:'098520201-0000', name:'6201 (AU.6201-2Z-2011)'},
+  '6204':     {ep1:'098520204-0000', name:'6204 (AU.6204-2Z-2011)'},
+};
+
+function printLotSheet(){
+  const model   = document.getElementById('ob-model').value;
+  const vendor  = document.getElementById('ob-vendor').value;
+  const qty     = parseInt(document.getElementById('ob-qty').value)||0;
+  const date    = document.getElementById('ob-date').value;
+  const washSel = document.getElementById('ob-wash').value;
+  const ref     = document.getElementById('ob-ref').value;
+
+  if(qty <= 0){ showToast('출하 수량을 먼저 입력하세요','err'); return; }
+
+  // 세척 유무 결정
+  let washText = '';
+  if(washSel === 'auto'){
+    const row = D.stkRows.find(r => r[2]===model);
+    const ring = row ? row[0] : '';
+    washText = ring === '선삭' ? '있음' : '없음';
+  } else {
+    washText = washSel === 'yes' ? '있음' : '없음';
+  }
+
+  // EP1 자재코드 조회
+  const ep1Info  = EP1_MAP[model] || {ep1:'—', name: model};
+  const ep1Code  = ep1Info.ep1;
+  const ep1Name  = ep1Info.name;
+
+  // 업체명
+  const vendorName = vendor.includes('찬스') ? '㈜찬스' : '㈜인시스';
+  const lotTitle   = vendor.includes('찬스') ? '챈스 LOT이동표' : '인시스 LOT이동표';
+
+  // 바코드 데이터 (EP1코드+수량+날짜)
+  const barcodeData = `${ep1Code}|${qty}|${date}`;
+
+  // 인쇄용 HTML 생성 (2부 = 동일 양식 2장)
+  const lotHTML = `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>LOT이동표 — ${model}</title>
+<style>
+  @page { size: A4; margin: 15mm 12mm; }
+  @media print {
+    .no-print { display: none; }
+    .page-break { page-break-after: always; }
+  }
+  * { font-family: '맑은 고딕', 'Malgun Gothic', sans-serif; box-sizing: border-box; }
+  body { margin: 0; padding: 0; background: #fff; color: #111; }
+  .sheet {
+    width: 100%; border: 2px solid #1B3F6A; border-radius: 4px;
+    margin-bottom: 20px; overflow: hidden;
+  }
+  .sheet-header {
+    background: #1B3F6A; color: #fff; padding: 10px 16px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .sheet-title { font-size: 18px; font-weight: 700; letter-spacing: 2px; }
+  .sheet-copy  { font-size: 12px; background: rgba(255,255,255,.2);
+    border-radius: 4px; padding: 3px 10px; }
+  .sheet-body  { padding: 14px 16px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+  th, td { border: 1px solid #aaa; padding: 8px 10px; font-size: 13px; }
+  th { background: #EEF3FA; color: #1B3F6A; font-weight: 700;
+       width: 130px; white-space: nowrap; }
+  td { color: #111; }
+  .td-big { font-size: 22px; font-weight: 700; color: #1B3F6A; }
+  .td-wash-y { color: #1A7A40; font-weight: 700; font-size: 16px; }
+  .td-wash-n { color: #888; font-size: 16px; }
+  .bc-wrap { text-align: center; padding: 12px 0 8px; }
+  .bc-num  { font-family: monospace; font-size: 12px; color: #555; margin-top: 4px; }
+  .footer  { font-size: 11px; color: #888; text-align: right;
+             padding: 6px 16px; border-top: 1px solid #ddd; background: #fafafa; }
+  .notice  { background: #FFF8E8; border: 1px solid #e8a800;
+             border-radius: 4px; padding: 8px 12px; font-size: 12px;
+             color: #7a5500; margin-bottom: 12px; }
+  .btn-wrap { text-align: center; margin: 20px 0; }
+  .btn-print { background: #1B3F6A; color: #fff; border: none;
+    padding: 12px 40px; font-size: 15px; border-radius: 6px;
+    cursor: pointer; font-family: inherit; margin: 0 6px; }
+  .btn-close { background: #888; color: #fff; border: none;
+    padding: 12px 30px; font-size: 15px; border-radius: 6px;
+    cursor: pointer; font-family: inherit; margin: 0 6px; }
+  svg { display: block; margin: 0 auto; }
+</style>
+</head>
+<body>
+<div class="no-print btn-wrap">
+  <button class="btn-print" onclick="window.print()">🖨 인쇄 (2부)</button>
+  <button class="btn-close" onclick="window.close()">✕ 닫기</button>
+</div>
+
+${[1,2].map(copy => `
+<div class="sheet ${copy===1?'page-break':''}">
+  <div class="sheet-header">
+    <div class="sheet-title">${lotTitle}</div>
+    <div class="sheet-copy">${copy}부 / 2부 (${copy===1?'납품 동봉용':'보관용'})</div>
+  </div>
+  <div class="sheet-body">
+    <div class="notice">
+      ※ 본 LOT이동표는 출하 시 반드시 박스에 동봉하거나 보관하세요.
+    </div>
+    <table>
+      <tr><th>EP1 자재코드</th><td style="font-family:monospace;font-size:15px;font-weight:700">${ep1Code}</td></tr>
+      <tr><th>EP1 자재내역</th><td>${ep1Name}</td></tr>
+      <tr><th>수 량</th><td class="td-big">${qty.toLocaleString()} PCS</td></tr>
+      <tr><th>업 체 명</th><td style="font-size:16px;font-weight:700">${vendorName}</td></tr>
+      <tr><th>세 척 유 무</th>
+        <td class="${washText==='있음'?'td-wash-y':'td-wash-n'}">
+          ${washText==='있음'?'✅ 세척 있음':'⬜ 세척 없음'}
+        </td>
+      </tr>
+      <tr><th>출 하 일 자</th><td style="font-size:15px">${date}</td></tr>
+      <tr><th>전 표 번 호</th><td style="font-family:monospace">${ref}</td></tr>
+    </table>
+    <div class="bc-wrap">
+      <svg id="bc-svg-${copy}" width="320" height="70"></svg>
+      <div class="bc-num">${barcodeData}</div>
+    </div>
+  </div>
+  <div class="footer">
+    신촌공장 WMS 자동생성 · 출력일시: ${new Date().toLocaleString('ko-KR')} · ${copy}부
+  </div>
+</div>`).join('')}
+
+<scr\x69pt>
+// 간이 Code128 바코드 SVG 생성
+function drawCode128(svgId, text){
+  const svg = document.getElementById(svgId);
+  if(!svg) return;
+  const w=2, h=60, x0=10;
+  // 심플 바코드: 문자별 비트패턴으로 막대 생성
+  const chars = text.split('').map(c=>c.charCodeAt(0));
+  let x = x0;
+  svg.innerHTML='';
+  // START 패턴
+  [1,1,0,1,0,0,1,0,0,1,1].forEach(b=>{
+    if(b){ const r=document.createElementNS('http://www.w3.org/2000/svg','rect');
+      r.setAttribute('x',x);r.setAttribute('y',5);
+      r.setAttribute('width',w);r.setAttribute('height',h);
+      r.setAttribute('fill','#000'); svg.appendChild(r); }
+    x+=w;
+  });
+  // 데이터 바
+  chars.forEach(code=>{
+    const pat = (code ^ 0x1F).toString(2).padStart(8,'0');
+    pat.split('').forEach(b=>{
+      if(b==='1'){
+        const r=document.createElementNS('http://www.w3.org/2000/svg','rect');
+        r.setAttribute('x',x);r.setAttribute('y',5);
+        r.setAttribute('width',w);r.setAttribute('height',h);
+        r.setAttribute('fill','#000'); svg.appendChild(r);
+      }
+      x+=w;
+    });
+  });
+  // STOP 패턴
+  [1,1,0,0,0,1,0,1,1,1,1].forEach(b=>{
+    if(b){ const r=document.createElementNS('http://www.w3.org/2000/svg','rect');
+      r.setAttribute('x',x);r.setAttribute('y',5);
+      r.setAttribute('width',w);r.setAttribute('height',h);
+      r.setAttribute('fill','#000'); svg.appendChild(r); }
+    x+=w;
+  });
+  svg.setAttribute('width', x+x0);
+}
+[1,2].forEach(i => drawCode128('bc-svg-'+i, '${barcodeData}'));
+</scr\x69pt>
+</body></html>`;
+
+  // 새 창으로 출력
+  const win = window.open('', '_blank', 'width=700,height=900');
+  win.document.write(lotHTML);
+  win.document.close();
+  showToast('LOT이동표 출력창이 열렸습니다 (2부) — 인쇄 버튼을 클릭하세요', 'ok');
+}
+
+// ══════════════════════════════════════════════════════
+//  반품 처리
+// ══════════════════════════════════════════════════════
+function uRt(){
+  const qty = parseInt(document.getElementById('rt-qty').value)||0;
+  // 현재고 (stkRows에서 조회)
+  const model  = document.getElementById('rt-model').value;
+  const vendor = document.getElementById('rt-vendor').value;
+  const row    = D.stkRows.find(r => r[2]===model && r[1]===vendor);
+  const curStk = row ? row[9] : 0;
+  document.getElementById('rt-stock').value   = curStk ? curStk.toLocaleString()+' PCS' : '—';
+  document.getElementById('rt-after').textContent   = qty>0 ? (curStk+qty).toLocaleString()+' PCS' : '—';
+  document.getElementById('rt-qty-display').textContent = qty.toLocaleString()+' PCS';
+  // 전표 미리보기 갱신
+  const reasonMap = {defect:'불량(Defect)',overstock:'과잉 입고',wrong:'오입고',damaged:'파손',other:'기타'};
+  const reason = document.getElementById('rt-reason').value;
+  document.getElementById('rt-sl-model').textContent  = model;
+  document.getElementById('rt-sl-vendor').textContent = vendor;
+  document.getElementById('rt-sl-qty').textContent    = qty.toLocaleString()+' PCS';
+  document.getElementById('rt-sl-reason').textContent = reasonMap[reason]||reason;
+  document.getElementById('rt-sl-after').textContent  = qty>0 ? (curStk+qty).toLocaleString()+' PCS' : '—';
+  document.getElementById('rt-sl-ref').textContent    = document.getElementById('rt-ref').value;
+  document.getElementById('rt-sl-date').textContent   = document.getElementById('rt-date').value;
+}
+
+async function rtScaleRead(){
+  const url = document.getElementById('pc-server').value;
+  try {
+    const r = await fetch(`${url}/scale/read`,{signal:AbortSignal.timeout(5000)});
+    const d = await r.json();
+    if(d.ok && d.value_kg > 0){
+      const model = document.getElementById('rt-model').value;
+      const wt    = WT_DB.find(w => w.key === model);
+      if(wt){
+        const netG = d.value_kg * 1000 - wt.pkgG;
+        const qty  = Math.round(netG / wt.unitG);
+        document.getElementById('rt-qty').value = qty;
+        showToast(`저울 계근: ${qty.toLocaleString()} PCS`);
+      } else {
+        document.getElementById('rt-qty').value = Math.round(d.value_kg * 1000);
+        showToast(`저울: ${d.value_kg}kg — 단중 미등록, 직접 입력하세요`,'warn');
+      }
+      uRt();
+    }
+  } catch(e){ showToast('저울 연결 실패','err'); }
+}
+
+function doReturn(){
+  const model   = document.getElementById('rt-model').value;
+  const vendor  = document.getElementById('rt-vendor').value;
+  const qty     = parseInt(document.getElementById('rt-qty').value)||0;
+  const ref     = document.getElementById('rt-ref').value;
+  const date    = document.getElementById('rt-date').value;
+  const reason  = document.getElementById('rt-reason').value;
+  const note    = document.getElementById('rt-note').value;
+
+  if(qty <= 0){ showToast('반품 수량을 입력하세요','err'); return; }
+
+  const reasonMap = {defect:'불량(Defect)',overstock:'과잉 입고',wrong:'오입고',damaged:'파손',other:'기타'};
+  const reasonText = reasonMap[reason]||reason;
+
+  // 현재고 조회 후 복원
+  const row    = D.stkRows.find(r => r[2]===model && r[1]===vendor);
+  const curStk = row ? row[9] : 0;
+  const afterStk = curStk + qty;
+
+  // 이력 추가
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td style="font-family:var(--fm);font-size:12px">${ref}</td>
+    <td>${model}</td>
+    <td class="num" style="color:#e87c3e">${qty.toLocaleString()}</td>
+    <td><span class="tag" style="background:rgba(232,124,62,.15);color:#e87c3e;border-radius:4px;padding:2px 6px;font-size:11px">${reasonText}</span></td>`;
+  document.getElementById('rt-hist').prepend(tr);
+
+  // 전표 확정
+  document.getElementById('rt-sl-ref').textContent   = ref;
+  document.getElementById('rt-sl-date').textContent  = date;
+  document.getElementById('rt-sl-model').textContent = model;
+  document.getElementById('rt-sl-vendor').textContent= vendor;
+  document.getElementById('rt-sl-qty').textContent   = qty.toLocaleString()+' PCS';
+  document.getElementById('rt-sl-reason').textContent= reasonText;
+  document.getElementById('rt-sl-after').textContent = afterStk.toLocaleString()+' PCS';
+
+  // 완료 모달
+  showModal('반품 처리 완료',
+    `전표번호: ${ref}<br>` +
+    `모델: ${model}  (${vendor})<br>` +
+    `반품수량: <strong style="color:#e87c3e">${qty.toLocaleString()} PCS</strong><br>` +
+    `반품사유: ${reasonText}<br>` +
+    `${note ? '비고: '+note+'<br>' : ''}` +
+    `<br>복원 후 재고: <strong style="color:var(--c2)">${afterStk.toLocaleString()} PCS</strong><br><br>` +
+    `✓ 재고 복원 완료<br>` +
+    `✓ 반품 이력 저장 완료<br>` +
+    `<span style="color:var(--c3);font-size:13px">※ WMS 라벨 재출력 후 박스에 부착하세요</span>`
+  );
+
+  // 전표번호 자동 증가
+  const m = ref.match(/(\d+)$/);
+  if(m){
+    const next = String(parseInt(m[1])+1).padStart(m[1].length,'0');
+    document.getElementById('rt-ref').value = ref.replace(/\d+$/, next);
+  }
+  // 수량 초기화
+  document.getElementById('rt-qty').value = 0;
+  uRt();
+}
+
 function expMsg(){
   document.getElementById('exp-msg').textContent='✓ 엑셀 업데이트 완료';
   setTimeout(()=>document.getElementById('exp-msg').textContent='',4000);
@@ -3283,8 +4051,8 @@ function switchFactory(f){
   document.getElementById('ftab-sc').classList.toggle('on', sc);
   document.getElementById('ftab-jj').classList.toggle('on', !sc);
   document.getElementById('hdr-logo').innerHTML = sc
-    ? '신촌공장 WMS<span>v3.43</span>'
-    : '전주공장 WMS<span>v3.43</span>';
+    ? '신촌공장 WMS<span>v3.29</span>'
+    : '전주공장 WMS<span>v3.29</span>';
   if(!sc){ jjInitDash(); }
 }
 
@@ -3320,16 +4088,15 @@ const JJ = {
 // ── 전주 페이지 전환 ────────────────────────────────
 function jjGo(id, el){
   document.querySelectorAll('#jj-wrap .pg').forEach(p=>p.classList.remove('on'));
-  document.querySelectorAll('#jj-sidebar .sb-item, #jj-tabbar .tb-item').forEach(s=>s.classList.remove('on'));
-  const pg=document.getElementById('pg-'+id);
-  if(pg) pg.classList.add('on');
+  document.querySelectorAll('#jj-wrap .sb-item, #jj-tabbar .tb-item').forEach(s=>s.classList.remove('on'));
+  document.getElementById('pg-'+id).classList.add('on');
   if(el) el.classList.add('on');
-  if(id==='jj-dash')     jjInitDash();
-  if(id==='jj-stock')    jjInitStock();
-  if(id==='jj-scan')     jjInitScanStk();
-  if(id==='jj-dead')     jjInitDead();
+  if(id==='jj-dash')   jjInitDash();
+  if(id==='jj-stock')  jjInitStock();
+  if(id==='jj-scan')   jjInitScanStk();
+  if(id==='jj-dead')   jjInitDead();
   if(id==='jj-outbound') jjUob();
-  if(id==='jj-label')    jjULbl();
+  if(id==='jj-label')  jjULbl();
 }
 
 // ── 전주 대시보드 ────────────────────────────────────
@@ -3655,6 +4422,7 @@ function jjULbl(){
   const qty =parseInt(document.getElementById('jj-lqty').value)||0;
   const date=document.getElementById('jj-ldate').value;
   const lot =document.getElementById('jj-llot').value;
+  const loc =document.getElementById('jj-lloc').value;
   const gubun=document.getElementById('jj-lgubun').value;
   document.getElementById('jj-lp-code').textContent    = code;
   document.getElementById('jj-lp-spec').textContent    = spec;
@@ -3662,7 +4430,7 @@ function jjULbl(){
   document.getElementById('jj-lp-bc-no').textContent   = code;
   document.getElementById('jj-lp-fcode').textContent   = code;
   document.getElementById('jj-lp-lot').textContent     = lot;
-  document.getElementById('jj-lp-dateloc').textContent = `${date}`;
+  document.getElementById('jj-lp-dateloc').textContent = `${date}/${loc}`;
   const tg=document.getElementById('jj-lp-gtag');
   tg.textContent=gubun; tg.style.background=gubun==='입고'?'var(--c3)':'var(--c1)'; tg.style.color='#000';
   const now=new Date();
@@ -3671,87 +4439,19 @@ function jjULbl(){
   document.getElementById('jj-lp-seq').textContent=`SEQ:${String(jjLblSeq).padStart(4,'0')}`;
   try{JsBarcode('#jj-lbc-svg',code,{format:'CODE128',width:2,height:60,displayValue:false,margin:3,background:'#fff',lineColor:'#000'});}catch(e){}
 }
-// ── 전주 ZPL 생성 ──────────────────────────────────────
-function buildJjZpl(){
-  const code =document.getElementById('jj-lcode').value.trim();
-  const spec =document.getElementById('jj-lspec').value;
-  const qty  =parseInt(document.getElementById('jj-lqty').value)||0;
-  const date =document.getElementById('jj-ldate').value;
-  const lot  =document.getElementById('jj-llot').value;
-  const gubun=document.getElementById('jj-lgubun').value;
-  const seq  =String(jjLblSeq).padStart(4,'0');
-  const now  =new Date();
-  const pdt  =`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-  const g    =gubun==='입고'?'[IN]':'[REPRINT]';
-  const specZ=spec.length>7?spec.substring(0,7):spec;
-  const specF=spec.length>18?spec.substring(0,18)+'..':spec;
-  return `^XA
-^MMT
-^MNN
-^PW1181
-^LL709
-^FO0,0^GB1181,90,90^FS
-^FO70,18^CF0,50^FR^FDJEONJU WMS v3.43^FS
-^FO960,20^CF0,48^FR^FD${g}^FS
-^FO0,90^GB1181,4,4^FS
-^CF0,40
-^FO70,100^FD${code}^FS
-^CF0,100
-^FO70,148^FD${specZ}^FS
-^CF0,100
-^FO70,262^FD${qty.toLocaleString()}^FS
-^CF0,52
-^FO70,372^FDPCS^FS
-^CF0,38
-^FO70,432^FDSPEC:${specF}^FS
-^BY3
-^FO470,115^BCN,377,N,N,N^FD${code}^FS
-^CF0,32
-^FO470,510^FD${code}^FS
-^FO0,548^GB1181,5,5^FS
-^CF0,44
-^FO70,562^FDLOT:${lot}^FS
-^CF0,44
-^FO70,614^FDDATE:${date}^FS
-^FO0,664^GB1181,3,3^FS
-^CF0,30
-^FO70,672^FD${pdt}  SEQ:${seq}^FS
-^FO820,672^FDJEONJU WMS^FS
-^PQ1,0,1,Y
-^XZ`;
-}
-
-// ── 전주 라벨 출력 (USB/브라우저 분기) ─────────────────
-async function jjPrtLbl(){
-  const code =document.getElementById('jj-lcode').value;
-  const qty  =parseInt(document.getElementById('jj-lqty').value)||0;
-  const gubun=document.getElementById('jj-lgubun').value;
-  const method=document.getElementById('jj-pc-method').value;
-  const st   =document.getElementById('jj-pc-status');
-  const msg  =document.getElementById('jj-lmsg');
-  document.getElementById('jj-lp-seq').textContent=`SEQ:${String(jjLblSeq).padStart(4,'0')}`;jjLblSeq++;
+function jjPrtLbl(){
+  const code=document.getElementById('jj-lcode').value;
+  const qty=parseInt(document.getElementById('jj-lqty').value)||0;
+  document.getElementById('jj-lp-seq').textContent=`SEQ:${String(jjLblSeq).padStart(4,'0')}`;
+  jjLblSeq++;
   const now=new Date(),ts=[now.getHours(),now.getMinutes()].map(v=>String(v).padStart(2,'0')).join(':');
-  let result='tg',rtxt='성공';
-  if(method==='server'){
-    const zpl=buildJjZpl();
-    try{
-      const url=document.getElementById('jj-pc-server').value;
-      const res=await fetch(`${url}/print`,{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({zpl,matno:code,qty,gubun}),signal:AbortSignal.timeout(8000)});
-      if(res.ok){if(st){st.style.color='var(--c2)';st.textContent=`● 출력 완료 — XD5-43t`;}
-        msg.innerHTML=`<div class="alert a-ok">✓ USB 출력 완료 — ${code} | ${qty.toLocaleString()} PCS</div>`;}
-      else throw new Error();
-    }catch{if(st){st.style.color='var(--c4)';st.textContent='● 서버 실패 → 브라우저 전환';}
-      result='tr';rtxt='서버실패';
-      msg.innerHTML=`<div class="alert a-warn">⚠ Python서버 연결 실패 — 브라우저 인쇄로 대체합니다</div>`;
-      setTimeout(()=>jjBrowserPrint(),600);}
-  }else{result='to';rtxt='브라우저';jjBrowserPrint();}
   const row=document.createElement('tr');
-  row.innerHTML=`<td style="font-family:var(--fm)">${ts}</td><td style="font-family:var(--fm);font-size:11px">${code}</td><td>${qty.toLocaleString()}</td><td><span class="tag ${result}">${rtxt}</span></td>`;
+  row.innerHTML=`<td style="font-family:var(--fm)">${ts}</td><td style="font-family:var(--fm);font-size:11px">${code}</td><td>${qty.toLocaleString()}</td><td><span class="tag tg">완료</span></td>`;
   document.getElementById('jj-lhist').prepend(row);
-  setTimeout(()=>msg.innerHTML='',4000);
+  document.getElementById('jj-lmsg').innerHTML=`<div class="alert a-ok">✓ 전주공장 라벨 출력 — ${code} | ${qty.toLocaleString()} PCS</div>`;
+  jjBrowserPrint();
+  setTimeout(()=>document.getElementById('jj-lmsg').innerHTML='',4000);
 }
-
 function jjBrowserPrint(){
   const lbl=document.getElementById('jj-lp-label');
   const w=window.open('','_blank','width=640,height=440');
@@ -3791,13 +4491,7 @@ ${lbl.outerHTML}
 </body></html>`);
   w.document.close();
 }
-
-// 전주 출력방식 토글 (서버 선택 시 URL 입력 표시)
-function jjTogglePcM(){
-  const m=document.getElementById('jj-pc-method').value;
-  const inp=document.getElementById('jj-pc-server');
-  if(inp) inp.style.display=m==='server'?'':'none';
-}
+function jjTogglePcM(){}
 
 // ── 전주 불용재고 ─────────────────────────────────────
 function jjInitDead(){
@@ -4399,6 +5093,969 @@ function initWeight(){
   }).join('');
 }
 
+
+
+// ══════════════════════════════════════════════════════
+//  엑셀 자동생성 다운로드 (SheetJS)
+// ══════════════════════════════════════════════════════
+const MONTH_NAMES = {1:'1월',2:'2월',3:'3월',4:'4월',5:'5월',6:'6월',
+                     7:'7월',8:'8월',9:'9월',10:'10월',11:'11월',12:'12월'};
+
+function xlSetMsg(msg, ok=true){
+  const el = document.getElementById('xl-msg');
+  if(el){ el.textContent=msg; el.style.color=ok?'var(--c2)':'var(--c4)'; }
+}
+
+function xlDownload(type){
+  if(typeof XLSX === 'undefined'){
+    xlSetMsg('⚠ SheetJS 라이브러리 로딩 중 — 인터넷 연결 확인 후 다시 시도', false);
+    return;
+  }
+  try {
+    switch(type){
+      case 'inout':  xlInOut();  break;
+      case 'chance': xlChance(); break;
+      case 'insys':  xlInsys();  break;
+      case 'jw':     xlJW();     break;
+    }
+  } catch(e){
+    xlSetMsg('오류: '+e.message, false);
+    console.error(e);
+  }
+}
+
+// ── 공통 헬퍼 ──────────────────────────────────────────
+function xlSave(wb, filename){
+  XLSX.writeFile(wb, filename);
+  xlSetMsg('✅ '+filename+' 다운로드 완료');
+}
+
+function xlStyle(cell, bold=false, align='left', color='000000', bg='FFFFFF'){
+  return; // SheetJS 무료버전은 스타일 미지원 — 순수 데이터만
+}
+
+function xlNum(v){ return typeof v==='number'?v:(parseFloat(v)||0); }
+
+// ── 1. 입출고 현황 ──────────────────────────────────────
+function xlInOut(){
+  const mon = parseInt(document.getElementById('xl-month').value)||4;
+  const monName = `2026년 ${MONTH_NAMES[mon]}`;
+  const wb = XLSX.utils.book_new();
+
+  // 선삭링 시트
+  const selHeader = [['신촌공장 선삭링 입출고 현황 — '+monName],
+    [],
+    ['링종류','공급처','형번','자재규격','Type','륜','기초재고','입고','출고','현재고','재고금액','상태']
+  ];
+  const selData = D.stkRows
+    .filter(r=>r[0]==='선삭')
+    .map(r=>[r[0],r[1],r[2],r[3],r[4],r[5],
+      xlNum(r[6]),xlNum(r[7]),xlNum(r[8]),xlNum(r[9]),xlNum(r[10]),r[11]]);
+  // 합계행
+  const selSum = D.stkRows.filter(r=>r[0]==='선삭');
+  selData.push(['합계','','','','','',
+    selSum.reduce((s,r)=>s+xlNum(r[6]),0),
+    selSum.reduce((s,r)=>s+xlNum(r[7]),0),
+    selSum.reduce((s,r)=>s+xlNum(r[8]),0),
+    selSum.reduce((s,r)=>s+xlNum(r[9]),0),
+    selSum.reduce((s,r)=>s+xlNum(r[10]),0),'']);
+
+  const wsSel = XLSX.utils.aoa_to_sheet([...selHeader,...selData]);
+  wsSel['!cols']=[{wch:8},{wch:12},{wch:12},{wch:28},{wch:6},{wch:4},
+    {wch:10},{wch:10},{wch:10},{wch:10},{wch:14},{wch:6}];
+  XLSX.utils.book_append_sheet(wb, wsSel, '선삭링');
+
+  // 연삭링 시트
+  const yelHeader = [['신촌공장 연삭링 입출고 현황 — '+monName],
+    [],
+    ['링종류','공급처','형번','자재규격','Type','륜','기초재고','입고','출고','현재고','재고금액','상태']
+  ];
+  const yelData = D.stkRows
+    .filter(r=>r[0]==='연삭')
+    .map(r=>[r[0],r[1],r[2],r[3],r[4],r[5],
+      xlNum(r[6]),xlNum(r[7]),xlNum(r[8]),xlNum(r[9]),xlNum(r[10]),r[11]]);
+  const yelSum = D.stkRows.filter(r=>r[0]==='연삭');
+  yelData.push(['합계','','','','','',
+    yelSum.reduce((s,r)=>s+xlNum(r[6]),0),
+    yelSum.reduce((s,r)=>s+xlNum(r[7]),0),
+    yelSum.reduce((s,r)=>s+xlNum(r[8]),0),
+    yelSum.reduce((s,r)=>s+xlNum(r[9]),0),
+    yelSum.reduce((s,r)=>s+xlNum(r[10]),0),'']);
+
+  const wsYel = XLSX.utils.aoa_to_sheet([...yelHeader,...yelData]);
+  wsYel['!cols']=[{wch:8},{wch:12},{wch:12},{wch:28},{wch:6},{wch:4},
+    {wch:10},{wch:10},{wch:10},{wch:10},{wch:14},{wch:6}];
+  XLSX.utils.book_append_sheet(wb, wsYel, '연삭링');
+
+  // 요약 시트
+  const total = D.stkRows;
+  const sumSheet = [
+    ['신촌공장 입출고 현황 요약 — '+monName],
+    [],
+    ['구분','현재고(PCS)','재고금액(원)'],
+    ['인시스/선삭',
+      total.filter(r=>r[0]==='선삭'&&r[1]==='인시스(0350)').reduce((s,r)=>s+xlNum(r[9]),0),
+      total.filter(r=>r[0]==='선삭'&&r[1]==='인시스(0350)').reduce((s,r)=>s+xlNum(r[10]),0)],
+    ['찬스/선삭',
+      total.filter(r=>r[0]==='선삭'&&r[1]==='찬스(위탁)').reduce((s,r)=>s+xlNum(r[9]),0),
+      total.filter(r=>r[0]==='선삭'&&r[1]==='찬스(위탁)').reduce((s,r)=>s+xlNum(r[10]),0)],
+    ['인시스/연삭',
+      total.filter(r=>r[0]==='연삭'&&r[1]==='인시스(0350)').reduce((s,r)=>s+xlNum(r[9]),0),
+      total.filter(r=>r[0]==='연삭'&&r[1]==='인시스(0350)').reduce((s,r)=>s+xlNum(r[10]),0)],
+    ['찬스/연삭',
+      total.filter(r=>r[0]==='연삭'&&r[1]==='찬스(위탁)').reduce((s,r)=>s+xlNum(r[9]),0),
+      total.filter(r=>r[0]==='연삭'&&r[1]==='찬스(위탁)').reduce((s,r)=>s+xlNum(r[10]),0)],
+    ['합계',total.reduce((s,r)=>s+xlNum(r[9]),0),total.reduce((s,r)=>s+xlNum(r[10]),0)],
+  ];
+  const wsSum = XLSX.utils.aoa_to_sheet(sumSheet);
+  wsSum['!cols']=[{wch:16},{wch:16},{wch:16}];
+  XLSX.utils.book_append_sheet(wb, wsSum, '요약');
+
+  xlSave(wb, `인시스찬스_입출고현황_2026${MONTH_NAMES[mon]}.xlsx`);
+}
+
+// ── 2. 챈스 선삭품 거래명세서 ──────────────────────────
+function xlChance(){
+  const mon = parseInt(document.getElementById('xl-chance-month').value)||4;
+  const monName = `2026년 ${MONTH_NAMES[mon]}`;
+  const wb = XLSX.utils.book_new();
+
+  const rows = D.stkRows.filter(r=>r[0]==='선삭'&&r[1]==='찬스(위탁)');
+  const ep1Map = typeof EP1_MAP!=='undefined'?EP1_MAP:{};
+
+  const header = [
+    ['㈜찬스 선삭품 거래명세서 — '+monName],
+    ['공급사: ㈜찬스  /  수취: ㈜인시스(INSYS)'],
+    [],
+    ['No','EP1 자재코드','형번','자재규격','Type','륜','출고수량(PCS)','단가(원)','금액(원)','비고']
+  ];
+  const data = rows.map((r,i)=>{
+    const ep1 = ep1Map[r[2]]?ep1Map[r[2]].ep1:'—';
+    const price = D.rptRows.find(rr=>rr[0].includes(r[2]))?.[8]||0;
+    const qty   = xlNum(r[8]);
+    const unitP = qty>0&&price>0?Math.round(price/qty):0;
+    return [i+1, ep1, r[2], r[3], r[4], r[5], qty, unitP, price, ''];
+  });
+
+  // 합계
+  data.push(['','','','','','합계',
+    data.reduce((s,r)=>s+(typeof r[6]==='number'?r[6]:0),0),'',
+    data.reduce((s,r)=>s+(typeof r[8]==='number'?r[8]:0),0),'']);
+
+  const ws = XLSX.utils.aoa_to_sheet([...header,...data]);
+  ws['!cols']=[{wch:4},{wch:18},{wch:12},{wch:28},{wch:6},{wch:4},
+    {wch:12},{wch:10},{wch:12},{wch:8}];
+  XLSX.utils.book_append_sheet(wb, ws, '거래명세서');
+  xlSave(wb, `챈스_선삭품_거래명세서_2026${MONTH_NAMES[mon]}.xlsx`);
+}
+
+// ── 3. 인시스 선삭품 납품명세서 ────────────────────────
+function xlInsys(){
+  const mon = parseInt(document.getElementById('xl-insys-month').value)||4;
+  const monName = `2026년 ${MONTH_NAMES[mon]}`;
+  const wb = XLSX.utils.book_new();
+
+  const rows = D.stkRows.filter(r=>r[0]==='선삭'&&r[1]==='인시스(0350)');
+  const ep1Map = typeof EP1_MAP!=='undefined'?EP1_MAP:{};
+
+  const header = [
+    ['㈜인시스 선삭품 납품명세서 — '+monName],
+    ['공급사: ㈜인시스(INSYS)  /  납품처: 셰플러코리아'],
+    [],
+    ['No','EP1 자재코드','형번','자재규격','Type','륜','납품수량(PCS)','단가(원)','금액(원)','세척','비고']
+  ];
+  const data = rows.map((r,i)=>{
+    const ep1  = ep1Map[r[2]]?ep1Map[r[2]].ep1:'—';
+    const price= D.rptRows.find(rr=>rr[0].includes(r[2]))?.[8]||0;
+    const qty  = xlNum(r[8]);
+    const unitP= qty>0&&price>0?Math.round(price/qty):0;
+    // 선삭품은 세척 있음
+    return [i+1, ep1, r[2], r[3], r[4], r[5], qty, unitP, price, '있음', ''];
+  });
+  data.push(['','','','','','합계',
+    data.reduce((s,r)=>s+(typeof r[6]==='number'?r[6]:0),0),'',
+    data.reduce((s,r)=>s+(typeof r[8]==='number'?r[8]:0),0),'','']);
+
+  const ws = XLSX.utils.aoa_to_sheet([...header,...data]);
+  ws['!cols']=[{wch:4},{wch:18},{wch:12},{wch:28},{wch:6},{wch:4},
+    {wch:12},{wch:10},{wch:12},{wch:8},{wch:8}];
+  XLSX.utils.book_append_sheet(wb, ws, '납품명세서');
+  xlSave(wb, `인시스_선삭품_납품명세서_2026${MONTH_NAMES[mon]}.xlsx`);
+}
+
+// ── 4. JW·카일리 연삭품 납품명세서 ────────────────────
+function xlJW(){
+  const mon = parseInt(document.getElementById('xl-jw-month').value)||4;
+  const monName = `2026년 ${MONTH_NAMES[mon]}`;
+  const wb = XLSX.utils.book_new();
+
+  // 연삭품 = 찬스(위탁) + 인시스 연삭
+  const rows = D.stkRows.filter(r=>r[0]==='연삭');
+  const ep1Map = typeof EP1_MAP!=='undefined'?EP1_MAP:{};
+
+  const header = [
+    ['JW·카일리 연삭품 납품명세서 — '+monName],
+    ['공급사: JW Machinery / 카일리(Kaili)  /  납품처: 신촌공장'],
+    [],
+    ['No','EP1 자재코드','형번','자재규격','Type','륜','납품수량(PCS)','단가(원)','금액(원)','비고']
+  ];
+  const data = rows.map((r,i)=>{
+    const ep1  = ep1Map[r[2]]?ep1Map[r[2]].ep1:'—';
+    const price= D.rptRows.find(rr=>rr[0].includes(r[2]))?.[8]||0;
+    const qty  = xlNum(r[8]);
+    const unitP= qty>0&&price>0?Math.round(price/qty):0;
+    return [i+1, ep1, r[2], r[3], r[4], r[5], qty, unitP, price, ''];
+  });
+  data.push(['','','','','','합계',
+    data.reduce((s,r)=>s+(typeof r[6]==='number'?r[6]:0),0),'',
+    data.reduce((s,r)=>s+(typeof r[8]==='number'?r[8]:0),0),'']);
+
+  const ws = XLSX.utils.aoa_to_sheet([...header,...data]);
+  ws['!cols']=[{wch:4},{wch:18},{wch:12},{wch:28},{wch:6},{wch:4},
+    {wch:12},{wch:10},{wch:12},{wch:8}];
+  XLSX.utils.book_append_sheet(wb, ws, '납품명세서');
+  xlSave(wb, `JW카일리_연삭품_납품명세서_2026${MONTH_NAMES[mon]}.xlsx`);
+}
+
+function xlInitPage(){
+  document.getElementById("xl-apply-msg").textContent="";
+}
+
+// ══════════════════════════════════════════════════════
+//  Firebase Firestore 연동
+//  컬렉션 구조:
+//  sc_stock    — 신촌 품목별 현재고·단중
+//  sc_inbound  — 신촌 입고이력
+//  sc_outbound — 신촌 출고이력
+//  sc_labels   — 라벨 출력이력·SEQ
+//  sc_settings — SEQ번호·프린터URL 등
+//  jj_stock    — 전주 품목별 현재고
+//  jj_inbound  — 전주 입고이력
+//  jj_outbound — 전주 출고이력
+// ══════════════════════════════════════════════════════
+
+// ── DB 준비 대기 헬퍼 ──────────────────────────────────
+async function waitDB(timeout=5000){
+  const start = Date.now();
+  while(!window.db || !window.fbUser){
+    if(Date.now()-start > timeout) throw new Error('DB 미연결');
+    await new Promise(r=>setTimeout(r,200));
+  }
+  return window.db;
+}
+
+// ── 로그인 / 로그아웃 ──────────────────────────────────
+async function fbLogin(email, password){
+  try {
+    await window.fbSignIn(window.fbAuth, email, password);
+    showToast('Firebase 로그인 성공','ok');
+  } catch(e){
+    showToast('로그인 실패: '+e.message,'err');
+  }
+}
+async function fbLogout(){
+  await window.fbSignOut(window.fbAuth);
+  showToast('Firebase 로그아웃','ok');
+}
+
+// ── 실시간 재고 구독 ────────────────────────────────────
+window.fbUnsubscribe = null;
+window.fbStartSync = async function(){
+  if(!window.db) return;
+  // 기존 구독 해제
+  if(window.fbUnsubscribe) window.fbUnsubscribe();
+
+  // sc_stock 실시간 구독
+  const colRef = window.fbCollection(window.db, 'sc_stock');
+  window.fbUnsubscribe = window.fbOnSnapshot(colRef, snap=>{
+    let updCount = 0;
+    snap.docChanges().forEach(change=>{
+      const d = change.doc.data();
+      // stkRows 업데이트
+      const idx = D.stkRows.findIndex(r=>
+        r[2]===d.model && r[5]===d.lun && r[1]===d.vendor);
+      if(idx>=0 && change.type!=='removed'){
+        D.stkRows[idx][9]  = d.stk  || D.stkRows[idx][9];
+        D.stkRows[idx][10] = d.amt  || D.stkRows[idx][10];
+        D.stkRows[idx][7]  = d.ib   || D.stkRows[idx][7];
+        D.stkRows[idx][8]  = d.ob   || D.stkRows[idx][8];
+        updCount++;
+      }
+    });
+    if(updCount>0){
+      if(typeof initStk==='function') initStk();
+      const badge = document.getElementById('fb-status');
+      if(badge) badge.textContent = '🟢 실시간 동기화 중';
+      console.log(`Firestore 실시간 업데이트: ${updCount}건`);
+    }
+  }, err=>{
+    console.warn('Firestore 구독 오류:', err.message);
+    const badge = document.getElementById('fb-status');
+    if(badge){ badge.textContent='🔴 DB 오류'; badge.style.color='var(--c4)'; }
+  });
+};
+
+// ── 입고 저장 ───────────────────────────────────────────
+async function fbSaveInbound(data){
+  if(!window.db||!window.fbUser) return;
+  try {
+    // 입고이력 저장
+    await window.fbAddDoc(window.fbCollection(window.db,'sc_inbound'),{
+      ...data,
+      uid:      window.fbUser.uid,
+      factory:  'sc',
+      createdAt: window.fbTimestamp()
+    });
+    // 재고 업데이트
+    const stockId = `${data.vendor}_${data.model}_${data.lun}`.replace(/[^a-zA-Z0-9가-힣_]/g,'_');
+    const stockRef = window.fbDoc(window.db,'sc_stock', stockId);
+    const snap = await window.fbGetDoc(stockRef);
+    const cur  = snap.exists() ? snap.data() : {stk:0,ib:0,ob:0};
+    await window.fbSetDoc(stockRef,{
+      vendor: data.vendor, model: data.model,
+      spec:   data.spec,   lun:   data.lun,
+      ring:   data.ring,
+      stk:    (cur.stk||0) + data.qty,
+      ib:     (cur.ib||0)  + data.qty,
+      ob:      cur.ob||0,
+      amt:    ((cur.stk||0)+data.qty) * (data.price||0),
+      updatedAt: window.fbTimestamp()
+    });
+    showToast('입고 DB 저장 완료','ok');
+  } catch(e){ showToast('DB 저장 오류: '+e.message,'err'); console.error(e); }
+}
+
+// ── 출고 저장 ───────────────────────────────────────────
+async function fbSaveOutbound(data){
+  if(!window.db||!window.fbUser) return;
+  try {
+    await window.fbAddDoc(window.fbCollection(window.db,'sc_outbound'),{
+      ...data,
+      uid:       window.fbUser.uid,
+      factory:   'sc',
+      createdAt: window.fbTimestamp()
+    });
+    const stockId = `${data.vendor}_${data.model}_${data.lun}`.replace(/[^a-zA-Z0-9가-힣_]/g,'_');
+    const stockRef = window.fbDoc(window.db,'sc_stock', stockId);
+    const snap = await window.fbGetDoc(stockRef);
+    if(snap.exists()){
+      const cur = snap.data();
+      await window.fbUpdateDoc(stockRef,{
+        stk:       Math.max(0,(cur.stk||0) - data.qty),
+        ob:        (cur.ob||0) + data.qty,
+        updatedAt: window.fbTimestamp()
+      });
+    }
+    showToast('출고 DB 저장 완료','ok');
+  } catch(e){ showToast('DB 저장 오류: '+e.message,'err'); console.error(e); }
+}
+
+// ── 반품 저장 ───────────────────────────────────────────
+async function fbSaveReturn(data){
+  if(!window.db||!window.fbUser) return;
+  try {
+    await window.fbAddDoc(window.fbCollection(window.db,'sc_returns'),{
+      ...data, uid:window.fbUser.uid, factory:'sc', createdAt:window.fbTimestamp()
+    });
+    const stockId = `${data.vendor}_${data.model}_${data.lun}`.replace(/[^a-zA-Z0-9가-힣_]/g,'_');
+    const stockRef = window.fbDoc(window.db,'sc_stock', stockId);
+    const snap = await window.fbGetDoc(stockRef);
+    if(snap.exists()){
+      const cur = snap.data();
+      await window.fbUpdateDoc(stockRef,{
+        stk: (cur.stk||0) + data.qty, updatedAt: window.fbTimestamp()
+      });
+    }
+    showToast('반품 DB 저장 완료','ok');
+  } catch(e){ showToast('DB 저장 오류: '+e.message,'err'); }
+}
+
+// ── 라벨 SEQ 관리 ───────────────────────────────────────
+async function fbGetNextSeq(){
+  if(!window.db||!window.fbUser) return null;
+  try {
+    const seqRef = window.fbDoc(window.db,'sc_settings','seq');
+    const snap   = await window.fbGetDoc(seqRef);
+    const cur    = snap.exists() ? (snap.data().seq||0) : 0;
+    const next   = cur + 1;
+    await window.fbSetDoc(seqRef,{ seq:next, updatedAt:window.fbTimestamp() });
+    return String(next).padStart(4,'0');
+  } catch(e){ return null; }
+}
+
+// ── 라벨 출력 이력 저장 ─────────────────────────────────
+async function fbSaveLabel(data){
+  if(!window.db||!window.fbUser) return;
+  try {
+    await window.fbAddDoc(window.fbCollection(window.db,'sc_labels'),{
+      ...data, uid:window.fbUser.uid, factory:'sc', createdAt:window.fbTimestamp()
+    });
+  } catch(e){ console.warn('라벨이력 저장 오류:', e.message); }
+}
+
+// ── 재고실사 저장 ───────────────────────────────────────
+async function fbSaveInventory(data){
+  if(!window.db||!window.fbUser) return;
+  try {
+    await window.fbAddDoc(window.fbCollection(window.db,'sc_inventory'),{
+      ...data, uid:window.fbUser.uid, factory:'sc', createdAt:window.fbTimestamp()
+    });
+    // 현재고 확정 업데이트
+    if(data.confirmed){
+      const stockId = `${data.vendor}_${data.model}_${data.lun}`.replace(/[^a-zA-Z0-9가-힣_]/g,'_');
+      await window.fbUpdateDoc(window.fbDoc(window.db,'sc_stock',stockId),{
+        stk: data.actualQty, updatedAt: window.fbTimestamp()
+      });
+    }
+  } catch(e){ console.warn('실사 저장 오류:', e.message); }
+}
+
+// ── 단중 저장 ───────────────────────────────────────────
+async function fbSaveWeight(key, data){
+  if(!window.db||!window.fbUser) return;
+  try {
+    const wId = key.replace(/[^a-zA-Z0-9가-힣_]/g,'_');
+    await window.fbSetDoc(window.fbDoc(window.db,'sc_weights',wId),{
+      key, ...data, uid:window.fbUser.uid, updatedAt:window.fbTimestamp()
+    });
+    showToast('단중 DB 저장 완료','ok');
+  } catch(e){ showToast('단중 저장 오류: '+e.message,'err'); }
+}
+
+// ── Firestore에서 재고 전체 로드 ────────────────────────
+async function fbLoadStock(){
+  if(!window.db||!window.fbUser) return;
+  try {
+    const snap = await window.fbGetDocs(window.fbCollection(window.db,'sc_stock'));
+    let loaded=0;
+    snap.forEach(d=>{
+      const data = d.data();
+      const idx  = D.stkRows.findIndex(r=>
+        r[2]===data.model && r[5]===data.lun && r[1]===data.vendor);
+      if(idx>=0){
+        if(data.stk  !== undefined) D.stkRows[idx][9]  = data.stk;
+        if(data.ib   !== undefined) D.stkRows[idx][7]  = data.ib;
+        if(data.ob   !== undefined) D.stkRows[idx][8]  = data.ob;
+        if(data.amt  !== undefined) D.stkRows[idx][10] = data.amt;
+        loaded++;
+      }
+    });
+    if(loaded>0){
+      if(typeof initStk==='function') initStk();
+      if(typeof initDS==='function')  initDS();
+      showToast(`Firestore에서 ${loaded}개 품목 재고 로드 완료`,'ok');
+    } else {
+      showToast('Firestore에 저장된 재고 없음 (초기 상태)','warn');
+    }
+  } catch(e){ showToast('재고 로드 오류: '+e.message,'err'); }
+}
+
+// ── 현재 stkRows → Firestore 초기 업로드 ────────────────
+async function fbInitialUpload(){
+  if(!window.db||!window.fbUser){
+    showToast('먼저 Firebase 로그인하세요','err'); return;
+  }
+  if(!confirm(`stkRows ${D.stkRows.length}개 품목을 Firestore sc_stock에 업로드합니다.\n기존 데이터가 덮어씌워집니다. 계속하시겠습니까?`)) return;
+
+  try {
+    const batch = window.fbBatch(window.db);
+    D.stkRows.forEach(r=>{
+      const stockId = `${r[1]}_${r[2]}_${r[5]}`.replace(/[^a-zA-Z0-9가-힣_]/g,'_');
+      const ref = window.fbDoc(window.db,'sc_stock',stockId);
+      batch.set(ref,{
+        ring:r[0], vendor:r[1], model:r[2], spec:r[3],
+        type:r[4], lun:r[5], base:r[6], ib:r[7],
+        ob:r[8], stk:r[9], amt:r[10], status:r[11],
+        factory:'sc', updatedAt:window.fbTimestamp()
+      });
+    });
+    await batch.commit();
+    showToast(`✅ ${D.stkRows.length}개 품목 Firestore 업로드 완료`,'ok');
+  } catch(e){ showToast('업로드 오류: '+e.message,'err'); console.error(e); }
+}
+
+// ── 로그인 모달 ─────────────────────────────────────────
+function showFbLogin(){
+  const existing = document.getElementById('fb-login-modal');
+  if(existing){ existing.style.display='flex'; return; }
+
+  const modal = document.createElement('div');
+  modal.id='fb-login-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML=`
+    <div style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:28px;width:320px">
+      <div style="font-size:16px;font-weight:700;color:var(--c1);margin-bottom:20px">🔵 Firebase 로그인</div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;color:var(--tx2)">이메일</label>
+        <input id="fb-email" type="email" placeholder="이메일 입력"
+          style="width:100%;height:40px;background:var(--s2);border:1px solid var(--bd2);border-radius:8px;padding:0 12px;color:var(--tx);font-size:14px;outline:none;box-sizing:border-box;margin-top:4px">
+      </div>
+      <div style="margin-bottom:20px">
+        <label style="font-size:12px;color:var(--tx2)">비밀번호</label>
+        <input id="fb-pw" type="password" placeholder="비밀번호 입력"
+          style="width:100%;height:40px;background:var(--s2);border:1px solid var(--bd2);border-radius:8px;padding:0 12px;color:var(--tx);font-size:14px;outline:none;box-sizing:border-box;margin-top:4px">
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="fbLogin(document.getElementById('fb-email').value, document.getElementById('fb-pw').value);document.getElementById('fb-login-modal').style.display='none'"
+          style="flex:1;height:40px;background:var(--c1);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">
+          로그인
+        </button>
+        <button onclick="document.getElementById('fb-login-modal').style.display='none'"
+          style="height:40px;padding:0 16px;background:var(--s2);color:var(--tx);border:1px solid var(--bd2);border-radius:8px;font-size:14px;cursor:pointer">
+          취소
+        </button>
+      </div>
+      <div style="margin-top:12px;font-size:12px;color:var(--tx3);text-align:center">
+        Firebase Authentication 이메일/비밀번호 로그인
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+
+// ══════════════════════════════════════════════════════
+//  엑셀 업로드 → WMS 데이터 자동 반영
+// ══════════════════════════════════════════════════════
+let xlPendingData = null;  // 미리보기 대기 데이터
+
+// ── 입출고 파일 임포트 ─────────────────────────────────
+async function xlImportInOut(input){
+  const file = input.files[0];
+  if(!file) return;
+  const st = document.getElementById('xl-inout-status');
+  st.style.color='var(--c3)'; st.textContent='📖 파일 읽는 중...';
+
+  if(typeof XLSX==='undefined'){
+    st.style.color='var(--c4)'; st.textContent='⚠ SheetJS 미로딩 — 인터넷 연결 확인';
+    return;
+  }
+
+  try {
+    const buf = await file.arrayBuffer();
+    const wb  = XLSX.read(buf, {type:'array'});
+    const mon = document.getElementById('xl-up-month').value;
+
+    // 집계 시트 2개 처리 (선삭링_집계, 연삭링_집계)
+    const sheets = ['선삭링_집계','연삭링_집계'];
+    const updateRows = [];
+    let total = 0;
+
+    for(const shName of sheets){
+      if(!wb.SheetNames.includes(shName)) continue;
+      const ws   = wb.Sheets[shName];
+      const data = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
+      const ring = shName.includes('선삭') ? '선삭' : '연삭';
+
+      // row5(index4)부터 데이터 — col1=공급처, col2=형번, col3=Type,
+      // col4=자재번호, col5=자재규격, col6=륜, col7=단가
+      // col8=기초, col9=입고, col10=출고, col11=현재고, col12=금액(기초), col15=금액(현재고)
+      for(let i=4; i<data.length; i++){
+        const r = data[i];
+        if(!r || !r[2]) continue;  // 형번 없으면 스킵
+        const vendor = String(r[1]||'').trim();
+        const model  = String(r[2]||'').trim();
+        const spec   = String(r[5]||'').trim();
+        const lun    = String(r[6]||'').trim();
+        const price  = parseFloat(r[7])||0;
+        const base   = parseInt(r[8])||0;
+        const ib     = parseInt(r[9])||0;
+        const ob     = parseInt(r[10])||0;
+        const stk    = parseInt(r[11])||0;
+        const amt    = parseFloat(r[15])||parseFloat(r[12])||0;
+
+        if(!vendor || !model) continue;
+
+        updateRows.push({ring, vendor, model, spec, lun, price, base, ib, ob, stk, amt});
+        total++;
+      }
+    }
+
+    if(total === 0){
+      st.style.color='var(--c4)'; st.textContent='⚠ 집계 데이터 없음 — 파일 형식 확인';
+      return;
+    }
+
+    xlPendingData = {type:'inout', rows:updateRows, mon};
+    xlShowPreview(updateRows, `입출고 파일 — ${total}개 품목 업데이트 미리보기`);
+    st.style.color='var(--c2)';
+    st.textContent=`✅ ${total}개 품목 인식 완료 — 아래에서 내용 확인 후 [WMS에 반영] 클릭`;
+
+  } catch(e){
+    st.style.color='var(--c4)'; st.textContent='오류: '+e.message;
+  }
+  input.value='';
+}
+
+// ── 납품명세서 임포트 ──────────────────────────────────
+async function xlImportDelivery(input){
+  const file = input.files[0];
+  if(!file) return;
+  const st = document.getElementById('xl-delivery-status');
+  st.style.color='var(--c3)'; st.textContent='📖 파일 읽는 중...';
+
+  if(typeof XLSX==='undefined'){
+    st.style.color='var(--c4)'; st.textContent='⚠ SheetJS 미로딩';
+    return;
+  }
+
+  try {
+    const buf = await file.arrayBuffer();
+    const wb  = XLSX.read(buf, {type:'array'});
+    const vendor = document.getElementById('xl-up-vendor').value;
+
+    // DB 시트에서 형번코드 → (형번, 륜) 매핑
+    const dbMap = {};
+    if(wb.SheetNames.includes('DB')){
+      const dbData = XLSX.utils.sheet_to_json(wb.Sheets['DB'], {header:1, defval:null});
+      for(let i=3; i<dbData.length; i++){
+        const r=dbData[i];
+        if(!r||!r[1]) continue;
+        dbMap[String(r[1]).trim()] = {model:String(r[2]||'').trim(), lun:String(r[3]||'').trim()};
+      }
+    }
+
+    // 날짜 시트들에서 출고 집계
+    const SKIP = ['DB','DB (2)','Sheet1','Sheet2','Sheet3'];
+    const monthlyOb = {};  // model+lun → total qty
+    let sheetCount = 0;
+
+    for(const shName of wb.SheetNames){
+      if(SKIP.includes(shName)) continue;
+      // 날짜 형식 시트명 (예: 5.12, 5.4)
+      if(!/^\d+\.\d+/.test(shName)) continue;
+
+      const data = XLSX.utils.sheet_to_json(wb.Sheets[shName], {header:1, defval:null});
+      sheetCount++;
+
+      // 납품일자 (row2, col27 또는 col17)
+      const dateCell = data[1]?.[27] || data[1]?.[17];
+
+      // 데이터 행(row7~): col0=입력셀키, col25=수량(인시스/JW), col24=수량(챈스)
+      const qtyCols = vendor==='chance' ? [24] : [25, 24];
+
+      for(let i=6; i<data.length-3; i++){
+        const r = data[i];
+        if(!r||!r[0]) continue;
+        const keyStr = String(r[0]).trim();
+        if(keyStr===''||keyStr==='입력셀') continue;
+
+        // 수량
+        let qty = 0;
+        for(const qc of qtyCols){
+          const v = parseFloat(r[qc]);
+          if(!isNaN(v) && v>0){ qty=v; break; }
+        }
+        if(qty<=0) continue;
+
+        // 형번·륜 조회
+        const info = dbMap[keyStr];
+        const model = info?.model || keyStr;
+        const lun   = info?.lun   || '';
+        const key   = `${model}||${lun}`;
+        monthlyOb[key] = (monthlyOb[key]||0) + qty;
+      }
+    }
+
+    if(Object.keys(monthlyOb).length===0){
+      st.style.color='var(--c4)';
+      st.textContent=`⚠ 납품 데이터 없음 (시트${sheetCount}개 처리) — 파일 형식 확인`;
+      return;
+    }
+
+    // 미리보기용 rows 생성
+    const updateRows = Object.entries(monthlyOb).map(([key,qty])=>{
+      const [model,lun]=key.split('||');
+      const vendorLabel = vendor==='insys'?'인시스(0350)':
+                          vendor==='chance'?'찬스(위탁)':'찬스(위탁)';
+      const ring = vendor==='jw'?'연삭':'선삭';
+      return {ring, vendor:vendorLabel, model, spec:'', lun, ob:qty/1000, type:'delivery'};
+    });
+
+    xlPendingData = {type:'delivery', rows:updateRows};
+    xlShowPreview(updateRows, `납품명세서 — ${updateRows.length}개 품목 출고실적 미리보기`, true);
+    st.style.color='var(--c2)';
+    st.textContent=`✅ ${updateRows.length}개 품목 인식 (시트${sheetCount}개) — 확인 후 반영`;
+
+  } catch(e){
+    st.style.color='var(--c4)'; st.textContent='오류: '+e.message;
+  }
+  input.value='';
+}
+
+// ── 미리보기 테이블 표시 ───────────────────────────────
+function xlShowPreview(rows, title, deliveryMode=false){
+  document.getElementById('xl-preview').style.display='';
+  document.getElementById('xl-preview-title').textContent=title;
+
+  const tbody = document.getElementById('xl-preview-body');
+  tbody.innerHTML = rows.slice(0,50).map(r=>{
+    // stkRows에서 현재 재고 조회
+    const cur = D.stkRows.find(sr=>
+      sr[2]===r.model && (r.lun?sr[5]===r.lun:true) && sr[1]===r.vendor);
+    const curStk = cur ? cur[9] : null;
+
+    if(deliveryMode){
+      // 납품명세서: 출고량만
+      const obK = Math.round(r.ob);
+      const newStk = curStk!==null ? curStk-obK : '—';
+      const chg = curStk!==null ?
+        `<span style="color:var(--c3)">▼ ${obK.toLocaleString()}</span>` : '신규';
+      return `<tr>
+        <td>${r.vendor}</td><td>${r.model}</td><td style="font-size:11px">${r.spec||'—'}</td>
+        <td>${r.lun}</td>
+        <td class="num">—</td><td class="num">—</td>
+        <td class="num" style="color:var(--c3)">${obK.toLocaleString()}</td>
+        <td class="num" style="color:var(--c2)">${typeof newStk==='number'?newStk.toLocaleString():newStk}</td>
+        <td>${chg}</td>
+      </tr>`;
+    } else {
+      // 입출고 파일: 전체
+      const chg = curStk!==null ? (r.stk>curStk ?
+        `<span style="color:var(--c2)">▲${(r.stk-curStk).toLocaleString()}</span>` :
+        r.stk<curStk ? `<span style="color:var(--c3)">▼${(curStk-r.stk).toLocaleString()}</span>` :
+        '<span style="color:var(--tx2)">변동없음</span>') : '<span style="color:var(--c3)">신규</span>';
+      return `<tr>
+        <td>${r.vendor}</td><td>${r.model}</td>
+        <td style="font-size:11px;max-width:160px;white-space:nowrap;overflow:hidden">${r.spec}</td>
+        <td>${r.lun}</td>
+        <td class="num">${(r.base||0).toLocaleString()}</td>
+        <td class="num" style="color:var(--c2)">${(r.ib||0).toLocaleString()}</td>
+        <td class="num" style="color:var(--c3)">${(r.ob||0).toLocaleString()}</td>
+        <td class="num" style="color:var(--c1);font-weight:700">${(r.stk||0).toLocaleString()}</td>
+        <td>${chg}</td>
+      </tr>`;
+    }
+  }).join('');
+
+  if(rows.length>50){
+    tbody.innerHTML += `<tr><td colspan="9" style="text-align:center;color:var(--tx2);font-size:12px">
+      ··· 상위 50개만 미리보기 (전체 ${rows.length}개)</td></tr>`;
+  }
+}
+
+// ── WMS에 반영 ─────────────────────────────────────────
+async function xlApplyUpdate(){
+  if(!xlPendingData){ showToast('업데이트할 데이터 없음','err'); return; }
+
+  const {type, rows, mon} = xlPendingData;
+  let updated=0, added=0;
+
+  if(type==='inout'){
+    // stkRows 업데이트
+    rows.forEach(r=>{
+      // 기존 행 찾기
+      const idx = D.stkRows.findIndex(sr=>
+        sr[0]===r.ring && sr[1]===r.vendor &&
+        sr[2]===r.model && sr[5]===r.lun);
+
+      if(idx>=0){
+        // 업데이트: [링,공급처,형번,규격,Type,륜,기초,입고,출고,현재고,금액,상태]
+        D.stkRows[idx][6]  = r.base;
+        D.stkRows[idx][7]  = r.ib;
+        D.stkRows[idx][8]  = r.ob;
+        D.stkRows[idx][9]  = r.stk;
+        D.stkRows[idx][10] = Math.round(r.amt);
+        // 상태 자동 판단
+        const months = r.ob>0 ? r.stk/r.ob : 99;
+        D.stkRows[idx][11] = months<2?'주의':months<0.1?'소진':'정상';
+        updated++;
+      } else {
+        // 신규 추가
+        D.stkRows.push([r.ring, r.vendor, r.model, r.spec, 'ZZ', r.lun,
+          r.base, r.ib, r.ob, r.stk, Math.round(r.amt), '신규']);
+        added++;
+      }
+    });
+
+    // DS_MON 현재고 업데이트 (불용재고 분석용)
+    rows.forEach(r=>{
+      // DS_MON 키 형식: '형번 AU' 또는 '형번 IR'
+      const dsKey = `${r.model} ${r.lun}`;
+      const dsIdx = DS_MON.findIndex(d=>d[0]===dsKey ||
+        (d[0].includes(r.model) && d[9]===r.ring && d[10]===r.vendor.replace('(0350)','').replace('(위탁)','')));
+      if(dsIdx>=0){
+        DS_MON[dsIdx][7] = r.stk;    // 현재고
+        DS_MON[dsIdx][8] = Math.round(r.amt); // 금액
+        // 해당 월 출고 업데이트
+        const monIdx = Math.min(parseInt(mon)-1, 5); // 0=1월...4=5월
+        if(monIdx>=2 && monIdx<=5) DS_MON[dsIdx][monIdx+1] = r.ob;
+      }
+    });
+
+    // 화면 갱신
+    if(typeof initStk==='function') initStk();
+    if(typeof initDS==='function')  initDS();
+
+  } else if(type==='delivery'){
+    // 출고 실적만 반영
+    rows.forEach(r=>{
+      const obQty = Math.round(r.ob);
+      const idx = D.stkRows.findIndex(sr=>
+        sr[2]===r.model && sr[5]===r.lun && sr[1]===r.vendor);
+      if(idx>=0){
+        D.stkRows[idx][8]  += obQty;   // 출고 누적
+        D.stkRows[idx][9]  -= obQty;   // 현재고 차감
+        if(D.stkRows[idx][9]<0) D.stkRows[idx][9]=0;
+        updated++;
+      }
+    });
+    if(typeof initStk==='function') initStk();
+  }
+
+  // 결과 표시
+  const msg = document.getElementById('xl-apply-msg');
+  msg.style.color='var(--c2)';
+  msg.textContent=`✅ 반영 완료 — 업데이트 ${updated}건 / 신규 ${added}건`;
+
+  document.getElementById('xl-preview').style.display='none';
+  xlPendingData = null;
+  showToast(`WMS 데이터 반영 완료 (업데이트:${updated} 신규:${added})`, 'ok');
+
+  // Firebase에도 반영
+  if(window.db && window.fbUser && type==='inout'){
+    try {
+      const batch = window.fbBatch(window.db);
+      xlPendingData?.rows?.forEach(r=>{
+        const sid = `${r.vendor}_${r.model}_${r.lun}`.replace(/[^a-zA-Z0-9가-힣_]/g,'_');
+        const ref = window.fbDoc(window.db,'sc_stock',sid);
+        batch.set(ref,{
+          ring:r.ring, vendor:r.vendor, model:r.model, spec:r.spec,
+          lun:r.lun, base:r.base, ib:r.ib, ob:r.ob,
+          stk:r.stk, amt:Math.round(r.amt), factory:'sc',
+          updatedAt:window.fbTimestamp()
+        });
+      });
+      await batch.commit();
+      showToast('Firestore 재고 동기화 완료','ok');
+    } catch(e){ showToast('Firestore 동기화 오류: '+e.message,'err'); }
+  }
+
+  // 자동으로 전체재고 화면으로 이동
+  setTimeout(()=>{
+    go('stock', document.querySelector('.sb-item[onclick*="stock"]'));
+  }, 1500);
+}
+
+
+// ══════════════════════════════════════════════════════
+//  단중 신규 등록 — 샘플 계근 자동 계산
+// ══════════════════════════════════════════════════════
+function wtCalcUnit(){
+  const cnt  = parseInt(document.getElementById('wt-sample-cnt').value)||0;
+  const wt1  = parseFloat(document.getElementById('wt-sample-wt').value)||0;
+  const wt2  = parseFloat(document.getElementById('wt-sample-wt2').value)||0;
+  const pkg  = parseFloat(document.getElementById('wt-new-pkg').value)||0;
+  const box  = parseInt(document.getElementById('wt-new-box').value)||0;
+
+  const uw1 = cnt>0 && wt1>0 ? +(wt1/cnt).toFixed(2) : null;
+  const uw2 = cnt>0 && wt2>0 ? +(wt2/cnt).toFixed(2) : null;
+  const uwFinal = uw1 && uw2 ? +((uw1+uw2)/2).toFixed(2) : (uw1||null);
+
+  // 미리보기 업데이트
+  document.getElementById('wt-preview-1').textContent     = uw1 ? uw1+' g' : '— g';
+  document.getElementById('wt-preview-2').textContent     = uw2 ? uw2+' g' : '— g';
+  document.getElementById('wt-preview-final').textContent = uwFinal ? uwFinal+' g' : '— g';
+
+  // 박스 만재 무게
+  if(uwFinal && box>0){
+    const boxTotal = Math.round(uwFinal*box + pkg);
+    document.getElementById('wt-preview-box').textContent = boxTotal.toLocaleString()+' g';
+  } else {
+    document.getElementById('wt-preview-box').textContent = '— g';
+  }
+
+  // 오차율 예측 (단중 ±0.5g 기준)
+  if(uwFinal && uwFinal>0){
+    const errPct = +(0.5/uwFinal*100).toFixed(2);
+    const errEl = document.getElementById('wt-preview-err');
+    errEl.textContent = errPct+'%';
+    errEl.style.color = errPct<0.5?'var(--c2)':errPct<1?'var(--c3)':'var(--c4)';
+  } else {
+    document.getElementById('wt-preview-err').textContent = '— %';
+  }
+
+  // 등록 버튼 표시 여부
+  const key = document.getElementById('wt-new-key').value.trim();
+  document.getElementById('wt-register-wrap').style.display =
+    (uwFinal && key) ? '' : 'none';
+}
+
+// 저울 읽기 (1차)
+async function wtScaleRead(){
+  const url = document.getElementById('pc-server').value;
+  try {
+    const r = await fetch(`${url}/scale/read`,{signal:AbortSignal.timeout(5000)});
+    const d = await r.json();
+    if(d.ok && d.value_kg>0){
+      const grams = +(d.value_kg*1000).toFixed(1);
+      document.getElementById('wt-sample-wt').value = grams;
+      wtCalcUnit();
+      showToast(`저울 1차: ${grams}g`,'ok');
+    }
+  } catch(e){ showToast('저울 연결 실패','err'); }
+}
+
+// 저울 읽기 (2차)
+async function wtScaleRead2(){
+  const url = document.getElementById('pc-server').value;
+  try {
+    const r = await fetch(`${url}/scale/read`,{signal:AbortSignal.timeout(5000)});
+    const d = await r.json();
+    if(d.ok && d.value_kg>0){
+      const grams = +(d.value_kg*1000).toFixed(1);
+      document.getElementById('wt-sample-wt2').value = grams;
+      wtCalcUnit();
+      showToast(`저울 2차: ${grams}g`,'ok');
+    }
+  } catch(e){ showToast('저울 연결 실패','err'); }
+}
+
+// 단중 등록 실행
+function wtRegister(){
+  const key  = document.getElementById('wt-new-key').value.trim();
+  const spec = document.getElementById('wt-new-spec').value.trim();
+  const pkg  = parseFloat(document.getElementById('wt-new-pkg').value)||0;
+  const box  = parseInt(document.getElementById('wt-new-box').value)||0;
+  const cnt  = parseInt(document.getElementById('wt-sample-cnt').value)||1;
+  const wt1  = parseFloat(document.getElementById('wt-sample-wt').value)||0;
+  const wt2  = parseFloat(document.getElementById('wt-sample-wt2').value)||0;
+
+  const uw1 = wt1>0 ? +(wt1/cnt).toFixed(2) : null;
+  const uw2 = wt2>0 ? +(wt2/cnt).toFixed(2) : null;
+  const uwFinal = uw1&&uw2 ? +((uw1+uw2)/2).toFixed(2) : (uw1||null);
+
+  if(!key){ showToast('형번을 입력하세요','err'); return; }
+  if(!uwFinal){ showToast('샘플 무게를 측정하세요','err'); return; }
+
+  // WT_DB에 등록
+  const isNew = !WT_DB[key];
+  WT_DB[key] = { uw:uwFinal, pw:pkg, box:box, status:'확인',
+    spec:spec, regDate:new Date().toLocaleDateString('ko-KR'),
+    sample:cnt, uw1, uw2 };
+
+  // 테이블 갱신
+  initWeight();
+
+  // 입력 초기화
+  document.getElementById('wt-new-key').value = '';
+  document.getElementById('wt-new-spec').value = '';
+  document.getElementById('wt-sample-wt').value = 0;
+  document.getElementById('wt-sample-wt2').value = 0;
+  document.getElementById('wt-preview-1').textContent = '— g';
+  document.getElementById('wt-preview-2').textContent = '— g';
+  document.getElementById('wt-preview-final').textContent = '— g';
+  document.getElementById('wt-register-wrap').style.display = 'none';
+
+  showModal(isNew?'단중 신규 등록 완료':'단중 업데이트 완료',
+    `형번: <strong>${key}</strong><br>`+
+    `단중: <strong style="color:var(--c2)">${uwFinal}g</strong>`+
+    (uw2?` (1차:${uw1}g / 2차:${uw2}g)`:``)+'<br>'+
+    `박스무게: ${pkg}g / 입수: ${box}PCS<br><br>`+
+    `✅ 단중 마스터에 등록되었습니다.<br>`+
+    `이제 입고·출고·재고실사에서 자동 계산됩니다.`
+  );
+}
+
 function wtSaveAll(){
   showModal('단중 저장 완료','변경된 단중 데이터가 저장되었습니다.\n※ 클라우드 연동 후 DB에 영구 저장됩니다.');
 }
@@ -4430,8 +6087,6 @@ window.addEventListener('load',()=>{
   jjUib();
   jjUob();
   jjULbl();
-  /* Firebase 데이터 복원 */
-  initWmsData();
 });
 
 </script>
