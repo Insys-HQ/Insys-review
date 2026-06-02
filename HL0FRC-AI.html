@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>HL0FRC-AI 재난대응봉사회 AI총무 v4.0</title>
+<title>HL0FRC-AI 재난대응봉사회 AI총무 v4.1</title>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -91,8 +91,8 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:var
 .parse-key{font-size:10px;color:var(--txt3)}
 .parse-val{font-size:13px;font-weight:700;color:var(--navy);margin-top:2px}
 .tbl{width:100%;border-collapse:collapse;font-size:13px}
-.tbl th{background:#eef2f9;color:var(--navy);font-weight:700;padding:7px 9px;text-align:left;border-bottom:2px solid var(--border);white-space:nowrap}
-.tbl td{padding:6px 9px;border-bottom:1px solid #eceff6;color:var(--txt);vertical-align:middle;white-space:nowrap}
+.tbl th{background:#eef2f9;color:var(--navy);font-weight:700;padding:5px 9px;text-align:left;border-bottom:2px solid var(--border);white-space:nowrap}
+.tbl td{padding:3px 9px;border-bottom:1px solid #eceff6;color:var(--txt);vertical-align:middle;white-space:nowrap}
 .tbl tr:hover{background:#f8f9fc}
 .exec-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:11px}
 .exec-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:11px 13px;box-shadow:var(--shadow)}
@@ -124,7 +124,7 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:var
   <div class="hdr-inner">
     <div class="hdr-top">
       <div class="hdr-logo">&#128293; HL0FRC-AI</div>
-      <div class="badge-ver">v4.0</div>
+      <div class="badge-ver">v4.1</div>
     </div>
     <div class="hdr-sub">
       대한적십자사 서울특별시지사 재난대응봉사회 AI총무 시스템 &nbsp;|&nbsp; 문서관리 &middot; 대시보드 &middot; 회장 승인 &middot; Firebase 연동
@@ -347,11 +347,14 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:var
   <div class="section">
     <div class="sec-hdr">
       <span class="sec-title">&#128101; 정회원 (19명)</span>
+      <div style="display:flex;gap:7px;align-items:center">
+        <button class="btn-p" id="memSaveBtn" onclick="saveMembers()" style="font-size:12px;padding:6px 14px">&#128190; 저장</button>
       <select id="memYear" onchange="renderMember(this.value)" style="padding:6px 11px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;color:var(--txt)">
         <option value="2026">2026년 활동시간</option>
         <option value="2025">2025년 활동시간</option>
         <option value="2024">2024년 활동시간</option>
       </select>
+      </div>
     </div>
     <div style="overflow-x:auto">
       <table class="tbl">
@@ -430,7 +433,7 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:var
 
 <!-- 푸터 -->
 <div class="footer">
-  인시스 그룹 AI혁신 R&amp;D센터 &nbsp;|&nbsp; HL0FRC-AI 재난대응봉사회 AI총무 시스템 v4.0 &nbsp;|&nbsp;
+  인시스 그룹 AI혁신 R&amp;D센터 &nbsp;|&nbsp; HL0FRC-AI 재난대응봉사회 AI총무 시스템 v4.1 &nbsp;|&nbsp;
   <a href="https://github.com/Insys-HQ/Insys-review" target="_blank">GitHub</a>
 </div>
 
@@ -485,13 +488,14 @@ function renderMember(year) {
     if (st === '\u2014') return;
     cnt++;
     var opts = '';
-    STATUS.forEach(function(s){
-      opts += '<option value="'+s+'"'+(s===st?' selected':'')+'>'+s+'</option>';
-    });
+    STATUS.forEach(function(s){ opts += '<option value="'+s+'"'+(s===st?' selected':'')+'>'+s+'</option>'; });
     h += '<tr><td>'+m.name+'</td>';
-    h += '<td style="font-family:monospace">'+m.cs+'</td>';
+    /* 콜사인 편집 (폰트 통일) */
+    h += '<td><input type="text" value="'+m.cs+'" onchange="editMember('+idx+',\'cs\',this.value)" style="width:78px;font-size:13px;font-family:inherit;padding:3px 6px;border:1px solid var(--border);border-radius:5px;color:var(--txt)"></td>';
+    /* 상태 */
     h += '<td><select onchange="changeMemberStatus('+idx+',\''+yy+'\',this.value)" style="font-size:11px;padding:2px 6px;border:1px solid var(--border);border-radius:5px;font-family:inherit;'+(stColors[st]||'')+'">'+opts+'</select></td>';
-    h += '<td>'+m.team+'</td>';
+    /* 소속 편집 */
+    h += '<td><input type="text" value="'+m.team+'" onchange="editMember('+idx+',\'team\',this.value)" style="width:90px;font-size:13px;font-family:inherit;padding:3px 6px;border:1px solid var(--border);border-radius:5px;color:var(--txt)"></td>';
     h += '<td>'+(m[hk]||0)+'H</td>';
     h += '<td>'+m.acc+'H</td>';
     h += '<td>'+m.j+'</td></tr>';
@@ -502,6 +506,71 @@ function renderMember(year) {
     var t = sec.querySelector('.sec-title');
     if (t) t.innerHTML = '&#128101; ' + year + '\uB144 \uD68C\uC6D0 (' + cnt + '\uBA85)';
   }
+}
+
+/* 콜사인/소속 편집 (즉시 메모리 반영, 저장은 버튼) */
+function editMember(idx, field, value) {
+  var m = MEMBERS[idx];
+  if (!m) return;
+  m[field] = value.trim();
+  m._edited = true;
+  /* 저장 버튼 강조 */
+  var btn = document.getElementById('memSaveBtn');
+  if (btn) { btn.style.background = 'var(--red)'; btn.textContent = '\uD83D\uDCBE \uC800\uC7A5 (\uBCC0\uACBD\uC0AC\uD56D \uC788\uC74C)'; }
+}
+
+/* 회원 명부 전체 저장 → Firebase + localStorage */
+function saveMembers() {
+  try { localStorage.setItem('hl0frc_members', JSON.stringify(MEMBERS)); } catch(e){}
+  var saved = 0, total = 0;
+  if (FB.connected && FB.db) {
+    MEMBERS.forEach(function(m){
+      total++;
+      FB.db.collection('members').doc(m.cs || m.name).set({
+        name:m.name, callsign:m.cs, team:m.team,
+        h24:m.h24, h25:m.h25, h26:m.h26, acc:m.acc, joined:m.j, st:m.st
+      }, {merge:true})
+      .then(function(){ saved++; if(saved>=total) showMemberToast('\u2705 '+total+'\uBA85 Firebase \uC800\uC7A5 \uC644\uB8CC'); })
+      .catch(function(e){ console.warn(e); });
+    });
+  } else {
+    showMemberToast('\u2705 \uB85C\uCEEC \uC800\uC7A5 \uC644\uB8CC (Firebase \uC5F0\uACB0 \uC2DC \uB3D9\uAE30\uD654)');
+  }
+  /* 저장 버튼 원복 */
+  var btn = document.getElementById('memSaveBtn');
+  if (btn) { btn.style.background = 'var(--blue)'; btn.textContent = '\uD83D\uDCBE \uC800\uC7A5'; }
+}
+
+/* 회원 상태 변경 */
+function changeMemberStatus(idx, yy, newSt) {
+  var m = MEMBERS[idx];
+  if (!m) return;
+  if (!m.st) m.st = {'24':'\uC815\uD68C\uC6D0','25':'\uC815\uD68C\uC6D0','26':'\uC815\uD68C\uC6D0'};
+  ['24','25','26'].forEach(function(y){ if (parseInt(y) >= parseInt(yy)) m.st[y] = newSt; });
+  try { localStorage.setItem('hl0frc_members', JSON.stringify(MEMBERS)); } catch(e){}
+  if (FB.connected && FB.db) {
+    FB.db.collection('members').doc(m.cs || m.name).set({ name:m.name, callsign:m.cs, st:m.st }, {merge:true})
+    .then(function(){ showMemberToast(m.name + ' \u2192 ' + newSt + ' (' + (2000+parseInt(yy)) + '\uB144\uBD80\uD130 \uC800\uC7A5)'); })
+    .catch(function(e){ showMemberToast('\u26A0\uFE0F \uB85C\uCEEC \uC800\uC7A5: ' + e.message); });
+  } else {
+    showMemberToast(m.name + ' \u2192 ' + newSt + ' (\uB85C\uCEEC \uC800\uC7A5)');
+  }
+  var memYear = document.getElementById('memYear');
+  if (memYear) renderMember(memYear.value);
+}
+
+function showMemberToast(msg) {
+  var t = document.getElementById('memberToast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'memberToast';
+    t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.25);opacity:0;transition:opacity .3s';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(function(){ t.style.opacity='0'; }, 3000);
 }
 
 /* 회원 상태 직접 변경 (해당 연도부터 반영) */
