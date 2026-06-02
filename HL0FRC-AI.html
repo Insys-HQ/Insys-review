@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>HL0FRC-AI 재난대응봉사회 AI총무 v2.6</title>
+<title>HL0FRC-AI 재난대응봉사회 AI총무 v2.7</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js">
 /* ══ 월간 활동보고서 ══════════════════════════════════════════════════ */
 var ACT_ROWS = [
@@ -178,7 +178,7 @@ function printReport(){
   w.document.write('</head><body>');
   w.document.write(rdoc.innerHTML);
   w.document.write('<div style="background:#1a2744;color:#7a9cc8;text-align:center;padding:12px 24px;font-size:11px;margin-top:20px">
-  인시스 그룹 AI혁신 R&amp;D센터 &nbsp;|&nbsp; HL0FRC-AI 재난대응봉사회 AI총무 시스템 v2.6 &nbsp;|&nbsp;
+  인시스 그룹 AI혁신 R&amp;D센터 &nbsp;|&nbsp; HL0FRC-AI 재난대응봉사회 AI총무 시스템 v2.7 &nbsp;|&nbsp;
   <a href="https://github.com/Insys-HQ/Insys-review" target="_blank" style="color:#5a9ed8;text-decoration:none">GitHub</a>
 </div>
 </body></html>');
@@ -613,6 +613,130 @@ window.addEventListener('load', function(){
   }, 1500);
 });
 
+
+/* ── 텍스트/이미지 붙여넣기 기능 ─────────────────────────────── */
+var pastedImageData = null;
+
+function switchTxtTab(tab) {
+  var tabFile  = document.getElementById('ttab-file');
+  var tabPaste = document.getElementById('ttab-paste');
+  var panFile  = document.getElementById('tpanel-file');
+  var panPaste = document.getElementById('tpanel-paste');
+  if (!tabFile) return;
+
+  if (tab === 'file') {
+    tabFile.style.color       = 'var(--blue)';
+    tabFile.style.borderBottom= '2px solid var(--blue)';
+    tabPaste.style.color      = 'var(--txt3)';
+    tabPaste.style.borderBottom= 'none';
+    panFile.style.display  = 'block';
+    panPaste.style.display = 'none';
+  } else {
+    tabPaste.style.color       = 'var(--blue)';
+    tabPaste.style.borderBottom= '2px solid var(--blue)';
+    tabFile.style.color        = 'var(--txt3)';
+    tabFile.style.borderBottom = 'none';
+    panFile.style.display  = 'none';
+    panPaste.style.display = 'block';
+    setTimeout(function(){ var z=document.getElementById('pasteZone'); if(z) z.focus(); }, 100);
+  }
+}
+
+function handlePaste(e) {
+  var items = e.clipboardData && e.clipboardData.items;
+  if (!items) return;
+  pastedImageData = null;
+
+  for (var i = 0; i < items.length; i++) {
+    var item = items[i];
+
+    /* 이미지 (캡처, 복사 이미지) */
+    if (item.type.indexOf('image') !== -1) {
+      e.preventDefault();
+      var blob = item.getAsFile();
+      var reader = new FileReader();
+      reader.onload = function(ev) {
+        pastedImageData = ev.target.result;
+        var prev = document.getElementById('pasteImgPreview');
+        var img  = document.getElementById('pasteImg');
+        if (prev && img) {
+          img.src = pastedImageData;
+          prev.style.display = 'block';
+        }
+        /* 파싱 영역에 이미지 안내 표시 */
+        var z = document.getElementById('pasteZone');
+        if (z) z.textContent = '[\uC774\uBBF8\uC9C0 \uBD99\uC5EC\uB123\uAE30 \uC644\uB8CC] \uD30C\uC2F1 \uC2DC\uC791 \uBC84\uD2BC\uC744 \uB20C\uB7EC\uC8FC\uC138\uC694.';
+      };
+      reader.readAsDataURL(blob);
+      return;
+    }
+  }
+  /* 텍스트는 contenteditable 기본 동작으로 처리됨 */
+}
+
+function processPaste() {
+  var z    = document.getElementById('pasteZone');
+  var text = z ? (z.innerText || z.textContent || '').trim() : '';
+
+  /* 이미지인 경우 */
+  if (pastedImageData) {
+    var fakeFile = { name: '\uBD99\uC5EC\uB123\uAE30_\uC774\uBBF8\uC9C0.png', size: pastedImageData.length };
+    uploadLog.unshift({
+      name: fakeFile.name, size: fmtSize(fakeFile.size),
+      ext: 'png', ts: new Date().toLocaleTimeString(), file: fakeFile
+    });
+    renderLog();
+    parseMock(fakeFile);
+    return;
+  }
+
+  /* 텍스트인 경우 */
+  if (!text) {
+    alert('\uBD99\uC5EC\uB123\uC744 \uB0B4\uC6A9\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uD074\uB9AD \uD6C4 Ctrl+V \uB85C \uBD99\uC5EC\uB123\uC5B4 \uC8FC\uC138\uC694.');
+    return;
+  }
+
+  var fakeFile = {
+    name: '\uBD99\uC5EC\uB123\uAE30_\uD14D\uC2A4\uD2B8.txt',
+    size: new Blob([text]).size,
+    _content: text
+  };
+  uploadLog.unshift({
+    name: fakeFile.name, size: fmtSize(fakeFile.size),
+    ext: 'txt', ts: new Date().toLocaleTimeString(), file: fakeFile
+  });
+  renderLog();
+
+  /* 파싱: 카카오톡 패턴 감지 */
+  var sec = document.getElementById('parseSection');
+  var con = document.getElementById('parseContent');
+  var isKakao = /\d{4}년 \d{1,2}월 \d{1,2}일/.test(text) || /오전|오후/.test(text);
+  var lines   = text.split('\n').length;
+  var words   = text.split(/\s+/).length;
+
+  var h = '<div class="parse-title">\u1F4CB \uBD99\uC5EC\uB123\uAE30 \uD14D\uC2A4\uD2B8 \uD30C\uC2F1 \uACB0\uACFC</div><div class="parse-row">';
+  h += '<div class="parse-item"><div class="parse-key">\uC720\uD615</div><div class="parse-val">' + (isKakao ? '\uCE74\uCE74\uC624\uD1A1 \uB300\uD654' : '\uC77C\uBC18 \uD14D\uC2A4\uD2B8') + '</div></div>';
+  h += '<div class="parse-item"><div class="parse-key">\uC904 \uC218</div><div class="parse-val">' + lines + '\uC904</div></div>';
+  h += '<div class="parse-item"><div class="parse-key">\uB2E8\uC5B4 \uC218</div><div class="parse-val">' + words + '\uAC1C</div></div>';
+  h += '<div class="parse-item"><div class="parse-key">\uD06C\uAE30</div><div class="parse-val">' + fmtSize(fakeFile.size) + '</div></div></div>';
+  h += '<div style="margin-top:9px"><div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:5px">\uB0B4\uC6A9 \uBBF8\uB9AC\uBCF4\uAE30 (\uCC98\uC74C 300\uC790)</div>';
+  h += '<div style="font-size:12px;color:var(--txt2);background:#f5f7fc;border:1px solid var(--border);border-radius:7px;padding:9px 12px;white-space:pre-wrap;line-height:1.7;max-height:120px;overflow:auto">' + text.substring(0,300).replace(/</g,'&lt;').replace(/>/g,'&gt;') + (text.length>300?'...':'') + '</div></div>';
+
+  if (con) con.innerHTML = h;
+  if (sec) sec.style.display = 'block';
+  if (sec) sec.scrollIntoView({behavior:'smooth'});
+}
+
+function clearPaste() {
+  var z = document.getElementById('pasteZone');
+  if (z) { z.textContent = ''; z.focus(); }
+  pastedImageData = null;
+  var prev = document.getElementById('pasteImgPreview');
+  if (prev) prev.style.display = 'none';
+  var sec = document.getElementById('parseSection');
+  if (sec) sec.style.display = 'none';
+}
+
 </script>
 <style>
 :root{
@@ -813,6 +937,9 @@ body{font-family:"Malgun Gothic","Apple SD Gothic Neo","나눔고딕",sans-serif
 .guide-tbl td{padding:8px 12px;border-bottom:1px solid #eceff6;color:var(--txt);vertical-align:middle}
 .guide-tbl tr:last-child td{border-bottom:none}
 
+.upload-card[contenteditable]:focus{border-color:var(--blue)!important}
+#pasteZone:focus{border-color:var(--blue);background:#f0f5ff}
+#pasteZone:empty:before{content:attr(placeholder);color:var(--txt3);pointer-events:none}
 @media(max-width:760px){
   .kpi-row,.guide-grid{grid-template-columns:repeat(2,1fr)}
   .chart-row,.chart-3,.off-grid,.off-team,.upload-grid{grid-template-columns:1fr}
@@ -834,7 +961,7 @@ body{font-family:"Malgun Gothic","Apple SD Gothic Neo","나눔고딕",sans-serif
   <div class="hdr-badges">
     <div class="badge-cs">HL0FRC</div>
     <div class="badge-acting">총무대행 HL2OBL</div>
-    <div class="badge-ver">v2.6</div>
+    <div class="badge-ver">v2.7</div>
   </div>
 </div></div>
 
@@ -974,13 +1101,65 @@ body{font-family:"Malgun Gothic","Apple SD Gothic Neo","나눔고딕",sans-serif
       파일을 카드 위로 <b>드래그&amp;드롭</b>하거나 카드를 <b>클릭</b>하여 선택하세요.
     </div>
     <div class="upload-grid">
-      <div class="upload-card" id="uc-txt" ondragover="dragOver(event,'uc-txt')" ondragleave="dragLeave('uc-txt')" ondrop="dropFile(event,'txt')">
-        <input type="file" accept=".txt,.csv" onchange="handleFile(this.files,'txt')">
-        <div class="up-icon">&#128172;</div>
-        <div class="up-title">텍스트 / 카카오톡</div>
-        <div class="up-desc">카카오톡 대화 내보내기(.txt)<br>활동일지 CSV 파일</div>
-        <div class="up-ext"><span class="ext-tag ext-txt">.TXT</span><span class="ext-tag ext-txt">.CSV</span></div>
-        <div class="prog-bar" id="pb-txt"><div class="prog-fill" id="pf-txt"></div></div>
+      <!-- 텍스트/카카오톡 카드 — 파일업로드 + 붙여넣기 탭 -->
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:11px;box-shadow:var(--shadow);overflow:hidden">
+        <!-- 탭 헤더 -->
+        <div style="display:flex;border-bottom:2px solid var(--border)">
+          <div id="ttab-file" onclick="switchTxtTab('file')"
+               style="flex:1;padding:9px 0;text-align:center;font-size:12px;font-weight:700;color:var(--blue);border-bottom:2px solid var(--blue);margin-bottom:-2px;cursor:pointer">
+            &#128194; 파일 업로드
+          </div>
+          <div id="ttab-paste" onclick="switchTxtTab('paste')"
+               style="flex:1;padding:9px 0;text-align:center;font-size:12px;font-weight:700;color:var(--txt3);cursor:pointer">
+            &#128203; 직접 붙여넣기
+          </div>
+        </div>
+
+        <!-- 파일 업로드 패널 -->
+        <div id="tpanel-file" class="upload-card" style="border:none;border-radius:0;margin:0"
+             ondragover="dragOver(event,'tpanel-file')" ondragleave="dragLeave('tpanel-file')" ondrop="dropFile(event,'txt')">
+          <input type="file" accept=".txt,.csv" onchange="handleFile(this.files,'txt')">
+          <div class="up-icon">&#128172;</div>
+          <div class="up-title">텍스트 / 카카오톡</div>
+          <div class="up-desc">카카오톡 대화 내보내기(.txt)<br>활동일지 CSV 파일</div>
+          <div class="up-ext"><span class="ext-tag ext-txt">.TXT</span><span class="ext-tag ext-txt">.CSV</span></div>
+          <div class="prog-bar" id="pb-txt"><div class="prog-fill" id="pf-txt"></div></div>
+        </div>
+
+        <!-- 붙여넣기 패널 -->
+        <div id="tpanel-paste" style="display:none;padding:14px">
+          <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:7px">
+            &#128203; 텍스트 또는 이미지 붙여넣기
+          </div>
+          <div style="font-size:11px;color:var(--txt3);margin-bottom:8px">
+            Ctrl+V 로 텍스트·캡처화면·복사이미지를 바로 붙여넣기 하세요
+          </div>
+          <!-- 붙여넣기 감지 영역 -->
+          <div id="pasteZone"
+               tabindex="0"
+               onpaste="handlePaste(event)"
+               onclick="this.focus()"
+               style="min-height:100px;border:2px dashed var(--border);border-radius:8px;padding:12px;font-size:13px;color:var(--txt2);background:#f8f9fc;cursor:text;outline:none;white-space:pre-wrap;word-break:break-all;line-height:1.7"
+               contenteditable="true"
+               placeholder="">
+          </div>
+          <div style="font-size:11px;color:var(--txt3);margin-top:5px">
+            &#128161; 클릭 후 <b>Ctrl+V</b> — 텍스트, 캡처 이미지 모두 지원
+          </div>
+          <div style="display:flex;gap:7px;margin-top:9px">
+            <button class="btn-p" style="font-size:12px;padding:6px 14px" onclick="processPaste()">
+              &#128269; 파싱 시작
+            </button>
+            <button class="btn-o" style="font-size:12px;padding:6px 12px" onclick="clearPaste()">
+              &#128465; 지우기
+            </button>
+          </div>
+          <!-- 이미지 미리보기 -->
+          <div id="pasteImgPreview" style="display:none;margin-top:10px">
+            <div style="font-size:11px;color:var(--txt2);margin-bottom:5px;font-weight:700">붙여넣은 이미지:</div>
+            <img id="pasteImg" style="max-width:100%;max-height:180px;border-radius:7px;border:1px solid var(--border)">
+          </div>
+        </div>
       </div>
       <div class="upload-card" id="uc-xls" ondragover="dragOver(event,'uc-xls')" ondragleave="dragLeave('uc-xls')" ondrop="dropFile(event,'xls')">
         <input type="file" accept=".xlsx,.xls" onchange="handleFile(this.files,'xls')">
