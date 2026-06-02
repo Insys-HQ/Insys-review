@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>HL0FRC-AI 재난대응봉사회 AI총무 v3.4</title>
+<title>HL0FRC-AI 재난대응봉사회 AI총무 v3.7</title>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -124,7 +124,7 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:var
   <div class="hdr-inner">
     <div class="hdr-top">
       <div class="hdr-logo">&#128293; HL0FRC-AI</div>
-      <div class="badge-ver">v3.4</div>
+      <div class="badge-ver">v3.7</div>
     </div>
     <div class="hdr-sub">
       대한적십자사 서울특별시지사 재난대응봉사회 AI총무 시스템 &nbsp;|&nbsp; 문서관리 &middot; 대시보드 &middot; 회장 승인 &middot; Firebase 연동
@@ -355,7 +355,7 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:var
     </div>
     <div style="overflow-x:auto">
       <table class="tbl">
-        <thead><tr><th>이름</th><th>콜사인</th><th>구분</th><th>활동시간</th><th>누적시간</th><th>가입</th></tr></thead>
+        <thead><tr><th>이름</th><th>콜사인</th><th>상태</th><th>소속</th><th>활동시간</th><th>누적시간</th><th>가입</th></tr></thead>
         <tbody id="memBody"></tbody>
       </table>
     </div>
@@ -429,7 +429,7 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:var
 
 <!-- 푸터 -->
 <div class="footer">
-  인시스 그룹 AI혁신 R&amp;D센터 &nbsp;|&nbsp; HL0FRC-AI 재난대응봉사회 AI총무 시스템 v3.4 &nbsp;|&nbsp;
+  인시스 그룹 AI혁신 R&amp;D센터 &nbsp;|&nbsp; HL0FRC-AI 재난대응봉사회 AI총무 시스템 v3.7 &nbsp;|&nbsp;
   <a href="https://github.com/Insys-HQ/Insys-review" target="_blank">GitHub</a>
 </div>
 
@@ -468,11 +468,80 @@ function renderDocs(year) {
 function renderMember(year) {
   var body = document.getElementById('memBody');
   var hk = 'h' + year.substring(2);
+  var yy = year.substring(2);
+  var STATUS = ['\uC815\uD68C\uC6D0','\uC900\uD68C\uC6D0','\uC2E0\uC785','\uBA85\uC608\uD68C\uC6D0','SILENT KEY','\u2014'];
+  var stColors = {
+    '\uC815\uD68C\uC6D0':'background:var(--green-l);color:var(--green)',
+    '\uC900\uD68C\uC6D0':'background:#e3f2fd;color:#1565c0',
+    '\uC2E0\uC785':'background:var(--blue-l);color:var(--blue)',
+    '\uBA85\uC608\uD68C\uC6D0':'background:#f3e5f5;color:#7b1fa2',
+    'SILENT KEY':'background:#f5f5f5;color:#888'
+  };
   var h = '';
-  MEMBERS.forEach(function(m){
-    h += '<tr><td>'+m.name+'</td><td style="font-family:monospace">'+m.cs+'</td><td>'+m.team+'</td><td>'+(m[hk]||0)+'H</td><td>'+m.acc+'H</td><td>'+m.j+'</td></tr>';
+  var cnt = 0;
+  MEMBERS.forEach(function(m, idx){
+    var st = (m.st && m.st[yy]) ? m.st[yy] : '\uC815\uD68C\uC6D0';
+    if (st === '\u2014') return;
+    cnt++;
+    var opts = '';
+    STATUS.forEach(function(s){
+      opts += '<option value="'+s+'"'+(s===st?' selected':'')+'>'+s+'</option>';
+    });
+    h += '<tr><td>'+m.name+'</td>';
+    h += '<td style="font-family:monospace">'+m.cs+'</td>';
+    h += '<td><select onchange="changeMemberStatus('+idx+',\''+yy+'\',this.value)" style="font-size:11px;padding:2px 6px;border:1px solid var(--border);border-radius:5px;font-family:inherit;'+(stColors[st]||'')+'">'+opts+'</select></td>';
+    h += '<td>'+m.team+'</td>';
+    h += '<td>'+(m[hk]||0)+'H</td>';
+    h += '<td>'+m.acc+'H</td>';
+    h += '<td>'+m.j+'</td></tr>';
   });
   body.innerHTML = h;
+  var sec = body.closest('.section');
+  if (sec) {
+    var t = sec.querySelector('.sec-title');
+    if (t) t.innerHTML = '&#128101; ' + year + '\uB144 \uD68C\uC6D0 (' + cnt + '\uBA85)';
+  }
+}
+
+/* 회원 상태 직접 변경 (해당 연도부터 반영) */
+function changeMemberStatus(idx, yy, newSt) {
+  var m = MEMBERS[idx];
+  if (!m) return;
+  if (!m.st) m.st = {'24':'\uC815\uD68C\uC6D0','25':'\uC815\uD68C\uC6D0','26':'\uC815\uD68C\uC6D0'};
+  /* 해당 연도부터 변경 (이전 연도 유지) */
+  ['24','25','26'].forEach(function(y){
+    if (parseInt(y) >= parseInt(yy)) m.st[y] = newSt;
+  });
+  /* localStorage 백업 */
+  try { localStorage.setItem('hl0frc_members', JSON.stringify(MEMBERS)); } catch(e){}
+  /* Firebase 즉시 저장 */
+  if (FB.connected && FB.db) {
+    FB.db.collection('members').doc(m.cs || m.name).set({
+      name:m.name, callsign:m.cs, st:m.st
+    }, {merge:true})
+    .then(function(){ showMemberToast(m.name + ' \u2192 ' + newSt + ' (' + (2000+parseInt(yy)) + '\uB144\uBD80\uD130 \uC800\uC7A5\uB428)'); })
+    .catch(function(e){ showMemberToast('\u26A0\uFE0F \uB85C\uCEEC \uC800\uC7A5\uB428: ' + e.message); });
+  } else {
+    showMemberToast(m.name + ' \u2192 ' + newSt + ' (\uB85C\uCEEC \uC800\uC7A5, Firebase \uC5F0\uACB0 \uC2DC \uB3D9\uAE30\uD654)');
+  }
+  /* 화면 갱신 */
+  var memYear = document.getElementById('memYear');
+  if (memYear) renderMember(memYear.value);
+}
+
+/* 토스트 알림 */
+function showMemberToast(msg) {
+  var t = document.getElementById('memberToast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'memberToast';
+    t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.25);opacity:0;transition:opacity .3s';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(function(){ t.style.opacity='0'; }, 3000);
 }
 
 /* ── 문서작성: 유형 선택 ── */
@@ -502,25 +571,25 @@ var ACT_ROWS=[
 {'\uAD6C\uBD84':'5','\uBA85':'\uC6D4\uAC04\uD65C\uB3D9\uBCF4\uACE0/\uD68C\uACC4\uC790\uB8CC\uC815\uB9AC','\uC77C':'05\uC6D4 31\uC77C','\uC2DC\uAC04':'15:00~18:00','\uC778\uC815':'3','\uC778\uC6D0':'1','\uC7A5\uC18C':'\uC790\uD0DD'}
 ];
 var MEMBERS=[
-{name:'\uC774\uB3C4\uD76C',cs:'HL1TMJ',team:'\u2014',h24:112,h25:90,h26:0,acc:5582,j:'1994.05'},
-{name:'\uC815\uC9C4\uCCA0',cs:'DS1CFO',team:'\uAC10\uC0AC',h24:155,h25:120,h26:0,acc:5339,j:'1989.06'},
-{name:'\uBC15\uCDA9\uADFC',cs:'DS1BUQ',team:'\uAD6C\uD638\uD300',h24:52,h25:40,h26:0,acc:3934,j:'1995.07'},
-{name:'\uC2E0\uD604\uC218',cs:'HL1AKY',team:'\uAD6C\uD638\uD300',h24:5,h25:5,h26:0,acc:3132,j:'1988.02'},
-{name:'\uC774\uC6D0\uC7AC',cs:'HL1MCB',team:'\uACE0\uBB38',h24:47,h25:40,h26:0,acc:2589,j:'1987.07'},
-{name:'\uAE40\uC591\uC12D',cs:'HL2TLS',team:'\uAE30\uC220\uD300\uC7A5',h24:161,h25:130,h26:0,acc:2578,j:'1994.10'},
-{name:'\uC784\uCC9C\uC21C',cs:'DS1CLF',team:'\uD68C\uC7A5',h24:176,h25:140,h26:0,acc:2304,j:'1995.07'},
-{name:'\uC774\uC784\uD765',cs:'HL1OFQ',team:'\uAD6C\uD638\uD300',h24:69,h25:50,h26:0,acc:2285,j:'1996.05'},
-{name:'\uC774\uC6A9\uC6C5',cs:'DS1BNJ',team:'\uAD6C\uD638\uD300',h24:38,h25:30,h26:0,acc:2245,j:'1996.01'},
-{name:'\uC774\uB3D9\uC12D',cs:'DS1MXN',team:'\u2014',h24:76,h25:60,h26:0,acc:1367,j:'1997.01'},
-{name:'\uBC15\uC815\uD638',cs:'HL1LFC',team:'\uAE30\uC220\uD300',h24:233,h25:180,h26:0,acc:913,j:'2021.05'},
-{name:'\uAE40\uC6D0\uCC3D',cs:'DS2AEM',team:'\uAD6C\uD638\uD300\uC7A5',h24:61,h25:50,h26:0,acc:772,j:'1996.01'},
-{name:'\uBC15 \uCCA0',cs:'HL1LGZ',team:'\uC804\uC784\uCD1D\uBB34',h24:216,h25:170,h26:0,acc:576,j:'2022.10'},
-{name:'\uC624\uC138\uC9C4',cs:'6K2FXY',team:'\uB4DC\uB860\uD300\uC7A5',h24:94,h25:80,h26:0,acc:442,j:'2020.06'},
-{name:'\uC9C0\uC778\uC2E4',cs:'HL2OBL',team:'\uBD80\uD68C\uC7A5/\uCD1D\uBB34\uB300\uD589',h24:177,h25:145,h26:0,acc:387,j:'1988.04'},
-{name:'\uC774\uC7AC\uC601',cs:'6K2JPO',team:'\uAE30\uC220\uD300',h24:77,h25:60,h26:0,acc:341,j:'2020.07'},
-{name:'\uACFD \uC601',cs:'DS1TWP',team:'\u2014',h24:103,h25:80,h26:0,acc:226,j:'2023.05'},
-{name:'\uD669\uCC2C\uC5F0',cs:'DS1URB',team:'\u2014',h24:105,h25:85,h26:0,acc:105,j:'2024.01'},
-{name:'\uB098\uAE38\uC6D0',cs:'—',team:'\uC2E0\uADDC(2025)',h24:0,h25:20,h26:0,acc:20,j:'2025'}
+{name:'\uC774\uB3C4\uD76C',cs:'HL1TMJ',team:'\u2014',h24:112,h25:90,h26:0,acc:5582,j:'1994.05',st:{'24':'\uC815\uD68C\uC6D0','25':'\uC815\uD68C\uC6D0','26':'\uC815\uD68C\uC6D0'}},
+{name:'\uC815\uC9C4\uCCA0',cs:'DS1CFO',team:'\uAC10\uC0AC',h24:155,h25:120,h26:0,acc:5339,j:'1989.06',st:{'24':'\uC815\uD68C\uC6D0','25':'\uC815\uD68C\uC6D0','26':'\uC815\uD68C\uC6D0'}},
+{name:'\uBC15\uCDA9\uADFC',cs:'DS1BUQ',team:'\uAD6C\uD638\uD300',h24:52,h25:40,h26:0,acc:3934,j:'1995.07',st:{'24':'\uC815\uD68C\uC6D0','25':'\uC815\uD68C\uC6D0','26':'\uC815\uD68C\uC6D0'}},
+{name:'\uC2E0\uD604\uC218',cs:'HL1AKY',team:'\uAD6C\uD638\uD300',h24:5,h25:5,h26:0,acc:3132,j:'1988.02',st:{'24':'\uC815\uD68C\uC6D0','25':'\uC815\uD68C\uC6D0','26':'\uC815\uD68C\uC6D0'}},
+{name:'\uC774\uC6D0\uC7AC',cs:'HL1MCB',team:'\uACE0\uBB38',h24:47,h25:40,h26:0,acc:2589,j:'1987.07',st:{'24':'\uC815\uD68C\uC6D0','25':'\uC815\uD68C\uC6D0','26':'\uC815\uD68C\uC6D0'}},
+{name:'\uAE40\uC591\uC12D',cs:'HL2TLS',team:'\uAE30\uC220\uD300\uC7A5',h24:161,h25:130,h26:0,acc:2578,j:'1994.10',st:{'24':'\uC815\uD68C\uC6D0','25':'\uC815\uD68C\uC6D0','26':'\uC815\uD68C\uC6D0'}},
+{name:'\uC784\uCC9C\uC21C',cs:'DS1CLF',team:'\uD68C\uC7A5',h24:176,h25:140,h26:0,acc:2304,j:'1995.07',st:{'24':'\uC815\uD68C\uC6D0','25':'\uC815\uD68C\uC6D0','26':'\uC815\uD68C\uC6D0'}},
+{name:'\uC774\uC784\uD765',cs:'HL1OFQ',team:'\uAD6C\uD638\uD300',h24:69,h25:50,h26:0,acc:2285,j:'1996.05',st:{'24':'\uC815\uD68C\uC6D0','25':'\uC815\uD68C\uC6D0','26':'\uC815\uD68C\uC6D0'}},
+{name:'\uC774\uC6A9\uC6C5',cs:'DS1BNJ',team:'\uAD6C\uD638\uD300',h24:38,h25:30,h26:0,acc:2245,j:'1996.01',st:{'24':'\uC815\uD68C\uC6D0','25':'\uC815\uD68C\uC6D0','26':'\uC815\uD68C\uC6D0'}},
+{name:'\uC774\uB3D9\uC12D',cs:'DS1MXN',team:'\u2014',h24:76,h25:60,h26:0,acc:1367,j:'1997.01',st:{'24':'\uC815\uD68C\uC6D0','25':'\uC815\uD68C\uC6D0','26':'\uC815\uD68C\uC6D0'}},
+{name:'\uBC15\uC815\uD638',cs:'HL1LFC',team:'\uAE30\uC220\uD300',h24:233,h25:180,h26:0,acc:913,j:'2021.05',st:{'24':'\uC815\uD68C\uC6D0','25':'\uC815\uD68C\uC6D0','26':'\uC815\uD68C\uC6D0'}},
+{name:'\uAE40\uC6D0\uCC3D',cs:'DS2AEM',team:'\uAD6C\uD638\uD300\uC7A5',h24:61,h25:50,h26:0,acc:772,j:'1996.01',st:{'24':'\uC815\uD68C\uC6D0','25':'\uC815\uD68C\uC6D0','26':'\uC815\uD68C\uC6D0'}},
+{name:'\uBC15 \uCCA0',cs:'HL1LGZ',team:'\uC804\uC784\uCD1D\uBB34',h24:216,h25:170,h26:0,acc:576,j:'2022.10',st:{'24':'\uC815\uD68C\uC6D0','25':'\uC815\uD68C\uC6D0','26':'\uC815\uD68C\uC6D0'}},
+{name:'\uC624\uC138\uC9C4',cs:'6K2FXY',team:'\uB4DC\uB860\uD300\uC7A5',h24:94,h25:80,h26:0,acc:442,j:'2020.06',st:{'24':'\uC815\uD68C\uC6D0','25':'\uC815\uD68C\uC6D0','26':'\uC815\uD68C\uC6D0'}},
+{name:'\uC9C0\uC778\uC2E4',cs:'HL2OBL',team:'\uBD80\uD68C\uC7A5/\uCD1D\uBB34\uB300\uD589',h24:177,h25:145,h26:0,acc:387,j:'1988.04',st:{'24':'\uC815\uD68C\uC6D0','25':'\uC815\uD68C\uC6D0','26':'\uC815\uD68C\uC6D0'}},
+{name:'\uC774\uC7AC\uC601',cs:'6K2JPO',team:'\uAE30\uC220\uD300',h24:77,h25:60,h26:0,acc:341,j:'2020.07',st:{'24':'\uC815\uD68C\uC6D0','25':'\uC815\uD68C\uC6D0','26':'\uC815\uD68C\uC6D0'}},
+{name:'\uACFD \uC601',cs:'DS1TWP',team:'\u2014',h24:103,h25:80,h26:0,acc:226,j:'2023.05',st:{'24':'\uC815\uD68C\uC6D0','25':'\uC815\uD68C\uC6D0','26':'\uC815\uD68C\uC6D0'}},
+{name:'\uD669\uCC2C\uC5F0',cs:'DS1URB',team:'\u2014',h24:105,h25:85,h26:0,acc:105,j:'2024.01',st:{'24':'\uC2E0\uC785','25':'\uC815\uD68C\uC6D0','26':'\uC815\uD68C\uC6D0'}},
+{name:'\uB098\uAE38\uC6D0',cs:'\u2014',team:'\uC2E0\uC785',h24:0,h25:20,h26:0,acc:20,j:'2025.01',st:{'24':'\u2014','25':'\uC2E0\uC785','26':'\uC900\uD68C\uC6D0'}}
 ];
 var DOCS={
 '2026':[
@@ -786,28 +855,123 @@ function updDirectCount() {
 }
 
 function autoParseText(text) {
-  var r = { title:'', date:'', place:'', who:'', what:'' };
-  var dm = text.match(/(20\d{2})[\uB144.\-\/]?\s*(\d{1,2})[\uC6D4.\-\/]?\s*(\d{1,2})/);
+  var r = { title:'', date:'', place:'', who:'', what:'', isComm:false, keyStation:'', members:[], hours:0, summary:'', hourMap:{}, note:'' };
+  var ROSTER = ['\uC774\uB3C4\uD76C','\uC815\uC9C4\uCCA0','\uBC15\uCDA9\uADFC','\uC2E0\uD604\uC218','\uC774\uC6D0\uC7AC','\uAE40\uC591\uC12D','\uC784\uCC9C\uC21C','\uC774\uC784\uD765','\uC774\uC6A9\uC6C5','\uC774\uB3D9\uC12D','\uBC15\uC815\uD638','\uAE40\uC6D0\uCC3D','\uBC15\uCCA0','\uC624\uC138\uC9C4','\uC9C0\uC778\uC2E4','\uC774\uC7AC\uC601','\uACFD\uC601','\uD669\uCC2C\uC5F0','\uB098\uAE38\uC6D0','\uC774\uC11C\uD604','\uBC15\uC815\uD638'];
+
+  function pickNames(str) {
+    /* 실제 회원 명단에 있는 이름만 추출 */
+    var found = [];
+    ROSTER.forEach(function(nm){
+      if (str.indexOf(nm) !== -1 && found.indexOf(nm) === -1) found.push(nm);
+    });
+    return found;
+  }
+
+  /* 날짜 추출 */
+  var dm = text.match(/(20\d{2})[\uB144.\s]*(\d{1,2})[\uC6D4.\s]*(\d{1,2})/);
   if (dm) r.date = dm[1] + '.' + ('0'+dm[2]).slice(-2) + '.' + ('0'+dm[3]).slice(-2);
-  var pm = text.match(/([\uAC00-\uD7A3\w]+(?:\uC13C\uD130|\uAD11\uC7A5|\uC9C0\uC0AC|\uD68C\uAD00|\uD640|\uC2E4|\uAD00|\uC18C|\uCC98|\uCCAD|\uC5ED))/);
+
+  /* 장소 추출 */
+  var pm = text.match(/([\uAC00-\uD7A3\w]+(?:\uC13C\uD130|\uAD11\uC7A5|\uC9C0\uC0AC|\uD68C\uAD00|\uD640|\uC2E4|\uAD00|\uC18C|\uCC98|\uCCAD|\uC5ED|\uC74C))/);
   if (pm) r.place = pm[1];
-  var cs = text.match(/[A-Z]{2}\d[A-Z]{3}|6K\d[A-Z]{3}|DS\d[A-Z]{3}|HL\d[A-Z]{3}/g);
-  if (cs) r.who = cs.join(', ');
-  else { var pe = text.match(/(\d+)\s*\uBA85/); if (pe) r.who = pe[1] + '\uBA85'; }
+
+  /* ── 화요정기통신훈련 ── */
+  var commM = text.match(/(\d+)\s*\uCC28\s*\uD654\uC694\uC815\uAE30\uD1B5\uC2E0\uD6C8\uB828/);
+  if (commM || /\uD654\uC694\uC815\uAE30\uD1B5\uC2E0\uD6C8\uB828/.test(text)) {
+    r.isComm = true;
+    r.what = '\uD654\uC694\uC815\uAE30\uD1B5\uC2E0\uD6C8\uB828';
+    if (commM) r.title = '2026\uB144 \uC81C' + commM[1] + '\uCC28 \uD654\uC694\uC815\uAE30\uD1B5\uC2E0\uD6C8\uB828';
+    else r.title = '\uD654\uC694\uC815\uAE30\uD1B5\uC2E0\uD6C8\uB828';
+
+    /* Key Station */
+    var ksM = text.match(/Key[\s\-]?Station\s*[:：]?\s*([\uAC00-\uD7A3]{2,4})/i);
+    if (ksM) {
+      var ks = pickNames(ksM[1]);
+      if (ks.length) r.keyStation = ks[0];
+    }
+
+    /* 참석자: '참석자 :' 줄에서만 추출 */
+    var lines = text.split('\n');
+    var atLine = '';
+    for (var li=0; li<lines.length; li++) {
+      if (/\uCC38\uC11D\uC790\s*[:：]/.test(lines[li])) {
+        atLine = lines[li].replace(/.*[:：]/, '');
+        break;
+      }
+    }
+    r.members = pickNames(atLine);
+    /* 키스테이션이 참석자에 없으면 맨 앞에 추가 */
+    if (r.keyStation && r.members.indexOf(r.keyStation) === -1) r.members.unshift(r.keyStation);
+
+    /* 시간 합산: Key 2H, 나머지 1H */
+    r.members.forEach(function(nm){
+      r.hourMap[nm] = (nm === r.keyStation) ? 2 : 1;
+    });
+    r.who = r.members.join(', ');
+    r.hours = 1;
+    r.summary = (r.date||'') + ' ' + r.title + ' / Key: ' + r.keyStation + ' / \uCC38\uC11D ' + r.members.length + '\uBA85';
+    return r;
+  }
+
+  /* ── 일반 활동 ── */
+  r.members = pickNames(text);
+  r.who = r.members.join(', ');
+
+  /* 시간: N시간 또는 14~18시 */
+  var hM = text.match(/(\d+(?:\.\d+)?)\s*\uC2DC\uAC04/);
+  if (hM) r.hours = parseFloat(hM[1]);
+  else {
+    var rangeM = text.match(/(\d{1,2})\s*[~\-]\s*(\d{1,2})\s*\uC2DC/);
+    if (rangeM) r.hours = parseInt(rangeM[2]) - parseInt(rangeM[1]);
+  }
+  if (r.members.length && r.hours > 0) {
+    r.members.forEach(function(nm){ r.hourMap[nm] = r.hours; });
+  }
+
+    /* \ud68c\uc6d0 \ubcc0\ub3d9 \uac10\uc9c0 */
+  r.memberChanges = [];
+  var ROSTER2 = ['\uC774\uB3C4\uD76C','\uC815\uC9C4\uCCA0','\uBC15\uCDA9\uADFC','\uC2E0\uD604\uC218','\uC774\uC6D0\uC7AC','\uAE40\uC591\uC12D','\uC784\uCC9C\uC21C','\uC774\uC784\uD765','\uC774\uC6A9\uC6C5','\uC774\uB3D9\uC12D','\uBC15\uC815\uD638','\uAE40\uC6D0\uCC3D','\uBC15\uCCA0','\uC624\uC138\uC9C4','\uC9C0\uC778\uC2E4','\uC774\uC7AC\uC601','\uACFD\uC601','\uD669\uCC2C\uC5F0','\uB098\uAE38\uC6D0'];
+  var chgPat = [
+    [/SILENT\s*KEY|\uC0AC\uC77C\uB7F0\uD2B8|\uBCC4\uC138/i, 'SILENT KEY'],
+    [/\uBA85\uC608\uD68C\uC6D0/, '\uBA85\uC608\uD68C\uC6D0'],
+    [/\uC815\uD68C\uC6D0\uC73C\uB85C|\uC815\uD68C\uC6D0 \uC2B9/, '\uC815\uD68C\uC6D0'],
+    [/\uC900\uD68C\uC6D0/, '\uC900\uD68C\uC6D0'],
+    [/\uC2E0\uC785\uD68C\uC6D0|\uC2E0\uADDC \uAC00\uC785/, '\uC2E0\uC785']
+  ];
+  chgPat.forEach(function(cp){
+    if (cp[0].test(text)) {
+      ROSTER2.forEach(function(nm){
+        /* 이름 뒤 20자 이내에 상태 키워드가 있으면 변동 기록 */
+        var ni = text.indexOf(nm);
+        if (ni === -1) return;
+        var seg = text.substring(ni, ni + 25);
+        if (cp[0].test(seg)) {
+          r.memberChanges.push({ name:nm, newStatus:cp[1] });
+        }
+      });
+    }
+  });
+
+  /* 추가 일정 메모 (예: 6월4일 추가 답사) */
+  var nextM = text.match(/(\d{1,2})\uC6D4\s*(\d{1,2})\uC77C[^.]*\uB2F5\uC0AC/);
+  if (nextM) r.note = nextM[1] + '\uC6D4 ' + nextM[2] + '\uC77C \uCD94\uAC00 \uB2F5\uC0AC \uC608\uC815';
+
+  /* 활동 유형 */
   var tps = [
+    [/\uCD1D\uD68C|\uD611\uC758\uD68C/, '\uCD1D\uD68C/\uD611\uC758\uD68C'],
+    [/\uB2F5\uC0AC/, '\uB2F5\uC0AC'],
     [/\uC6D4\uB840\uD68C|\uC784\uC6D0\uD68C/, '\uC6D4\uB840\uD68C'],
-    [/\uB4DC\uB860.*\uD6C8\uB828|\uD6C8\uB828.*\uB4DC\uB860/, '\uB4DC\uB860\uD6C8\uB828'],
-    [/\uD1B5\uC2E0.*\uD6C8\uB828|VHF/, '\uBB34\uC120\uD1B5\uC2E0\uD6C8\uB828'],
+    [/\uB4DC\uB860.*\uD6C8\uB828/, '\uB4DC\uB860\uD6C8\uB828'],
     [/CPR|\uC2EC\uD3D0\uC18C\uC0DD/, 'CPR\uAD50\uC721'],
-    [/\uCD1D\uD68C/, '\uC815\uAE30\uCD1D\uD68C'],
-    [/\uCF58\uD14C\uC2A4\uD2B8|contest/i, '\uBB34\uC120\uACBD\uC5F0'],
     [/\uBD09\uC0AC|\uD398\uC2A4\uD2F0\uBC8C/, '\uBD09\uC0AC\uD65C\uB3D9'],
     [/\uBE44\uC0C1\uB300\uAE30|\uC7AC\uB09C|\uAD6C\uD638/, '\uC7AC\uB09C\uB300\uC751'],
-    [/\uD68C\uC758|\uD611\uC758|\uC810\uAC80/, '\uD68C\uC758/\uD611\uC758']
+    [/\uD68C\uC758|\uC810\uAC80/, '\uD68C\uC758/\uD611\uC758']
   ];
   for (var i=0;i<tps.length;i++){ if(tps[i][0].test(text)){ r.what=tps[i][1]; break; } }
+
   var fl = text.trim().split('\n')[0].substring(0,40);
   if (r.date && r.what) r.title = r.date + ' ' + r.what;
+  else if (r.what) r.title = r.what + (r.place ? ' (' + r.place + ')' : '');
   else if (fl) r.title = fl;
   else r.title = '\uC9C1\uC811\uC785\uB825';
   return r;
@@ -825,36 +989,124 @@ function showDirectStatus(msg, type) {
 function showDirectParse(p) {
   var pr = document.getElementById('directParseResult');
   if (!pr) return;
-  var h = '<div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:8px">&#128269; '+'\uD30C\uC2F1 \uACB0\uACFC (\uC790\uB3D9 \uBD84\uB958)'+'</div><div style="display:flex;flex-wrap:wrap;gap:8px">';
-  var fs = [['\uC81C\uBAA9',p.title],['\uB0A0\uC9DC',p.date],['\uC7A5\uC18C',p.place],['\uCC38\uC11D\uC790',p.who],['\uD65C\uB3D9\uC720\uD615',p.what]];
+  var h = '<div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:8px">&#128269; ' + '\uD30C\uC2F1 \uACB0\uACFC (\uC790\uB3D9 \uBD84\uB958 \u00B7 \uC2DC\uAC04 \uD569\uC0B0)' + '</div>';
+
+  /* 기본 정보 */
+  h += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:9px">';
+  var fs = [['\uC81C\uBAA9',p.title],['\uB0A0\uC9DC',p.date],['\uC7A5\uC18C',p.place],['\uD65C\uB3D9\uC720\uD615',p.what]];
+  if (p.isComm && p.keyStation) fs.push(['Key Station', p.keyStation + ' (2H)']);
   fs.forEach(function(f){ if(!f[1])return;
     h += '<div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:6px 11px"><div style="font-size:10px;color:var(--txt3)">'+f[0]+'</div><div style="font-size:13px;font-weight:700;color:var(--navy)">'+f[1]+'</div></div>';
   });
   h += '</div>';
-  pr.innerHTML = h; pr.style.display = 'block';
+
+  /* 시간 합산 표 */
+  var names = Object.keys(p.hourMap || {});
+  if (names.length) {
+    h += '<div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:5px">&#9201; ' + '\uBD09\uC0AC\uC2DC\uAC04 \uD569\uC0B0' + ' (' + names.length + '\uBA85)</div>';
+    h += '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px">';
+    names.forEach(function(nm){
+      var hrs = p.hourMap[nm];
+      var isKey = (nm === p.keyStation);
+      var bg = isKey ? 'background:var(--amber-l);color:var(--amber);border:1px solid #f0c060' : 'background:var(--green-l);color:var(--green);border:1px solid #b2dfcd';
+      h += '<span style="'+bg+';border-radius:6px;padding:4px 9px;font-size:12px;font-weight:600">'+nm+' +'+hrs+'H'+(isKey?' (Key)':'')+'</span>';
+    });
+    h += '</div>';
+    var totalH = names.reduce(function(s,n){ return s + p.hourMap[n]; }, 0);
+    h += '<div style="font-size:11px;color:var(--txt3)">' + '\uCD1D \uC778\uC815\uC2DC\uAC04 \uD569\uACC4: ' + totalH + 'H ' + '(\uC800\uC7A5 \uC2DC \uD68C\uC6D0\uBCC4 2026 \uB204\uC801\uC2DC\uAC04\uC5D0 \uC790\uB3D9 \uD569\uC0B0)' + '</div>';
+  }
+  if (p.memberChanges && p.memberChanges.length) {
+    h += '<div style="margin-top:7px;font-size:12px;font-weight:700;color:var(--navy);margin-bottom:5px">&#128100; ' + '\uD68C\uC6D0 \uC0C1\uD0DC \uBCC0\uB3D9' + '</div><div style="display:flex;flex-wrap:wrap;gap:5px">';
+    p.memberChanges.forEach(function(ch){
+      h += '<span style="background:#f3e5f5;color:#7b1fa2;border-radius:6px;padding:4px 9px;font-size:12px;font-weight:600">'+ch.name+' \u2192 '+ch.newStatus+'</span>';
+    });
+    h += '</div>';
+  }
+  if (p.note) {
+    h += '<div style="margin-top:6px;font-size:11px;color:var(--amber);background:var(--amber-l);border-radius:6px;padding:4px 9px">&#128197; ' + p.note + '</div>';
+  }
+  pr.innerHTML = h;
+  pr.style.display = 'block';
 }
 
 function saveDirectInput() {
   var content = (document.getElementById('directContent')||{}).value || '';
   if (!content.trim()) { alert('\uB0B4\uC6A9\uC744 \uC785\uB825\uD574\uC8FC\uC138\uC694.'); return; }
   var p = autoParseText(content);
-  var item = { id:Date.now(), title:p.title, date:p.date, place:p.place, who:p.who, what:p.what, content:content, savedAt:new Date().toLocaleString() };
+
+  /* 회원별 시간 합산 → MEMBERS h26 반영 */
+  var applied = [];
+  var names = Object.keys(p.hourMap || {});
+  names.forEach(function(nm){
+    var hrs = p.hourMap[nm];
+    for (var i=0; i<MEMBERS.length; i++) {
+      var mn = MEMBERS[i].name.replace(/\s/g,'');
+      if (mn === nm.replace(/\s/g,'')) {
+        MEMBERS[i].h26 = (MEMBERS[i].h26||0) + hrs;
+        MEMBERS[i].acc = (MEMBERS[i].acc||0) + hrs;
+        applied.push(nm + ' +' + hrs + 'H');
+        /* Firebase members 갱신 */
+        if (FB.connected && FB.db) {
+          FB.db.collection('members').doc(MEMBERS[i].cs || MEMBERS[i].name).set({
+            name:MEMBERS[i].name, callsign:MEMBERS[i].cs, team:MEMBERS[i].team,
+            h24:MEMBERS[i].h24, h25:MEMBERS[i].h25, h26:MEMBERS[i].h26, acc:MEMBERS[i].acc, joined:MEMBERS[i].j
+          }, {merge:true}).catch(function(e){ console.warn(e); });
+        }
+        break;
+      }
+    }
+  });
+
+  /* 회원 상태 변동 반영 (해당 연도부터) */
+  var curYear = (p.date ? p.date.substring(0,4) : '2026');
+  var yy = curYear.substring(2);
+  if (p.memberChanges && p.memberChanges.length) {
+    p.memberChanges.forEach(function(ch){
+      for (var i=0; i<MEMBERS.length; i++) {
+        if (MEMBERS[i].name.replace(/\s/g,'') === ch.name.replace(/\s/g,'')) {
+          if (!MEMBERS[i].st) MEMBERS[i].st = {'24':'\uC815\uD68C\uC6D0','25':'\uC815\uD68C\uC6D0','26':'\uC815\uD68C\uC6D0'};
+          /* 해당 연도부터 변경 (이전 유지) */
+          ['24','25','26'].forEach(function(y){
+            if (parseInt(y) >= parseInt(yy)) MEMBERS[i].st[y] = ch.newStatus;
+          });
+          if (FB.connected && FB.db) {
+            FB.db.collection('members').doc(MEMBERS[i].cs || MEMBERS[i].name).set({
+              name:MEMBERS[i].name, st:MEMBERS[i].st
+            }, {merge:true}).catch(function(e){ console.warn(e); });
+          }
+          break;
+        }
+      }
+    });
+  }
+
+  /* 활동 기록 저장 */
+  var item = { id:Date.now(), title:p.title, date:p.date, place:p.place, who:p.who, what:p.what,
+               keyStation:p.keyStation, hourMap:p.hourMap, content:content, savedAt:new Date().toLocaleString() };
   directSavedItems.unshift(item);
   try { localStorage.setItem('hl0frc_direct', JSON.stringify(directSavedItems)); } catch(e){}
+
   if (FB.connected && FB.db) {
     FB.db.collection('inputs').add({
-      type:'\uC9C1\uC811\uC785\uB825', title:p.title, date:p.date, place:p.place,
-      who:p.who, what:p.what, content:content, createdBy:'HL2OBL',
+      type: p.isComm ? '\uD654\uC694\uC815\uAE30\uD1B5\uC2E0\uD6C8\uB828' : (p.what || '\uC9C1\uC811\uC785\uB825'),
+      title:p.title, date:p.date, place:p.place, what:p.what,
+      keyStation:p.keyStation, members:p.members, hourMap:p.hourMap,
+      content:content, createdBy:'HL2OBL',
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    }).then(function(){ showDirectStatus('\u2705 Firebase \uC800\uC7A5 \uC644\uB8CC!','ok'); })
-      .catch(function(e){ showDirectStatus('\u26A0\uFE0F \uB85C\uCEEC \uC800\uC7A5\uB428 (Firebase: '+e.message+')','warn'); });
+    }).then(function(){ showDirectStatus('\u2705 Firebase \uC800\uC7A5 + \uBD09\uC0AC\uC2DC\uAC04 \uD569\uC0B0 \uC644\uB8CC!','ok'); })
+      .catch(function(e){ showDirectStatus('\u26A0\uFE0F \uB85C\uCEEC \uC800\uC7A5\uB428: '+e.message,'warn'); });
   } else {
-    showDirectStatus('\u2705 \uB85C\uCEEC \uC800\uC7A5 \uC644\uB8CC (Firebase \uC5F0\uACB0 \uC2DC \uC790\uB3D9 \uB3D9\uAE30\uD654)','ok');
+    showDirectStatus('\u2705 \uB85C\uCEEC \uC800\uC7A5 + \uBD09\uC0AC\uC2DC\uAC04 \uD569\uC0B0 \uC644\uB8CC (Firebase \uC5F0\uACB0 \uC2DC \uB3D9\uAE30\uD654)','ok');
   }
+
   uploadLog.unshift({ name:p.title+'.txt', size:fmtSize(new Blob([content]).size), ext:'txt', ts:new Date().toLocaleTimeString(), file:{name:p.title} });
   renderLog();
   loadDirectSaved();
   showDirectParse(p);
+
+  /* 회원 탭 갱신 */
+  var memYear = document.getElementById('memYear');
+  if (memYear) renderMember(memYear.value);
 }
 
 function parseDirectInput() {
@@ -947,6 +1199,23 @@ function printReport() {
 document.addEventListener('DOMContentLoaded', function(){
   var fd = document.getElementById('fDate');
   if (fd) fd.valueAsDate = new Date();
+  /* localStorage 회원 상태 복원 */
+  try {
+    var savedMem = localStorage.getItem('hl0frc_members');
+    if (savedMem) {
+      var sm = JSON.parse(savedMem);
+      sm.forEach(function(s){
+        for (var i=0;i<MEMBERS.length;i++){
+          if (MEMBERS[i].cs === s.cs && MEMBERS[i].name === s.name) {
+            if (s.st) MEMBERS[i].st = s.st;
+            if (s.h26 !== undefined) MEMBERS[i].h26 = s.h26;
+            if (s.acc !== undefined) MEMBERS[i].acc = s.acc;
+            break;
+          }
+        }
+      });
+    }
+  } catch(e){}
   renderDocs('2026');
   renderMember('2026');
   loadDirectSaved();
