@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>HL0FRC-AI 재난대응봉사회 AI총무 v3.7</title>
+<title>HL0FRC-AI 재난대응봉사회 AI총무 v4.0</title>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -124,7 +124,7 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:var
   <div class="hdr-inner">
     <div class="hdr-top">
       <div class="hdr-logo">&#128293; HL0FRC-AI</div>
-      <div class="badge-ver">v3.7</div>
+      <div class="badge-ver">v4.0</div>
     </div>
     <div class="hdr-sub">
       대한적십자사 서울특별시지사 재난대응봉사회 AI총무 시스템 &nbsp;|&nbsp; 문서관리 &middot; 대시보드 &middot; 회장 승인 &middot; Firebase 연동
@@ -414,11 +414,12 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:var
       </div>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-      <select id="rptYear" style="padding:6px 11px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;color:var(--txt)">
+      <select id="rptYear" onchange="genReport()" style="padding:6px 11px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;color:var(--txt)">
         <option value="2026">2026년</option>
       </select>
-      <select id="rptMonth" style="padding:6px 11px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;color:var(--txt)">
-        <option value="05">5월</option>
+      <select id="rptMonth" onchange="genReport()" style="padding:6px 11px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;color:var(--txt)">
+        <option value="06">6월</option>
+        <option value="05" selected>5월</option>
       </select>
     </div>
     <div id="reportDoc"></div>
@@ -429,7 +430,7 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:var
 
 <!-- 푸터 -->
 <div class="footer">
-  인시스 그룹 AI혁신 R&amp;D센터 &nbsp;|&nbsp; HL0FRC-AI 재난대응봉사회 AI총무 시스템 v3.7 &nbsp;|&nbsp;
+  인시스 그룹 AI혁신 R&amp;D센터 &nbsp;|&nbsp; HL0FRC-AI 재난대응봉사회 AI총무 시스템 v4.0 &nbsp;|&nbsp;
   <a href="https://github.com/Insys-HQ/Insys-review" target="_blank">GitHub</a>
 </div>
 
@@ -867,13 +868,31 @@ function autoParseText(text) {
     return found;
   }
 
-  /* 날짜 추출 */
-  var dm = text.match(/(20\d{2})[\uB144.\s]*(\d{1,2})[\uC6D4.\s]*(\d{1,2})/);
-  if (dm) r.date = dm[1] + '.' + ('0'+dm[2]).slice(-2) + '.' + ('0'+dm[3]).slice(-2);
+  /* 날짜 추출: '일시/일자' 줄 우선, '예정' 줄 제외 */
+  var L0 = text.split('\n');
+  var dLine = '';
+  for (var di=0; di<L0.length; di++) {
+    if (/\uC77C\s*\uC2DC|\uC77C\uC790/.test(L0[di]) && !/\uC608\uC815/.test(L0[di])) { dLine = L0[di]; break; }
+  }
+  var dmL = dLine.match(/(\d{1,2})\s*\uC6D4\s*(\d{1,2})/);
+  if (dmL) {
+    r.date = '2026.' + ('0'+dmL[1]).slice(-2) + '.' + ('0'+dmL[2]).slice(-2);
+  } else {
+    var dm = text.match(/(20\d{2})[\uB144.\s]*(\d{1,2})[\uC6D4.\s]*(\d{1,2})/);
+    if (dm) r.date = dm[1] + '.' + ('0'+dm[2]).slice(-2) + '.' + ('0'+dm[3]).slice(-2);
+  }
 
-  /* 장소 추출 */
-  var pm = text.match(/([\uAC00-\uD7A3\w]+(?:\uC13C\uD130|\uAD11\uC7A5|\uC9C0\uC0AC|\uD68C\uAD00|\uD640|\uC2E4|\uAD00|\uC18C|\uCC98|\uCCAD|\uC5ED|\uC74C))/);
-  if (pm) r.place = pm[1];
+  /* 장소 추출: 미정/물색중 우선 판단 */
+  if (/\uBBF8\uC815|\uBB3C\uC0C9|\uD6C4\ubcf4\uC9C0|\uAC80\uD1A0 \uC911|\uC120\uC815 \uC608\uC815|\uC7A5\uC18C\uB97C \uCC3E|\uC5B4\uB514\uB85C \uD560\uC9C0/.test(text)) {
+    r.place = '\uBBF8\uC815(\uBB3C\uC0C9 \uC911)';
+  } else {
+    var pm = text.match(/([\uAC00-\uD7A3]{2,}(?:\uC13C\uD130|\uAD11\uC7A5|\uC9C0\uC0AC|\uD68C\uAD00|\uBB34\uC120\uC2E4|\uCCB4\uC721\uAD00|\uC5ED|\uD0C0\uC6CC))/);
+    if (pm) r.place = pm[1];
+    else {
+      var pm3 = text.match(/\uC7A5\s*\uC18C\s*[:：]\s*([\uAC00-\uD7A3\w]+)/);
+      if (pm3 && !/\uBBF8\uC815|\uAD00\uB828|\uAC80\uD1A0/.test(pm3[1])) r.place = pm3[1];
+    }
+  }
 
   /* ── 화요정기통신훈련 ── */
   var commM = text.match(/(\d+)\s*\uCC28\s*\uD654\uC694\uC815\uAE30\uD1B5\uC2E0\uD6C8\uB828/);
@@ -952,28 +971,53 @@ function autoParseText(text) {
     }
   });
 
-  /* 추가 일정 메모 (예: 6월4일 추가 답사) */
-  var nextM = text.match(/(\d{1,2})\uC6D4\s*(\d{1,2})\uC77C[^.]*\uB2F5\uC0AC/);
-  if (nextM) r.note = nextM[1] + '\uC6D4 ' + nextM[2] + '\uC77C \uCD94\uAC00 \uB2F5\uC0AC \uC608\uC815';
+  /* 추가 일정 메모: '예정' 줄에서 날짜 추출 */
+  var L1 = text.split('\n');
+  for (var ni=0; ni<L1.length; ni++) {
+    if (/\uC608\uC815/.test(L1[ni])) {
+      var nm2 = L1[ni].match(/(\d{1,2})\s*\uC6D4\s*(\d{1,2})/);
+      if (nm2) { r.note = nm2[1] + '\uC6D4 ' + nm2[2] + '\uC77C \uCD94\uAC00 \uC77C\uC815 \uC608\uC815'; break; }
+    }
+  }
 
   /* 활동 유형 */
   var tps = [
-    [/\uCD1D\uD68C|\uD611\uC758\uD68C/, '\uCD1D\uD68C/\uD611\uC758\uD68C'],
-    [/\uB2F5\uC0AC/, '\uB2F5\uC0AC'],
-    [/\uC6D4\uB840\uD68C|\uC784\uC6D0\uD68C/, '\uC6D4\uB840\uD68C'],
-    [/\uB4DC\uB860.*\uD6C8\uB828/, '\uB4DC\uB860\uD6C8\uB828'],
+    [/\uB2F5\uC0AC|\uC0AC\uC804\s*\uC870\uC0AC|\uD604\uC7A5\s*\uD655\uC778|\uD6C4\uBCF4\uC9C0\s*\uBC29\uBB38|\uC7A5\uC18C\s*\uBB3C\uC0C9/, '\uB2F5\uC0AC/\uC0AC\uC804\uC870\uC0AC'],
+    [/\uD654\uC694\uC815\uAE30\uD1B5\uC2E0\uD6C8\uB828/, '\uD654\uC694\uC815\uAE30\uD1B5\uC2E0\uD6C8\uB828'],
+    [/\uB4DC\uB860.*\uD6C8\uB828|\uD6C8\uB828.*\uB4DC\uB860/, '\uB4DC\uB860\uD6C8\uB828'],
     [/CPR|\uC2EC\uD3D0\uC18C\uC0DD/, 'CPR\uAD50\uC721'],
-    [/\uBD09\uC0AC|\uD398\uC2A4\uD2F0\uBC8C/, '\uBD09\uC0AC\uD65C\uB3D9'],
-    [/\uBE44\uC0C1\uB300\uAE30|\uC7AC\uB09C|\uAD6C\uD638/, '\uC7AC\uB09C\uB300\uC751'],
-    [/\uD68C\uC758|\uC810\uAC80/, '\uD68C\uC758/\uD611\uC758']
+    [/\uBB34\uC120.*\uD6C8\uB828|\uD1B5\uC2E0.*\uD6C8\uB828/, '\uBB34\uC120\uD1B5\uC2E0\uD6C8\uB828'],
+    [/\uBE44\uC0C1\uB300\uAE30|\uC7AC\uB09C\s*\uAD6C\uD638|\uAD6C\uD638\s*\uD65C\uB3D9/, '\uC7AC\uB09C\uB300\uC751'],
+    [/\uBD09\uC0AC|\uD398\uC2A4\uD2F0\uBC8C|\uC790\uC6D0\uBD09\uC0AC/, '\uBD09\uC0AC\uD65C\uB3D9'],
+    [/\uC6D4\uB840\uD68C|\uC784\uC6D0\uD68C|\uC784\uC6D0\uD68C\uC758/, '\uC6D4\uB840\uD68C/\uC784\uC6D0\uD68C'],
+    [/\uAD50\uC721|\uAC15\uC2B5|\uC218\uAC15/, '\uAD50\uC721'],
+    [/\uC815\uAE30\uCD1D\uD68C|\uCD1D\uD68C \uAC1C\uCD5C|\uCD1D\uD68C\uB97C \uAC1C\uCD5C/, '\uCD1D\uD68C'],
+    [/\uD68C\uC758|\uD611\uC758|\uC810\uAC80/, '\uD68C\uC758/\uD611\uC758']
   ];
   for (var i=0;i<tps.length;i++){ if(tps[i][0].test(text)){ r.what=tps[i][1]; break; } }
 
-  var fl = text.trim().split('\n')[0].substring(0,40);
-  if (r.date && r.what) r.title = r.date + ' ' + r.what;
-  else if (r.what) r.title = r.what + (r.place ? ' (' + r.place + ')' : '');
-  else if (fl) r.title = fl;
-  else r.title = '\uC9C1\uC811\uC785\uB825';
+  /* 목적/배경 추출 (예: 2027년 전국협의회 총회 숙소) */
+  var purpose = '';
+  var pm2 = text.match(/(20\d{2}\uB144?\s*[\uAC00-\uD7A3\s]*(?:\uCD1D\uD68C|\uD611\uC758\uD68C|\uD589\uC0AC|\uB300\uD68C))/);
+  if (pm2) purpose = pm2[1].trim().replace(/\s+/g,' ');
+
+  var fl = text.trim().split('\n')[0].substring(0,45);
+  if (r.what === '\uB2F5\uC0AC/\uC0AC\uC804\uC870\uC0AC') {
+    /* 답사: 장소를 찾는 활동이므로 장소 미정 처리 */
+    r.place = '\uBBF8\uC815(\uD6C4\uBCF4\uC9C0 \uBB3C\uC0C9 \uC911)';
+    if (purpose) r.title = purpose + ' \uC219\uC18C \uB2F5\uC0AC';
+    else r.title = '\uD604\uC7A5 \uB2F5\uC0AC';
+    r.summary = (r.who||'') + ' \uD68C\uC6D0\uC774 ' + (r.hours||0) + '\uC2DC\uAC04 \uB3D9\uC548 ' + (purpose||'\uD589\uC0AC') + ' \uC219\uC18C \uD6C4\uBCF4\uC9C0\uB97C \uB2F5\uC0AC\u00B7\uBB3C\uC0C9';
+  } else if (r.date && r.what) {
+    r.title = r.date + ' ' + r.what;
+  } else if (r.what) {
+    r.title = r.what + (r.place ? ' (' + r.place + ')' : '');
+  } else if (fl) {
+    r.title = fl;
+  } else {
+    r.title = '\uC9C1\uC811\uC785\uB825';
+  }
+  r.purpose = purpose;
   return r;
 }
 
@@ -1171,15 +1215,100 @@ function delDirectItem(i) {
 function genReport() {
   var doc = document.getElementById('reportDoc');
   if (!doc) return;
+  var yr = (document.getElementById('rptYear')||{}).value || '2026';
+  var mo = (document.getElementById('rptMonth')||{}).value || '05';
+
+  /* 구분 코드 → 명칭 */
+  var TYPE_MAP = {'1':'\uD68C\uC758','2':'\uAD50\uC721','3':'\uD6C8\uB828','4':'\uC7AC\uB09C\uB300\uC751','5':'\uBD09\uC0AC'};
+
+  /* 기본 활동(ACT_ROWS) 복사 */
+  var allActs = [];
+  ACT_ROWS.forEach(function(r){ allActs.push(r); });
+
+  /* 저장된 직접입력 활동 중 해당 연/월 추가 */
+  try {
+    var saved = JSON.parse(localStorage.getItem('hl0frc_direct') || '[]');
+    saved.forEach(function(it){
+      if (!it.date) return;
+      var dParts = it.date.split('.');
+      if (dParts[0] === yr && dParts[1] === mo) {
+        /* 구분 코드 결정 */
+        var gubun = '5';
+        if (it.what && it.what.indexOf('\uD6C8\uB828') !== -1) gubun = '3';
+        else if (it.what && it.what.indexOf('\uD68C\uC758') !== -1) gubun = '1';
+        else if (it.what && it.what.indexOf('\uAD50\uC721') !== -1) gubun = '2';
+        else if (it.what && it.what.indexOf('\uC7AC\uB09C') !== -1) gubun = '4';
+        else if (it.what && it.what.indexOf('\uB2F5\uC0AC') !== -1) gubun = '5';
+        /* 시간 합계 */
+        var totH = 0;
+        if (it.hourMap) Object.keys(it.hourMap).forEach(function(k){ totH += it.hourMap[k]; });
+        var pCnt = it.hourMap ? Object.keys(it.hourMap).length : 0;
+        var row = {};
+        row['\uAD6C\uBD84'] = gubun;
+        row['\uBA85'] = it.title || it.what || '\uD65C\uB3D9';
+        row['\uC77C'] = dParts[1] + '\uC6D4 ' + dParts[2] + '\uC77C';
+        row['\uC2DC\uAC04'] = '-';
+        row['\uC778\uC815'] = (totH/Math.max(pCnt,1)).toFixed(0);
+        row['\uC778\uC6D0'] = String(pCnt);
+        row['\uC7A5\uC18C'] = it.place || '-';
+        row['_user'] = true;
+        row['_who'] = it.who || '';
+        row['_keyStation'] = it.keyStation || '';
+        allActs.push(row);
+      }
+    });
+  } catch(e) { console.warn(e); }
+
+  /* 날짜순 정렬 */
+  allActs.sort(function(a,b){ return (a['\uC77C']||'').localeCompare(b['\uC77C']||''); });
+
+  /* 테이블 생성 */
   var rows = '';
-  ACT_ROWS.forEach(function(r, i){
-    rows += '<tr><td style="text-align:center">'+(i+1)+'</td><td style="text-align:center">'+r['\uAD6C\uBD84']+'</td><td>'+r['\uBA85']+'</td><td style="white-space:nowrap">'+r['\uC77C']+'</td><td style="white-space:nowrap">'+r['\uC2DC\uAC04']+'</td><td style="text-align:center">'+r['\uC778\uC815']+'H</td><td style="text-align:center">'+r['\uC778\uC6D0']+'</td><td>'+r['\uC7A5\uC18C']+'</td></tr>';
+  var totalH = 0;
+  var memberHours = {};
+  allActs.forEach(function(r, i){
+    var bg = r['_user'] ? ' style="background:#f0f8ff"' : '';
+    rows += '<tr'+bg+'><td style="text-align:center">'+(i+1)+'</td>';
+    rows += '<td style="text-align:center">'+TYPE_MAP[r['\uAD6C\uBD84']]||r['\uAD6C\uBD84']+'</td>';
+    rows += '<td>'+r['\uBA85']+(r['_keyStation']?' <span style="color:var(--amber);font-size:11px">[Key:'+r['_keyStation']+']</span>':'')+'</td>';
+    rows += '<td style="white-space:nowrap">'+r['\uC77C']+'</td>';
+    rows += '<td style="white-space:nowrap">'+r['\uC2DC\uAC04']+'</td>';
+    rows += '<td style="text-align:center">'+r['\uC778\uC815']+'H</td>';
+    rows += '<td style="text-align:center">'+r['\uC778\uC6D0']+'</td>';
+    rows += '<td>'+r['\uC7A5\uC18C']+'</td></tr>';
   });
+
+  /* 저장된 활동의 회원별 시간 집계 */
+  try {
+    var saved2 = JSON.parse(localStorage.getItem('hl0frc_direct') || '[]');
+    saved2.forEach(function(it){
+      if (!it.date) return;
+      var dp = it.date.split('.');
+      if (dp[0]===yr && dp[1]===mo && it.hourMap) {
+        Object.keys(it.hourMap).forEach(function(nm){
+          memberHours[nm] = (memberHours[nm]||0) + it.hourMap[nm];
+        });
+      }
+    });
+  } catch(e){}
+
   var html = '<div style="border:1px solid var(--border);border-radius:8px;padding:20px;background:#fff">';
-  html += '<div style="text-align:center;font-size:19px;font-weight:800;color:var(--navy);margin-bottom:6px">2026\uB144 05\uC6D4 \uC7AC\uB09C\uB300\uC751\uBD09\uC0AC\uD68C \uD65C\uB3D9\uBCF4\uACE0\uC11C</div>';
-  html += '<div style="text-align:center;font-size:12px;color:var(--txt3);margin-bottom:14px">\uB300\uD55C\uC801\uC2ED\uC790\uC0AC \uC11C\uC6B8\uD2B9\uBCC4\uC2DC\uC9C0\uC0AC \uC7AC\uB09C\uB300\uC751\uBD09\uC0AC\uD68C &nbsp;|&nbsp; \uC791\uC131\uC77C: 2026.06.01 &nbsp;|&nbsp; \uCD1D 17\uBA85 \uCC38\uC5EC</div>';
+  html += '<div style="text-align:center;font-size:19px;font-weight:800;color:var(--navy);margin-bottom:6px">'+yr+'\uB144 '+mo+'\uC6D4 \uC7AC\uB09C\uB300\uC751\uBD09\uC0AC\uD68C \uD65C\uB3D9\uBCF4\uACE0\uC11C</div>';
+  html += '<div style="text-align:center;font-size:12px;color:var(--txt3);margin-bottom:14px">\uB300\uD55C\uC801\uC2ED\uC790\uC0AC \uC11C\uC6B8\uD2B9\uBCC4\uC2DC\uC9C0\uC0AC \uC7AC\uB09C\uB300\uC751\uBD09\uC0AC\uD68C</div>';
   html += '<table class="tbl" style="font-size:12px"><thead><tr><th style="text-align:center">\uBC88\uD638</th><th style="text-align:center">\uAD6C\uBD84</th><th>\uD65C\uB3D9\uBA85</th><th>\uC77C\uC790</th><th>\uC2DC\uAC04</th><th style="text-align:center">\uC778\uC815</th><th style="text-align:center">\uC778\uC6D0</th><th>\uC7A5\uC18C</th></tr></thead><tbody>'+rows+'</tbody></table>';
-  html += '<div style="text-align:right;margin-top:10px;font-size:13px;font-weight:700;color:var(--navy)">\uCD1D \uC778\uC815\uC2DC\uAC04: \uC57D 50.5H</div>';
+
+  /* 회원별 봉사시간 합계 (저장된 활동) */
+  var mhNames = Object.keys(memberHours);
+  if (mhNames.length) {
+    html += '<div style="margin-top:14px;font-size:13px;font-weight:700;color:var(--navy);margin-bottom:6px">&#9201; \uD68C\uC6D0\uBCC4 \uBD09\uC0AC\uC2DC\uAC04 \uD569\uC0B0 ('+mo+'\uC6D4)</div>';
+    html += '<div style="display:flex;flex-wrap:wrap;gap:5px">';
+    mhNames.sort(function(a,b){ return memberHours[b]-memberHours[a]; });
+    mhNames.forEach(function(nm){
+      html += '<span style="background:var(--green-l);color:var(--green);border-radius:6px;padding:3px 9px;font-size:12px;font-weight:600">'+nm+' '+memberHours[nm]+'H</span>';
+    });
+    html += '</div>';
+  }
+
   html += '<div style="text-align:center;margin-top:16px;font-weight:700;color:var(--navy)">\uB300\uD55C\uC801\uC2ED\uC790\uC0AC \uC11C\uC6B8\uD2B9\uBCC4\uC2DC\uC9C0\uC0AC \uC7AC\uB09C\uB300\uC751\uBD09\uC0AC\uD68C</div>';
   html += '</div>';
   doc.innerHTML = html;
