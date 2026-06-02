@@ -3,8 +3,89 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>HL0FRC-AI 재난대응봉사회 AI총무 v3.2</title>
-<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<title>HL0FRC-AI 재난대응봉사회 AI총무 v3.3</title>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js">
+/* ── 텍스트 자동 파싱 (6하원칙) ─────────────────────────────── */
+function autoParseText(text) {
+  var result = {
+    title:  '',
+    date:   '',
+    place:  '',
+    who:    '',
+    what:   '',
+    how:    '',
+    why:    '',
+    raw:    text
+  };
+
+  /* 날짜 추출: 2026년 6월 15일 / 26.06.15 / 2026-06-15 */
+  var dateM = text.match(/(\d{4})[년.\-\/]?\s*(\d{1,2})[월.\-\/]?\s*(\d{1,2})[일]?/);
+  if (dateM) result.date = dateM[1]+'.'+('0'+dateM[2]).slice(-2)+'.'+('0'+dateM[3]).slice(-2);
+
+  /* 장소 추출: ~에서, ~장소, 센터, 광장, 지사 */
+  var placeM = text.match(/([가-힣\w]+(?:센터|광장|지사|회관|홀|실|관|소|처|청|역|동|구))/);
+  if (placeM) result.place = placeM[1];
+
+  /* 참석자/인원 추출: 콜사인 패턴 또는 N명 */
+  var callsigns = text.match(/[A-Z]{2}\d[A-Z]{3}|[6K]\d[A-Z]{3}|DS\d[A-Z]{3}|HL\d[A-Z]{3}/g);
+  if (callsigns) result.who = callsigns.join(', ');
+  var peopleM = text.match(/(\d+)\s*명/);
+  if (peopleM && !result.who) result.who = peopleM[1] + '\uBA85';
+
+  /* 활동 유형/내용 추출 */
+  var typePatterns = [
+    {p:/월례회|임원회/, v:'\uC6D4\uB840\uD68C'},
+    {p:/드론.*훈련|훈련.*드론/, v:'\uB4DC\uB860\uD6C8\uB828'},
+    {p:/통신.*훈련|훈련.*통신|CW|VHF/, v:'\uBB34\uC120\uD1B5\uC2E0\uD6C8\uB828'},
+    {p:/CPR|심폐소생/, v:'CPR\uAD50\uC721'},
+    {p:/총회|정기총회/, v:'\uC815\uAE30\uCD1D\uD68C'},
+    {p:/콘테스트|contest/i, v:'\uBB34\uC120\uACBD\uC5F0'},
+    {p:/봉사|페스티벌/, v:'\uBD09\uC0AC\uD65C\uB3D9'},
+    {p:/비상대기|재난|구호/, v:'\uC7AC\uB09C\uB300\uC751'},
+    {p:/회의|협의|점검/, v:'\uD68C\uC758/\uD611\uC758'}
+  ];
+  for (var i=0; i<typePatterns.length; i++) {
+    if (typePatterns[i].p.test(text)) { result.what = typePatterns[i].v; break; }
+  }
+
+  /* 제목 생성: 날짜 + 활동유형 또는 첫 줄 */
+  var firstLine = text.trim().split('\n')[0].substring(0,40);
+  if (result.date && result.what) {
+    result.title = result.date + ' ' + result.what;
+  } else if (firstLine) {
+    result.title = firstLine;
+  } else {
+    result.title = '\uC9C1\uC811\uC785\uB825_' + new Date().toLocaleDateString();
+  }
+
+  return result;
+}
+
+function showDirectParseResult(parsed, content) {
+  var pr = document.getElementById('directParseResult');
+  if (!pr) return;
+  var h = '<div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:9px">&#128269; \uD30C\uC2F1 \uACB0\uACFC (\uC790\uB3D9 \uBD84\uB958)</div>';
+  h += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:9px">';
+  var fields = [
+    {k:'\uC81C\uBAA9', v:parsed.title},
+    {k:'\uB0A0\uC9DC', v:parsed.date},
+    {k:'\uC7A5\uC18C', v:parsed.place},
+    {k:'\uCC38\uC11D\uC790', v:parsed.who},
+    {k:'\uD65C\uB3D9\uC720\uD615', v:parsed.what}
+  ];
+  fields.forEach(function(f){
+    if (!f.v) return;
+    h += '<div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:6px 11px">';
+    h += '<div style="font-size:10px;color:var(--txt3);margin-bottom:2px">'+f.k+'</div>';
+    h += '<div style="font-size:13px;font-weight:700;color:var(--navy)">'+f.v+'</div></div>';
+  });
+  h += '</div>';
+  h += '<div style="font-size:11px;color:var(--txt3)">* \uC704 \uB0B4\uC6A9\uC744 \uD655\uC778 \uD6C4 \uC800\uC7A5\uD558\uC138\uC694. Firebase \uCEEC\uB809\uC158 inputs\uC5D0 \uC800\uC7A5\uB429\uB2C8\uB2E4.</div>';
+  pr.innerHTML = h;
+  pr.style.display = 'block';
+}
+
+</script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
@@ -181,7 +262,7 @@ function printReport(){
   w.document.write('</head><body>');
   w.document.write(rdoc.innerHTML);
   w.document.write('<div style="background:#1a2744;color:#7a9cc8;text-align:center;padding:12px 24px;font-size:11px;margin-top:20px">
-  인시스 그룹 AI혁신 R&amp;D센터 &nbsp;|&nbsp; HL0FRC-AI 재난대응봉사회 AI총무 시스템 v3.2 &nbsp;|&nbsp;
+  인시스 그룹 AI혁신 R&amp;D센터 &nbsp;|&nbsp; HL0FRC-AI 재난대응봉사회 AI총무 시스템 v3.3 &nbsp;|&nbsp;
   <a href="https://github.com/Insys-HQ/Insys-review" target="_blank" style="color:#5a9ed8;text-decoration:none">GitHub</a>
 </div>
 </body></html>');
@@ -904,19 +985,27 @@ function updDirectCount() {
 }
 
 function saveDirectInput() {
-  var title   = (document.getElementById('directTitle')   || {}).value || '';
-  var date    = (document.getElementById('directDate')    || {}).value || '';
   var content = (document.getElementById('directContent') || {}).value || '';
   if (!content.trim()) { alert('\uB0B4\uC6A9\uC744 \uC785\uB825\uD574\uC8FC\uC138\uC694.'); return; }
-  if (!title.trim()) title = '\uC9C1\uC811\uC785\uB825_' + (date || new Date().toLocaleDateString());
+
+  /* 텍스트에서 자동 파싱 */
+  var parsed = autoParseText(content);
 
   var item = {
-    id:      Date.now(),
-    title:   title,
-    date:    date,
-    content: content,
-    savedAt: new Date().toLocaleString()
+    id:        Date.now(),
+    title:     parsed.title,
+    date:      parsed.date,
+    place:     parsed.place,
+    who:       parsed.who,
+    what:      parsed.what,
+    content:   content,
+    parsed:    parsed,
+    savedAt:   new Date().toLocaleString(),
+    createdBy: 'HL2OBL'
   };
+
+  /* localStorage 저장 */
+  if (!directSavedItems) directSavedItems = [];
   directSavedItems.unshift(item);
   try { localStorage.setItem('hl0frc_direct_inputs', JSON.stringify(directSavedItems)); } catch(e){}
 
@@ -924,43 +1013,50 @@ function saveDirectInput() {
   if (window.FB && FB.connected && FB.db) {
     FB.db.collection('inputs').add({
       type:      '\uC9C1\uC811\uC785\uB825',
-      title:     title,
-      date:      date,
+      title:     parsed.title,
+      date:      parsed.date,
+      place:     parsed.place,
+      who:       parsed.who,
+      what:      parsed.what,
       content:   content,
       createdBy: 'HL2OBL',
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     })
     .then(function(ref) {
-      showDirectStatus('\u2705 Firebase \uC800\uC7A5 \uC644\uB8CC (ID: ' + ref.id.substring(0,8) + '...)', 'ok');
+      showDirectStatus('\u2705 Firebase \uC800\uC7A5 \uC644\uB8CC!', 'ok');
     })
     .catch(function(e) {
-      showDirectStatus('\u26A0\uFE0F \uB85C\uCEEC \uC800\uC7A5 \uC644\uB8CC / Firebase \uC624\uB958: ' + e.message, 'warn');
+      showDirectStatus('\u26A0\uFE0F \uB85C\uCEEC \uC800\uC7A5 \uC644\uB8CC (Firebase \uC624\uB958: ' + e.message + ')', 'warn');
     });
   } else {
-    showDirectStatus('\u2705 \uB85C\uCEEC \uC800\uC7A5 \uC644\uB8CC (Firebase \uC5F0\uACB0 \uC2DC \uC790\uB3D9 \uB3D9\uAE30\uD654\uB429\uB2C8\uB2E4)', 'ok');
+    showDirectStatus('\u2705 \uB85C\uCEEC \uC800\uC7A5 \uC644\uB8CC (Firebase \uC5F0\uACB0 \uC2DC \uC790\uB3D9 \uB3D9\uAE30\uD654)', 'ok');
   }
 
+  /* 업로드 이력 등록 */
   uploadLog.unshift({
-    name: title + '.txt',
+    name: parsed.title + '.txt',
     size: fmtSize(new Blob([content]).size),
-    ext: 'txt', ts: new Date().toLocaleTimeString(), file: {name: title}
+    ext: 'txt', ts: new Date().toLocaleTimeString(), file: {name: parsed.title}
   });
   renderLog();
   loadDirectSaved();
+
+  /* 파싱 결과도 바로 표시 */
+  showDirectParseResult(parsed, content);
 }
 
 function showDirectStatus(msg, type) {
   var el = document.getElementById('directFbStatus');
   if (!el) return;
-  var colors = {
+  var styles = {
     ok:   'background:var(--green-l);color:var(--green);border:1px solid #b2dfcd',
     warn: 'background:var(--amber-l);color:var(--amber);border:1px solid #f0c060',
     err:  'background:var(--red-l);color:var(--red);border:1px solid #f5b8b4'
   };
-  el.style.cssText = (colors[type]||colors.ok);
+  el.style.cssText = styles[type] || styles.ok;
   el.textContent = msg;
   el.style.display = 'block';
-  setTimeout(function(){ el.style.display='none'; }, 4000);
+  setTimeout(function(){ el.style.display='none'; }, 5000);
 }
 
 function loadDirectSaved() {
@@ -970,38 +1066,32 @@ function loadDirectSaved() {
   } catch(e) {}
 
   var listEl = document.getElementById('directSavedList');
-  var itemsEl = document.getElementById('directSavedItems');
-  if (!listEl || !itemsEl) return;
+  if (!listEl) return;
 
-  if (!directSavedItems.length) {
-    listEl.style.display = 'none'; return;
+  if (!directSavedItems || !directSavedItems.length) {
+    listEl.innerHTML = ''; return;
   }
-  listEl.style.display = 'block';
-  var h = '';
+
+  var h = '<div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:7px">&#128190; \uC800\uC7A5\uB41C \uD56D\uBAA9 ('+directSavedItems.length+'\uAC74)</div>';
   directSavedItems.slice(0,5).forEach(function(it, idx) {
-    h += '<div style="display:flex;align-items:center;gap:7px;padding:6px 9px;background:#f5f7fc;border:1px solid var(--border);border-radius:7px;margin-bottom:5px">';
+    h += '<div style="display:flex;align-items:center;gap:7px;padding:7px 10px;background:#f5f7fc;border:1px solid var(--border);border-radius:8px;margin-bottom:5px">';
     h += '<div style="flex:1;min-width:0">';
     h += '<div style="font-size:13px;font-weight:700;color:var(--navy);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+it.title+'</div>';
-    h += '<div style="font-size:11px;color:var(--txt3)">'+it.date+' &nbsp;|&nbsp; '+it.savedAt+'</div>';
+    h += '<div style="font-size:11px;color:var(--txt3);margin-top:2px">'+(it.date||'')+(it.place?' &nbsp;|&nbsp; '+it.place:'')+(it.who?' &nbsp;|&nbsp; '+it.who:'')+' &nbsp;|&nbsp; '+it.savedAt+'</div>';
     h += '</div>';
-    h += '<button onclick="loadDirectItem('+idx+')" class="btn-o" style="font-size:11px;padding:4px 9px;flex-shrink:0">&#9998; \uBD88\uB7EC\uC624\uAE30</button>';
-    h += '<button onclick="deleteDirectItem('+idx+')" style="background:var(--red-l);color:var(--red);border:none;border-radius:5px;padding:4px 8px;cursor:pointer;font-size:11px;flex-shrink:0">&#128465;</button>';
+    h += '<button onclick="loadDirectItem('+idx+')" class="btn-o" style="font-size:11px;padding:4px 9px;flex-shrink:0">\uBD88\uB7EC\uC624\uAE30</button>';
+    h += '<button onclick="deleteDirectItem('+idx+')" style="background:var(--red-l);color:var(--red);border:none;border-radius:5px;padding:4px 8px;cursor:pointer;font-size:11px;flex-shrink:0">&#215;</button>';
     h += '</div>';
   });
-  itemsEl.innerHTML = h;
+  listEl.innerHTML = h;
 }
 
 function loadDirectItem(idx) {
-  var it = directSavedItems[idx];
-  if (!it) return;
-  var titleEl   = document.getElementById('directTitle');
-  var dateEl    = document.getElementById('directDate');
-  var contentEl = document.getElementById('directContent');
-  if (titleEl)   titleEl.value   = it.title;
-  if (dateEl)    dateEl.value    = it.date;
-  if (contentEl) contentEl.value = it.content;
-  updDirectCount();
+  var it = directSavedItems[idx]; if (!it) return;
+  var el = document.getElementById('directContent');
+  if (el) { el.value = it.content; updDirectCount(); }
   showDirectStatus('\u1F4C2 \uBD88\uB7EC\uC654\uC2B5\uB2C8\uB2E4: ' + it.title, 'ok');
+  showDirectParseResult(it.parsed || autoParseText(it.content), it.content);
 }
 
 function deleteDirectItem(idx) {
@@ -1012,22 +1102,28 @@ function deleteDirectItem(idx) {
 }
 
 function parseDirectInput() {
-  var title   = (document.getElementById('directTitle')   ||{}).value||'\uC9C1\uC811\uC785\uB825';
-  var content = (document.getElementById('directContent') ||{}).value||'';
+  var content = (document.getElementById('directContent') || {}).value || '';
   if (!content.trim()) { alert('\uB0B4\uC6A9\uC744 \uC785\uB825\uD574\uC8FC\uC138\uC694.'); return; }
-  parsePastedText(content, title);
-  var sec = document.getElementById('parseSection');
-  if (sec) sec.scrollIntoView({behavior:'smooth'});
+  var parsed = autoParseText(content);
+  showDirectParseResult(parsed, content);
+  var pr = document.getElementById('directParseResult');
+  if (pr) pr.scrollIntoView({behavior:'smooth'});
 }
 
 function applyDirectToDoc() {
-  var title   = (document.getElementById('directTitle')   ||{}).value||'';
-  var content = (document.getElementById('directContent') ||{}).value||'';
+  var content = (document.getElementById('directContent') || {}).value || '';
   if (!content.trim()) { alert('\uB0B4\uC6A9\uC744 \uC785\uB825\uD574\uC8FC\uC138\uC694.'); return; }
-  var fTitle   = document.getElementById('fTitle');
+  var parsed = autoParseText(content);
+  var fTitle = document.getElementById('fTitle');
   var fContent = document.getElementById('fContent');
-  if (fTitle && title)     fTitle.value   = title;
-  if (fContent && content) fContent.value = content;
+  var fPlace = document.getElementById('fPlace');
+  var fTime = document.getElementById('fTime');
+  var fCount = document.getElementById('fCount');
+  if (fTitle && parsed.title)   fTitle.value   = parsed.title;
+  if (fContent)                  fContent.value = content;
+  if (fPlace && parsed.place)   fPlace.value   = parsed.place;
+  if (fTime && parsed.date)     fTime.value    = parsed.date;
+  if (fCount && parsed.who)     fCount.value   = parsed.who;
   var tabs = document.querySelectorAll('.tab');
   tabs.forEach(function(t){
     if (t.textContent.indexOf('\ubb38\uc11c\uc791\uc131') !== -1) showTab('write', t);
@@ -1036,21 +1132,14 @@ function applyDirectToDoc() {
 }
 
 function clearDirectInput() {
-  ['directTitle','directDate','directContent'].forEach(function(id){
-    var el = document.getElementById(id);
-    if (el) el.value = '';
-  });
-  var dd = document.getElementById('directDate');
-  if (dd) dd.valueAsDate = new Date();
+  var el = document.getElementById('directContent');
+  if (el) el.value = '';
   updDirectCount();
-  var st = document.getElementById('directSaveStatus');
+  var st = document.getElementById('directFbStatus');
   if (st) st.style.display = 'none';
+  var pr = document.getElementById('directParseResult');
+  if (pr) pr.style.display = 'none';
 }
-
-
-/* ── 붙여넣기·수정·저장 (패널2) ─────────────────────────────── */
-var pastedImgData = null;
-var pasteHistData = [];
 
 function handlePasteToEdit(e) {
   var items = e.clipboardData && e.clipboardData.items;
@@ -1406,7 +1495,7 @@ body{font-family:"Malgun Gothic","Apple SD Gothic Neo","나눔고딕",sans-serif
   <div class="hdr-badges">
     <div class="badge-cs">HL0FRC</div>
     <div class="badge-acting">총무대행 HL2OBL</div>
-    <div class="badge-ver">v3.2</div>
+    <div class="badge-ver">v3.3</div>
   </div>
 </div></div>
 
@@ -1595,33 +1684,29 @@ body{font-family:"Malgun Gothic","Apple SD Gothic Neo","나눔고딕",sans-serif
 
     <!-- 직접 입력 카드 (별도 전체 너비) -->
     <div style="background:var(--card);border:1px solid var(--border);border-radius:11px;box-shadow:var(--shadow);padding:14px 16px;margin-top:13px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:7px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;flex-wrap:wrap;gap:7px">
         <div style="display:flex;align-items:center;gap:8px">
-          <span style="font-size:18px">&#9997;</span>
+          <span style="font-size:17px">&#9997;</span>
           <span style="font-size:14px;font-weight:700;color:var(--navy)">직접 입력</span>
-          <span style="font-size:11px;color:var(--txt3)">텍스트 입력 &middot; 편집 &middot; Firebase 저장</span>
+          <span style="font-size:11px;color:var(--txt3)">육하원칙(누가·언제·어디서·무엇을·어떻게·왜)에 따라 입력 &mdash; 자동 파싱·분류·Firebase 저장</span>
         </div>
-        <div style="display:flex;align-items:center;gap:6px">
+        <div style="display:flex;align-items:center;gap:8px">
           <span style="font-size:11px;color:var(--txt3)" id="directCharCount">0자</span>
-          <div id="directFbStatus" style="display:none;font-size:11px;padding:3px 9px;border-radius:6px"></div>
+          <div id="directFbStatus" style="display:none;font-size:11px;padding:3px 10px;border-radius:6px;font-weight:600"></div>
         </div>
       </div>
 
-      <!-- 제목·날짜 한 줄 -->
-      <div style="display:flex;gap:8px;margin-bottom:8px">
-        <input type="text" id="directTitle" placeholder="제목 (예: 2026년 6월 월례회 회의록)"
-          style="flex:3;padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;color:var(--txt);font-family:inherit"
-          onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border)'">
-        <input type="date" id="directDate"
-          style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;color:var(--txt);font-family:inherit"
-          onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border)'">
+      <!-- 안내 -->
+      <div style="background:#f0f4ff;border:1px solid #c8d8f8;border-radius:7px;padding:8px 12px;margin-bottom:9px;font-size:12px;color:var(--navy);line-height:1.7">
+        &#128161; <b>입력 예시:</b> 2026년 6월 15일(월) 재난안전센터 2층에서 임원 월례회를 개최하였다.
+        참석자는 임천순(DS1CLF), 지인실(HL2OBL), 박정호(HL1LFC) 등 8명이 참석하여 드론훈련 일정 및 8.15 콘테스트 참여를 논의·결정하였다.
       </div>
 
       <!-- 본문 입력 (스크롤) -->
       <textarea id="directContent"
         oninput="updDirectCount()"
-        placeholder="활동 내용, 회의록, 훈련 결과 등을 자유롭게 입력하세요.&#10;&#10;예) 참석자: 임천순(DS1CLF), 지인실(HL2OBL), 박정호(HL1LFC)&#10;    안건1: 드론훈련 일정 협의 → 7월 15일 확정&#10;    안건2: 8.15 콘테스트 참여 여부 → 참여 결정"
-        style="width:100%;height:120px;padding:9px 11px;border:1px solid var(--border);border-radius:7px;font-size:13px;color:var(--txt);font-family:inherit;resize:vertical;min-height:80px;line-height:1.75;overflow-y:auto"
+        placeholder="날짜, 장소, 참석자, 활동내용, 결정사항 등을 자유롭게 입력하세요.&#10;&#10;제목과 일자가 포함된 경우 자동으로 파싱하여 분류합니다."
+        style="width:100%;height:130px;padding:9px 11px;border:1px solid var(--border);border-radius:7px;font-size:13px;color:var(--txt);font-family:inherit;resize:vertical;min-height:80px;line-height:1.75;overflow-y:auto"
         onfocus="this.style.borderColor='var(--blue)'"
         onblur="this.style.borderColor='var(--border)'"></textarea>
 
@@ -1631,14 +1716,14 @@ body{font-family:"Malgun Gothic","Apple SD Gothic Neo","나눔고딕",sans-serif
         <button class="btn-o" style="font-size:12px;padding:7px 13px" onclick="parseDirectInput()">&#128269; 파싱 미리보기</button>
         <button class="btn-o" style="font-size:12px;padding:7px 13px" onclick="applyDirectToDoc()">&#9997; 문서작성 적용</button>
         <button class="btn-o" style="font-size:12px;padding:7px 13px" onclick="clearDirectInput()">&#128465; 초기화</button>
-        <div style="margin-left:auto;font-size:11px;color:var(--txt3)" id="directSaveHint">* 저장 시 Firebase 자동 저장</div>
       </div>
+
+      <!-- 파싱 결과 표시 -->
+      <div id="directParseResult" style="display:none;margin-top:10px;background:#f5f7fc;border:1px solid var(--border);border-radius:8px;padding:11px 13px"></div>
 
       <!-- 저장된 항목 목록 -->
       <div id="directSavedList" style="margin-top:10px"></div>
     </div>
-
-  </div>
 
   <!-- 업로드 이력 -->
   <div class="section" style="margin-bottom:13px">
