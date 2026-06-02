@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>HL0FRC-AI 재난대응봉사회 AI총무 v2.8</title>
+<title>HL0FRC-AI 재난대응봉사회 AI총무 v2.9</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js">
 /* ══ 월간 활동보고서 ══════════════════════════════════════════════════ */
 var ACT_ROWS = [
@@ -178,7 +178,7 @@ function printReport(){
   w.document.write('</head><body>');
   w.document.write(rdoc.innerHTML);
   w.document.write('<div style="background:#1a2744;color:#7a9cc8;text-align:center;padding:12px 24px;font-size:11px;margin-top:20px">
-  인시스 그룹 AI혁신 R&amp;D센터 &nbsp;|&nbsp; HL0FRC-AI 재난대응봉사회 AI총무 시스템 v2.8 &nbsp;|&nbsp;
+  인시스 그룹 AI혁신 R&amp;D센터 &nbsp;|&nbsp; HL0FRC-AI 재난대응봉사회 AI총무 시스템 v2.9 &nbsp;|&nbsp;
   <a href="https://github.com/Insys-HQ/Insys-review" target="_blank" style="color:#5a9ed8;text-decoration:none">GitHub</a>
 </div>
 </body></html>');
@@ -618,27 +618,31 @@ window.addEventListener('load', function(){
 var pastedImageData = null;
 
 function switchTxtTab(tab) {
-  var tabFile  = document.getElementById('ttab-file');
-  var tabPaste = document.getElementById('ttab-paste');
-  var panFile  = document.getElementById('tpanel-file');
-  var panPaste = document.getElementById('tpanel-paste');
-  if (!tabFile) return;
-
-  if (tab === 'file') {
-    tabFile.style.color       = 'var(--blue)';
-    tabFile.style.borderBottom= '2px solid var(--blue)';
-    tabPaste.style.color      = 'var(--txt3)';
-    tabPaste.style.borderBottom= 'none';
-    panFile.style.display  = 'block';
-    panPaste.style.display = 'none';
-  } else {
-    tabPaste.style.color       = 'var(--blue)';
-    tabPaste.style.borderBottom= '2px solid var(--blue)';
-    tabFile.style.color        = 'var(--txt3)';
-    tabFile.style.borderBottom = 'none';
-    panFile.style.display  = 'none';
-    panPaste.style.display = 'block';
+  var tabs   = {file:'ttab-file', paste:'ttab-paste', input:'ttab-input'};
+  var panels = {file:'tpanel-file', paste:'tpanel-paste', input:'tpanel-input'};
+  Object.keys(tabs).forEach(function(k){
+    var t = document.getElementById(tabs[k]);
+    var p = document.getElementById(panels[k]);
+    if (!t || !p) return;
+    if (k === tab) {
+      t.style.color        = 'var(--blue)';
+      t.style.borderBottom = '2px solid var(--blue)';
+      t.style.marginBottom = '-2px';
+      p.style.display      = k === 'file' ? 'block' : 'block';
+    } else {
+      t.style.color        = 'var(--txt3)';
+      t.style.borderBottom = 'none';
+      t.style.marginBottom = '0';
+      p.style.display      = 'none';
+    }
+  });
+  if (tab === 'paste') {
     setTimeout(function(){ var z=document.getElementById('pasteZone'); if(z) z.focus(); }, 100);
+  }
+  if (tab === 'input') {
+    var dd = document.getElementById('directDate');
+    if (dd && !dd.value) dd.valueAsDate = new Date();
+    loadDirectSaved();
   }
 }
 
@@ -830,7 +834,7 @@ function parseMockImage(file) {
   if (sec) { sec.style.display='block'; sec.scrollIntoView({behavior:'smooth'}); }
 }
 
-function parsePastedText(text) {
+function parsePastedText(text, titleOverride) {
   var sec = document.getElementById('parseSection');
   var con = document.getElementById('parseContent');
   if (!con) return;
@@ -882,6 +886,162 @@ document.addEventListener('paste', function(e) {
     }
   }, 200);
 });
+
+
+/* ── 직접 입력 기능 ─────────────────────────────────────────── */
+var directSavedItems = [];
+
+function updDirectCount() {
+  var ta = document.getElementById('directContent');
+  var el = document.getElementById('directCharCount');
+  if (ta && el) el.textContent = ta.value.length + '\uC790';
+}
+
+function saveDirectInput() {
+  var title   = (document.getElementById('directTitle')   ||{}).value||'';
+  var date    = (document.getElementById('directDate')    ||{}).value||'';
+  var content = (document.getElementById('directContent') ||{}).value||'';
+  if (!content.trim()) { alert('\uB0B4\uC6A9\uC744 \uC785\uB825\uD574\uC8FC\uC138\uC694.'); return; }
+  if (!title.trim()) title = '\uC9C1\uC811\uC785\uB825_' + (date||new Date().toLocaleDateString());
+
+  var item = {
+    id:      Date.now(),
+    title:   title,
+    date:    date,
+    content: content,
+    savedAt: new Date().toLocaleString()
+  };
+  directSavedItems.unshift(item);
+
+  /* localStorage 저장 */
+  try {
+    localStorage.setItem('hl0frc_direct_inputs', JSON.stringify(directSavedItems));
+  } catch(e) { console.warn(e); }
+
+  /* Firebase 저장 */
+  if (window.FB && FB.connected && FB.db) {
+    FB.db.collection('directInputs').add({
+      title: title, date: date, content: content,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      createdBy: 'HL2OBL'
+    }).then(function(){
+      showDirectStatus('\u2705 Firebase\uC5D0 \uC800\uC7A5\uB418\uC5C8\uC2B5\uB2C8\uB2E4.', 'ok');
+    }).catch(function(e){
+      showDirectStatus('\u26A0\uFE0F \uB85C\uCEEC \uC800\uC7A5 \uC644\uB8CC (Firebase: ' + e.message + ')', 'warn');
+    });
+  } else {
+    showDirectStatus('\u2705 \uB85C\uCEEC\uC5D0 \uC800\uC7A5\uB418\uC5C8\uC2B5\uB2C8\uB2E4. (Firebase \uC5F0\uACB0 \uC2DC \uC790\uB3D9 \uB3D9\uAE30\uD654)', 'ok');
+  }
+
+  /* 저장 목록 업데이트 */
+  loadDirectSaved();
+
+  /* 업로드 이력에 추가 */
+  uploadLog.unshift({
+    name: title + '.txt',
+    size: fmtSize(new Blob([content]).size),
+    ext: 'txt', ts: new Date().toLocaleTimeString(), file: {name: title}
+  });
+  renderLog();
+}
+
+function showDirectStatus(msg, type) {
+  var el = document.getElementById('directSaveStatus');
+  if (!el) return;
+  var colors = {
+    ok:   'background:var(--green-l);color:var(--green);border:1px solid #b2dfcd',
+    warn: 'background:var(--amber-l);color:var(--amber);border:1px solid #f0c060',
+    err:  'background:var(--red-l);color:var(--red);border:1px solid #f5b8b4'
+  };
+  el.style.cssText = (colors[type]||colors.ok);
+  el.textContent = msg;
+  el.style.display = 'block';
+  setTimeout(function(){ el.style.display='none'; }, 4000);
+}
+
+function loadDirectSaved() {
+  try {
+    var saved = localStorage.getItem('hl0frc_direct_inputs');
+    if (saved) directSavedItems = JSON.parse(saved);
+  } catch(e) {}
+
+  var listEl = document.getElementById('directSavedList');
+  var itemsEl = document.getElementById('directSavedItems');
+  if (!listEl || !itemsEl) return;
+
+  if (!directSavedItems.length) {
+    listEl.style.display = 'none'; return;
+  }
+  listEl.style.display = 'block';
+  var h = '';
+  directSavedItems.slice(0,5).forEach(function(it, idx) {
+    h += '<div style="display:flex;align-items:center;gap:7px;padding:6px 9px;background:#f5f7fc;border:1px solid var(--border);border-radius:7px;margin-bottom:5px">';
+    h += '<div style="flex:1;min-width:0">';
+    h += '<div style="font-size:13px;font-weight:700;color:var(--navy);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+it.title+'</div>';
+    h += '<div style="font-size:11px;color:var(--txt3)">'+it.date+' &nbsp;|&nbsp; '+it.savedAt+'</div>';
+    h += '</div>';
+    h += '<button onclick="loadDirectItem('+idx+')" class="btn-o" style="font-size:11px;padding:4px 9px;flex-shrink:0">&#9998; \uBD88\uB7EC\uC624\uAE30</button>';
+    h += '<button onclick="deleteDirectItem('+idx+')" style="background:var(--red-l);color:var(--red);border:none;border-radius:5px;padding:4px 8px;cursor:pointer;font-size:11px;flex-shrink:0">&#128465;</button>';
+    h += '</div>';
+  });
+  itemsEl.innerHTML = h;
+}
+
+function loadDirectItem(idx) {
+  var it = directSavedItems[idx];
+  if (!it) return;
+  var titleEl   = document.getElementById('directTitle');
+  var dateEl    = document.getElementById('directDate');
+  var contentEl = document.getElementById('directContent');
+  if (titleEl)   titleEl.value   = it.title;
+  if (dateEl)    dateEl.value    = it.date;
+  if (contentEl) contentEl.value = it.content;
+  updDirectCount();
+  showDirectStatus('\u1F4C2 \uBD88\uB7EC\uC654\uC2B5\uB2C8\uB2E4: ' + it.title, 'ok');
+}
+
+function deleteDirectItem(idx) {
+  if (!confirm('\uC774 \uD56D\uBAA9\uC744 \uC0AD\uC81C\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?')) return;
+  directSavedItems.splice(idx, 1);
+  try { localStorage.setItem('hl0frc_direct_inputs', JSON.stringify(directSavedItems)); } catch(e){}
+  loadDirectSaved();
+}
+
+function parseDirectInput() {
+  var title   = (document.getElementById('directTitle')   ||{}).value||'\uC9C1\uC811\uC785\uB825';
+  var content = (document.getElementById('directContent') ||{}).value||'';
+  if (!content.trim()) { alert('\uB0B4\uC6A9\uC744 \uC785\uB825\uD574\uC8FC\uC138\uC694.'); return; }
+  parsePastedText(content, title);
+  var sec = document.getElementById('parseSection');
+  if (sec) sec.scrollIntoView({behavior:'smooth'});
+}
+
+function applyDirectToDoc() {
+  var title   = (document.getElementById('directTitle')   ||{}).value||'';
+  var content = (document.getElementById('directContent') ||{}).value||'';
+  if (!content.trim()) { alert('\uB0B4\uC6A9\uC744 \uC785\uB825\uD574\uC8FC\uC138\uC694.'); return; }
+  var fTitle   = document.getElementById('fTitle');
+  var fContent = document.getElementById('fContent');
+  if (fTitle && title)     fTitle.value   = title;
+  if (fContent && content) fContent.value = content;
+  var tabs = document.querySelectorAll('.tab');
+  tabs.forEach(function(t){
+    if (t.textContent.indexOf('\ubb38\uc11c\uc791\uc131') !== -1) showTab('write', t);
+  });
+  alert('\u2705 \uBB38\uC11C\uC791\uC131 \uD0ED\uC5D0 \uC801\uC6A9\uB418\uC5C8\uC2B5\uB2C8\uB2E4.');
+}
+
+function clearDirectInput() {
+  ['directTitle','directDate','directContent'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  var dd = document.getElementById('directDate');
+  if (dd) dd.valueAsDate = new Date();
+  updDirectCount();
+  var st = document.getElementById('directSaveStatus');
+  if (st) st.style.display = 'none';
+}
 
 </script>
 <style>
@@ -1107,7 +1267,7 @@ body{font-family:"Malgun Gothic","Apple SD Gothic Neo","나눔고딕",sans-serif
   <div class="hdr-badges">
     <div class="badge-cs">HL0FRC</div>
     <div class="badge-acting">총무대행 HL2OBL</div>
-    <div class="badge-ver">v2.8</div>
+    <div class="badge-ver">v2.9</div>
   </div>
 </div></div>
 
@@ -1247,22 +1407,28 @@ body{font-family:"Malgun Gothic","Apple SD Gothic Neo","나눔고딕",sans-serif
       파일을 카드 위로 <b>드래그&amp;드롭</b>하거나 카드를 <b>클릭</b>하여 선택하세요.
     </div>
     <div class="upload-grid">
-      <!-- 텍스트/카카오톡 카드 — 파일업로드 + 붙여넣기 탭 -->
+      <!-- 텍스트/카카오톡 카드 — 파일업로드 / 붙여넣기 / 직접입력 탭 -->
       <div style="background:var(--card);border:1px solid var(--border);border-radius:11px;box-shadow:var(--shadow);overflow:hidden">
-        <!-- 탭 헤더 -->
+
+        <!-- 탭 헤더 (3개) -->
         <div style="display:flex;border-bottom:2px solid var(--border)">
           <div id="ttab-file" onclick="switchTxtTab('file')"
-               style="flex:1;padding:9px 0;text-align:center;font-size:12px;font-weight:700;color:var(--blue);border-bottom:2px solid var(--blue);margin-bottom:-2px;cursor:pointer">
-            &#128194; 파일 업로드
+               style="flex:1;padding:8px 0;text-align:center;font-size:12px;font-weight:700;color:var(--blue);border-bottom:2px solid var(--blue);margin-bottom:-2px;cursor:pointer">
+            &#128194; 파일
           </div>
           <div id="ttab-paste" onclick="switchTxtTab('paste')"
-               style="flex:1;padding:9px 0;text-align:center;font-size:12px;font-weight:700;color:var(--txt3);cursor:pointer">
-            &#128203; 직접 붙여넣기
+               style="flex:1;padding:8px 0;text-align:center;font-size:12px;font-weight:700;color:var(--txt3);cursor:pointer">
+            &#128203; 붙여넣기
+          </div>
+          <div id="ttab-input" onclick="switchTxtTab('input')"
+               style="flex:1;padding:8px 0;text-align:center;font-size:12px;font-weight:700;color:var(--txt3);cursor:pointer">
+            &#9997; 직접입력
           </div>
         </div>
 
-        <!-- 파일 업로드 패널 -->
-        <div id="tpanel-file" class="upload-card" style="border:none;border-radius:0;margin:0;outline:none"
+        <!-- 패널1: 파일 업로드 -->
+        <div id="tpanel-file" class="upload-card"
+             style="border:none;border-radius:0;margin:0;outline:none"
              tabindex="0"
              ondragover="dragOver(event,'tpanel-file')" ondragleave="dragLeave('tpanel-file')"
              ondrop="dropFile(event,'txt')" onpaste="handleFilePanelPaste(event)"
@@ -1270,10 +1436,8 @@ body{font-family:"Malgun Gothic","Apple SD Gothic Neo","나눔고딕",sans-serif
           <input type="file" accept=".txt,.csv" onchange="handleFile(this.files,'txt')" id="fileInputTxt">
           <div class="up-icon">&#128172;</div>
           <div class="up-title">텍스트 / 카카오톡</div>
-          <div class="up-desc">
-            파일 클릭·드래그 또는<br>
-            <b style="color:var(--blue)">Ctrl+C 복사 후 여기 클릭 → Ctrl+V</b>
-          </div>
+          <div class="up-desc">파일 클릭·드래그 또는<br>
+            <b style="color:var(--blue)">클릭 후 Ctrl+V 붙여넣기</b></div>
           <div class="up-ext">
             <span class="ext-tag ext-txt">.TXT</span>
             <span class="ext-tag ext-txt">.CSV</span>
@@ -1282,40 +1446,89 @@ body{font-family:"Malgun Gothic","Apple SD Gothic Neo","나눔고딕",sans-serif
           <div class="prog-bar" id="pb-txt"><div class="prog-fill" id="pf-txt"></div></div>
         </div>
 
-        <!-- 붙여넣기 패널 -->
+        <!-- 패널2: 붙여넣기 -->
         <div id="tpanel-paste" style="display:none;padding:14px">
-          <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:7px">
+          <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:6px">
             &#128203; 텍스트 또는 이미지 붙여넣기
           </div>
           <div style="font-size:11px;color:var(--txt3);margin-bottom:8px">
-            Ctrl+V 로 텍스트·캡처화면·복사이미지를 바로 붙여넣기 하세요
+            Ctrl+V 로 텍스트·캡처화면·복사이미지를 붙여넣으세요
           </div>
-          <!-- 붙여넣기 감지 영역 -->
-          <div id="pasteZone"
-               tabindex="0"
-               onpaste="handlePaste(event)"
-               onclick="this.focus()"
-               style="min-height:100px;border:2px dashed var(--border);border-radius:8px;padding:12px;font-size:13px;color:var(--txt2);background:#f8f9fc;cursor:text;outline:none;white-space:pre-wrap;word-break:break-all;line-height:1.7"
-               contenteditable="true"
-               placeholder="">
+          <div id="pasteZone" tabindex="0" onpaste="handlePaste(event)" onclick="this.focus()"
+               style="min-height:90px;border:2px dashed var(--border);border-radius:8px;padding:10px 12px;font-size:13px;color:var(--txt2);background:#f8f9fc;cursor:text;outline:none;white-space:pre-wrap;word-break:break-all;line-height:1.7"
+               contenteditable="true"></div>
+          <div style="font-size:11px;color:var(--txt3);margin-top:4px">
+            &#128161; 클릭 후 <b>Ctrl+V</b> — 텍스트·캡처 이미지 모두 지원
           </div>
-          <div style="font-size:11px;color:var(--txt3);margin-top:5px">
-            &#128161; 클릭 후 <b>Ctrl+V</b> — 텍스트, 캡처 이미지 모두 지원
+          <div style="display:flex;gap:7px;margin-top:8px">
+            <button class="btn-p" style="font-size:12px;padding:6px 14px" onclick="processPaste()">&#128269; 파싱</button>
+            <button class="btn-o" style="font-size:12px;padding:6px 12px" onclick="clearPaste()">&#128465; 지우기</button>
           </div>
-          <div style="display:flex;gap:7px;margin-top:9px">
-            <button class="btn-p" style="font-size:12px;padding:6px 14px" onclick="processPaste()">
-              &#128269; 파싱 시작
-            </button>
-            <button class="btn-o" style="font-size:12px;padding:6px 12px" onclick="clearPaste()">
-              &#128465; 지우기
-            </button>
-          </div>
-          <!-- 이미지 미리보기 -->
-          <div id="pasteImgPreview" style="display:none;margin-top:10px">
-            <div style="font-size:11px;color:var(--txt2);margin-bottom:5px;font-weight:700">붙여넣은 이미지:</div>
-            <img id="pasteImg" style="max-width:100%;max-height:180px;border-radius:7px;border:1px solid var(--border)">
+          <div id="pasteImgPreview" style="display:none;margin-top:9px">
+            <div style="font-size:11px;color:var(--txt2);margin-bottom:4px;font-weight:700">붙여넣은 이미지:</div>
+            <img id="pasteImg" style="max-width:100%;max-height:160px;border-radius:7px;border:1px solid var(--border)">
           </div>
         </div>
+
+        <!-- 패널3: 직접 입력 -->
+        <div id="tpanel-input" style="display:none;padding:14px">
+          <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:6px">
+            &#9997; 텍스트 직접 입력
+          </div>
+
+          <!-- 제목 입력 -->
+          <div style="margin-bottom:8px">
+            <label style="font-size:11px;font-weight:700;color:var(--txt2);display:block;margin-bottom:3px">제목</label>
+            <input type="text" id="directTitle"
+                   placeholder="예: 2026년 6월 월례회 회의록"
+                   style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;color:var(--txt);font-family:inherit">
+          </div>
+
+          <!-- 날짜 -->
+          <div style="margin-bottom:8px">
+            <label style="font-size:11px;font-weight:700;color:var(--txt2);display:block;margin-bottom:3px">날짜</label>
+            <input type="date" id="directDate"
+                   style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;color:var(--txt);font-family:inherit">
+          </div>
+
+          <!-- 본문 -->
+          <div style="margin-bottom:8px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
+              <label style="font-size:11px;font-weight:700;color:var(--txt2)">내용</label>
+              <span style="font-size:11px;color:var(--txt3)" id="directCharCount">0자</span>
+            </div>
+            <textarea id="directContent"
+                      placeholder="활동 내용, 회의록, 훈련 결과 등을 자유롭게 입력하세요.&#10;&#10;예)&#10;- 참석자: 임천순(DS1CLF), 지인실(HL2OBL), 박정호(HL1LFC)&#10;- 안건1: 드론훈련 일정 협의&#10;- 안건2: 8.15 콘테스트 참여 여부 결정"
+                      oninput="updDirectCount()"
+                      style="width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:7px;font-size:13px;color:var(--txt);font-family:inherit;resize:vertical;min-height:130px;line-height:1.75"></textarea>
+          </div>
+
+          <!-- 저장 상태 표시 -->
+          <div id="directSaveStatus" style="display:none;font-size:12px;padding:6px 11px;border-radius:7px;margin-bottom:8px"></div>
+
+          <!-- 저장된 항목 목록 -->
+          <div id="directSavedList" style="display:none;margin-bottom:9px">
+            <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:6px">&#128190; 저장된 항목</div>
+            <div id="directSavedItems"></div>
+          </div>
+
+          <!-- 버튼 -->
+          <div style="display:flex;gap:7px;flex-wrap:wrap">
+            <button class="btn-p" style="font-size:12px;padding:7px 16px" onclick="saveDirectInput()">
+              &#128190; 저장
+            </button>
+            <button class="btn-o" style="font-size:12px;padding:7px 12px" onclick="parseDirectInput()">
+              &#128269; 파싱 미리보기
+            </button>
+            <button class="btn-o" style="font-size:12px;padding:7px 12px" onclick="applyDirectToDoc()">
+              &#9997; 문서작성 적용
+            </button>
+            <button class="btn-o" style="font-size:12px;padding:7px 12px" onclick="clearDirectInput()">
+              &#128465; 초기화
+            </button>
+          </div>
+        </div>
+
       </div>
       <div class="upload-card" id="uc-xls" ondragover="dragOver(event,'uc-xls')" ondragleave="dragLeave('uc-xls')" ondrop="dropFile(event,'xls')">
         <input type="file" accept=".xlsx,.xls" onchange="handleFile(this.files,'xls')">
