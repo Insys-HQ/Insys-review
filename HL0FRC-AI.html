@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>HL0FRC-AI 재난대응봉사회 AI총무 v2.4</title>
+<title>HL0FRC-AI 재난대응봉사회 AI총무 v2.6</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js">
 /* ══ 월간 활동보고서 ══════════════════════════════════════════════════ */
 var ACT_ROWS = [
@@ -178,7 +178,7 @@ function printReport(){
   w.document.write('</head><body>');
   w.document.write(rdoc.innerHTML);
   w.document.write('<div style="background:#1a2744;color:#7a9cc8;text-align:center;padding:12px 24px;font-size:11px;margin-top:20px">
-  인시스 그룹 AI혁신 R&amp;D센터 &nbsp;|&nbsp; HL0FRC-AI 재난대응봉사회 AI총무 시스템 v2.4 &nbsp;|&nbsp;
+  인시스 그룹 AI혁신 R&amp;D센터 &nbsp;|&nbsp; HL0FRC-AI 재난대응봉사회 AI총무 시스템 v2.6 &nbsp;|&nbsp;
   <a href="https://github.com/Insys-HQ/Insys-review" target="_blank" style="color:#5a9ed8;text-decoration:none">GitHub</a>
 </div>
 </body></html>');
@@ -398,113 +398,136 @@ function fbGet(collection, filters) {
 
 /* ── 전체 데이터 Firestore 업로드 ──────────────────────────────── */
 function syncAllData() {
-  if (!FB.connected || !FB.db) {
-    alert('\uBA3C\uC800 Firebase\uC5D0 \uC5F0\uACB0\uD574\uC8FC\uC138\uC694.');
-    return;
-  }
-  setDbStatus('\uB370\uC774\uD130 \uB3D9\uAE30\uD654 \uC911...');
+  if (!FB.connected || !FB.db) return;
+  setDbStatus('\uC804\uCCB4 \uB370\uC774\uD130 \uB3D9\uAE30\uD654 \uC911...');
 
   var batch = FB.db.batch();
-  var count = 0;
+  var total = 0, done = 0;
 
-  /* 2025년 문서 15건 */
-  var docs2025 = [
-    {docNo:'2025-001',year:'2025',title:'2024\uB144\uB3C4 \uC815\uAE30\uCD1D\uD68C \uACB0\uACFC\uBCF4\uACE0',type:'\uACB0\uACFC\uBCF4\uACE0',date:'2025-01-17',participants:14,hours:3,place:'\uC7AC\uB09C\uC548\uC804\uC13C\uD130',status:'approved',approvedBy:'DS1CLF'},
-    {docNo:'2025-002',year:'2025',title:'2\uC6D4 \uC784\uC6D0\u00B7\uC6D4\uB840\uD68C \uBC0F \uCE5C\uC120\uD589\uC0AC(\uCC99\uC0AC\uB300\uD68C)',type:'\uD589\uC0AC\uAC1C\uCD5C',date:'2025-02-10',participants:12,hours:7,place:'\uC11C\uC6B8\uC9C0\uC0AC(\uB9C8\uC7A5\uB3D9)',status:'approved',approvedBy:'DS1CLF'},
-    {docNo:'2025-003',year:'2025',title:'\uBB34\uC120\uD1B5\uC2E0\u00B7\uB4DC\uB860\uD6C8\uB828(\uC790\uCCB4) \uC2DC\uD589\uC758 \uAC74',type:'\uD6C8\uB828\uC2DC\uD589',date:'2025-03-10',participants:0,hours:7,place:'\uC778\uCC9C \uCCAD\uB77C',status:'approved',approvedBy:'DS1CLF'},
-    {docNo:'2025-004',year:'2025',title:'\uBB34\uC120\uD1B5\uC2E0\u00B7\uB4DC\uB860\uD6C8\uB828(\uC790\uCCB4) \uACB0\uACFC\uBCF4\uACE0',type:'\uACB0\uACFC\uBCF4\uACE0',date:'2025-03-18',participants:0,hours:8,place:'\uC778\uCC9C \uCCAD\uB77C',status:'approved',approvedBy:'DS1CLF'},
-    {docNo:'2025-005',year:'2025',title:'4\uC6D4 \uC784\uC6D0\u00B7\uC6D4\uB840\uD68C \uAC1C\uCD5C\uC758 \uAC74',type:'\uD589\uC0AC\uAC1C\uCD5C',date:'2025-04-21',participants:0,hours:5,place:'\uC7AC\uB09C\uC548\uC804\uC13C\uD130',status:'approved',approvedBy:'DS1CLF'},
-    {docNo:'2025-006',year:'2025',title:'\uB4DC\uB860\uD6C8\uB828 2\uCC28(\uC704\uD0C1\uAD50\uC721) \uC2DC\uD589\uC758 \uAC74',type:'\uD6C8\uB828\uC2DC\uD589',date:'2025-05-29',participants:9,hours:7,place:'\uC778\uCC9C \uCCAD\uB77C(\uB85C\uBD07\uD0C0\uC6CC)',status:'approved',approvedBy:'DS1CLF'},
-    {docNo:'2025-007',year:'2025',title:'\uB4DC\uB860\uD6C8\uB828 2\uCC28(\uC704\uD0C1\uAD50\uC721) \uACB0\uACFC\uBCF4\uACE0',type:'\uACB0\uACFC\uBCF4\uACE0',date:'2025-06-05',participants:8,hours:7,place:'\uC778\uCC9C \uCCAD\uB77C(\uB85C\uBD07\uD0C0\uC6CC)',status:'approved',approvedBy:'DS1CLF'},
-    {docNo:'2025-008',year:'2025',title:'\uC2EC\uD3D0\uC18C\uC0DD\uC220(CPR) \uAD50\uC721 \uC2DC\uD589\uC758 \uAC74',type:'\uAD50\uC721\uC2DC\uD589',date:'2025-06-17',participants:7,hours:4,place:'\uC7AC\uB09C\uC548\uC804\uC13C\uD130',status:'approved',approvedBy:'DS1CLF'},
-    {docNo:'2025-009',year:'2025',title:'7\uC6D4 \uC6D4\uB840\uD68C \uAC1C\uCD5C\uC758 \uAC74',type:'\uD589\uC0AC\uAC1C\uCD5C',date:'2025-06-30',participants:0,hours:3,place:'\uC11C\uC6B8\uC9C0\uC0AC(\uB9C8\uC7A5\uB3D9)',status:'approved',approvedBy:'DS1CLF'},
-    {docNo:'2025-010',year:'2025',title:'\uB4DC\uB860\uD6C8\uB828 3\uCC28(\uC704\uD0C1\uAD50\uC721) \uC2DC\uD589\uC758 \uAC74',type:'\uD6C8\uB828\uC2DC\uD589',date:'2025-07-17',participants:7,hours:7,place:'\uC778\uCC9C \uCCAD\uB77C(\uB85C\uBD07\uD0C0\uC6CC)',status:'approved',approvedBy:'DS1CLF'},
-    {docNo:'2025-011',year:'2025',title:'\uC81C56\uD68C 8.15 Contest \uCC38\uC5EC\uC2B9\uC778\uC758 \uAC74',type:'\uD589\uC0AC\uAC1C\uCD5C',date:'2025-08-11',participants:7,hours:24,place:'\uC11C\uC6B8\uC9C0\uC0AC \uBB34\uC120\uC2E4',status:'approved',approvedBy:'DS1CLF'},
-    {docNo:'2025-012',year:'2025',title:'8.15 Contest \uCC38\uC5EC\uC2B9\uC778(\uBB38\uC11C)',type:'\uC2B9\uC778\uC758\uAC74',date:'2025-08-11',participants:7,hours:24,place:'\uC11C\uC6B8\uC9C0\uC0AC \uBB34\uC120\uC2E4',status:'approved',approvedBy:'DS1CLF'},
-    {docNo:'2025-013',year:'2025',title:'\uB4DC\uB860\uD6C8\uB828 4\u00B75\uCC28(\uC704\uD0C1\uAD50\uC721) \uC2DC\uD589\uC758 \uAC74',type:'\uD6C8\uB828\uC2DC\uD589',date:'2025-10-01',participants:0,hours:14,place:'\uC778\uCC9C\uB85C\uBD07\uD0C0\uC6CC',status:'approved',approvedBy:'DS1CLF'},
-    {docNo:'2025-014',year:'2025',title:'11\uC6D4 \uC784\uC6D0\u00B7\uC6D4\uB840\uD68C \uAC1C\uCD5C\uC758 \uAC74',type:'\uD589\uC0AC\uAC1C\uCD5C',date:'2025-11-17',participants:8,hours:4,place:'\uC7AC\uB09C\uC548\uC804\uC13C\uD130',status:'approved',approvedBy:'DS1CLF'},
-    {docNo:'2025-015',year:'2025',title:'\uB4DC\uB860\uD6C8\uB828 4\uCC28(\uC704\uD0C1\uAD50\uC721) \uACB0\uACFC\uBCF4\uACE0',type:'\uACB0\uACFC\uBCF4\uACE0',date:'2025-11-24',participants:8,hours:7,place:'\uACE0\uC591\uB4DC\uB860\uC575\uCEE4\uC13C\uD130',status:'approved',approvedBy:'DS1CLF'}
-  ];
-
-  /* 2026년 5월 활동보고서 */
-  var report2605 = {
-    year:'2026', month:'05',
-    title:'2026\uB144 05\uC6D4 \uC7AC\uB09C\uB300\uC751\uBD09\uC0AC\uD68C \uD65C\uB3D9\uBCF4\uACE0\uC11C',
-    totalMembers:17, regularMembers:16, assocMembers:1, restMembers:0, honorMembers:4,
-    inCount:0, outCount:0, restCount:0,
-    activities:[
-      {type:'3',name:'2026\uB144 \uC81C18\uCC28 \uD654\uC694\uC815\uAE30\uD1B5\uC2E0\uD6C8\uB828',date:'2026-05-05',startEnd:'21:00~22:00',hours:1,people:11,place:'\uAC01\uC790 \u73FE \uC704\uCE58 \uC824\uB85C/VHF145.620MHz',members:'\uACFD\uC601, \uB098\uAE38\uC6D0, \uBC15\uCCA0, \uC9C0\uC778\uC2E4, \uC774\uB3C4\uD76C, \uC774\uC6A9\uC6C5, \uBC15\uC815\uD638, \uC774\uC7AC\uC601, \uAE40\uC591\uC12D, \uAE40\uC6D0\uCC3D, \uC815\uC9C4\uCCA0'},
-      {type:'3',name:'2026\uB144 \uC81C19\uCC28 \uD654\uC694\uC815\uAE30\uD1B5\uC2E0\uD6C8\uB828',date:'2026-05-12',startEnd:'21:00~22:00',hours:1,people:11,place:'\uAC01\uC790 \u73FE \uC704\uCE58 \uC824\uB85C/VHF145.620MHz',members:'\uC815\uC9C4\uCCA0, \uC774\uB3C4\uD76C, \uBC15\uC815\uD638, \uBC15\uCCA0, \uB098\uAE38\uC6D0, \uC774\uC7AC\uC601, \uC9C0\uC778\uC2E4, \uACFD\uC601, \uC784\uCC9C\uC21C, \uC774\uC6A9\uC6C5, \uAE40\uC591\uC12D'},
-      {type:'1',name:'\uC7AC\uB09C\uC548\uC804\uC13C\uD130 \uC5C5\uBB34\uD611\uC758',date:'2026-05-14',startEnd:'11:00~12:00',hours:1,people:2,place:'\uC7AC\uB09C\uC548\uC804\uC13C\uD130',members:'\uC784\uCC9C\uC21C, \uBC15\uC815\uD638'},
-      {type:'5',name:'\uCCAD\uC18C\uB144 \uC790\uC6D0\uBD09\uC0AC \uD398\uC2A4\uD2F0\uBC8C \uD589\uC0AC\uC6A9\uD488 \uC0C1\uCC28',date:'2026-05-14',startEnd:'13:00~14:30',hours:1.5,people:2,place:'\uC7AC\uB09C\uC548\uC804\uC13C\uD130',members:'\uC784\uCC9C\uC21C, \uBC15\uC815\uD638'},
-      {type:'5',name:'\uCCAD\uC18C\uB144 \uC790\uC6D0\uBD09\uC0AC \uD398\uC2A4\uD2F0\uBC8C',date:'2026-05-16',startEnd:'08:00~17:00',hours:9,people:2,place:'\uC655\uC2ED\uB9AC\uC5ED \uAD11\uC7A5',members:'\uC784\uCC9C\uC21C, \uBC15\uC815\uD638'},
-      {type:'5',name:'\uCCAD\uC18C\uB144 \uC790\uC6D0\uBD09\uC0AC \uD398\uC2A4\uD2F0\uBC8C',date:'2026-05-16',startEnd:'08:00~15:30',hours:7.5,people:1,place:'\uC655\uC2ED\uB9AC\uC5ED \uAD11\uC7A5',members:'\uC774\uB3C4\uD76C'},
-      {type:'5',name:'\uCCAD\uC18C\uB144 \uC790\uC6D0\uBD09\uC0AC \uD398\uC2A4\uD2F0\uBC8C',date:'2026-05-16',startEnd:'09:00~15:30',hours:6.5,people:1,place:'\uC655\uC2ED\uB9AC\uC5ED \uAD11\uC7A5',members:'\uBC15\uCCA0'},
-      {type:'5',name:'\uCCAD\uC18C\uB144 \uC790\uC6D0\uBD09\uC0AC \uD398\uC2A4\uD2F0\uBC8C',date:'2026-05-16',startEnd:'10:00~15:30',hours:5.5,people:1,place:'\uC655\uC2ED\uB9AC\uC5ED \uAD11\uC7A5',members:'\uC9C0\uC778\uC2E4'},
-      {type:'5',name:'\uCCAD\uC18C\uB144 \uC790\uC6D0\uBD09\uC0AC \uD398\uC2A4\uD2F0\uBC8C',date:'2026-05-16',startEnd:'13:00~16:00',hours:3,people:1,place:'\uC655\uC2ED\uB9AC\uC5ED \uAD11\uC7A5',members:'\uC815\uC9C4\uCCA0'},
-      {type:'5',name:'\uCCAD\uC18C\uB144 \uC790\uC6D0\uBD09\uC0AC \uD398\uC2A4\uD2F0\uBC8C',date:'2026-05-16',startEnd:'14:00~15:30',hours:1.5,people:1,place:'\uC655\uC2ED\uB9AC\uC5ED \uAD11\uC7A5',members:'\uC774\uC7AC\uC601'},
-      {type:'3',name:'2026\uB144 \uC81C20\uCC28 \uD654\uC694\uC815\uAE30\uD1B5\uC2E0\uD6C8\uB828',date:'2026-05-19',startEnd:'21:00~22:00',hours:1,people:8,place:'\uAC01\uC790 \u73FE \uC704\uCE58 \uC824\uB85C/VHF145.620MHz',members:'\uC774\uB3C4\uD76C, \uB098\uAE38\uC6D0, \uC815\uC9C4\uCCA0, \uC774\uC7AC\uC601, \uBC15\uC815\uD638, \uC9C0\uC778\uC2E4, \uBC15\uCCA0, \uC774\uC6A9\uC6C5'},
-      {type:'4',name:'\uC11C\uC18C\uBB38\uACE0\uAC00 \uBD95\uAD34 \uBE44\uC0C1\uB300\uAE30',date:'2026-05-26',startEnd:'15:30~17:30',hours:2,people:8,place:'\uC7AC\uB09C\uC548\uC804\uC13C\uD130/\uAC01\uC790 \u73FE \uC704\uCE58',members:'\uBC15\uC815\uD638, \uC774\uB3C4\uD76C, \uBC15\uCCA0, \uAE40\uC6D0\uCC3D, \uC774\uC6A9\uC6C5, \uC774\uC7AC\uC601, \uC784\uCC9C\uC21C, \uB098\uAE38\uC6D0'},
-      {type:'3',name:'2026\uB144 \uC81C21\uCC28 \uD654\uC694\uC815\uAE30\uD1B5\uC2E0\uD6C8\uB828',date:'2026-05-26',startEnd:'21:00~22:00',hours:1,people:10,place:'\uAC01\uC790 \u73FE \uC704\uCE58 \uC824\uB85C/VHF145.620MHz',members:'\uC774\uC7AC\uC601, \uBC15\uC815\uD638, \uB098\uAE38\uC6D0, \uC815\uC9C4\uCCA0, \uC784\uCC9C\uC21C, \uC774\uB3C4\uD76C, \uAE40\uC6D0\uCC3D, \uBC15\uCCA0, \uACFD\uC601, \uC774\uC6A9\uC6C5'},
-      {type:'5',name:'\uC2E0\uD615 \uC258\uD130 \uBD88\uB7C9 \uBC0F \uC218\uB9AC\uAD00\uB828 \uC810\uAC80\uD68C\uC758',date:'2026-05-29',startEnd:'15:00~18:00',hours:3,people:3,place:'\uC2E0\uC6D4\uB3D9 \uC7AC\uB09C\uC548\uC804\uC13C\uD130',members:'\uC784\uCC9C\uC21C, \uAE40\uC6D0\uCC3D, \uBC15\uC815\uD638'},
-      {type:'5',name:'\uC6D4\uAC04\uD65C\uB3D9\uBCF4\uACE0, \uD68C\uACC4\uC790\uB8CC\uC815\uB9AC',date:'2026-05-31',startEnd:'15:00~18:00',hours:3,people:1,place:'\uC790\uD0DD',members:'\uBC15\uC815\uD638'}
-    ],
-    totalHours: 50.5,
-    createdAt: '2026-06-01',
-    createdBy: 'HL2OBL'
-  };
-
-  /* 19명 회원 */
-  var members = [
-    {callsign:'HL1TMJ',name:'\uC774\uB3C4\uD76C',role:'\u2014',h24:112,h25:90,h26:0,acc:5582,joined:'1994-05-07'},
-    {callsign:'DS1CFO',name:'\uC815\uC9C4\uCCA0',role:'\uAC10\uC0AC',h24:155,h25:120,h26:0,acc:5339,joined:'1989-06-03'},
-    {callsign:'DS1BUQ',name:'\uBC15\uCDA9\uADFC',role:'\uAD6C\uD638\uD300',h24:52,h25:40,h26:0,acc:3934,joined:'1995-07-01'},
-    {callsign:'HL1AKY',name:'\uC2E0\uD604\uC218',role:'\uAD6C\uD638\uD300',h24:5,h25:5,h26:0,acc:3132,joined:'1988-02-06'},
-    {callsign:'HL1MCB',name:'\uC774\uC6D0\uC7AC',role:'\uACE0\uBB38',h24:47,h25:40,h26:0,acc:2589,joined:'1987-07-01'},
-    {callsign:'HL2TLS',name:'\uAE40\uC591\uC12D',role:'\uAE30\uC220\uD300\uC7A5',h24:161,h25:130,h26:0,acc:2578,joined:'1994-10-01'},
-    {callsign:'DS1CLF',name:'\uC784\uCC9C\uC21C',role:'\uD68C\uC7A5',h24:176,h25:140,h26:0,acc:2304,joined:'1995-07-01'},
-    {callsign:'HL1OFQ',name:'\uC774\uC784\uD765',role:'\uAD6C\uD638\uD300',h24:69,h25:50,h26:0,acc:2285,joined:'1996-05-04'},
-    {callsign:'DS1BNJ',name:'\uC774\uC6A9\uC6C5',role:'\uAD6C\uD638\uD300',h24:38,h25:30,h26:0,acc:2245,joined:'1996-01-06'},
-    {callsign:'DS1MXN',name:'\uC774\uB3D9\uC12D',role:'\u2014',h24:76,h25:60,h26:0,acc:1367,joined:'1997-01-07'},
-    {callsign:'HL1LFC',name:'\uBC15\uC815\uD638',role:'\uAE30\uC220\uD300',h24:233,h25:180,h26:0,acc:913,joined:'2021-05-29'},
-    {callsign:'DS2AEM',name:'\uAE40\uC6D0\uCC3D',role:'\uAD6C\uD638\uD300\uC7A5',h24:61,h25:50,h26:0,acc:772,joined:'1996-01-06'},
-    {callsign:'HL1LGZ',name:'\uBC15 \uCCA0',role:'\uC804\uC784\uCD1D\uBB34',h24:216,h25:170,h26:0,acc:576,joined:'2022-10-17'},
-    {callsign:'6K2FXY',name:'\uC624\uC138\uC9C4',role:'\uB4DC\uB860\uD300\uC7A5',h24:94,h25:80,h26:0,acc:442,joined:'2020-06-17'},
-    {callsign:'HL2OBL',name:'\uC9C0\uC778\uC2E4',role:'\uBD80\uD68C\uC7A5/\uCD1D\uBB34\uB300\uD589',h24:177,h25:145,h26:0,acc:387,joined:'1988-04-06'},
-    {callsign:'6K2JPO',name:'\uC774\uC7AC\uC601',role:'\uAE30\uC220\uD300',h24:77,h25:60,h26:0,acc:341,joined:'2020-07-23'},
-    {callsign:'DS1TWP',name:'\uACFD \uC601',role:'\u2014',h24:103,h25:80,h26:0,acc:226,joined:'2023-05-13'},
-    {callsign:'DS1URB',name:'\uD669\uCC2C\uC5F0',role:'\u2014',h24:105,h25:85,h26:0,acc:105,joined:'2024-01-01'},
-    {callsign:'',name:'\uB098\uAE38\uC6D0',role:'\uC2E0\uADDC(2025)',h24:0,h25:20,h26:0,acc:20,joined:'2025-01-01'}
-  ];
-
-  var totalItems = docs2025.length + members.length + 1; /* +1 for report */
-  var done = 0;
-
-  function tick(){
+  function tick(label) {
     done++;
-    var pct = Math.round(done/totalItems*100);
-    setDbStatus('\uB3D9\uAE30\uD654 \uC911... ' + pct + '% (' + done + '/' + totalItems + ')');
-    if (done >= totalItems) {
-      setDbStatus('\u2705 \uB3D9\uAE30\uD654 \uC644\uB8CC! \uBB38\uC11C ' + docs2025.length + '\uAC74 + \uD65C\uB3D9\uBCF4\uACE0\uC11C + \uD68C\uC6D0 ' + members.length + '\uBA85 \uC800\uC7A5\uB428');
+    setDbStatus('\uC800\uC7A5 \uC911... ' + done + '/' + total + ' (' + label + ')');
+    if (done >= total) {
+      setTimeout(function(){
+        setDbStatus('\u2705 \uB3D9\uAE30\uD654 \uC644\uB8CC! ' + total + '\uAC74 \uC800\uC7A5\uB428');
+      }, 500);
     }
   }
 
-  /* 문서 업로드 */
-  docs2025.forEach(function(doc) {
+  /* ── 2025년 문서 15건 ── */
+  var docs2025 = [
+    {docNo:'2025-001',year:'2025',date:'2025-01-17',title:'2024\uB144\uB3C4 \uC815\uAE30\uCD1D\uD68C \uACB0\uACFC\uBCF4\uACE0',type:'\uACB0\uACFC\uBCF4\uACE0',participants:14,hours:3,place:'\uC7AC\uB09C\uC548\uC804\uC13C\uD130',status:'approved'},
+    {docNo:'2025-002',year:'2025',date:'2025-02-10',title:'2\uC6D4 \uC784\uC6D0\u00B7\uC6D4\uB840\uD68C \uBC0F \uCE5C\uC120\uD589\uC0AC(\uCC99\uC0AC\uB300\uD68C)',type:'\uD589\uC0AC\uAC1C\uCD5C',participants:12,hours:7,place:'\uC11C\uC6B8\uC9C0\uC0AC(\uB9C8\uC7A5\uB3D9)',status:'approved'},
+    {docNo:'2025-003',year:'2025',date:'2025-03-10',title:'\uBB34\uC120\uD1B5\uC2E0\u00B7\uB4DC\uB860\uD6C8\uB828(\uC790\uCCB4) \uC2DC\uD589\uC758 \uAC74',type:'\uD6C8\uB828\uC2DC\uD589',participants:0,hours:7,place:'\uC778\uCC9C \uCCAD\uB77C',status:'approved'},
+    {docNo:'2025-004',year:'2025',date:'2025-03-18',title:'\uBB34\uC120\uD1B5\uC2E0\u00B7\uB4DC\uB860\uD6C8\uB828(\uC790\uCCB4) \uACB0\uACFC\uBCF4\uACE0',type:'\uACB0\uACFC\uBCF4\uACE0',participants:0,hours:8,place:'\uC778\uCC9C \uCCAD\uB77C',status:'approved'},
+    {docNo:'2025-005',year:'2025',date:'2025-04-21',title:'4\uC6D4 \uC784\uC6D0\u00B7\uC6D4\uB840\uD68C \uAC1C\uCD5C\uC758 \uAC74',type:'\uD589\uC0AC\uAC1C\uCD5C',participants:0,hours:5,place:'\uC7AC\uB09C\uC548\uC804\uC13C\uD130',status:'approved'},
+    {docNo:'2025-006',year:'2025',date:'2025-05-29',title:'\uB4DC\uB860\uD6C8\uB828 2\uCC28(\uC704\uD0C1\uAD50\uC721) \uC2DC\uD589\uC758 \uAC74',type:'\uD6C8\uB828\uC2DC\uD589',participants:9,hours:7,place:'\uC778\uCC9C \uCCAD\uB77C(\uB85C\uBD07\uD0C0\uC6CC)',status:'approved'},
+    {docNo:'2025-007',year:'2025',date:'2025-06-05',title:'\uB4DC\uB860\uD6C8\uB828 2\uCC28(\uC704\uD0C1\uAD50\uC721) \uACB0\uACFC\uBCF4\uACE0',type:'\uACB0\uACFC\uBCF4\uACE0',participants:8,hours:7,place:'\uC778\uCC9C \uCCAD\uB77C(\uB85C\uBD07\uD0C0\uC6CC)',status:'approved'},
+    {docNo:'2025-008',year:'2025',date:'2025-06-17',title:'\uC2EC\uD3D0\uC18C\uC0DD\uC220(CPR) \uAD50\uC721 \uC2DC\uD589\uC758 \uAC74',type:'\uAD50\uC721\uC2DC\uD589',participants:7,hours:4,place:'\uC7AC\uB09C\uC548\uC804\uC13C\uD130',status:'approved'},
+    {docNo:'2025-009',year:'2025',date:'2025-06-30',title:'7\uC6D4 \uC6D4\uB840\uD68C \uAC1C\uCD5C\uC758 \uAC74',type:'\uD589\uC0AC\uAC1C\uCD5C',participants:0,hours:3,place:'\uC11C\uC6B8\uC9C0\uC0AC(\uB9C8\uC7A5\uB3D9)',status:'approved'},
+    {docNo:'2025-010',year:'2025',date:'2025-07-17',title:'\uB4DC\uB860\uD6C8\uB828 3\uCC28(\uC704\uD0C1\uAD50\uC721) \uC2DC\uD589\uC758 \uAC74',type:'\uD6C8\uB828\uC2DC\uD589',participants:7,hours:7,place:'\uC778\uCC9C \uCCAD\uB77C(\uB85C\uBD07\uD0C0\uC6CC)',status:'approved'},
+    {docNo:'2025-011',year:'2025',date:'2025-08-11',title:'\uC81C56\uD68C 8.15 Contest \uCC38\uC5EC\uC2B9\uC778\uC758 \uAC74',type:'\uD589\uC0AC\uAC1C\uCD5C',participants:7,hours:24,place:'\uC11C\uC6B8\uC9C0\uC0AC \uBB34\uC120\uC2E4',status:'approved'},
+    {docNo:'2025-012',year:'2025',date:'2025-08-11',title:'8.15 Contest \uCC38\uC5EC\uC2B9\uC778(\uBB38\uC11C)',type:'\uC2B9\uC778\uC758\uAC74',participants:7,hours:24,place:'\uC11C\uC6B8\uC9C0\uC0AC \uBB34\uC120\uC2E4',status:'approved'},
+    {docNo:'2025-013',year:'2025',date:'2025-10-01',title:'\uB4DC\uB860\uD6C8\uB828 4\u00B75\uCC28(\uC704\uD0C1\uAD50\uC721) \uC2DC\uD589\uC758 \uAC74',type:'\uD6C8\uB828\uC2DC\uD589',participants:0,hours:14,place:'\uC778\uCC9C\uB85C\uBD07\uD0C0\uC6CC',status:'approved'},
+    {docNo:'2025-014',year:'2025',date:'2025-11-17',title:'11\uC6D4 \uC784\uC6D0\u00B7\uC6D4\uB840\uD68C \uAC1C\uCD5C\uC758 \uAC74',type:'\uD589\uC0AC\uAC1C\uCD5C',participants:8,hours:4,place:'\uC7AC\uB09C\uC548\uC804\uC13C\uD130',status:'approved'},
+    {docNo:'2025-015',year:'2025',date:'2025-11-24',title:'\uB4DC\uB860\uD6C8\uB828 4\uCC28(\uC704\uD0C1\uAD50\uC721) \uACB0\uACFC\uBCF4\uACE0',type:'\uACB0\uACFC\uBCF4\uACE0',participants:8,hours:7,place:'\uACE0\uC591\uB4DC\uB860\uC575\uCEE4\uC13C\uD130',status:'approved'}
+  ];
+
+  /* ── 2026년 5월 활동보고서 ── */
+  var report2605 = {
+    year:'2026', month:'05',
+    docNo:'2026-M05', date:'2026-06-01',
+    title:'2026\uB144 05\uC6D4 \uC7AC\uB09C\uB300\uC751\uBD09\uC0AC\uD68C \uD65C\uB3D9\uBCF4\uACE0\uC11C',
+    type:'\uD65C\uB3D9\uBCF4\uACE0',
+    totalMembers:17, regularMembers:16, assocMembers:1, honorMembers:4,
+    inCount:0, outCount:0, restCount:0,
+    totalHours:50.5, status:'approved',
+    activities:[
+      {type:'3',name:'2026\uB144 \uC81C18\uCC28 \uD654\uC694\uC815\uAE30\uD1B5\uC2E0\uD6C8\uB828',date:'2026-05-05',time:'21:00~22:00',hours:1,people:11,place:'\uAC01\uC790 \u73FE \uC704\uCE58 \uC824\uB85C/VHF145.620MHz',members:'\uACFD\uC601,\uB098\uAE38\uC6D0,\uBC15\uCCA0,\uC9C0\uC778\uC2E4,\uC774\uB3C4\uD76C,\uC774\uC6A9\uC6C5,\uBC15\uC815\uD638,\uC774\uC7AC\uC601,\uAE40\uC591\uC12D,\uAE40\uC6D0\uCC3D,\uC815\uC9C4\uCCA0'},
+      {type:'3',name:'2026\uB144 \uC81C19\uCC28 \uD654\uC694\uC815\uAE30\uD1B5\uC2E0\uD6C8\uB828',date:'2026-05-12',time:'21:00~22:00',hours:1,people:11,place:'\uAC01\uC790 \u73FE \uC704\uCE58 \uC824\uB85C/VHF145.620MHz',members:'\uC815\uC9C4\uCCA0,\uC774\uB3C4\uD76C,\uBC15\uC815\uD638,\uBC15\uCCA0,\uB098\uAE38\uC6D0,\uC774\uC7AC\uC601,\uC9C0\uC778\uC2E4,\uACFD\uC601,\uC784\uCC9C\uC21C,\uC774\uC6A9\uC6C5,\uAE40\uC591\uC12D'},
+      {type:'1',name:'\uC7AC\uB09C\uC548\uC804\uC13C\uD130 \uC5C5\uBB34\uD611\uC758',date:'2026-05-14',time:'11:00~12:00',hours:1,people:2,place:'\uC7AC\uB09C\uC548\uC804\uC13C\uD130',members:'\uC784\uCC9C\uC21C,\uBC15\uC815\uD638'},
+      {type:'5',name:'\uCCAD\uC18C\uB144 \uC790\uC6D0\uBD09\uC0AC \uD398\uC2A4\uD2F0\uBC8C \uD589\uC0AC\uC6A9\uD488 \uC0C1\uCC28',date:'2026-05-14',time:'13:00~14:30',hours:1.5,people:2,place:'\uC7AC\uB09C\uC548\uC804\uC13C\uD130',members:'\uC784\uCC9C\uC21C,\uBC15\uC815\uD638'},
+      {type:'5',name:'\uCCAD\uC18C\uB144 \uC790\uC6D0\uBD09\uC0AC \uD398\uC2A4\uD2F0\uBC8C',date:'2026-05-16',time:'08:00~17:00',hours:9,people:2,place:'\uC655\uC2ED\uB9AC\uC5ED \uAD11\uC7A5',members:'\uC784\uCC9C\uC21C,\uBC15\uC815\uD638'},
+      {type:'5',name:'\uCCAD\uC18C\uB144 \uC790\uC6D0\uBD09\uC0AC \uD398\uC2A4\uD2F0\uBC8C',date:'2026-05-16',time:'08:00~15:30',hours:7.5,people:1,place:'\uC655\uC2ED\uB9AC\uC5ED \uAD11\uC7A5',members:'\uC774\uB3C4\uD76C'},
+      {type:'5',name:'\uCCAD\uC18C\uB144 \uC790\uC6D0\uBD09\uC0AC \uD398\uC2A4\uD2F0\uBC8C',date:'2026-05-16',time:'09:00~15:30',hours:6.5,people:1,place:'\uC655\uC2ED\uB9AC\uC5ED \uAD11\uC7A5',members:'\uBC15\uCCA0'},
+      {type:'5',name:'\uCCAD\uC18C\uB144 \uC790\uC6D0\uBD09\uC0AC \uD398\uC2A4\uD2F0\uBC8C',date:'2026-05-16',time:'10:00~15:30',hours:5.5,people:1,place:'\uC655\uC2ED\uB9AC\uC5ED \uAD11\uC7A5',members:'\uC9C0\uC778\uC2E4'},
+      {type:'5',name:'\uCCAD\uC18C\uB144 \uC790\uC6D0\uBD09\uC0AC \uD398\uC2A4\uD2F0\uBC8C',date:'2026-05-16',time:'13:00~16:00',hours:3,people:1,place:'\uC655\uC2ED\uB9AC\uC5ED \uAD11\uC7A5',members:'\uC815\uC9C4\uCCA0'},
+      {type:'5',name:'\uCCAD\uC18C\uB144 \uC790\uC6D0\uBD09\uC0AC \uD398\uC2A4\uD2F0\uBC8C',date:'2026-05-16',time:'14:00~15:30',hours:1.5,people:1,place:'\uC655\uC2ED\uB9AC\uC5ED \uAD11\uC7A5',members:'\uC774\uC7AC\uC601'},
+      {type:'3',name:'2026\uB144 \uC81C20\uCC28 \uD654\uC694\uC815\uAE30\uD1B5\uC2E0\uD6C8\uB828',date:'2026-05-19',time:'21:00~22:00',hours:1,people:8,place:'\uAC01\uC790 \u73FE \uC704\uCE58 \uC824\uB85C/VHF145.620MHz',members:'\uC774\uB3C4\uD76C,\uB098\uAE38\uC6D0,\uC815\uC9C4\uCCA0,\uC774\uC7AC\uC601,\uBC15\uC815\uD638,\uC9C0\uC778\uC2E4,\uBC15\uCCA0,\uC774\uC6A9\uC6C5'},
+      {type:'4',name:'\uC11C\uC18C\uBB38\uACE0\uAC00 \uBD95\uAD34 \uBE44\uC0C1\uB300\uAE30',date:'2026-05-26',time:'15:30~17:30',hours:2,people:8,place:'\uC7AC\uB09C\uC548\uC804\uC13C\uD130/\uAC01\uC790 \u73FE \uC704\uCE58',members:'\uBC15\uC815\uD638,\uC774\uB3C4\uD76C,\uBC15\uCCA0,\uAE40\uC6D0\uCC3D,\uC774\uC6A9\uC6C5,\uC774\uC7AC\uC601,\uC784\uCC9C\uC21C,\uB098\uAE38\uC6D0'},
+      {type:'3',name:'2026\uB144 \uC81C21\uCC28 \uD654\uC694\uC815\uAE30\uD1B5\uC2E0\uD6C8\uB828',date:'2026-05-26',time:'21:00~22:00',hours:1,people:10,place:'\uAC01\uC790 \u73FE \uC704\uCE58 \uC824\uB85C/VHF145.620MHz',members:'\uC774\uC7AC\uC601,\uBC15\uC815\uD638,\uB098\uAE38\uC6D0,\uC815\uC9C4\uCCA0,\uC784\uCC9C\uC21C,\uC774\uB3C4\uD76C,\uAE40\uC6D0\uCC3D,\uBC15\uCCA0,\uACFD\uC601,\uC774\uC6A9\uC6C5'},
+      {type:'5',name:'\uC2E0\uD615 \uC258\uD130 \uBD88\uB7C9 \uBC0F \uC218\uB9AC\uAD00\uB828 \uC810\uAC80\uD68C\uC758',date:'2026-05-29',time:'15:00~18:00',hours:3,people:3,place:'\uC2E0\uC6D4\uB3D9 \uC7AC\uB09C\uC548\uC804\uC13C\uD130',members:'\uC784\uCC9C\uC21C,\uAE40\uC6D0\uCC3D,\uBC15\uC815\uD638'},
+      {type:'5',name:'\uC6D4\uAC04\uD65C\uB3D9\uBCF4\uACE0, \uD68C\uACC4\uC790\uB8CC\uC815\uB9AC',date:'2026-05-31',time:'15:00~18:00',hours:3,people:1,place:'\uC790\uD0DD',members:'\uBC15\uC815\uD638'}
+    ]
+  };
+
+  /* ── 회원 19명 ── */
+  var members = [
+    {callsign:'HL1TMJ',name:'\uC774\uB3C4\uD76C',role:'\u2014',h24:112,h25:90,h26:0,acc:5582,joined:'1994-05'},
+    {callsign:'DS1CFO',name:'\uC815\uC9C4\uCCA0',role:'\uAC10\uC0AC',h24:155,h25:120,h26:0,acc:5339,joined:'1989-06'},
+    {callsign:'DS1BUQ',name:'\uBC15\uCDA9\uADFC',role:'\uAD6C\uD638\uD300',h24:52,h25:40,h26:0,acc:3934,joined:'1995-07'},
+    {callsign:'HL1AKY',name:'\uC2E0\uD604\uC218',role:'\uAD6C\uD638\uD300',h24:5,h25:5,h26:0,acc:3132,joined:'1988-02'},
+    {callsign:'HL1MCB',name:'\uC774\uC6D0\uC7AC',role:'\uACE0\uBB38',h24:47,h25:40,h26:0,acc:2589,joined:'1987-07'},
+    {callsign:'HL2TLS',name:'\uAE40\uC591\uC12D',role:'\uAE30\uC220\uD300\uC7A5',h24:161,h25:130,h26:0,acc:2578,joined:'1994-10'},
+    {callsign:'DS1CLF',name:'\uC784\uCC9C\uC21C',role:'\uD68C\uC7A5',h24:176,h25:140,h26:0,acc:2304,joined:'1995-07'},
+    {callsign:'HL1OFQ',name:'\uC774\uC784\uD765',role:'\uAD6C\uD638\uD300',h24:69,h25:50,h26:0,acc:2285,joined:'1996-05'},
+    {callsign:'DS1BNJ',name:'\uC774\uC6A9\uC6C5',role:'\uAD6C\uD638\uD300',h24:38,h25:30,h26:0,acc:2245,joined:'1996-01'},
+    {callsign:'DS1MXN',name:'\uC774\uB3D9\uC12D',role:'\u2014',h24:76,h25:60,h26:0,acc:1367,joined:'1997-01'},
+    {callsign:'HL1LFC',name:'\uBC15\uC815\uD638',role:'\uAE30\uC220\uD300',h24:233,h25:180,h26:0,acc:913,joined:'2021-05'},
+    {callsign:'DS2AEM',name:'\uAE40\uC6D0\uCC3D',role:'\uAD6C\uD638\uD300\uC7A5',h24:61,h25:50,h26:0,acc:772,joined:'1996-01'},
+    {callsign:'HL1LGZ',name:'\uBC15 \uCCA0',role:'\uC804\uC784\uCD1D\uBB34',h24:216,h25:170,h26:0,acc:576,joined:'2022-10'},
+    {callsign:'6K2FXY',name:'\uC624\uC138\uC9C4',role:'\uB4DC\uB860\uD300\uC7A5',h24:94,h25:80,h26:0,acc:442,joined:'2020-06'},
+    {callsign:'HL2OBL',name:'\uC9C0\uC778\uC2E4',role:'\uBD80\uD68C\uC7A5/\uCD1D\uBB34\uB300\uD589',h24:177,h25:145,h26:0,acc:387,joined:'1988-04'},
+    {callsign:'6K2JPO',name:'\uC774\uC7AC\uC601',role:'\uAE30\uC220\uD300',h24:77,h25:60,h26:0,acc:341,joined:'2020-07'},
+    {callsign:'DS1TWP',name:'\uACFD \uC601',role:'\u2014',h24:103,h25:80,h26:0,acc:226,joined:'2023-05'},
+    {callsign:'DS1URB',name:'\uD669\uCC2C\uC5F0',role:'\u2014',h24:105,h25:85,h26:0,acc:105,joined:'2024-01'},
+    {callsign:'NONE',name:'\uB098\uAE38\uC6D0',role:'\uC2E0\uADDC(2025)',h24:0,h25:20,h26:0,acc:20,joined:'2025-01'}
+  ];
+
+  /* ── KPI / 대시보드 통계 ── */
+  var kpiData = {
+    docId: 'kpi-2026',
+    year: '2026',
+    baseDate: '2026-06-01',
+    docs2026: 1, docs2025: 15, docs2024: 1,
+    totalMembers: 19,
+    contest2024: '1\uC704(\uB2E8\uCCB4\uBD80\uBB38)',
+    actHours2024: 2201,
+    actData2024: {
+      all:[244,149,117,286,139,97,292,166,284,128,179,120],
+      pie:{\uD68C\uC758:393,\uC7AC\uB09C\uAD6C\uD638\uD6C8\uB828:1316,\uC7AC\uB09C\uAD6C\uD638\uD65C\uB3D9:167,\uC77C\uBC18\uBD09\uC0AC:272,\uAE30\uD0C0:53}
+    },
+    docDist2025:{\uC6D4\uB840\uD68C/\uC784\uC6D0\uD68C:4,\uB4DC\uB860\uD6C8\uB828:4,\uACB0\uACFC\uBCF4\uACE0:3,\uAD50\uC721\uC2DC\uD589:1,\uD589\uC0AC/\uCF58\uD14C\uC2A4\uD2B8:3},
+    updatedAt: '2026-06-01'
+  };
+
+  /* ── 저장 시작 ── */
+  total = docs2025.length + 1 + members.length + 1; /* 문서+보고서+회원+KPI */
+
+  /* 문서 저장 */
+  docs2025.forEach(function(doc){
     FB.db.collection('documents').doc(doc.docNo).set(doc)
-      .then(tick).catch(function(e){ console.error(e); tick(); });
+      .then(function(){ tick(doc.docNo); })
+      .catch(function(e){ console.error(doc.docNo, e); tick(doc.docNo+'(\uC624\uB958)'); });
   });
 
-  /* 활동보고서 업로드 */
+  /* 활동보고서 저장 */
   FB.db.collection('reports').doc('2026-05').set(report2605)
-    .then(tick).catch(function(e){ console.error(e); tick(); });
+    .then(function(){ tick('\uD65C\uB3D9\uBCF4\uACE0\uC11C 2026-05'); })
+    .catch(function(e){ console.error(e); tick('\uBCF4\uACE0\uC11C(\uC624\uB958)'); });
 
-  /* 회원 업로드 */
-  members.forEach(function(m) {
+  /* 회원 저장 */
+  members.forEach(function(m){
     var id = m.callsign || m.name;
     FB.db.collection('members').doc(id).set(m)
-      .then(tick).catch(function(e){ console.error(e); tick(); });
+      .then(function(){ tick(m.name); })
+      .catch(function(e){ console.error(m.name,e); tick(m.name+'(\uC624\uB958)'); });
   });
+
+  /* KPI 저장 */
+  FB.db.collection('kpi').doc('2026').set(kpiData)
+    .then(function(){ tick('KPI'); })
+    .catch(function(e){ console.error(e); tick('KPI(\uC624\uB958)'); });
 }
 
 function setDbStatus(msg) {
@@ -811,7 +834,7 @@ body{font-family:"Malgun Gothic","Apple SD Gothic Neo","나눔고딕",sans-serif
   <div class="hdr-badges">
     <div class="badge-cs">HL0FRC</div>
     <div class="badge-acting">총무대행 HL2OBL</div>
-    <div class="badge-ver">v2.4</div>
+    <div class="badge-ver">v2.6</div>
   </div>
 </div></div>
 
