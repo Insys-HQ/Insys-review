@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>HL0FRC-AI 재난대응봉사회 AI총무 v2.7</title>
+<title>HL0FRC-AI 재난대응봉사회 AI총무 v2.8</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js">
 /* ══ 월간 활동보고서 ══════════════════════════════════════════════════ */
 var ACT_ROWS = [
@@ -178,7 +178,7 @@ function printReport(){
   w.document.write('</head><body>');
   w.document.write(rdoc.innerHTML);
   w.document.write('<div style="background:#1a2744;color:#7a9cc8;text-align:center;padding:12px 24px;font-size:11px;margin-top:20px">
-  인시스 그룹 AI혁신 R&amp;D센터 &nbsp;|&nbsp; HL0FRC-AI 재난대응봉사회 AI총무 시스템 v2.7 &nbsp;|&nbsp;
+  인시스 그룹 AI혁신 R&amp;D센터 &nbsp;|&nbsp; HL0FRC-AI 재난대응봉사회 AI총무 시스템 v2.8 &nbsp;|&nbsp;
   <a href="https://github.com/Insys-HQ/Insys-review" target="_blank" style="color:#5a9ed8;text-decoration:none">GitHub</a>
 </div>
 </body></html>');
@@ -737,6 +737,152 @@ function clearPaste() {
   if (sec) sec.style.display = 'none';
 }
 
+
+/* ── 파일 업로드 패널 Ctrl+V 붙여넣기 ─────────────────────────── */
+function handleFilePanelPaste(e) {
+  e.preventDefault();
+  var items = e.clipboardData && e.clipboardData.items;
+  if (!items) return;
+
+  var handled = false;
+
+  for (var i = 0; i < items.length; i++) {
+    var item = items[i];
+
+    /* ① 파일 (복사한 파일 자체) */
+    if (item.kind === 'file') {
+      var file = item.getAsFile();
+      if (!file) continue;
+      var ext = file.name ? file.name.split('.').pop().toLowerCase() : '';
+      /* 이미지 파일이면 img 타입으로 처리 */
+      if (item.type.indexOf('image') !== -1) {
+        handleFile([file], 'img');
+      } else if (ext === 'pdf') {
+        handleFile([file], 'pdf');
+      } else if (ext === 'xlsx' || ext === 'xls') {
+        handleFile([file], 'xls');
+      } else {
+        handleFile([file], 'txt');
+      }
+      handled = true;
+      break;
+    }
+
+    /* ② 이미지 (캡처·스크린샷) */
+    if (item.type.indexOf('image') !== -1) {
+      var blob = item.getAsFile();
+      if (!blob) continue;
+      var imgFile = new File([blob], '\uBD99\uC5EC\uB123\uAE30_\uC774\uBBF8\uC9C0.png', {type: blob.type});
+      animProg('pf-txt');
+      uploadLog.unshift({
+        name: imgFile.name, size: fmtSize(imgFile.size),
+        ext: 'png', ts: new Date().toLocaleTimeString(), file: imgFile
+      });
+      setTimeout(function(){ renderLog(); parseMockImage(imgFile); }, 600);
+      handled = true;
+      break;
+    }
+  }
+
+  /* ③ 텍스트 (Ctrl+C로 복사한 텍스트) */
+  if (!handled) {
+    var text = e.clipboardData.getData('text/plain');
+    if (text && text.trim()) {
+      var txtFile = {
+        name: '\uBD99\uC5EC\uB123\uAE30_\uD14D\uC2A4\uD2B8.txt',
+        size: new Blob([text]).size,
+        _content: text
+      };
+      animProg('pf-txt');
+      uploadLog.unshift({
+        name: txtFile.name, size: fmtSize(txtFile.size),
+        ext: 'txt', ts: new Date().toLocaleTimeString(), file: txtFile
+      });
+      setTimeout(function(){
+        renderLog();
+        parsePastedText(text);
+      }, 600);
+      /* 붙여넣기 완료 시각 피드백 */
+      var card = document.getElementById('tpanel-file');
+      if (card) {
+        card.style.borderColor = 'var(--blue)';
+        card.style.background  = 'var(--blue-l)';
+        setTimeout(function(){
+          card.style.borderColor = '';
+          card.style.background  = '';
+        }, 800);
+      }
+    }
+  }
+}
+
+function parseMockImage(file) {
+  var sec = document.getElementById('parseSection');
+  var con = document.getElementById('parseContent');
+  if (!con) return;
+  var h = '<div class="parse-title">\u1F4CB \uBD99\uC5EC\uB123\uAE30 \uC774\uBBF8\uC9C0 \uD30C\uC2F1 \uACB0\uACFC</div>';
+  h += '<div class="parse-row">';
+  h += '<div class="parse-item"><div class="parse-key">\uC720\uD615</div><div class="parse-val">\uC774\uBBF8\uC9C0(\uCEA1\uCC98)</div></div>';
+  h += '<div class="parse-item"><div class="parse-key">\uD06C\uAE30</div><div class="parse-val">'+fmtSize(file.size)+'</div></div>';
+  h += '</div>';
+  h += '<div style="margin-top:8px;font-size:12px;color:var(--txt2)">\uC774\uBBF8\uC9C0\uAC00 \uC5C5\uB85C\uB4DC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uBB38\uC11C\uC791\uC131\uC5D0 \uCCA8\uBD80 \uC774\uBBF8\uC9C0\uB85C \uD65C\uC6A9\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.</div>';
+  con.innerHTML = h;
+  if (sec) { sec.style.display='block'; sec.scrollIntoView({behavior:'smooth'}); }
+}
+
+function parsePastedText(text) {
+  var sec = document.getElementById('parseSection');
+  var con = document.getElementById('parseContent');
+  if (!con) return;
+  var isKakao = /\d{4}년 \d{1,2}월 \d{1,2}일/.test(text) || /(오전|오후)\s*\d+:\d+/.test(text);
+  var lines = text.split('\n').length;
+  var words = text.trim().split(/\s+/).length;
+  var h = '<div class="parse-title">\u1F4CB \uBD99\uC5EC\uB123\uAE30 \uD14D\uC2A4\uD2B8 \uD30C\uC2F1 \uACB0\uACFC</div><div class="parse-row">';
+  h += '<div class="parse-item"><div class="parse-key">\uC720\uD615</div><div class="parse-val">'+(isKakao?'\uCE74\uCE74\uC624\uD1A1 \uB300\uD654':'\uC77C\uBC18 \uD14D\uC2A4\uD2B8')+'</div></div>';
+  h += '<div class="parse-item"><div class="parse-key">\uC904 \uC218</div><div class="parse-val">'+lines+'\uC904</div></div>';
+  h += '<div class="parse-item"><div class="parse-key">\uB2E8\uC5B4 \uC218</div><div class="parse-val">'+words+'\uAC1C</div></div>';
+  h += '<div class="parse-item"><div class="parse-key">\uD06C\uAE30</div><div class="parse-val">'+fmtSize(new Blob([text]).size)+'</div></div></div>';
+  h += '<div style="margin-top:9px"><div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:5px">\uB0B4\uC6A9 \uBBF8\uB9AC\uBCF4\uAE30 (\uCC98\uC74C 300\uC790)</div>';
+  h += '<div style="font-size:12px;color:var(--txt2);background:#f5f7fc;border:1px solid var(--border);border-radius:7px;padding:9px 12px;white-space:pre-wrap;line-height:1.7;max-height:130px;overflow:auto">'+text.substring(0,300).replace(/</g,'&lt;').replace(/>/g,'&gt;')+(text.length>300?'...':'')+'</div></div>';
+  con.innerHTML = h;
+  if (sec) { sec.style.display='block'; sec.scrollIntoView({behavior:'smooth'}); }
+}
+
+
+/* ── 전체 페이지 Ctrl+V 감지 (포커스 위치 무관) ─────────────── */
+document.addEventListener('paste', function(e) {
+  /* pasteZone이나 tpanel-file이 포커스 중이면 해당 핸들러에서 처리 */
+  var active = document.activeElement;
+  if (active && (active.id === 'pasteZone' || active.id === 'tpanel-file')) return;
+  /* contenteditable 요소면 무시 */
+  if (active && active.contentEditable === 'true') return;
+  /* 그 외 위치에서 Ctrl+V 하면 업로드 탭 > 파일패널로 자동 전달 */
+  var items = e.clipboardData && e.clipboardData.items;
+  var hasContent = false;
+  if (items) {
+    for (var i=0; i<items.length; i++) {
+      if (items[i].kind==='file' || items[i].type.indexOf('image')!==-1) { hasContent=true; break; }
+    }
+  }
+  var text = e.clipboardData && e.clipboardData.getData('text/plain');
+  if (!hasContent && (!text || !text.trim())) return;
+
+  /* 업로드 탭으로 이동 후 처리 */
+  var tabs = document.querySelectorAll('.tab');
+  var uploadTab = null;
+  tabs.forEach(function(t){ if(t.textContent.indexOf('\ub370\uc774\ud130 \uc5c5\ub85c\ub4dc')!==-1) uploadTab=t; });
+  if (uploadTab) showTab('upload', uploadTab);
+  switchTxtTab('file');
+  /* 파일 패널에 포커스 후 paste 이벤트 재전달 */
+  setTimeout(function(){
+    var panel = document.getElementById('tpanel-file');
+    if (panel) {
+      panel.focus();
+      handleFilePanelPaste(e);
+    }
+  }, 200);
+});
+
 </script>
 <style>
 :root{
@@ -961,7 +1107,7 @@ body{font-family:"Malgun Gothic","Apple SD Gothic Neo","나눔고딕",sans-serif
   <div class="hdr-badges">
     <div class="badge-cs">HL0FRC</div>
     <div class="badge-acting">총무대행 HL2OBL</div>
-    <div class="badge-ver">v2.7</div>
+    <div class="badge-ver">v2.8</div>
   </div>
 </div></div>
 
@@ -1116,13 +1262,23 @@ body{font-family:"Malgun Gothic","Apple SD Gothic Neo","나눔고딕",sans-serif
         </div>
 
         <!-- 파일 업로드 패널 -->
-        <div id="tpanel-file" class="upload-card" style="border:none;border-radius:0;margin:0"
-             ondragover="dragOver(event,'tpanel-file')" ondragleave="dragLeave('tpanel-file')" ondrop="dropFile(event,'txt')">
-          <input type="file" accept=".txt,.csv" onchange="handleFile(this.files,'txt')">
+        <div id="tpanel-file" class="upload-card" style="border:none;border-radius:0;margin:0;outline:none"
+             tabindex="0"
+             ondragover="dragOver(event,'tpanel-file')" ondragleave="dragLeave('tpanel-file')"
+             ondrop="dropFile(event,'txt')" onpaste="handleFilePanelPaste(event)"
+             onclick="this.focus()">
+          <input type="file" accept=".txt,.csv" onchange="handleFile(this.files,'txt')" id="fileInputTxt">
           <div class="up-icon">&#128172;</div>
           <div class="up-title">텍스트 / 카카오톡</div>
-          <div class="up-desc">카카오톡 대화 내보내기(.txt)<br>활동일지 CSV 파일</div>
-          <div class="up-ext"><span class="ext-tag ext-txt">.TXT</span><span class="ext-tag ext-txt">.CSV</span></div>
+          <div class="up-desc">
+            파일 클릭·드래그 또는<br>
+            <b style="color:var(--blue)">Ctrl+C 복사 후 여기 클릭 → Ctrl+V</b>
+          </div>
+          <div class="up-ext">
+            <span class="ext-tag ext-txt">.TXT</span>
+            <span class="ext-tag ext-txt">.CSV</span>
+            <span class="ext-tag" style="background:#e8f0fc;color:#1255a8">Ctrl+V</span>
+          </div>
           <div class="prog-bar" id="pb-txt"><div class="prog-fill" id="pf-txt"></div></div>
         </div>
 
