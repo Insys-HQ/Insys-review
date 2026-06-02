@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>HL0FRC-AI 재난대응봉사회 AI총무 v2.1</title>
+<title>HL0FRC-AI 재난대응봉사회 AI총무 v2.2</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js">
 /* ══ 월간 활동보고서 ══════════════════════════════════════════════════ */
 var ACT_ROWS = [
@@ -178,7 +178,7 @@ function printReport(){
   w.document.write('</head><body>');
   w.document.write(rdoc.innerHTML);
   w.document.write('<div style="background:#1a2744;color:#7a9cc8;text-align:center;padding:12px 24px;font-size:11px;margin-top:20px">
-  인시스 그룹 AI혁신 R&amp;D센터 &nbsp;|&nbsp; HL0FRC-AI 재난대응봉사회 AI총무 시스템 v2.1 &nbsp;|&nbsp;
+  인시스 그룹 AI혁신 R&amp;D센터 &nbsp;|&nbsp; HL0FRC-AI 재난대응봉사회 AI총무 시스템 v2.2 &nbsp;|&nbsp;
   <a href="https://github.com/Insys-HQ/Insys-review" target="_blank" style="color:#5a9ed8;text-decoration:none">GitHub</a>
 </div>
 </body></html>');
@@ -264,6 +264,7 @@ function setFbStatus(msg, state) {
     var ht = document.getElementById('hdrLedTxt');
     if(hd){ hd.style.background='#00e040'; hd.style.boxShadow='0 0 6px 2px rgba(0,220,60,.8)'; }
     if(ht){ ht.style.color='#00c040'; ht.textContent='DB 연결'; }
+    FB._retryCount = 0;
 
   } else if (state === 'err') {
     /* 빨간 LED - 연결 실패 */
@@ -294,37 +295,33 @@ function setFbStatus(msg, state) {
 
 /* Firebase SDK 동적 로드 후 연결 */
 function doConnect() {
-  var pid  = (document.getElementById('fbProjectId')        ||{}).value||'';
-  var key  = (document.getElementById('fbApiKey')           ||{}).value||'';
-  var auth = (document.getElementById('fbAuthDomain')       ||{}).value || (pid+'.firebaseapp.com');
-  var stb  = (document.getElementById('fbStorageBucket')    ||{}).value || (pid+'.appspot.com');
-  var msid = (document.getElementById('fbMessagingSenderId')||{}).value||'';
-  var aid  = (document.getElementById('fbAppId')            ||{}).value||'';
+  /* HLOFRC-AI Firebase 설정값 하드코딩 */
+  FB.cfg = {
+    apiKey:            'AIzaSyDub2cXK5h08LuAYq0Qk6I_KkfzgSMwnI4',
+    authDomain:        'hl0frc-ai.firebaseapp.com',
+    projectId:         'hl0frc-ai',
+    storageBucket:     'hl0frc-ai.firebasestorage.app',
+    messagingSenderId: '227854541265',
+    appId:             '1:227854541265:web:0385884dff3b47dba900f0'
+  };
 
-  if (!pid || !key) {
-    alert('Project ID\uC640 API Key\uB294 \uD544\uC218\uC785\uB2C8\uB2E4.');
-    return;
-  }
-
-  setFbStatus('Firebase SDK \uB85C\uB4DC \uC911...', 'wait');
-
-  FB.cfg = { apiKey:key, authDomain:auth, projectId:pid, storageBucket:stb,
-             messagingSenderId:msid, appId:aid };
-
-  /* 설정 localStorage 저장 */
+  /* localStorage에도 저장 */
   try { localStorage.setItem('fb_config', JSON.stringify(FB.cfg)); } catch(e){}
 
-  /* Firebase SDK v9 compat CDN 동적 로드 */
+  setFbStatus('파이어베이스 SDK 로드 중...', 'wait');
+
+  /* SDK 이미 로드된 경우 */
   if (window.firebase && window.firebase.firestore) {
     initFirebase();
     return;
   }
 
+  /* Firebase SDK CDN 동적 로드 */
+  var loaded = 0;
   var scripts = [
     'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js',
     'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js'
   ];
-  var loaded = 0;
   scripts.forEach(function(src) {
     var s = document.createElement('script');
     s.src = src;
@@ -333,7 +330,7 @@ function doConnect() {
       if (loaded === scripts.length) initFirebase();
     };
     s.onerror = function() {
-      setFbStatus('SDK \uB85C\uB4DC \uC2E4\uD328. \uC778\uD130\uB137 \uC5F0\uACB0\uC744 \uD655\uC778\uD558\uC138\uC694.', 'err');
+      setFbStatus('SDK 로드 실패. 인터넷 연결을 확인하세요.', 'err');
     };
     document.head.appendChild(s);
   });
@@ -376,7 +373,7 @@ function initFirebase() {
 }
 
 function doDisconnect() {
-  FB.connected = false; FB.db = null;
+  FB.connected = false; FB.db = null; FB._retryCount = 99; /* 수동 해제 시 재시도 안 함 */
   var led=document.getElementById('ledLight');if(led){led.style.background='#ccc';led.style.boxShadow='0 0 0px #ccc';}
   setFbStatus('\uC5F0\uACB0\uC774 \uD574\uC81C\uB418\uC5C8\uC2B5\uB2C8\uB2E4.', 'err');
   var ds = document.getElementById('fbDataSection');
@@ -813,7 +810,7 @@ body{font-family:"Malgun Gothic","Apple SD Gothic Neo","나눔고딕",sans-serif
   <div class="hdr-badges">
     <div class="badge-cs">HL0FRC</div>
     <div class="badge-acting">총무대행 HL2OBL</div>
-    <div class="badge-ver">v2.1</div>
+    <div class="badge-ver">v2.2</div>
   </div>
 </div></div>
 
