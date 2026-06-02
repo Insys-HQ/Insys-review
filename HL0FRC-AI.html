@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>HL0FRC-AI 재난대응봉사회 AI총무 v1.8</title>
+<title>HL0FRC-AI 재난대응봉사회 AI총무 v2.0</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js">
 /* ══ 월간 활동보고서 ══════════════════════════════════════════════════ */
 var ACT_ROWS = [
@@ -178,7 +178,7 @@ function printReport(){
   w.document.write('</head><body>');
   w.document.write(rdoc.innerHTML);
   w.document.write('<div style="background:#1a2744;color:#7a9cc8;text-align:center;padding:12px 24px;font-size:11px;margin-top:20px">
-  인시스 그룹 AI혁신 R&amp;D센터 &nbsp;|&nbsp; HL0FRC-AI 재난대응봉사회 AI총무 시스템 v1.8 &nbsp;|&nbsp;
+  인시스 그룹 AI혁신 R&amp;D센터 &nbsp;|&nbsp; HL0FRC-AI 재난대응봉사회 AI총무 시스템 v2.0 &nbsp;|&nbsp;
   <a href="https://github.com/Insys-HQ/Insys-review" target="_blank" style="color:#5a9ed8;text-decoration:none">GitHub</a>
 </div>
 </body></html>');
@@ -240,27 +240,56 @@ function clearConfig() {
 }
 
 function setFbStatus(msg, state) {
-  var dot   = document.getElementById('connDot');
-  var label = document.getElementById('connLabel');
+  var led   = document.getElementById('ledLight');
+  var label = document.getElementById('ledLabel');
+  var sub   = document.getElementById('ledSub');
   var badge = document.getElementById('fbBadge');
   var btnC  = document.getElementById('btnConnect');
   var btnD  = document.getElementById('btnDisconnect');
-  if (!dot) return;
+  if (!led) return;
+
   if (state === 'ok') {
-    dot.className = 'conn-dot ok';
-    if (badge) { badge.textContent = '\uC5F0\uACB0\uB428'; badge.className = 'sec-badge badge-green'; }
-    if (btnC) btnC.style.display = 'none';
-    if (btnD) btnD.style.display = '';
+    /* 초록 LED - 연결됨 */
+    led.style.background = '#00e040';
+    led.style.boxShadow  = '0 0 10px 4px rgba(0,220,60,.7), 0 0 22px 8px rgba(0,220,60,.35)';
+    if (label) label.innerHTML = '<span style="color:#155c35">&#9679; 연결됨 — HLOFRC-AI</span>';
+    if (sub)   sub.textContent  = 'Firestore 연결 성공 — 데이터 동기화 가능';
+    if (badge) { badge.textContent = '연결됨'; badge.style.cssText = 'font-size:12px;padding:5px 14px;border-radius:20px;font-weight:700;background:#eaf5ee;color:#155c35'; }
+    if (btnC)  btnC.style.display = 'none';
+    if (btnD)  btnD.style.display = '';
+    var ds = document.getElementById('fbDataSection');
+    if (ds) ds.style.display = 'block';
+    /* 헤더 LED 동기화 */
+    var hd = document.getElementById('hdrLedDot');
+    var ht = document.getElementById('hdrLedTxt');
+    if(hd){ hd.style.background='#00e040'; hd.style.boxShadow='0 0 6px 2px rgba(0,220,60,.8)'; }
+    if(ht){ ht.style.color='#00c040'; ht.textContent='DB 연결'; }
+
   } else if (state === 'err') {
-    dot.className = 'conn-dot err';
-    if (badge) { badge.textContent = '\uC5F0\uACB0 \uC2E4\uD328'; badge.className = 'sec-badge badge-red'; }
-    if (btnC) btnC.style.display = '';
-    if (btnD) btnD.style.display = 'none';
+    /* 빨간 LED - 연결 실패 */
+    led.style.background = '#ff2020';
+    led.style.boxShadow  = '0 0 10px 4px rgba(255,30,30,.7), 0 0 22px 8px rgba(255,30,30,.35)';
+    if (label) label.innerHTML = '<span style="color:#b52a1c">&#9679; 연결 실패</span>';
+    if (sub)   sub.textContent  = msg;
+    if (badge) { badge.textContent = '실패'; badge.style.cssText = 'font-size:12px;padding:5px 14px;border-radius:20px;font-weight:700;background:#fdf0ee;color:#b52a1c'; }
+    if (btnC)  btnC.style.display = '';
+    if (btnD)  btnD.style.display = 'none';
+
   } else {
-    dot.style.background = '#f0c060';
-    if (badge) { badge.textContent = '\uC5F0\uACB0 \uC911'; badge.className = 'sec-badge badge-amber'; }
+    /* 주황 LED 점멸 - 연결 중 */
+    led.style.background = '#ffaa00';
+    led.style.boxShadow  = '0 0 10px 4px rgba(255,170,0,.7), 0 0 22px 8px rgba(255,170,0,.35)';
+    if (label) label.innerHTML = '<span style="color:#8a4200">&#9679; 연결 중...</span>';
+    if (sub)   sub.textContent  = msg;
+    if (badge) { badge.textContent = '연결중'; badge.style.cssText = 'font-size:12px;padding:5px 14px;border-radius:20px;font-weight:700;background:#fdf3e7;color:#8a4200'; }
+    /* 점멸 효과 */
+    var blink = 0;
+    var blinkTimer = setInterval(function(){
+      blink++;
+      led.style.opacity = (blink % 2 === 0) ? '1' : '0.3';
+      if(blink > 20) clearInterval(blinkTimer);
+    }, 300);
   }
-  if (label) label.textContent = msg;
 }
 
 /* Firebase SDK 동적 로드 후 연결 */
@@ -348,6 +377,7 @@ function initFirebase() {
 
 function doDisconnect() {
   FB.connected = false; FB.db = null;
+  var led=document.getElementById('ledLight');if(led){led.style.background='#ccc';led.style.boxShadow='0 0 0px #ccc';}
   setFbStatus('\uC5F0\uACB0\uC774 \uD574\uC81C\uB418\uC5C8\uC2B5\uB2C8\uB2E4.', 'err');
   var ds = document.getElementById('fbDataSection');
   if (ds) ds.style.display = 'none';
@@ -775,13 +805,13 @@ body{font-family:"Malgun Gothic","Apple SD Gothic Neo","나눔고딕",sans-serif
     <div class="cross">+</div>
     <div>
       <div class="hdr-title">대한적십자사 서울특별시지사 재난대응봉사회</div>
-      <div class="hdr-sub">AI 총무 시스템 &nbsp;|&nbsp; 문서관리 &middot; 대시보드 &middot; 회장 승인 &middot; Firebase 연동</div>
+      <div class="hdr-sub">AI 총무 시스템 &nbsp;|&nbsp; 문서관리 &middot; 대시보드 &middot; 회장 승인 &middot; Firebase 연동 &nbsp;|&nbsp; <span id="hdrLed" style="display:inline-flex;align-items:center;gap:5px"><span id="hdrLedDot" style="width:9px;height:9px;border-radius:50%;background:#666;display:inline-block;transition:all .4s"></span><span id="hdrLedTxt" style="font-size:10px;color:#888">DB 미연결</span></span></div>
     </div>
   </div>
   <div class="hdr-badges">
     <div class="badge-cs">HL0FRC</div>
     <div class="badge-acting">총무대행 HL2OBL</div>
-    <div class="badge-ver">v1.8</div>
+    <div class="badge-ver">v2.0</div>
   </div>
 </div></div>
 
@@ -1156,23 +1186,33 @@ body{font-family:"Malgun Gothic","Apple SD Gothic Neo","나눔고딕",sans-serif
   <div class="section">
     <div class="sec-hdr">
       <span class="sec-title">&#128293; Firebase Firestore 연결 상태</span>
-      <span class="sec-badge badge-red" id="fbBadge">미연결</span>
     </div>
 
-    <!-- 연결 상태 표시 -->
-    <div class="conn-status" style="margin-bottom:14px">
-      <div class="conn-dot" id="connDot"></div>
-      <div style="flex:1">
-        <div class="conn-label" id="connLabel">Firebase 미연결</div>
-        <div style="font-size:12px;color:var(--txt3);margin-top:2px" id="connSub">연결 버튼을 눌러 HLOFRC-AI 프로젝트에 연결하세요</div>
+    <!-- LED 연결 상태 표시 -->
+    <div style="display:flex;align-items:center;gap:20px;padding:18px 20px;background:#f5f7fc;border-radius:10px;border:1px solid var(--border);margin-bottom:14px">
+
+      <!-- LED 등 -->
+      <div style="position:relative;flex-shrink:0">
+        <div id="ledLight" style="width:28px;height:28px;border-radius:50%;background:#ccc;box-shadow:0 0 0px #ccc;transition:all .4s ease"></div>
       </div>
-      <button class="btn-p" onclick="doConnect()" id="btnConnect">&#128293; 연결</button>
-      <button class="btn-o" onclick="doDisconnect()" id="btnDisconnect" style="display:none">연결 해제</button>
+
+      <!-- 상태 텍스트 -->
+      <div style="flex:1">
+        <div style="font-size:15px;font-weight:700;color:var(--navy)" id="ledLabel">&#9679; 미연결</div>
+        <div style="font-size:12px;color:var(--txt3);margin-top:3px" id="ledSub">Firebase에 연결되지 않은 상태입니다</div>
+      </div>
+
+      <!-- 배지 -->
+      <div id="fbBadge" style="font-size:12px;padding:5px 14px;border-radius:20px;font-weight:700;background:#eee;color:#888">미연결</div>
+
+      <!-- 버튼 -->
+      <button class="btn-p" onclick="doConnect()" id="btnConnect" style="min-width:80px">연결</button>
+      <button class="btn-o" onclick="doDisconnect()" id="btnDisconnect" style="display:none;min-width:80px">해제</button>
     </div>
 
     <!-- DB 현황 (연결 후 표시) -->
     <div id="fbDataSection" style="display:none">
-      <div class="sec-hdr" style="margin-top:4px">
+      <div class="sec-hdr">
         <span class="sec-title">&#128202; Firestore DB 현황</span>
         <button class="btn-p" style="font-size:12px;padding:6px 14px" onclick="syncAllData()">&#8593; 전체 데이터 동기화</button>
       </div>
