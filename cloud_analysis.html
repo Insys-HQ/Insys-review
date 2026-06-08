@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>인시스 그룹 클라우드·DB 인프라 전략 분석</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #1a3c6e;
+    --primary-light: #2a5298;
+    --accent: #0e6fba;
+    --accent2: #e8700a;
+    --bg: #f4f6fa;
+    --surface: #ffffff;
+    --border: #d0d8e8;
+    --text: #1e2a3a;
+    --text-mid: #3a4a5c;
+    --text-light: #5a6a7c;
+    --good: #1a7a45;
+    --good-bg: #e8f5ee;
+    --warn: #a05a00;
+    --warn-bg: #fff3e0;
+    --bad: #a01a1a;
+    --bad-bg: #fdeaea;
+    --head-bg: #e8eef8;
+    --section-head: #dce6f5;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .cover {
+    background: linear-gradient(135deg, #1a3c6e 0%, #0e6fba 60%, #1a5c9e 100%);
+    color: #fff;
+    padding: 28px 0 22px;
+    text-align: center;
+  }
+  .cover-inner { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+  .cover h1 { font-size: 22px; font-weight: 900; letter-spacing: -0.5px; margin-bottom: 6px; }
+  .cover .sub { font-size: 13px; font-weight: 400; opacity: 0.85; margin-bottom: 10px; }
+  .cover .meta { display: flex; justify-content: center; gap: 28px; font-size: 11px; opacity: 0.75; flex-wrap: wrap; }
+  .meta span { display: flex; align-items: center; gap: 4px; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 18px 16px 30px; }
+
+  /* TOC */
+  .toc-bar {
+    background: var(--primary);
+    color: #fff;
+    border-radius: 8px;
+    padding: 10px 18px;
+    margin-bottom: 18px;
+    display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
+  }
+  .toc-bar span { font-size: 11px; opacity: 0.7; margin-right: 4px; }
+  .toc-bar a {
+    color: #b8d4f8; font-size: 11px; text-decoration: none; padding: 2px 8px;
+    border: 1px solid rgba(255,255,255,0.25); border-radius: 12px;
+    transition: background 0.15s;
+  }
+  .toc-bar a:hover { background: rgba(255,255,255,0.15); color: #fff; }
+
+  .section { margin-bottom: 22px; }
+  .section-title {
+    font-size: 14px; font-weight: 700; color: var(--primary);
+    border-left: 4px solid var(--accent); padding: 5px 0 5px 10px;
+    margin-bottom: 10px; background: var(--section-head);
+    border-radius: 0 6px 6px 0;
+  }
+  .section-title .num { font-size: 11px; color: var(--accent2); margin-right: 6px; }
+
+  /* Architecture diagram */
+  .arch-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .arch-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    border-top: 3px solid var(--accent);
+  }
+  .arch-card.orange { border-top-color: var(--accent2); }
+  .arch-card.green { border-top-color: #1a8a45; }
+  .arch-card h4 { font-size: 12px; font-weight: 700; color: var(--primary); margin-bottom: 6px; }
+  .arch-card ul { list-style: none; }
+  .arch-card ul li { font-size: 11px; color: var(--text-mid); padding: 2px 0; padding-left: 10px; position: relative; }
+  .arch-card ul li::before { content: '▸'; position: absolute; left: 0; color: var(--accent); font-size: 9px; top: 3px; }
+
+  /* flow */
+  .flow-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+  }
+  .flow-steps {
+    display: flex; align-items: center; gap: 0; flex-wrap: wrap;
+    justify-content: center;
+  }
+  .flow-step {
+    background: var(--head-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    text-align: center;
+    min-width: 90px;
+    font-size: 11px;
+  }
+  .flow-step .icon { font-size: 16px; display: block; margin-bottom: 2px; }
+  .flow-step .label { font-weight: 600; color: var(--primary); }
+  .flow-arrow { font-size: 16px; color: var(--accent); padding: 0 5px; font-weight: 700; }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  th {
+    background: var(--head-bg); color: var(--primary);
+    padding: 6px 8px; font-weight: 700;
+    border: 1px solid var(--border);
+    text-align: center; white-space: nowrap;
+  }
+  td { padding: 5px 8px; border: 1px solid var(--border); color: var(--text-mid); vertical-align: top; }
+  tr:nth-child(even) td { background: #f8fafd; }
+  .t-center { text-align: center; }
+  .t-right { text-align: right; }
+
+  /* rating dots */
+  .rating { display: flex; gap: 2px; justify-content: center; align-items: center; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #d0d8e8; }
+  .dot.on { background: var(--accent); }
+  .dot.on2 { background: var(--accent2); }
+  .dot.on3 { background: var(--good); }
+
+  /* badge */
+  .badge {
+    display: inline-block; padding: 1px 7px; border-radius: 10px;
+    font-size: 10px; font-weight: 700; white-space: nowrap;
+  }
+  .badge-blue { background: #dbeafe; color: #1a3c8e; }
+  .badge-green { background: #d1fae5; color: #065f46; }
+  .badge-orange { background: #fff3cd; color: #78350f; }
+  .badge-red { background: #fee2e2; color: #7f1d1d; }
+  .badge-gray { background: #e5e7eb; color: #374151; }
+  .badge-purple { background: #ede9fe; color: #4c1d95; }
+
+  /* pros/cons */
+  .pc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .pc-box { background: var(--surface); border: 1px solid var(--border); border-radius: 7px; padding: 10px 12px; }
+  .pc-box h5 { font-size: 11px; font-weight: 700; margin-bottom: 5px; }
+  .pc-pros h5 { color: var(--good); }
+  .pc-cons h5 { color: var(--bad); }
+  .pc-box ul { list-style: none; }
+  .pc-box ul li { font-size: 11px; color: var(--text-mid); padding: 1px 0 1px 14px; position: relative; }
+  .pc-pros ul li::before { content: '✓'; position: absolute; left: 0; color: var(--good); font-weight: 700; }
+  .pc-cons ul li::before { content: '✗'; position: absolute; left: 0; color: var(--bad); font-weight: 700; }
+
+  /* provider section */
+  .provider-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .provider-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .provider-head {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px;
+  }
+  .provider-icon {
+    width: 36px; height: 36px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+  .provider-head h4 { font-size: 13px; font-weight: 700; color: var(--primary); }
+  .provider-head p { font-size: 10px; color: var(--text-light); }
+  .provider-body { padding: 0 14px 12px; }
+  .provider-body table th { font-size: 10px; padding: 4px 6px; }
+  .provider-body table td { font-size: 10px; padding: 3px 6px; }
+
+  /* cost estimate */
+  .cost-table { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 14px; }
+  .cost-table table th { font-size: 11px; }
+  .cost-table table td { font-size: 11px; }
+
+  /* recommendation box */
+  .rec-box {
+    background: linear-gradient(135deg, #e8f0fe 0%, #f0f7ff 100%);
+    border: 2px solid var(--accent);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 14px;
+  }
+  .rec-box h4 { font-size: 13px; font-weight: 900; color: var(--primary); margin-bottom: 10px; }
+  .rec-phases { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+  .rec-phase {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 10px 12px;
+  }
+  .rec-phase .phase-num {
+    font-size: 10px; font-weight: 700; color: #fff;
+    background: var(--accent);
+    border-radius: 10px; padding: 1px 8px;
+    display: inline-block; margin-bottom: 5px;
+  }
+  .rec-phase h5 { font-size: 11px; font-weight: 700; color: var(--primary); margin-bottom: 4px; }
+  .rec-phase p { font-size: 10px; color: var(--text-mid); }
+
+  /* final recommend */
+  .final-box {
+    background: var(--primary);
+    color: #fff;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+  }
+  .final-box h4 { font-size: 14px; font-weight: 900; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.25); padding-bottom: 7px; }
+  .final-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .final-item { background: rgba(255,255,255,0.1); border-radius: 7px; padding: 10px 12px; }
+  .final-item h5 { font-size: 11px; font-weight: 700; margin-bottom: 4px; color: #b8d4f8; }
+  .final-item p { font-size: 11px; color: rgba(255,255,255,0.9); }
+  .final-item strong { color: #ffd080; }
+
+  /* note */
+  .note-bar {
+    background: var(--warn-bg);
+    border-left: 3px solid var(--accent2);
+    padding: 8px 12px;
+    border-radius: 0 6px 6px 0;
+    font-size: 11px;
+    color: var(--warn);
+    margin-bottom: 12px;
+  }
+
+  /* highlight row */
+  .highlight-row td { background: #fffbe8 !important; font-weight: 600; }
+  .best-row td { background: #e8f5ee !important; font-weight: 700; }
+
+  /* footer */
+  .footer {
+    text-align: center; padding: 12px 0; font-size: 10px;
+    color: var(--text-light); border-top: 1px solid var(--border);
+    margin-top: 20px;
+  }
+
+  @media (max-width: 700px) {
+    .arch-grid, .provider-grid, .rec-phases, .final-grid { grid-template-columns: 1fr; }
+    .pc-grid { grid-template-columns: 1fr; }
+    .flow-steps { gap: 4px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="cover-inner">
+    <h1>인시스 그룹 클라우드·DB 인프라 전략 분석</h1>
+    <div class="sub">사내 챗봇 · ERP · AI 비전검사 · 업무자동화 통합 데이터 플랫폼 구축을 위한 클라우드 선택 가이드</div>
+    <div class="meta">
+      <span>📅 2026년 6월</span>
+      <span>🏢 인시스 그룹 AI혁신 R&D센터</span>
+      <span>📄 v1.0</span>
+      <span>👤 ys.kim@in-sys.co.kr</span>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="toc-bar">
+    <span>목차 ▸</span>
+    <a href="#s1">1. 시스템 구성도</a>
+    <a href="#s2">2. 데이터 유형 분류</a>
+    <a href="#s3">3. 국내 클라우드 비교</a>
+    <a href="#s4">4. 글로벌 클라우드 비교</a>
+    <a href="#s5">5. 종합 비교표</a>
+    <a href="#s6">6. 비용 추정</a>
+    <a href="#s7">7. 최종 추천</a>
+  </div>
+
+  <!-- 1. 시스템 구성 -->
+  <div class="section" id="s1">
+    <div class="section-title"><span class="num">01</span>인시스 그룹 통합 데이터 시스템 구성도</div>
+    <div class="arch-grid">
+      <div class="arch-card">
+        <h4>🏭 데이터 생성 레이어 (Sources)</h4>
+        <ul>
+          <li>홈페이지 / 인트라넷</li>
+          <li>ERP (동생 개발 SaaS, AWS)</li>
+          <li>재고관리 WMS (shinchon.html)</li>
+          <li>출퇴근·현장 GPS 앱</li>
+          <li>AI 비전검사기 영상</li>
+          <li>엑셀·워드·PDF 문서</li>
+          <li>인사기록·급여 데이터</li>
+          <li>연구노트·특허자료</li>
+        </ul>
+      </div>
+      <div class="arch-card orange">
+        <h4>🗄️ 저장·처리 레이어 (Core DB)</h4>
+        <ul>
+          <li>정형 DB: PostgreSQL / MySQL</li>
+          <li>문서 저장: Object Storage (S3급)</li>
+          <li>벡터 DB: 챗봇 RAG용 (pgvector 등)</li>
+          <li>영상 저장: 대용량 blob/NAS</li>
+          <li>검색엔진: 전문 검색 (Elasticsearch)</li>
+          <li>캐시: Redis</li>
+        </ul>
+      </div>
+      <div class="arch-card green">
+        <h4>🤖 서비스 레이어 (AI Apps)</h4>
+        <ul>
+          <li>사내 AI 챗봇 (RAG 기반)</li>
+          <li>자동 문서 작성 (템플릿 엔진)</li>
+          <li>ERP API 연동 브릿지</li>
+          <li>AI 비전검사 학습 파이프라인</li>
+          <li>직원별 권한 관리</li>
+          <li>모바일/웹 인터페이스</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="flow-box">
+      <div style="font-size:11px;font-weight:700;color:var(--primary);margin-bottom:8px;">데이터 흐름 (직원 챗봇 사용 시나리오)</div>
+      <div class="flow-steps">
+        <div class="flow-step"><span class="icon">👤</span><span class="label">직원 질문</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step"><span class="icon">🤖</span><span class="label">AI 챗봇</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step"><span class="icon">🔍</span><span class="label">벡터 검색</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step"><span class="icon">🗄️</span><span class="label">사내 DB</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step"><span class="icon">📄</span><span class="label">템플릿 적용</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step"><span class="icon">✅</span><span class="label">문서 자동생성</span></div>
+      </div>
+    </div>
+
+    <div class="note-bar">
+      ⚠️ <strong>핵심 조건:</strong> 동생의 ERP(AWS)와 API 연동 필수 → 국내 클라우드 선택 시 AWS Seoul 리전과의 레이턴시·데이터 전송비 고려 필요
+    </div>
+  </div>
+
+  <!-- 2. 데이터 유형 분류 -->
+  <div class="section" id="s2">
+    <div class="section-title"><span class="num">02</span>저장 데이터 유형 분류 및 요구사항</div>
+    <div class="cost-table">
+      <table>
+        <thead>
+          <tr>
+            <th>데이터 유형</th>
+            <th>예시</th>
+            <th>예상 용량</th>
+            <th>DB 종류</th>
+            <th>개인정보</th>
+            <th>보안등급</th>
+            <th>비고</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>인사·급여</strong></td>
+            <td>직원 1,060명 정보, 급여대장</td>
+            <td>~5 GB</td>
+            <td>RDB (PostgreSQL)</td>
+            <td class="t-center"><span class="badge badge-red">민감</span></td>
+            <td class="t-center"><span class="badge badge-red">최고</span></td>
+            <td>개인정보보호법 적용</td>
+          </tr>
+          <tr>
+            <td><strong>ERP 연동 데이터</strong></td>
+            <td>회계·재무·구매 데이터</td>
+            <td>~20 GB</td>
+            <td>RDB + API</td>
+            <td class="t-center"><span class="badge badge-orange">주의</span></td>
+            <td class="t-center"><span class="badge badge-red">최고</span></td>
+            <td>동생 AWS ERP와 API 연동</td>
+          </tr>
+          <tr>
+            <td><strong>사무 문서</strong></td>
+            <td>엑셀·워드·PDF, 계약서</td>
+            <td>~50 GB</td>
+            <td>Object Storage</td>
+            <td class="t-center"><span class="badge badge-orange">일부</span></td>
+            <td class="t-center"><span class="badge badge-orange">중간</span></td>
+            <td>챗봇 RAG 인덱싱 대상</td>
+          </tr>
+          <tr>
+            <td><strong>AI 비전검사 영상</strong></td>
+            <td>베어링 불량검사 이미지·영상</td>
+            <td>~500 GB~수TB</td>
+            <td>Object Storage / NAS</td>
+            <td class="t-center"><span class="badge badge-gray">해당없음</span></td>
+            <td class="t-center"><span class="badge badge-blue">낮음</span></td>
+            <td>학습용 대용량 데이터</td>
+          </tr>
+          <tr>
+            <td><strong>재고·WMS</strong></td>
+            <td>베어링 190종 입출고</td>
+            <td>~2 GB</td>
+            <td>Firestore / RDB</td>
+            <td class="t-center"><span class="badge badge-gray">해당없음</span></td>
+            <td class="t-center"><span class="badge badge-orange">중간</span></td>
+            <td>현재 Firebase 운용중</td>
+          </tr>
+          <tr>
+            <td><strong>챗봇 벡터 인덱스</strong></td>
+            <td>문서 임베딩 벡터</td>
+            <td>~10 GB</td>
+            <td>Vector DB (pgvector)</td>
+            <td class="t-center"><span class="badge badge-gray">해당없음</span></td>
+            <td class="t-center"><span class="badge badge-blue">낮음</span></td>
+            <td>RAG 검색 핵심</td>
+          </tr>
+          <tr>
+            <td><strong>연구노트·특허</strong></td>
+            <td>R&D센터 연구 기록</td>
+            <td>~5 GB</td>
+            <td>Document DB</td>
+            <td class="t-center"><span class="badge badge-orange">주의</span></td>
+            <td class="t-center"><span class="badge badge-red">최고</span></td>
+            <td>영업비밀 보호 필요</td>
+          </tr>
+          <tr>
+            <td><strong>출퇴근·GPS 로그</strong></td>
+            <td>현장 위치 인증 기록</td>
+            <td>~3 GB/년</td>
+            <td>TimeSeries / RDB</td>
+            <td class="t-center"><span class="badge badge-red">민감</span></td>
+            <td class="t-center"><span class="badge badge-orange">중간</span></td>
+            <td>위치정보법 적용</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 3. 국내 클라우드 -->
+  <div class="section" id="s3">
+    <div class="section-title"><span class="num">03</span>국내 주요 클라우드 서비스 상세 비교</div>
+    <div class="provider-grid">
+
+      <!-- NCP -->
+      <div class="provider-card">
+        <div class="provider-head" style="background:#e8f5e9;">
+          <div class="provider-icon" style="background:#00c73c; color:#fff;">N</div>
+          <div>
+            <h4>네이버 클라우드 (NCP)</h4>
+            <p>국내 CSP 시장점유 1위 · 연성장률 26.1%</p>
+          </div>
+          <div style="margin-left:auto;"><span class="badge badge-green">★ 추천 1순위</span></div>
+        </div>
+        <div class="provider-body">
+          <table>
+            <tr><th>항목</th><th>내용</th></tr>
+            <tr><td>서버(4vC/16GB)</td><td>월 <strong>181,740원</strong> (가장 저렴)</td></tr>
+            <tr><td>Object Storage</td><td>100GB 약 10,000원/월</td></tr>
+            <tr><td>DB (PostgreSQL)</td><td>Cloud DB for MySQL/PG 지원</td></tr>
+            <tr><td>AI·LLM</td><td>HyperCLOVA X (한국어 특화)</td></tr>
+            <tr><td>RAG·벡터</td><td>AI Search 서비스 지원</td></tr>
+            <tr><td>데이터센터</td><td>서울, 부산 (국내 전용)</td></tr>
+            <tr><td>한국어 지원</td><td>24시간 한국어 기술지원</td></tr>
+            <tr><td>개인정보 처리</td><td>국내 서버 → PIPA 자동 충족</td></tr>
+          </table>
+          <div class="pc-grid" style="margin-top:8px;">
+            <div class="pc-box pc-pros">
+              <h5>✓ 장점</h5>
+              <ul>
+                <li>국내 최저가 서버</li>
+                <li>한국어 AI (HyperCLOVA X)</li>
+                <li>220개+ 서비스</li>
+                <li>개인정보법 자동 준수</li>
+                <li>CSAP 인증 보유</li>
+              </ul>
+            </div>
+            <div class="pc-box pc-cons">
+              <h5>✗ 단점</h5>
+              <ul>
+                <li>글로벌 리전 없음</li>
+                <li>AWS 대비 생태계 작음</li>
+                <li>GPU 서버 물량 부족</li>
+                <li>MSP 파트너 비교적 적음</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- KT Cloud -->
+      <div class="provider-card">
+        <div class="provider-head" style="background:#e8f0ff;">
+          <div class="provider-icon" style="background:#e91e63; color:#fff;">K</div>
+          <div>
+            <h4>KT 클라우드</h4>
+            <p>통신 인프라 기반 · 공공/금융 특화</p>
+          </div>
+          <div style="margin-left:auto;"><span class="badge badge-blue">참고용</span></div>
+        </div>
+        <div class="provider-body">
+          <table>
+            <tr><th>항목</th><th>내용</th></tr>
+            <tr><td>서버(4vC/16GB)</td><td>월 <strong>223,550원</strong> (국내 중 최고가)</td></tr>
+            <tr><td>Object Storage</td><td>중간 수준</td></tr>
+            <tr><td>DB</td><td>DB서비스, Tibero 공식지원</td></tr>
+            <tr><td>AI·LLM</td><td>MS Azure AI 공동 개발</td></tr>
+            <tr><td>네트워크</td><td>5G·엣지 컴퓨팅 강점</td></tr>
+            <tr><td>데이터센터</td><td>서울, 수도권, 부산</td></tr>
+            <tr><td>공공 인증</td><td>CSAP, CC인증 보유</td></tr>
+            <tr><td>기술지원</td><td>24시간 한국어</td></tr>
+          </table>
+          <div class="pc-grid" style="margin-top:8px;">
+            <div class="pc-box pc-pros">
+              <h5>✓ 장점</h5>
+              <ul>
+                <li>통신망 안정성 최고</li>
+                <li>공공기관 경험 풍부</li>
+                <li>MS AI 서비스 연동</li>
+                <li>24/7 기술지원</li>
+              </ul>
+            </div>
+            <div class="pc-box pc-cons">
+              <h5>✗ 단점</h5>
+              <ul>
+                <li>동일 사양 대비 최고가</li>
+                <li>AI/ML 서비스 약함</li>
+                <li>스타트업·SMB 생태계 약함</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- NHN Cloud -->
+      <div class="provider-card">
+        <div class="provider-head" style="background:#fff3e0;">
+          <div class="provider-icon" style="background:#ff6d00; color:#fff;">H</div>
+          <div>
+            <h4>NHN 클라우드</h4>
+            <p>게임·커머스 특화 · 합리적 중간가</p>
+          </div>
+          <div style="margin-left:auto;"><span class="badge badge-orange">선택적</span></div>
+        </div>
+        <div class="provider-body">
+          <table>
+            <tr><th>항목</th><th>내용</th></tr>
+            <tr><td>서버(4vC/16GB)</td><td>월 <strong>201,600원</strong></td></tr>
+            <tr><td>Object Storage</td><td>S3 호환, 합리적 가격</td></tr>
+            <tr><td>DB</td><td>RDS (MySQL, PG), Tibero</td></tr>
+            <tr><td>AI</td><td>OCR, 음성인식 등 특화 API</td></tr>
+            <tr><td>게임/이커머스</td><td>특화 서비스 다수</td></tr>
+            <tr><td>데이터센터</td><td>판교, 광주 (공공)</td></tr>
+            <tr><td>특징</td><td>중소기업 친화적 MSP</td></tr>
+          </table>
+          <div class="pc-grid" style="margin-top:8px;">
+            <div class="pc-box pc-pros">
+              <h5>✓ 장점</h5>
+              <ul>
+                <li>중간 수준의 합리적 가격</li>
+                <li>OCR·문서처리 AI 강점</li>
+                <li>SMB 지원 풍부</li>
+                <li>Tibero DB 지원</li>
+              </ul>
+            </div>
+            <div class="pc-box pc-cons">
+              <h5>✗ 단점</h5>
+              <ul>
+                <li>NCP 대비 LLM 부족</li>
+                <li>글로벌 확장성 제한</li>
+                <li>벡터 DB 서비스 없음</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Kakao i Cloud -->
+      <div class="provider-card">
+        <div class="provider-head" style="background:#fffde7;">
+          <div class="provider-icon" style="background:#fee500; color:#333;">카</div>
+          <div>
+            <h4>카카오 i Cloud</h4>
+            <p>카카오 기반 생태계 · 신규 진입</p>
+          </div>
+          <div style="margin-left:auto;"><span class="badge badge-gray">보류</span></div>
+        </div>
+        <div class="provider-body">
+          <table>
+            <tr><th>항목</th><th>내용</th></tr>
+            <tr><td>서버 가격</td><td>경쟁력 있으나 미공개 다수</td></tr>
+            <tr><td>카카오톡 연동</td><td>알림톡·친구톡 직접 연동</td></tr>
+            <tr><td>AI</td><td>카카오 AI (KoGPT 등)</td></tr>
+            <tr><td>메시징</td><td>카카오 비즈메시지 강점</td></tr>
+            <tr><td>데이터센터</td><td>국내 전용</td></tr>
+            <tr><td>기업 레퍼런스</td><td>아직 제한적</td></tr>
+          </table>
+          <div class="pc-grid" style="margin-top:8px;">
+            <div class="pc-box pc-pros">
+              <h5>✓ 장점</h5>
+              <ul>
+                <li>카카오톡 연동 용이</li>
+                <li>국내 메시징 최강</li>
+                <li>경쟁적 가격 예상</li>
+              </ul>
+            </div>
+            <div class="pc-box pc-cons">
+              <h5>✗ 단점</h5>
+              <ul>
+                <li>엔터프라이즈 레퍼런스 부족</li>
+                <li>서비스 성숙도 낮음</li>
+                <li>2021 먹통 사태 신뢰 이슈</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. 글로벌 클라우드 -->
+  <div class="section" id="s4">
+    <div class="section-title"><span class="num">04</span>글로벌 클라우드 서비스 비교 (AWS · Azure · GCP)</div>
+    <div class="provider-grid">
+      <div class="provider-card">
+        <div class="provider-head" style="background:#fff3e0;">
+          <div class="provider-icon" style="background:#ff9800; color:#fff;">AWS</div>
+          <div>
+            <h4>Amazon Web Services</h4>
+            <p>서울 리전 보유 · 동생 ERP와 동일 플랫폼</p>
+          </div>
+          <div style="margin-left:auto;"><span class="badge badge-orange">ERP 연동 유리</span></div>
+        </div>
+        <div class="provider-body">
+          <table>
+            <tr><th>항목</th><th>내용</th></tr>
+            <tr><td>서버(4vC/16GB)</td><td>월 약 <strong>250,000원~</strong> (On-Demand)</td></tr>
+            <tr><td>RDB</td><td>RDS (Aurora, PostgreSQL, MySQL)</td></tr>
+            <tr><td>Vector DB</td><td>OpenSearch, pgvector, Bedrock KB</td></tr>
+            <tr><td>AI/LLM</td><td>Bedrock (Claude, Llama, Titan)</td></tr>
+            <tr><td>Object Storage</td><td>S3 (업계 표준)</td></tr>
+            <tr><td>서울 리전</td><td>ap-northeast-2 운영 중</td></tr>
+            <tr><td>ERP 연동</td><td>동생 AWS 계정과 VPC Peering 가능</td></tr>
+          </table>
+          <div class="pc-grid" style="margin-top:8px;">
+            <div class="pc-box pc-pros">
+              <h5>✓ 장점</h5>
+              <ul>
+                <li>생태계 최대 · 서비스 최다</li>
+                <li>ERP(동생)와 직접 연동 용이</li>
+                <li>Bedrock Claude 바로 사용 가능</li>
+                <li>글로벌 확장 용이</li>
+                <li>문서·커뮤니티 최풍부</li>
+              </ul>
+            </div>
+            <div class="pc-box pc-cons">
+              <h5>✗ 단점</h5>
+              <ul>
+                <li>국내 CSP 대비 20~30% 고가</li>
+                <li>데이터 국외반출 이슈</li>
+                <li>복잡한 요금 구조</li>
+                <li>한국어 지원 상대적 약함</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="provider-card">
+        <div class="provider-head" style="background:#e3f2fd;">
+          <div class="provider-icon" style="background:#0078d4; color:#fff;">AZ</div>
+          <div>
+            <h4>Microsoft Azure</h4>
+            <p>한국 중부·남부 리전 · MS365 연동</p>
+          </div>
+          <div style="margin-left:auto;"><span class="badge badge-blue">Office 연동</span></div>
+        </div>
+        <div class="provider-body">
+          <table>
+            <tr><th>항목</th><th>내용</th></tr>
+            <tr><td>서버(4vC/16GB)</td><td>월 약 <strong>240,000원~</strong></td></tr>
+            <tr><td>RDB</td><td>Azure SQL, PostgreSQL Flexible</td></tr>
+            <tr><td>Vector DB</td><td>Azure AI Search (벡터 검색)</td></tr>
+            <tr><td>AI/LLM</td><td>Azure OpenAI (GPT-4, Claude)</td></tr>
+            <tr><td>Object Storage</td><td>Azure Blob Storage</td></tr>
+            <tr><td>한국 리전</td><td>Korea Central (서울), Korea South</td></tr>
+            <tr><td>M365 연동</td><td>Word·Excel·Teams 직접 통합</td></tr>
+          </table>
+          <div class="pc-grid" style="margin-top:8px;">
+            <div class="pc-box pc-pros">
+              <h5>✓ 장점</h5>
+              <ul>
+                <li>Word·Excel 자동화 최강</li>
+                <li>Azure OpenAI 안정적</li>
+                <li>KT Cloud와 공동 서비스</li>
+                <li>기업 친화적 라이선싱</li>
+              </ul>
+            </div>
+            <div class="pc-box pc-cons">
+              <h5>✗ 단점</h5>
+              <ul>
+                <li>AWS 대비 복잡한 구조</li>
+                <li>고가 (국내 CSP 대비)</li>
+                <li>데이터 국외반출 이슈</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. 종합 비교표 -->
+  <div class="section" id="s5">
+    <div class="section-title"><span class="num">05</span>국내·글로벌 클라우드 종합 비교표</div>
+    <div class="cost-table">
+      <table>
+        <thead>
+          <tr>
+            <th>비교 항목</th>
+            <th>NCP<br>(네이버)</th>
+            <th>KT Cloud</th>
+            <th>NHN Cloud</th>
+            <th>Kakao i</th>
+            <th>AWS 서울</th>
+            <th>Azure 한국</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>서버 가격</strong><br><span style="font-size:10px;color:#888">(4vC/16GB/월)</span></td>
+            <td class="t-center"><strong style="color:var(--good)">18.2만</strong></td>
+            <td class="t-center">22.4만</td>
+            <td class="t-center">20.2만</td>
+            <td class="t-center">미공개</td>
+            <td class="t-center">25만~</td>
+            <td class="t-center">24만~</td>
+          </tr>
+          <tr>
+            <td><strong>가격 경쟁력</strong></td>
+            <td class="t-center"><div class="rating"><div class="dot on3"></div><div class="dot on3"></div><div class="dot on3"></div><div class="dot on3"></div><div class="dot on3"></div></div></td>
+            <td class="t-center"><div class="rating"><div class="dot on"></div><div class="dot on"></div><div class="dot on"></div><div class="dot"></div><div class="dot"></div></div></td>
+            <td class="t-center"><div class="rating"><div class="dot on"></div><div class="dot on"></div><div class="dot on"></div><div class="dot on"></div><div class="dot"></div></div></td>
+            <td class="t-center"><div class="rating"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></td>
+            <td class="t-center"><div class="rating"><div class="dot on"></div><div class="dot on"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></td>
+            <td class="t-center"><div class="rating"><div class="dot on"></div><div class="dot on"></div><div class="dot on"></div><div class="dot"></div><div class="dot"></div></div></td>
+          </tr>
+          <tr>
+            <td><strong>AI/LLM 서비스</strong></td>
+            <td class="t-center"><span class="badge badge-green">HyperCLOVA X</span></td>
+            <td class="t-center"><span class="badge badge-blue">Azure AI 연동</span></td>
+            <td class="t-center"><span class="badge badge-orange">OCR 특화</span></td>
+            <td class="t-center"><span class="badge badge-orange">KoGPT</span></td>
+            <td class="t-center"><span class="badge badge-purple">Bedrock(Claude)</span></td>
+            <td class="t-center"><span class="badge badge-purple">Azure OpenAI</span></td>
+          </tr>
+          <tr>
+            <td><strong>벡터 DB</strong></td>
+            <td class="t-center"><span class="badge badge-green">AI Search 지원</span></td>
+            <td class="t-center"><span class="badge badge-gray">제한적</span></td>
+            <td class="t-center"><span class="badge badge-red">미지원</span></td>
+            <td class="t-center"><span class="badge badge-gray">불명확</span></td>
+            <td class="t-center"><span class="badge badge-green">pgvector/OpenSearch</span></td>
+            <td class="t-center"><span class="badge badge-green">AI Search</span></td>
+          </tr>
+          <tr>
+            <td><strong>관리형 RDB</strong></td>
+            <td class="t-center"><span class="badge badge-green">MySQL·PG</span></td>
+            <td class="t-center"><span class="badge badge-green">MySQL·Tibero</span></td>
+            <td class="t-center"><span class="badge badge-green">MySQL·PG·Tibero</span></td>
+            <td class="t-center"><span class="badge badge-orange">기본만</span></td>
+            <td class="t-center"><span class="badge badge-green">Aurora·RDS</span></td>
+            <td class="t-center"><span class="badge badge-green">Azure SQL·PG</span></td>
+          </tr>
+          <tr>
+            <td><strong>한국어 지원</strong></td>
+            <td class="t-center"><div class="rating"><div class="dot on3"></div><div class="dot on3"></div><div class="dot on3"></div><div class="dot on3"></div><div class="dot on3"></div></div></td>
+            <td class="t-center"><div class="rating"><div class="dot on3"></div><div class="dot on3"></div><div class="dot on3"></div><div class="dot on3"></div><div class="dot"></div></div></td>
+            <td class="t-center"><div class="rating"><div class="dot on3"></div><div class="dot on3"></div><div class="dot on3"></div><div class="dot on3"></div><div class="dot"></div></div></td>
+            <td class="t-center"><div class="rating"><div class="dot on3"></div><div class="dot on3"></div><div class="dot on3"></div><div class="dot on3"></div><div class="dot on3"></div></div></td>
+            <td class="t-center"><div class="rating"><div class="dot on"></div><div class="dot on"></div><div class="dot on"></div><div class="dot"></div><div class="dot"></div></div></td>
+            <td class="t-center"><div class="rating"><div class="dot on"></div><div class="dot on"></div><div class="dot on"></div><div class="dot on"></div><div class="dot"></div></div></td>
+          </tr>
+          <tr>
+            <td><strong>개인정보보호 준수</strong></td>
+            <td class="t-center"><span class="badge badge-green">자동 충족</span></td>
+            <td class="t-center"><span class="badge badge-green">자동 충족</span></td>
+            <td class="t-center"><span class="badge badge-green">자동 충족</span></td>
+            <td class="t-center"><span class="badge badge-green">자동 충족</span></td>
+            <td class="t-center"><span class="badge badge-orange">서울 리전 선택 시</span></td>
+            <td class="t-center"><span class="badge badge-orange">한국 리전 선택 시</span></td>
+          </tr>
+          <tr>
+            <td><strong>보안 인증</strong></td>
+            <td class="t-center">CSAP, ISO27001</td>
+            <td class="t-center">CSAP, CC, ISO</td>
+            <td class="t-center">CSAP, ISO27001</td>
+            <td class="t-center">ISO27001</td>
+            <td class="t-center">ISO, SOC2, FedRAMP</td>
+            <td class="t-center">ISO, SOC2, FedRAMP</td>
+          </tr>
+          <tr>
+            <td><strong>AWS ERP 연동 용이성</strong></td>
+            <td class="t-center"><div class="rating"><div class="dot on"></div><div class="dot on"></div><div class="dot on"></div><div class="dot"></div><div class="dot"></div></div></td>
+            <td class="t-center"><div class="rating"><div class="dot on"></div><div class="dot on"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></td>
+            <td class="t-center"><div class="rating"><div class="dot on"></div><div class="dot on"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></td>
+            <td class="t-center"><div class="rating"><div class="dot on"></div><div class="dot on"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></td>
+            <td class="t-center"><div class="rating"><div class="dot on3"></div><div class="dot on3"></div><div class="dot on3"></div><div class="dot on3"></div><div class="dot on3"></div></div></td>
+            <td class="t-center"><div class="rating"><div class="dot on"></div><div class="dot on"></div><div class="dot on"></div><div class="dot on"></div><div class="dot"></div></div></td>
+          </tr>
+          <tr>
+            <td><strong>대용량 영상 저장</strong></td>
+            <td class="t-center"><div class="rating"><div class="dot on3"></div><div class="dot on3"></div><div class="dot on3"></div><div class="dot on3"></div><div class="dot"></div></div></td>
+            <td class="t-center"><div class="rating"><div class="dot on"></div><div class="dot on"></div><div class="dot on"></div><div class="dot"></div><div class="dot"></div></div></td>
+            <td class="t-center"><div class="rating"><div class="dot on"></div><div class="dot on"></div><div class="dot on"></div><div class="dot"></div><div class="dot"></div></div></td>
+            <td class="t-center"><div class="rating"><div class="dot on"></div><div class="dot on"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></td>
+            <td class="t-center"><div class="rating"><div class="dot on3"></div><div class="dot on3"></div><div class="dot on3"></div><div class="dot on3"></div><div class="dot on3"></div></div></td>
+            <td class="t-center"><div class="rating"><div class="dot on"></div><div class="dot on"></div><div class="dot on"></div><div class="dot on"></div><div class="dot"></div></div></td>
+          </tr>
+          <tr>
+            <td><strong>서비스 성숙도</strong></td>
+            <td class="t-center"><div class="rating"><div class="dot on3"></div><div class="dot on3"></div><div class="dot on3"></div><div class="dot on3"></div><div class="dot"></div></div></td>
+            <td class="t-center"><div class="rating"><div class="dot on3"></div><div class="dot on3"></div><div class="dot on3"></div><div class="dot on3"></div><div class="dot on3"></div></div></td>
+            <td class="t-center"><div class="rating"><div class="dot on3"></div><div class="dot on3"></div><div class="dot on3"></div><div class="dot on3"></div><div class="dot"></div></div></td>
+            <td class="t-center"><div class="rating"><div class="dot on"></div><div class="dot on"></div><div class="dot on"></div><div class="dot"></div><div class="dot"></div></div></td>
+            <td class="t-center"><div class="rating"><div class="dot on3"></div><div class="dot on3"></div><div class="dot on3"></div><div class="dot on3"></div><div class="dot on3"></div></div></td>
+            <td class="t-center"><div class="rating"><div class="dot on3"></div><div class="dot on3"></div><div class="dot on3"></div><div class="dot on3"></div><div class="dot on3"></div></div></td>
+          </tr>
+          <tr class="best-row">
+            <td><strong>인시스 적합도 (종합)</strong></td>
+            <td class="t-center"><strong style="color:var(--good)">★★★★★</strong><br><span class="badge badge-green">1순위</span></td>
+            <td class="t-center"><strong>★★★☆☆</strong><br><span class="badge badge-gray">보조적</span></td>
+            <td class="t-center"><strong>★★★☆☆</strong><br><span class="badge badge-gray">선택적</span></td>
+            <td class="t-center"><strong>★★☆☆☆</strong><br><span class="badge badge-gray">보류</span></td>
+            <td class="t-center"><strong>★★★★☆</strong><br><span class="badge badge-orange">2순위</span></td>
+            <td class="t-center"><strong>★★★★☆</strong><br><span class="badge badge-blue">3순위</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 6. 비용 추정 -->
+  <div class="section" id="s6">
+    <div class="section-title"><span class="num">06</span>인시스 그룹 예상 월 비용 추정 (NCP 기준)</div>
+    <div class="cost-table">
+      <table>
+        <thead>
+          <tr>
+            <th>서비스 항목</th>
+            <th>스펙/용량</th>
+            <th>NCP 월비용</th>
+            <th>AWS 비교</th>
+            <th>용도</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Application Server</td>
+            <td>4vC/16GB × 1</td>
+            <td class="t-right"><strong>182,000원</strong></td>
+            <td class="t-right">250,000원</td>
+            <td>챗봇·API 서버</td>
+          </tr>
+          <tr>
+            <td>DB Server (관리형)</td>
+            <td>2vC/8GB PostgreSQL</td>
+            <td class="t-right"><strong>120,000원</strong></td>
+            <td class="t-right">180,000원</td>
+            <td>인사·ERP·WMS</td>
+          </tr>
+          <tr>
+            <td>Object Storage</td>
+            <td>200GB (문서·영상)</td>
+            <td class="t-right"><strong>20,000원</strong></td>
+            <td class="t-right">55,000원</td>
+            <td>파일 저장소</td>
+          </tr>
+          <tr>
+            <td>AI 비전검사 영상 스토리지</td>
+            <td>500GB (초기)</td>
+            <td class="t-right"><strong>50,000원</strong></td>
+            <td class="t-right">120,000원</td>
+            <td>학습 데이터</td>
+          </tr>
+          <tr>
+            <td>벡터 DB (pgvector)</td>
+            <td>DB에 포함 또는 별도</td>
+            <td class="t-right"><strong>포함</strong></td>
+            <td class="t-right">50,000원~</td>
+            <td>RAG 검색</td>
+          </tr>
+          <tr>
+            <td>LLM API 사용료</td>
+            <td>Claude/HyperCLOVA</td>
+            <td class="t-right"><strong>50,000~200,000원</strong></td>
+            <td class="t-right">100,000~300,000원</td>
+            <td>챗봇 AI 답변</td>
+          </tr>
+          <tr>
+            <td>네트워크 트래픽</td>
+            <td>100GB/월 기본포함</td>
+            <td class="t-right"><strong>0~30,000원</strong></td>
+            <td class="t-right">10,000~50,000원</td>
+            <td>데이터 전송</td>
+          </tr>
+          <tr>
+            <td>백업 스토리지</td>
+            <td>50GB</td>
+            <td class="t-right"><strong>5,000원</strong></td>
+            <td class="t-right">15,000원</td>
+            <td>자동 백업</td>
+          </tr>
+          <tr class="highlight-row">
+            <td colspan="2"><strong>월 합계 (초기 단계)</strong></td>
+            <td class="t-right"><strong style="color:var(--good);font-size:13px">427,000~607,000원</strong></td>
+            <td class="t-right"><strong style="font-size:13px">780,000~1,020,000원</strong></td>
+            <td>NCP가 약 40% 절감</td>
+          </tr>
+          <tr class="highlight-row">
+            <td colspan="2"><strong>월 합계 (전체 운용 시)</strong></td>
+            <td class="t-right"><strong style="color:var(--good);font-size:13px">100~150만원</strong></td>
+            <td class="t-right"><strong style="font-size:13px">180~250만원</strong></td>
+            <td>서버·AI 풀 확장 후</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note-bar">
+      💡 ERP(동생 AWS)와의 API 통신은 HTTPS REST API로 연동 → 플랫폼이 달라도 문제없음. 단, 데이터 전송량에 따라 AWS 측 데이터 전송 비용 발생 가능 (아웃바운드 요금 확인 필요)
+    </div>
+  </div>
+
+  <!-- 7. 최종 추천 -->
+  <div class="section" id="s7">
+    <div class="section-title"><span class="num">07</span>인시스 그룹 최종 추천 구성</div>
+
+    <div class="rec-box">
+      <h4>🎯 추천 전략: NCP 메인 + AWS 연동 하이브리드 구성</h4>
+      <div class="rec-phases">
+        <div class="rec-phase">
+          <div class="phase-num">Phase 1 · 즉시</div>
+          <h5>NCP 기반 구축</h5>
+          <p>NCP 서울 리전에 메인 서버·DB·Object Storage 구축. 인사·문서·WMS 데이터 이전. 챗봇 RAG 파이프라인 구성. 월 50~70만원 수준에서 시작 가능.</p>
+        </div>
+        <div class="rec-phase">
+          <div class="phase-num">Phase 2 · 3~6개월</div>
+          <h5>ERP API 연동</h5>
+          <p>동생 AWS ERP와 REST API 연동. 인시스 NCP ↔ ERP AWS 간 데이터 브릿지 구성. 계정·권한 분리 유지하되 필요 데이터만 API 동기화.</p>
+        </div>
+        <div class="rec-phase">
+          <div class="phase-num">Phase 3 · 6~12개월</div>
+          <h5>AI 고도화</h5>
+          <p>AI 비전검사 학습 파이프라인 NCP GPU 서버 또는 AWS Bedrock 연동. HyperCLOVA X 또는 Claude API로 챗봇 업그레이드. 자동 문서 생성 템플릿 완성.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="final-box">
+      <h4>📋 최종 플랫폼별 역할 분담</h4>
+      <div class="final-grid">
+        <div class="final-item">
+          <h5>🇰🇷 NCP (네이버 클라우드) — <strong>메인 플랫폼</strong></h5>
+          <p>• 인사·급여·출퇴근 DB<br>• 문서·계약서 스토리지<br>• 사내 AI 챗봇 서버<br>• 벡터 DB (RAG 검색)<br>• 연구노트·특허 자료<br><strong>→ 개인정보·민감데이터 전량</strong></p>
+        </div>
+        <div class="final-item">
+          <h5>☁️ AWS 서울 — <strong>ERP 연동 레이어</strong></h5>
+          <p>• 동생 ERP SaaS (이미 구축)<br>• ERP↔NCP API 게이트웨이<br>• AI 비전검사 GPU 학습 시 사용<br>• 대용량 영상 S3 (장기 보관)<br><strong>→ ERP 데이터는 동생 계정 유지</strong></p>
+        </div>
+        <div class="final-item">
+          <h5>🔥 Firebase — <strong>현행 유지</strong></h5>
+          <p>• WMS(shinchon) Firestore<br>• 출퇴근 GPS 앱<br>• 주문분석(order_analysis)<br>• 소규모 실시간 앱<br><strong>→ 이미 잘 작동하는 서비스는 유지</strong></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 도입 우선순위 -->
+    <div class="section-title" style="font-size:13px;margin-top:4px;margin-bottom:8px;"><span class="num">참고</span>DB 선택 기술 가이드</div>
+    <div class="cost-table">
+      <table>
+        <thead>
+          <tr>
+            <th>데이터 유형</th>
+            <th>추천 DB</th>
+            <th>이유</th>
+            <th>NCP 서비스명</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>인사·급여·ERP 연동</td>
+            <td><span class="badge badge-blue">PostgreSQL</span></td>
+            <td>트랜잭션 강함, pgvector 확장 가능</td>
+            <td>Cloud DB for PostgreSQL</td>
+          </tr>
+          <tr>
+            <td>챗봇 RAG 벡터 검색</td>
+            <td><span class="badge badge-purple">pgvector</span></td>
+            <td>PostgreSQL 확장으로 별도 서버 불필요</td>
+            <td>위 DB에 확장 설치</td>
+          </tr>
+          <tr>
+            <td>문서·계약서·영상 파일</td>
+            <td><span class="badge badge-green">Object Storage</span></td>
+            <td>S3 호환, 저렴한 대용량 저장</td>
+            <td>NCP Object Storage</td>
+          </tr>
+          <tr>
+            <td>실시간 WMS·출퇴근</td>
+            <td><span class="badge badge-orange">Firebase Firestore</span></td>
+            <td>현재 잘 운용 중, 이전 불필요</td>
+            <td>현행 유지</td>
+          </tr>
+          <tr>
+            <td>AI 비전검사 학습 이미지</td>
+            <td><span class="badge badge-green">Object Storage (NAS급)</span></td>
+            <td>대용량·저비용 우선</td>
+            <td>NCP NAS / Archive</td>
+          </tr>
+          <tr>
+            <td>캐시·세션</td>
+            <td><span class="badge badge-red">Redis</span></td>
+            <td>챗봇 응답속도 향상</td>
+            <td>NCP Cache for Redis</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="footer">
+    인시스 그룹 AI혁신 R&D센터 · v1.0 · 2026년 6월 · ys.kim@in-sys.co.kr
+    <br>GitHub: <a href="https://insys-hq.github.io/Insys-review/cloud_analysis.html" style="color:var(--accent)">https://insys-hq.github.io/Insys-review/cloud_analysis.html</a>
+  </div>
+
+</div>
+</body>
+</html>
