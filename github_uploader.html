@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Insys GitHub 업로더</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: #f0f3f7;
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 40px 16px 60px;
+  }
+  .container { width: 100%; max-width: 700px; }
+
+  /* 헤더 */
+  .header {
+    background: #1e3a5f;
+    border-radius: 12px;
+    padding: 28px 32px 24px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+  .header-icon {
+    width: 48px; height: 48px;
+    background: #fff;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .header-icon svg { width: 28px; height: 28px; }
+  .header-text h1 { font-size: 20px; font-weight: 700; color: #fff; }
+  .header-text p { font-size: 12px; color: #a8c6e0; margin-top: 4px; }
+
+  /* 카드 */
+  .card {
+    background: #fff;
+    border-radius: 10px;
+    padding: 24px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+  }
+  .card-title {
+    font-size: 13px; font-weight: 700; color: #1e3a5f;
+    margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .step-badge {
+    background: #1e3a5f; color: #fff;
+    font-size: 11px; font-weight: 700;
+    padding: 2px 8px; border-radius: 10px;
+  }
+
+  /* 입력 */
+  label { font-size: 12px; font-weight: 600; color: #3a5a7a; display: block; margin-bottom: 6px; }
+  input[type=text], input[type=password] {
+    width: 100%; padding: 10px 14px;
+    border: 1.5px solid #c8d8e8; border-radius: 7px;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 13px; color: #1e2a3a;
+    outline: none; transition: border 0.2s;
+    background: #f8fbff;
+  }
+  input:focus { border-color: #2e6fad; background: #fff; }
+  .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media(max-width:560px){ .input-row { grid-template-columns: 1fr; } }
+
+  .pat-wrap { position: relative; }
+  .pat-wrap input { padding-right: 80px; font-family: monospace; font-size: 12px; }
+  .toggle-btn {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    background: #e8f0f8; border: none; border-radius: 5px;
+    font-size: 11px; color: #3a5a7a; cursor: pointer; padding: 4px 10px;
+    font-family: 'Noto Sans KR', sans-serif;
+  }
+  .toggle-btn:hover { background: #d0e0f0; }
+
+  /* 파일 드롭존 */
+  .dropzone {
+    border: 2px dashed #b0c8e0; border-radius: 8px;
+    padding: 28px 16px; text-align: center;
+    cursor: pointer; transition: all 0.2s;
+    background: #f5f9fd;
+  }
+  .dropzone:hover, .dropzone.drag-over {
+    border-color: #2e6fad; background: #eaf3fc;
+  }
+  .dropzone-icon { font-size: 32px; margin-bottom: 8px; }
+  .dropzone p { font-size: 13px; color: #5a7a9a; }
+  .dropzone span { font-size: 11px; color: #8aaac0; display: block; margin-top: 4px; }
+  .file-list { margin-top: 12px; }
+  .file-item {
+    display: flex; align-items: center; justify-content: space-between;
+    background: #eef5fd; border: 1px solid #c0d8f0;
+    border-radius: 6px; padding: 8px 12px; margin-bottom: 6px;
+  }
+  .file-item-name { font-size: 12px; color: #1e3a5f; font-weight: 600; }
+  .file-item-size { font-size: 11px; color: #7a9ab8; }
+  .file-remove {
+    background: none; border: none; color: #e53935;
+    font-size: 16px; cursor: pointer; padding: 0 4px; line-height: 1;
+  }
+
+  /* 메시지 입력 */
+  .commit-msg { margin-top: 12px; }
+
+  /* 업로드 버튼 */
+  .upload-btn {
+    width: 100%; padding: 14px;
+    background: #2e6fad; color: #fff;
+    border: none; border-radius: 8px;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 15px; font-weight: 700;
+    cursor: pointer; transition: background 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .upload-btn:hover:not(:disabled) { background: #1e5a96; }
+  .upload-btn:disabled { background: #a0b8d0; cursor: not-allowed; }
+
+  /* 결과 로그 */
+  .log-area {
+    background: #1a2b3a; border-radius: 8px;
+    padding: 16px; font-family: monospace;
+    font-size: 12px; color: #a0c8e0;
+    max-height: 220px; overflow-y: auto;
+    line-height: 1.8;
+  }
+  .log-success { color: #4caf50; }
+  .log-error   { color: #ef5350; }
+  .log-info    { color: #7dd4ff; }
+  .log-warn    { color: #ffb74d; }
+
+  /* 링크 카드 */
+  .link-item {
+    display: flex; align-items: center; justify-content: space-between;
+    background: #eef5fd; border: 1px solid #c0d8f0;
+    border-radius: 6px; padding: 10px 14px; margin-bottom: 8px;
+  }
+  .link-item a { font-size: 12px; color: #1e5a96; word-break: break-all; }
+  .copy-btn {
+    background: #1e3a5f; color: #fff; border: none;
+    border-radius: 5px; font-size: 11px; padding: 4px 10px;
+    cursor: pointer; white-space: nowrap; margin-left: 10px;
+    font-family: 'Noto Sans KR', sans-serif;
+  }
+  .copy-btn:hover { background: #2e5a8a; }
+
+  /* 안전 안내 */
+  .safety-note {
+    background: #fff8e1; border: 1px solid #ffe082;
+    border-radius: 8px; padding: 12px 16px;
+    font-size: 12px; color: #7a4a00; line-height: 1.8;
+  }
+  .safety-note strong { color: #c84000; }
+
+  /* 프리셋 버튼 */
+  .preset-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .preset-btn {
+    background: #eef2f8; border: 1px solid #c0cedf;
+    border-radius: 5px; font-size: 11px; color: #3a5a7a;
+    padding: 4px 10px; cursor: pointer; font-family: 'Noto Sans KR', sans-serif;
+  }
+  .preset-btn:hover { background: #d8e8f4; }
+
+  .progress-bar-wrap {
+    background: #e0ecf8; border-radius: 4px;
+    height: 6px; margin-top: 12px; overflow: hidden; display: none;
+  }
+  .progress-bar {
+    height: 100%; background: #2e6fad;
+    border-radius: 4px; transition: width 0.3s;
+    width: 0%;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- 헤더 -->
+  <div class="header">
+    <div class="header-icon">
+      <svg viewBox="0 0 24 24" fill="#1e3a5f" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+      </svg>
+    </div>
+    <div class="header-text">
+      <h1>Insys GitHub 자동 업로더</h1>
+      <p>Claude가 생성한 HTML 파일을 GitHub Pages에 즉시 배포</p>
+    </div>
+  </div>
+
+  <!-- STEP 1: 저장소 설정 -->
+  <div class="card">
+    <div class="card-title"><span class="step-badge">STEP 1</span> 저장소 설정</div>
+    <div class="input-row">
+      <div>
+        <label>GitHub 사용자명 / 조직명</label>
+        <input type="text" id="owner" value="Insys-HQ" placeholder="Insys-HQ"/>
+      </div>
+      <div>
+        <label>저장소명</label>
+        <input type="text" id="repo" value="Insys-review" placeholder="Insys-review"/>
+      </div>
+    </div>
+    <div style="margin-top:12px;">
+      <label>브랜치</label>
+      <input type="text" id="branch" value="main" placeholder="main"/>
+    </div>
+    <div style="margin-top:8px; font-size:11px; color:#7a9ab8;">
+      📎 GitHub Pages URL: <span id="pages-url-preview" style="color:#1e5a96;">https://insys-hq.github.io/Insys-review/[파일명]</span>
+    </div>
+  </div>
+
+  <!-- STEP 2: PAT 입력 -->
+  <div class="card">
+    <div class="card-title"><span class="step-badge">STEP 2</span> Personal Access Token (PAT)</div>
+    <label>PAT 입력 <span style="color:#e53935;font-weight:400;">(repo 권한 필요)</span></label>
+    <div class="pat-wrap">
+      <input type="password" id="pat" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"/>
+      <button class="toggle-btn" onclick="togglePat()">보기</button>
+    </div>
+    <div style="margin-top:8px; font-size:11px; color:#8a9ab0;">
+      💡 PAT 발급: GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic) → Generate new token → repo 체크
+    </div>
+    <div class="safety-note" style="margin-top:12px;">
+      <strong>⚠️ 보안 주의:</strong> PAT는 비밀번호와 동일합니다. 이 도구는 PAT를 저장하지 않으며 GitHub API 호출에만 사용합니다. 업로드 완료 후 PAT를 <strong>즉시 삭제</strong>하세요.
+    </div>
+  </div>
+
+  <!-- STEP 3: 파일 선택 -->
+  <div class="card">
+    <div class="card-title"><span class="step-badge">STEP 3</span> 업로드할 파일 선택</div>
+    <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+      <div class="dropzone-icon">📂</div>
+      <p>클릭하거나 파일을 여기에 드래그하세요</p>
+      <span>HTML, CSS, JS, 이미지 등 — 여러 파일 동시 업로드 가능</span>
+    </div>
+    <input type="file" id="fileInput" multiple style="display:none" onchange="handleFiles(this.files)"/>
+    <div class="file-list" id="fileList"></div>
+
+    <!-- 커밋 메시지 -->
+    <div class="commit-msg">
+      <label style="margin-top:12px;">커밋 메시지</label>
+      <input type="text" id="commitMsg" value="Upload via Insys GitHub Uploader" placeholder="커밋 메시지 입력"/>
+      <div class="preset-row">
+        <button class="preset-btn" onclick="setMsg('Add new file')">Add new file</button>
+        <button class="preset-btn" onclick="setMsg('Update HTML file')">Update HTML</button>
+        <button class="preset-btn" onclick="setMsg('Upload specification document')">Upload spec</button>
+        <button class="preset-btn" onclick="setMsg('Deploy to GitHub Pages')">Deploy</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 4: 업로드 -->
+  <div class="card">
+    <div class="card-title"><span class="step-badge">STEP 4</span> 업로드 실행</div>
+    <button class="upload-btn" id="uploadBtn" onclick="startUpload()" disabled>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/><path d="M5 18v2h14v-2H5z" opacity="0"/></svg>
+      GitHub에 업로드
+    </button>
+    <div class="progress-bar-wrap" id="progressWrap">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+  </div>
+
+  <!-- 로그 -->
+  <div class="card">
+    <div class="card-title">업로드 로그</div>
+    <div class="log-area" id="logArea">
+      <span style="color:#5a7a8a;">// 업로드 결과가 여기에 표시됩니다</span>
+    </div>
+  </div>
+
+  <!-- 결과 링크 -->
+  <div class="card" id="resultCard" style="display:none;">
+    <div class="card-title">✅ 업로드 완료 — GitHub Pages 링크</div>
+    <div id="resultLinks"></div>
+    <div style="margin-top:10px; font-size:11px; color:#7a9ab0;">
+      ※ GitHub Pages 반영까지 1~2분 소요될 수 있습니다.
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const files = [];
+
+  // 저장소 설정 변경 시 미리보기 업데이트
+  ['owner','repo'].forEach(id => {
+    document.getElementById(id).addEventListener('input', updatePreview);
+  });
+  function updatePreview() {
+    const owner = document.getElementById('owner').value.toLowerCase();
+    const repo  = document.getElementById('repo').value;
+    document.getElementById('pages-url-preview').textContent =
+      `https://${owner}.github.io/${repo}/[파일명]`;
+  }
+
+  // PAT 보이기/숨기기
+  function togglePat() {
+    const inp = document.getElementById('pat');
+    const btn = document.querySelector('.toggle-btn');
+    if (inp.type === 'password') { inp.type = 'text';  btn.textContent = '숨기기'; }
+    else                          { inp.type = 'password'; btn.textContent = '보기'; }
+  }
+
+  // 드래그 앤 드롭
+  const dz = document.getElementById('dropzone');
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault();
+    dz.classList.remove('drag-over');
+    handleFiles(e.dataTransfer.files);
+  });
+
+  function handleFiles(newFiles) {
+    Array.from(newFiles).forEach(f => {
+      if (!files.find(x => x.name === f.name)) files.push(f);
+    });
+    renderFileList();
+    checkReady();
+  }
+
+  function renderFileList() {
+    const list = document.getElementById('fileList');
+    list.innerHTML = files.map((f, i) => `
+      <div class="file-item">
+        <div>
+          <div class="file-item-name">📄 ${f.name}</div>
+          <div class="file-item-size">${(f.size/1024).toFixed(1)} KB</div>
+        </div>
+        <button class="file-remove" onclick="removeFile(${i})">✕</button>
+      </div>`).join('');
+  }
+
+  function removeFile(i) {
+    files.splice(i, 1);
+    renderFileList();
+    checkReady();
+  }
+
+  function checkReady() {
+    const btn = document.getElementById('uploadBtn');
+    btn.disabled = !(files.length > 0 && document.getElementById('pat').value.trim());
+  }
+  document.getElementById('pat').addEventListener('input', checkReady);
+
+  function setMsg(msg) { document.getElementById('commitMsg').value = msg; }
+
+  // 로그 출력
+  function log(msg, type='info') {
+    const area = document.getElementById('logArea');
+    const cls = { info:'log-info', success:'log-success', error:'log-error', warn:'log-warn' }[type] || 'log-info';
+    const time = new Date().toLocaleTimeString('ko-KR');
+    area.innerHTML += `\n<span class="${cls}">[${time}] ${msg}</span>`;
+    area.scrollTop = area.scrollHeight;
+  }
+
+  // 파일을 base64로 읽기
+  function readFileAsBase64(file) {
+    return new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result.split(',')[1]);
+      r.onerror = rej;
+      r.readAsDataURL(file);
+    });
+  }
+
+  // SHA 조회 (기존 파일 업데이트 시 필요)
+  async function getSHA(owner, repo, branch, path, pat) {
+    const resp = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`,
+      { headers: { Authorization: `token ${pat}` } }
+    );
+    if (resp.ok) { const d = await resp.json(); return d.sha || ''; }
+    return '';
+  }
+
+  // 업로드 실행
+  async function startUpload() {
+    const owner  = document.getElementById('owner').value.trim();
+    const repo   = document.getElementById('repo').value.trim();
+    const branch = document.getElementById('branch').value.trim() || 'main';
+    const pat    = document.getElementById('pat').value.trim();
+    const msg    = document.getElementById('commitMsg').value.trim() || 'Upload via Insys GitHub Uploader';
+
+    if (!pat) { alert('PAT를 입력하세요.'); return; }
+    if (!files.length) { alert('파일을 선택하세요.'); return; }
+
+    const btn = document.getElementById('uploadBtn');
+    btn.disabled = true;
+    btn.textContent = '업로드 중...';
+
+    const progressWrap = document.getElementById('progressWrap');
+    const progressBar  = document.getElementById('progressBar');
+    progressWrap.style.display = 'block';
+
+    document.getElementById('logArea').innerHTML = '';
+    document.getElementById('resultCard').style.display = 'none';
+    document.getElementById('resultLinks').innerHTML = '';
+
+    log(`📤 총 ${files.length}개 파일 업로드 시작`, 'info');
+    log(`📁 저장소: ${owner}/${repo} (${branch} 브랜치)`, 'info');
+
+    const results = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      log(`⏳ [${i+1}/${files.length}] ${file.name} 처리 중...`, 'warn');
+
+      try {
+        const content = await readFileAsBase64(file);
+        const sha = await getSHA(owner, repo, branch, file.name, pat);
+        if (sha) log(`  🔄 기존 파일 감지 — 업데이트`, 'info');
+        else      log(`  ✨ 신규 파일 — 새로 생성`, 'info');
+
+        const body = { message: `${msg}: ${file.name}`, content, branch };
+        if (sha) body.sha = sha;
+
+        const resp = await fetch(
+          `https://api.github.com/repos/${owner}/${repo}/contents/${file.name}`,
+          {
+            method: 'PUT',
+            headers: { Authorization: `token ${pat}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+          }
+        );
+        const data = await resp.json();
+
+        if (resp.ok) {
+          const pagesUrl = `https://${owner.toLowerCase()}.github.io/${repo}/${file.name}`;
+          log(`  ✅ 성공: ${file.name}`, 'success');
+          log(`  🔗 ${pagesUrl}`, 'success');
+          results.push({ name: file.name, url: pagesUrl, gh: data.content?.html_url });
+        } else {
+          log(`  ❌ 실패: ${data.message}`, 'error');
+        }
+      } catch (e) {
+        log(`  ❌ 오류: ${e.message}`, 'error');
+      }
+
+      progressBar.style.width = `${Math.round((i+1)/files.length*100)}%`;
+    }
+
+    log(`\n🏁 완료: ${results.length}/${files.length}개 성공`, results.length === files.length ? 'success' : 'warn');
+    log(`⚠️  PAT를 즉시 삭제하세요: GitHub → Settings → Developer settings → PAT → Delete`, 'warn');
+
+    // 결과 링크 카드
+    if (results.length > 0) {
+      const card = document.getElementById('resultCard');
+      const linksDiv = document.getElementById('resultLinks');
+      card.style.display = 'block';
+      linksDiv.innerHTML = results.map(r => `
+        <div class="link-item">
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#1e3a5f;margin-bottom:3px;">📄 ${r.name}</div>
+            <a href="${r.url}" target="_blank">${r.url}</a>
+          </div>
+          <button class="copy-btn" onclick="copyUrl('${r.url}', this)">복사</button>
+        </div>`).join('');
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M19 9h-4V3H9v6H5l7 7 7-7z"/></svg> GitHub에 업로드`;
+    checkReady();
+  }
+
+  function copyUrl(url, btn) {
+    navigator.clipboard.writeText(url).then(() => {
+      btn.textContent = '복사됨!';
+      setTimeout(() => btn.textContent = '복사', 1500);
+    });
+  }
+</script>
+</body>
+</html>
