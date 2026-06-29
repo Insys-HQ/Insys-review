@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>인시스 점심주문관리 v1.3</title>
+<title>인시스 점심주문관리 v1.4</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 
 <script type="module">
@@ -56,7 +56,7 @@ const RESTAURANTS = [
   { name:'기타',           menus:[] },
 ];
 
-const APP_VER  = 'v1.3';
+const APP_VER  = 'v1.4';
 const todayKey = () => new Date().toISOString().slice(0,10);
 const fmtTime  = d => d ? new Date(d.seconds*1000).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}) : '';
 const fmtDate  = s => { const [,m,d]=s.split('-'); return `${+m}월 ${+d}일`; };
@@ -80,6 +80,7 @@ window.addEventListener('DOMContentLoaded', () => {
   loadWeather();
   requestNotifPerm();
   applyViewMode(localStorage.getItem('insys_viewmode') || 'auto');
+  bindFloatButtons();
 
   myName = localStorage.getItem('insys_lunch_name') || '';
   if (myName) { $('nameSelect').value = myName; doLogin(); }
@@ -467,6 +468,19 @@ function startClock() {
     if (!is10) notified=false;
   },1000);
 }
+
+// ── 플로팅 버튼 이벤트 바인딩 ───────────────────────
+function bindFloatButtons() {
+  const vm = m => { localStorage.setItem('insys_viewmode',m); applyViewMode(m); };
+  const mb = document.getElementById('vmMobile');
+  const ab = document.getElementById('vmAuto');
+  const pb = document.getElementById('vmPc');
+  const ob = document.getElementById('btnAddOrder');
+  if (mb) mb.addEventListener('click', () => vm('mobile'));
+  if (ab) ab.addEventListener('click', () => vm('auto'));
+  if (pb) pb.addEventListener('click', () => vm('pc'));
+  if (ob) ob.addEventListener('click', () => { switchTab('order'); window.scrollTo({top:0,behavior:'smooth'}); });
+}
 function requestNotifPerm() {
   if ('Notification' in window&&Notification.permission==='default') Notification.requestPermission();
 }
@@ -802,7 +816,7 @@ body.pc-mode #restaurantGrid { grid-template-columns:repeat(5,1fr); }
     <!-- 이름 -->
     <span id="userBadge" onclick="changeName()" title="클릭하여 이름 변경">—</span>
 
-    <span class="ver-badge" id="verBadge">v1.3</span>
+    <span class="ver-badge" id="verBadge">v1.4</span>
   </div>
 </header>
 
@@ -921,7 +935,7 @@ body.pc-mode #restaurantGrid { grid-template-columns:repeat(5,1fr); }
   </div>
 
   <div class="footer-info">
-    인시스 AI혁신 R&amp;D센터 · 점심주문관리 시스템 <span id="verBadge2">v1.3</span>
+    인시스 AI혁신 R&amp;D센터 · 점심주문관리 시스템 <span id="verBadge2">v1.4</span>
   </div>
 
 </main>
@@ -932,11 +946,11 @@ body.pc-mode #restaurantGrid { grid-template-columns:repeat(5,1fr); }
 <!-- ── 플로팅: 화면전환 + 이름변경 ── -->
 <div id="floatPanel">
   <div class="float-vm-row">
-    <button class="vm-btn" data-vm="mobile" onclick="setViewMode('mobile')" title="모바일">📱</button>
-    <button class="vm-btn" data-vm="auto"   onclick="setViewMode('auto')"   title="기본">🖥</button>
-    <button class="vm-btn" data-vm="pc"     onclick="setViewMode('pc')"     title="PC">⛶</button>
+    <button class="vm-btn" data-vm="mobile" id="vmMobile" title="모바일">📱</button>
+    <button class="vm-btn" data-vm="auto"   id="vmAuto"   title="기본">🖥</button>
+    <button class="vm-btn" data-vm="pc"     id="vmPc"     title="PC">⛶</button>
   </div>
-  <button class="float-name-btn" onclick="switchTab('order');window.scrollTo({top:0,behavior:'smooth'})">➕ 추가 주문</button>
+  <button class="float-name-btn" id="btnAddOrder">➕ 추가 주문</button>
 </div>
 
 
