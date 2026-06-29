@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>인시스 AWS AI 챗봇 아키텍처</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Noto Sans KR',sans-serif;background:#f0f4f8;color:#222;min-height:100vh;padding:32px 20px 60px;}
+
+.page-wrap{max-width:1100px;margin:0 auto;}
+
+/* ── 헤더 ── */
+.hdr{background:linear-gradient(135deg,#1a3c6e 0%,#2C5F8A 100%);color:#fff;border-radius:14px;padding:28px 36px 24px;margin-bottom:32px;}
+.hdr h1{font-size:21px;font-weight:700;letter-spacing:-.3px;}
+.hdr p{font-size:13px;color:#b8d4f0;margin-top:6px;}
+.ver{font-size:11px;background:rgba(255,255,255,.15);border-radius:20px;padding:3px 10px;display:inline-block;margin-top:8px;}
+
+/* ── 플로우 컨테이너 ── */
+.flow{display:flex;flex-direction:column;gap:0;}
+
+/* ── 레인 (수평 계층) ── */
+.lane{display:flex;align-items:stretch;margin-bottom:0;}
+.lane-label{writing-mode:vertical-rl;text-orientation:mixed;transform:rotate(180deg);font-size:11px;font-weight:700;color:#fff;border-radius:8px 0 0 8px;padding:14px 7px;display:flex;align-items:center;justify-content:center;min-width:30px;white-space:nowrap;letter-spacing:1px;}
+.lane-body{flex:1;border-radius:0 8px 8px 0;padding:16px 18px;display:flex;align-items:center;gap:12px;flex-wrap:nowrap;}
+
+/* 레인 색상 */
+.l-user   .lane-label{background:#6c63ff;}
+.l-user   .lane-body{background:#f0eeff;border:1.5px solid #c4bfff;border-left:none;}
+.l-api    .lane-label{background:#0ea5e9;}
+.l-api    .lane-body{background:#e0f5ff;border:1.5px solid #bae6fd;border-left:none;}
+.l-proc   .lane-label{background:#10b981;}
+.l-proc   .lane-body{background:#e8fdf5;border:1.5px solid #a7f3d0;border-left:none;}
+.l-db     .lane-label{background:#f59e0b;}
+.l-db     .lane-body{background:#fffbea;border:1.5px solid #fde68a;border-left:none;}
+.l-ai     .lane-label{background:#ef4444;}
+.l-ai     .lane-body{background:#fff1f1;border:1.5px solid #fecaca;border-left:none;}
+.l-out    .lane-label{background:#8b5cf6;}
+.l-out    .lane-body{background:#f5f0ff;border:1.5px solid #ddd6fe;border-left:none;}
+
+/* ── 화살표 연결 ── */
+.arrow-row{display:flex;justify-content:center;align-items:center;height:36px;position:relative;}
+.arrow-down{width:2px;height:28px;background:#94a3b8;margin:0 auto;position:relative;}
+.arrow-down::after{content:'';position:absolute;bottom:-7px;left:-5px;border:6px solid transparent;border-top-color:#94a3b8;}
+.arrow-label{font-size:11px;color:#64748b;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:2px 10px;position:absolute;left:50%;transform:translateX(-50%);top:50%;transform:translate(-50%,-50%);white-space:nowrap;z-index:2;}
+
+/* ── 노드 (박스) ── */
+.node{border-radius:10px;padding:10px 14px;font-size:12.5px;font-weight:500;text-align:center;line-height:1.45;position:relative;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.08);}
+.node .icon{font-size:17px;display:block;margin-bottom:3px;}
+.node small{font-size:10.5px;font-weight:400;display:block;color:inherit;opacity:.75;margin-top:2px;}
+
+/* 노드 색상 테마 */
+.n-purple{background:#fff;border:2px solid #8b5cf6;color:#5b21b6;}
+.n-blue  {background:#fff;border:2px solid #2563eb;color:#1e40af;}
+.n-green {background:#fff;border:2px solid #059669;color:#065f46;}
+.n-amber {background:#fff;border:2px solid #d97706;color:#92400e;}
+.n-red   {background:#fff;border:2px solid #dc2626;color:#991b1b;}
+.n-teal  {background:#fff;border:2px solid #0891b2;color:#164e63;}
+.n-indigo{background:#fff;border:2px solid #4f46e5;color:#312e81;}
+
+/* ── 화살표 (가로) ── */
+.arr-r{display:flex;align-items:center;color:#94a3b8;font-size:18px;padding:0 4px;flex-shrink:0;}
+
+/* ── 분기 박스 ── */
+.diamond{background:#fff;border:2px solid #d97706;color:#92400e;border-radius:10px;padding:10px 16px;font-size:12px;font-weight:700;text-align:center;position:relative;transform:none;white-space:nowrap;}
+.diamond::before{content:'◆ ';font-size:10px;}
+
+/* ── 저장소 섹션 ── */
+.storage-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;width:100%;}
+.store-card{background:#fff;border:1.5px solid #fde68a;border-radius:10px;padding:10px 8px;text-align:center;font-size:11.5px;font-weight:500;color:#92400e;}
+.store-card .icon{font-size:20px;margin-bottom:4px;}
+.store-card small{font-size:10px;color:#78716c;display:block;margin-top:3px;}
+
+/* ── AI 처리 섹션 ── */
+.ai-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;}
+
+/* ── 출력 섹션 ── */
+.out-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;}
+
+/* ── 범례 ── */
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:28px;padding:16px 20px;background:#fff;border-radius:12px;border:1.5px solid #e2e8f0;}
+.legend-title{font-size:12px;font-weight:700;color:#334155;width:100%;margin-bottom:4px;}
+.leg-item{display:flex;align-items:center;gap:6px;font-size:11.5px;color:#475569;}
+.leg-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;}
+
+/* ── 보안 배지 ── */
+.security-bar{background:#1e293b;color:#94a3b8;border-radius:8px;padding:10px 18px;font-size:11.5px;display:flex;align-items:center;gap:10px;margin-top:20px;}
+.security-bar span{color:#fbbf24;}
+
+/* ── 상세 플로우 다이어그램 ── */
+.detail-wrap{margin-top:32px;}
+.detail-title{font-size:15px;font-weight:700;color:#1a3c6e;margin-bottom:14px;padding-left:4px;border-left:4px solid #2C5F8A;padding-left:12px;}
+
+.flow-svg-wrap{background:#fff;border-radius:14px;border:1.5px solid #e2e8f0;padding:24px;overflow-x:auto;}
+
+/* 스텝 플로우 */
+.step-flow{display:flex;align-items:center;gap:0;flex-wrap:nowrap;overflow-x:auto;padding:8px 0;}
+.step{background:#fff;border-radius:10px;padding:12px 14px;text-align:center;font-size:12px;font-weight:500;min-width:120px;flex-shrink:0;box-shadow:0 1px 4px rgba(0,0,0,.08);}
+.step .snum{font-size:10px;font-weight:700;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 5px;}
+.step .stxt{line-height:1.4;}
+.step .sdesc{font-size:10.5px;color:#64748b;margin-top:3px;}
+.sarr{font-size:20px;color:#94a3b8;padding:0 6px;flex-shrink:0;}
+
+/* ── 색상 스텝 ── */
+.s1{border:2px solid #6c63ff;}.s1 .snum{background:#6c63ff;color:#fff;}
+.s2{border:2px solid #0ea5e9;}.s2 .snum{background:#0ea5e9;color:#fff;}
+.s3{border:2px solid #10b981;}.s3 .snum{background:#10b981;color:#fff;}
+.s4{border:2px solid #f59e0b;}.s4 .snum{background:#f59e0b;color:#fff;}
+.s5{border:2px solid #ef4444;}.s5 .snum{background:#ef4444;color:#fff;}
+.s6{border:2px solid #8b5cf6;}.s6 .snum{background:#8b5cf6;color:#fff;}
+
+/* 분기 플로우 */
+.branch-wrap{margin-top:28px;background:#f8fafc;border-radius:12px;padding:20px;border:1.5px solid #e2e8f0;}
+.branch-title{font-size:13px;font-weight:700;color:#334155;margin-bottom:14px;}
+.branch-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.branch-col{background:#fff;border-radius:10px;padding:16px;border:1.5px solid #e2e8f0;}
+.branch-col h4{font-size:12.5px;font-weight:700;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid;}
+.branch-col.b-sql h4{color:#10b981;border-color:#10b981;}
+.branch-col.b-vec h4{color:#6c63ff;border-color:#6c63ff;}
+.branch-step{font-size:11.5px;color:#334155;padding:5px 0 5px 18px;position:relative;line-height:1.45;}
+.branch-step::before{content:'▶';position:absolute;left:0;font-size:8px;top:7px;color:#94a3b8;}
+
+/* 예시 박스 */
+.example-box{margin-top:28px;background:#fffbea;border:1.5px solid #fde68a;border-radius:12px;padding:20px 24px;}
+.example-box h3{font-size:13px;font-weight:700;color:#92400e;margin-bottom:12px;}
+.ex-row{display:flex;gap:16px;align-items:flex-start;margin-bottom:12px;}
+.ex-q{background:#fff;border:1.5px solid #d97706;border-radius:8px;padding:8px 14px;font-size:12px;color:#92400e;flex:1;}
+.ex-q::before{content:'💬 질문: ';font-weight:700;}
+.ex-a{background:#fff;border:1.5px solid #10b981;border-radius:8px;padding:8px 14px;font-size:12px;color:#065f46;flex:1.5;}
+.ex-a::before{content:'🤖 처리: ';font-weight:700;}
+.ex-arr{font-size:18px;color:#94a3b8;align-self:center;}
+
+</style>
+</head>
+<body>
+<div class="page-wrap">
+
+<!-- 헤더 -->
+<div class="hdr">
+  <h1>🤖 인시스 그룹 AWS 기반 사내 AI 챗봇 시스템 아키텍처</h1>
+  <p>사내 엑셀·문서 데이터를 AWS에 저장하고, 자연어 질문으로 필요한 정보를 즉시 조회하는 RAG 기반 챗봇 구성도</p>
+  <span class="ver">v1.0 · 2026.05 · 인시스 AI R&D 센터</span>
+</div>
+
+<!-- ── 전체 아키텍처 레인 다이어그램 ── -->
+<div class="flow">
+
+  <!-- 1. 사용자 -->
+  <div class="lane l-user">
+    <div class="lane-label">사용자</div>
+    <div class="lane-body" style="gap:10px;">
+      <div class="node n-purple">
+        <span class="icon">👤</span>
+        회계 담당자<br>경영진 등
+        <small>질문 입력</small>
+      </div>
+      <div class="arr-r">→</div>
+      <div class="node n-purple">
+        <span class="icon">💬</span>
+        웹 챗봇 UI<br><small>사내 포털 or 카카오채널</small>
+      </div>
+      <div class="arr-r">→</div>
+      <div class="node n-purple" style="border-color:#ff6b35;color:#c0392b;">
+        <span class="icon">🔐</span>
+        사용자 인증<br><small>AWS Cognito / SSO</small>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-row">
+    <div class="arrow-down"></div>
+    <div class="arrow-label">HTTPS (암호화 전송)</div>
+  </div>
+
+  <!-- 2. API Gateway -->
+  <div class="lane l-api">
+    <div class="lane-label">API 게이트웨이</div>
+    <div class="lane-body" style="gap:10px;">
+      <div class="node n-blue">
+        <span class="icon">🚪</span>
+        AWS API Gateway<br><small>요청 라우팅 · 속도제한</small>
+      </div>
+      <div class="arr-r">→</div>
+      <div class="node n-blue">
+        <span class="icon">⚡</span>
+        AWS Lambda<br><small>쿼리 처리 함수</small>
+      </div>
+      <div class="arr-r">→</div>
+      <div class="diamond">
+        쿼리 유형 분류
+        <small style="font-size:10px;font-weight:400;display:block;margin-top:3px;">정형 데이터 조회 / 문서 검색 / 혼합</small>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-row">
+    <div class="arrow-down"></div>
+    <div class="arrow-label">쿼리 분류 후 라우팅</div>
+  </div>
+
+  <!-- 3. AI 처리 -->
+  <div class="lane l-ai">
+    <div class="lane-label">AI 처리 엔진</div>
+    <div class="lane-body" style="gap:10px;">
+      <div class="node n-red" style="min-width:150px;">
+        <span class="icon">🧠</span>
+        Amazon Bedrock<br><small>Claude / GPT 연동</small>
+        <small>자연어 → SQL 변환</small>
+      </div>
+      <div class="arr-r">⇄</div>
+      <div class="node n-red" style="min-width:150px;">
+        <span class="icon">🔍</span>
+        임베딩 생성<br><small>텍스트 → 벡터 변환</small>
+        <small>Amazon Titan Embedding</small>
+      </div>
+      <div class="arr-r">⇄</div>
+      <div class="node n-red" style="min-width:150px;">
+        <span class="icon">📊</span>
+        결과 요약 · 생성<br><small>LLM 최종 답변 생성</small>
+        <small>표·엑셀·텍스트 형태</small>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-row">
+    <div class="arrow-down"></div>
+    <div class="arrow-label">데이터 조회 요청</div>
+  </div>
+
+  <!-- 4. 처리/파싱 -->
+  <div class="lane l-proc">
+    <div class="lane-label">데이터 처리</div>
+    <div class="lane-body" style="gap:10px;">
+      <div class="node n-green" style="min-width:130px;">
+        <span class="icon">📥</span>
+        파일 업로드<br><small>엑셀·PDF·이미지</small>
+      </div>
+      <div class="arr-r">→</div>
+      <div class="node n-green" style="min-width:130px;">
+        <span class="icon">⚙️</span>
+        Lambda 파싱<br><small>엑셀→정형 데이터</small>
+        <small>문서→텍스트 추출</small>
+      </div>
+      <div class="arr-r">→</div>
+      <div class="node n-green" style="min-width:130px;">
+        <span class="icon">✂️</span>
+        청킹 · 분류<br><small>회사별·연도별</small>
+        <small>데이터 유형 태깅</small>
+      </div>
+      <div class="arr-r">→</div>
+      <div class="node n-green" style="min-width:130px;">
+        <span class="icon">🏷️</span>
+        메타데이터 부착<br><small>회사코드·연도</small>
+        <small>문서종류·부서</small>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-row">
+    <div class="arrow-down"></div>
+    <div class="arrow-label">저장</div>
+  </div>
+
+  <!-- 5. 저장소 -->
+  <div class="lane l-db">
+    <div class="lane-label">AWS 저장소</div>
+    <div class="lane-body">
+      <div class="storage-grid">
+        <div class="store-card">
+          <div class="icon">🪣</div>
+          <strong>Amazon S3</strong>
+          <small>원본 파일 보관<br>엑셀·PDF·이미지</small>
+        </div>
+        <div class="store-card">
+          <div class="icon">🗄️</div>
+          <strong>RDS / Aurora</strong>
+          <small>정형 데이터<br>매입·매출·인건비 수치</small>
+        </div>
+        <div class="store-card">
+          <div class="icon">🔎</div>
+          <strong>OpenSearch</strong>
+          <small>벡터 DB<br>문서 의미 검색</small>
+        </div>
+        <div class="store-card">
+          <div class="icon">⚡</div>
+          <strong>ElastiCache</strong>
+          <small>자주 쓰는 쿼리<br>캐싱·속도 향상</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-row">
+    <div class="arrow-down"></div>
+    <div class="arrow-label">결과 반환 및 응답 생성</div>
+  </div>
+
+  <!-- 6. 출력 -->
+  <div class="lane l-out">
+    <div class="lane-label">응답 출력</div>
+    <div class="lane-body">
+      <div class="out-grid">
+        <div class="node n-indigo" style="white-space:normal;">
+          <span class="icon">📋</span>
+          텍스트 답변<br><small>"2025년 A사 매입 총 3,200만원"</small>
+        </div>
+        <div class="node n-indigo" style="white-space:normal;">
+          <span class="icon">📊</span>
+          엑셀 다운로드<br><small>조회 결과 자동 생성</small>
+        </div>
+        <div class="node n-indigo" style="white-space:normal;">
+          <span class="icon">📈</span>
+          차트·요약 리포트<br><small>업체별·기간별 분석</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /flow -->
+
+<!-- 보안 바 -->
+<div class="security-bar">
+  🔒 <span>전구간 암호화:</span> S3 SSE-KMS · RDS 암호화 · TLS 1.3 · VPC Private Subnet · IAM 역할 기반 접근제어 · CloudTrail 감사로그
+</div>
+
+<!-- ── 상세 처리 플로우 ── -->
+<div class="detail-wrap">
+  <div class="detail-title">질문 처리 상세 플로우 (질문 입력 → 답변까지)</div>
+  <div class="flow-svg-wrap">
+
+    <!-- 스텝 플로우 -->
+    <div class="step-flow">
+      <div class="step s1">
+        <div class="snum">1</div>
+        <div class="stxt">💬 질문 입력</div>
+        <div class="sdesc">자연어로 질문<br>"A업체 2025년 매입?"</div>
+      </div>
+      <div class="sarr">→</div>
+      <div class="step s2">
+        <div class="snum">2</div>
+        <div class="stxt">🔐 인증 확인</div>
+        <div class="sdesc">Cognito 토큰 검증<br>접근권한 확인</div>
+      </div>
+      <div class="sarr">→</div>
+      <div class="step s3">
+        <div class="snum">3</div>
+        <div class="stxt">🧠 의도 분석</div>
+        <div class="sdesc">LLM이 질문 파악<br>키워드·기간 추출</div>
+      </div>
+      <div class="sarr">→</div>
+      <div class="step s4">
+        <div class="snum">4</div>
+        <div class="stxt">⚡ 쿼리 생성</div>
+        <div class="sdesc">SQL or 벡터검색<br>자동 생성</div>
+      </div>
+      <div class="sarr">→</div>
+      <div class="step s5">
+        <div class="snum">5</div>
+        <div class="stxt">🗄️ DB 조회</div>
+        <div class="sdesc">RDS/OpenSearch<br>에서 데이터 검색</div>
+      </div>
+      <div class="sarr">→</div>
+      <div class="step s6">
+        <div class="snum">6</div>
+        <div class="stxt">📋 답변 생성</div>
+        <div class="sdesc">LLM이 결과 정리<br>표·텍스트·엑셀</div>
+      </div>
+    </div>
+
+    <!-- 분기 처리 상세 -->
+    <div class="branch-wrap">
+      <div class="branch-title">⑷ 쿼리 유형별 처리 분기</div>
+      <div class="branch-grid">
+        <div class="branch-col b-sql">
+          <h4>📊 정형 데이터 조회 (숫자·표)</h4>
+          <div class="branch-step">LLM이 자연어 → SQL 자동 변환</div>
+          <div class="branch-step">RDS(Aurora)에서 정확한 수치 조회</div>
+          <div class="branch-step">결과 집계 후 표 형태로 반환</div>
+          <div class="branch-step">엑셀 파일 자동 생성 (다운로드)</div>
+          <div style="margin-top:10px;font-size:11px;color:#059669;padding:6px 10px;background:#e8fdf5;border-radius:6px;">
+            예: "2025년 A업체 매입 월별 합계 뽑아줘"
+          </div>
+        </div>
+        <div class="branch-col b-vec">
+          <h4>🔍 비정형 문서 검색 (텍스트)</h4>
+          <div class="branch-step">질문을 임베딩 벡터로 변환</div>
+          <div class="branch-step">OpenSearch에서 유사 문서 검색</div>
+          <div class="branch-step">관련 문서 청크 추출 (RAG)</div>
+          <div class="branch-step">LLM이 컨텍스트 기반 답변 생성</div>
+          <div style="margin-top:10px;font-size:11px;color:#6c63ff;padding:6px 10px;background:#f0eeff;border-radius:6px;">
+            예: "A업체 계약 조건에 납기 조항 있어?"
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 활용 예시 ── -->
+<div class="example-box">
+  <h3>💡 실제 활용 예시</h3>
+  <div class="ex-row">
+    <div class="ex-q">"2025년 매입자료 중 인텍코리아 건만 뽑아줘"</div>
+    <div class="ex-arr">→</div>
+    <div class="ex-a">SQL 생성 → RDS 조회 → 인텍코리아 매입 전표 필터링 → 엑셀 다운로드 제공</div>
+  </div>
+  <div class="ex-row">
+    <div class="ex-q">"1분기 계열사별 매출 비교해서 요약해줘"</div>
+    <div class="ex-arr">→</div>
+    <div class="ex-a">다중 SQL 병렬 조회 → 집계 → LLM이 비교 요약 + 차트 데이터 생성</div>
+  </div>
+  <div class="ex-row">
+    <div class="ex-q">"A업체랑 계약서에서 대금 지급 조건 찾아줘"</div>
+    <div class="ex-arr">→</div>
+    <div class="ex-a">벡터 검색 → 계약서 PDF 관련 청크 추출 → LLM이 조항 요약 후 답변</div>
+  </div>
+  <div class="ex-row" style="margin-bottom:0;">
+    <div class="ex-q">"챈스 이번달 법인카드 사용내역 정리해줘"</div>
+    <div class="ex-arr">→</div>
+    <div class="ex-a">카드내역 CSV → 파싱 → 챈스 필터 → 항목별 분류 요약 + 합계 반환</div>
+  </div>
+</div>
+
+<!-- 범례 -->
+<div class="legend">
+  <div class="legend-title">레이어 범례</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#6c63ff;"></div>사용자 레이어</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#0ea5e9;"></div>API/게이트웨이</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#ef4444;"></div>AI 처리 엔진</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#10b981;"></div>데이터 처리·파싱</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#f59e0b;"></div>AWS 저장소</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#8b5cf6;"></div>응답 출력</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#10b981;"></div>정형 데이터 (SQL)</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#6c63ff;"></div>비정형 문서 (벡터검색)</div>
+</div>
+
+</div><!-- /page-wrap -->
+</body>
+</html>
