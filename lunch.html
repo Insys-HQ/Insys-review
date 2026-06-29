@@ -3,10 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>인시스 13층 점심 주문 v1.0</title>
+<title>인시스 점심주문관리 v1.1</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 
-<!-- Firebase SDK -->
 <script type="module">
 import { initializeApp }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -14,7 +13,6 @@ import { getFirestore, doc, collection, onSnapshot, setDoc, addDoc,
          getDocs, query, orderBy, limit, serverTimestamp, deleteDoc }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// ── Firebase 설정 ── ★ 본인 프로젝트로 교체 ──────────────
 const firebaseConfig = {
   apiKey:            "AIzaSyBYqd2uRr1ZvFLDCWuS15h9qFkT-Dvg5Es",
   authDomain:        "insys-work.firebaseapp.com",
@@ -26,7 +24,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db  = getFirestore(app);
 
-// ── 임직원 목록 (채팅 데이터 기반 25명) ─────────────────
 const MEMBERS = [
   '권창오','권하정','기상운','김양섭','김원효','김임정',
   '김진섭','김진익','김효중','박영은','박태희','백하경',
@@ -34,7 +31,6 @@ const MEMBERS = [
   '정채윤','조선아','조승현','최진이','하봉군','황혜선'
 ];
 
-// ── 식당·메뉴 (실제 주문 데이터 기반) ─────────────────────
 const RESTAURANTS = [
   { name:'목화식당',       menus:['돌솥비빔밥','김치찌개','육개장','두루치기정식','김치돼지두루치기','된장찌개','순두부찌개'] },
   { name:'대박밀면',       menus:['물비빔밀면정식(쉐어)','물비빔밀면(매운맛)','제육덮밥','등심돈까스'] },
@@ -60,35 +56,32 @@ const RESTAURANTS = [
   { name:'기타',           menus:[] },
 ];
 
-// ── 유틸 ────────────────────────────────────────────
-const APP_VER  = 'v1.0';
+const APP_VER  = 'v1.1';
 const todayKey = () => new Date().toISOString().slice(0,10);
 const fmtTime  = d => d ? new Date(d.seconds*1000).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}) : '';
 const fmtDate  = s => { const [,m,d]=s.split('-'); return `${+m}월 ${+d}일`; };
 const $        = id => document.getElementById(id);
 const esc      = s  => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
-// ── 상태 ─────────────────────────────────────────────
-let myName      = localStorage.getItem('insys_lunch_name') || '';
-let todayOrders = [];
-let isClosed    = false;
-let isCompleted = false;
-let recData     = {};
-let qty         = 1;
-let selRest     = '';
+let myName='', todayOrders=[], isClosed=false, isCompleted=false;
+let recData={}, qty=1, selRest='';
 let unsubOrders, unsubMeta;
 
 // ══════════════════════════════════════════════════════
 // 초기화
 // ══════════════════════════════════════════════════════
 window.addEventListener('DOMContentLoaded', () => {
-  $('verBadge').textContent = APP_VER;
+  $('verBadge').textContent  = APP_VER;
+  $('verBadge2').textContent = APP_VER;
   $('todayDate').textContent = new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
   populateNameSelect();
   buildRestButtons(RESTAURANTS.map(r=>r.name), {});
   startClock();
+  loadWeather();
   requestNotifPerm();
+  applyViewMode(localStorage.getItem('insys_viewmode') || 'auto');
 
+  myName = localStorage.getItem('insys_lunch_name') || '';
   if (myName) { $('nameSelect').value = myName; doLogin(); }
   else { $('loginScreen').classList.remove('hidden'); }
 });
@@ -97,11 +90,82 @@ function populateNameSelect() {
   const sel = $('nameSelect');
   MEMBERS.forEach(n => {
     const o = document.createElement('option');
-    o.value = n; o.textContent = n; sel.appendChild(o);
+    o.value=n; o.textContent=n; sel.appendChild(o);
   });
 }
 
-// ── 로그인 ─────────────────────────────────────────
+// ══════════════════════════════════════════════════════
+// 날씨 (창원 기상청 API)
+// ══════════════════════════════════════════════════════
+async function loadWeather() {
+  try {
+    // Open-Meteo 무료 API - 창원 좌표 (35.2281, 128.6812)
+    const url = 'https://api.open-meteo.com/v1/forecast?latitude=35.2281&longitude=128.6812&current=temperature_2m,weathercode,windspeed_10m&timezone=Asia%2FSeoul&forecast_days=1';
+    const res  = await fetch(url);
+    const data = await res.json();
+    const cur  = data.current;
+    const temp = Math.round(cur.temperature_2m);
+    const code = cur.weathercode;
+    const icon = weatherIcon(code);
+    const desc = weatherDesc(code);
+    $('weatherInfo').innerHTML = `${icon} <span class="w-temp">${temp}°C</span> <span class="w-desc">${desc}</span>`;
+  } catch(e) {
+    $('weatherInfo').textContent = '날씨 정보 없음';
+  }
+}
+
+function weatherIcon(code) {
+  if (code === 0) return '☀️';
+  if (code <= 2)  return '🌤️';
+  if (code <= 3)  return '☁️';
+  if (code <= 49) return '🌫️';
+  if (code <= 59) return '🌦️';
+  if (code <= 69) return '🌧️';
+  if (code <= 79) return '🌨️';
+  if (code <= 82) return '🌧️';
+  if (code <= 99) return '⛈️';
+  return '🌡️';
+}
+function weatherDesc(code) {
+  if (code === 0) return '맑음';
+  if (code <= 2)  return '구름조금';
+  if (code <= 3)  return '흐림';
+  if (code <= 49) return '안개';
+  if (code <= 59) return '이슬비';
+  if (code <= 69) return '비';
+  if (code <= 79) return '눈';
+  if (code <= 82) return '소나기';
+  if (code <= 99) return '천둥번개';
+  return '';
+}
+
+// ══════════════════════════════════════════════════════
+// PC / 모바일 화면 전환
+// ══════════════════════════════════════════════════════
+window.setViewMode = mode => {
+  localStorage.setItem('insys_viewmode', mode);
+  applyViewMode(mode);
+  document.querySelectorAll('.vm-btn').forEach(b=>b.classList.toggle('active', b.dataset.vm===mode));
+};
+
+function applyViewMode(mode) {
+  const main = document.querySelector('main');
+  if (mode === 'pc') {
+    main.style.maxWidth = '1100px';
+    document.body.classList.add('pc-mode');
+  } else if (mode === 'mobile') {
+    main.style.maxWidth = '420px';
+    document.body.classList.remove('pc-mode');
+  } else {
+    main.style.maxWidth = '660px';
+    document.body.classList.remove('pc-mode');
+  }
+  document.querySelectorAll('.vm-btn').forEach(b=>b.classList.toggle('active', b.dataset.vm===mode));
+}
+
+// ══════════════════════════════════════════════════════
+// 로그인
+// ══════════════════════════════════════════════════════
 window.doLogin = () => {
   const n = $('nameSelect').value;
   if (!n) { showToast('이름을 선택해 주세요'); return; }
@@ -129,46 +193,34 @@ window.changeName = () => {
 // ══════════════════════════════════════════════════════
 function subscribeToday() {
   const dk = todayKey();
-
-  // 메타 (마감/완료)
   unsubMeta = onSnapshot(doc(db,'lunch_days',dk), snap => {
     const d = snap.exists() ? snap.data() : {};
     isClosed    = !!d.closed;
     isCompleted = !!d.completed;
     updateStatusUI();
   });
-
-  // 주문 목록
   unsubOrders = onSnapshot(
     query(collection(db,'lunch_days',dk,'orders'), orderBy('createdAt')),
     snap => {
       todayOrders = snap.docs.map(d=>({id:d.id,...d.data()}));
-      renderOrders();
-      renderSummary();
-      updateStats();
+      renderOrders(); renderSummary(); updateStats();
     }
   );
 }
 
 // ══════════════════════════════════════════════════════
-// 이력 로드 & 추천 데이터
+// 이력 & 추천
 // ══════════════════════════════════════════════════════
 async function loadHistory() {
   try {
     const snap = await getDocs(query(collection(db,'lunch_history'), orderBy('date','desc'), limit(40)));
     recData = {};
-    snap.docs.forEach(d => {
-      (d.data().orders||[]).forEach(o => {
-        if (!o.menu || !o.restaurant) return;
-        const k = o.restaurant+'||'+o.menu;
-        recData[k] = (recData[k]||0) + 1;
-      });
-    });
-    // 식당 빈도
     const restFreq = {};
     snap.docs.forEach(d => {
       (d.data().orders||[]).forEach(o => {
-        if (o.restaurant) restFreq[o.restaurant] = (restFreq[o.restaurant]||0)+1;
+        if (!o.menu || !o.restaurant) return;
+        recData[o.restaurant+'||'+o.menu] = (recData[o.restaurant+'||'+o.menu]||0)+1;
+        restFreq[o.restaurant] = (restFreq[o.restaurant]||0)+1;
       });
     });
     const sorted = [...RESTAURANTS].sort((a,b)=>(restFreq[b.name]||0)-(restFreq[a.name]||0));
@@ -179,12 +231,12 @@ async function loadHistory() {
 }
 
 // ══════════════════════════════════════════════════════
-// 식당 버튼
+// 식당·메뉴
 // ══════════════════════════════════════════════════════
 function buildRestButtons(names, freq) {
   const grid = $('restaurantGrid');
   grid.innerHTML = '';
-  names.slice(0,14).forEach(name => {
+  names.slice(0,15).forEach(name => {
     const btn = document.createElement('button');
     btn.className = 'rest-btn';
     btn.dataset.name = name;
@@ -199,18 +251,14 @@ function selectRest(name) {
   selRest = name;
   $('inputRestaurant').value = name;
   document.querySelectorAll('.rest-btn').forEach(b=>b.classList.toggle('active', b.dataset.name===name));
-  renderMenuTags(name);
-}
-
-function renderMenuTags(restName) {
+  const rest = RESTAURANTS.find(r=>r.name===name);
   const el = $('menuTags');
-  const rest = RESTAURANTS.find(r=>r.name===restName);
   if (!rest || !rest.menus.length) {
-    el.innerHTML = '<span class="tag-hint">직접 입력해 주세요</span>'; return;
+    el.innerHTML='<span class="tag-hint">직접 입력해 주세요</span>'; return;
   }
-  const sorted = [...rest.menus].sort((a,b)=>(recData[restName+'||'+b]||0)-(recData[restName+'||'+a]||0));
+  const sorted = [...rest.menus].sort((a,b)=>(recData[name+'||'+b]||0)-(recData[name+'||'+a]||0));
   el.innerHTML = sorted.map(m => {
-    const cnt = recData[restName+'||'+m];
+    const cnt = recData[name+'||'+m];
     return `<button class="menu-tag" onclick="selectMenu('${esc(m)}')">${esc(m)}${cnt?`<span class="tag-cnt">${cnt}</span>`:''}</button>`;
   }).join('');
 }
@@ -221,9 +269,6 @@ window.selectMenu = menu => {
   event.target.closest('.menu-tag').classList.add('active');
 };
 
-// ══════════════════════════════════════════════════════
-// 추천 메뉴
-// ══════════════════════════════════════════════════════
 function renderRecommend() {
   const top = Object.entries(recData).sort((a,b)=>b[1]-a[1]).slice(0,6)
     .map(([k,cnt])=>{ const [rest,menu]=k.split('||'); return {rest,menu,cnt}; });
@@ -240,7 +285,7 @@ function renderRecommend() {
 window.applyRec = (rest,menu) => { selectRest(rest); $('inputMenu').value=menu; };
 
 // ══════════════════════════════════════════════════════
-// 주문 추가 / 삭제
+// 주문 추가/삭제
 // ══════════════════════════════════════════════════════
 window.changeQty = d => { qty=Math.max(1,Math.min(10,qty+d)); $('qtyDisplay').textContent=qty; };
 
@@ -251,9 +296,8 @@ window.addOrder = async () => {
   const note       = $('inputNote').value.trim();
   if (!menu)       { showToast('메뉴를 입력해 주세요'); return; }
   if (!restaurant) { showToast('식당을 선택해 주세요'); return; }
-  if (todayOrders.find(o=>o.name===myName && o.restaurant===restaurant && o.menu===menu))
+  if (todayOrders.find(o=>o.name===myName&&o.restaurant===restaurant&&o.menu===menu))
     { showToast('이미 같은 주문이 있습니다'); return; }
-
   try {
     await addDoc(collection(db,'lunch_days',todayKey(),'orders'),
       { name:myName, menu, restaurant, qty, note, createdAt:serverTimestamp() });
@@ -280,7 +324,7 @@ window.toggleClose = async () => {
   const ref = doc(db,'lunch_days',todayKey());
   if (!isClosed) {
     if (!confirm('주문을 마감할까요?')) return;
-    await setDoc(ref,{closed:true, closedBy:myName, closedAt:serverTimestamp()},{merge:true});
+    await setDoc(ref,{closed:true,closedBy:myName,closedAt:serverTimestamp()},{merge:true});
     showToast('마감되었습니다');
   } else {
     if (!confirm('마감을 해제할까요?')) return;
@@ -294,11 +338,11 @@ window.toggleComplete = async () => {
   if (!isCompleted) {
     if (!confirm('전화 주문 완료 처리할까요?')) return;
     await setDoc(doc(db,'lunch_history',todayKey()),{
-      date: todayKey(),
-      orders: todayOrders.map(o=>({name:o.name,menu:o.menu,restaurant:o.restaurant,qty:o.qty,note:o.note||''})),
-      completedBy: myName, updatedAt: serverTimestamp()
+      date:todayKey(),
+      orders:todayOrders.map(o=>({name:o.name,menu:o.menu,restaurant:o.restaurant,qty:o.qty,note:o.note||''})),
+      completedBy:myName, updatedAt:serverTimestamp()
     },{merge:true});
-    await setDoc(ref,{completed:true, completedBy:myName, completedAt:serverTimestamp()},{merge:true});
+    await setDoc(ref,{completed:true,completedBy:myName,completedAt:serverTimestamp()},{merge:true});
     loadHistory();
     showToast('주문 완료 처리! 🎉');
   } else {
@@ -315,23 +359,23 @@ function updateStatusUI() {
   if (isCompleted) { badge.textContent='✅ 주문 완료'; badge.className='status-badge done'; }
   else if (isClosed) { badge.textContent='🔒 마감'; badge.className='status-badge closed'; }
   else { badge.textContent='🟢 접수 중'; badge.className='status-badge open'; }
-
-  $('orderForm').style.opacity      = isClosed ? '0.45' : '1';
+  $('orderForm').style.opacity       = isClosed ? '0.45' : '1';
   $('orderForm').style.pointerEvents = isClosed ? 'none' : '';
-  $('btnClose').textContent    = isClosed    ? '🔓 마감 해제'     : '🔒 주문 마감';
+  $('btnClose').textContent    = isClosed    ? '🔓 마감 해제'   : '🔒 주문 마감';
   $('btnClose').className      = 'ctrl-btn ' + (isClosed    ? 'btn-reopen' : 'btn-close');
-  $('btnComplete').textContent = isCompleted ? '↩ 완료 취소'      : '📞 전화주문 완료';
+  $('btnComplete').textContent = isCompleted ? '↩ 완료 취소'    : '📞 전화주문 완료';
   $('btnComplete').className   = 'ctrl-btn ' + (isCompleted ? 'btn-reopen' : 'btn-complete');
 }
 
 function renderOrders() {
   const ul = $('orderList');
+  updateStats();
   if (!todayOrders.length) {
     ul.innerHTML='<li class="empty-item">아직 주문이 없습니다. 먼저 등록해 보세요!</li>'; return;
   }
   const grouped = {};
   todayOrders.forEach(o => {
-    const r = o.restaurant||'기타';
+    const r=o.restaurant||'기타';
     if (!grouped[r]) grouped[r]=[];
     grouped[r].push(o);
   });
@@ -359,22 +403,22 @@ function renderSummary() {
   const el = $('summaryBox');
   if (!todayOrders.length) { el.classList.add('hidden'); return; }
   el.classList.remove('hidden');
-  const grouped = {};
-  todayOrders.forEach(o => {
-    const r = o.restaurant||'기타';
+  const grouped={};
+  todayOrders.forEach(o=>{
+    const r=o.restaurant||'기타';
     if (!grouped[r]) grouped[r]={};
-    const k = o.note?`${o.menu}(${o.note})`:o.menu;
+    const k=o.note?`${o.menu}(${o.note})`:o.menu;
     if (!grouped[r][k]) grouped[r][k]={qty:0,names:[]};
     grouped[r][k].qty+=o.qty; grouped[r][k].names.push(o.name);
   });
-  const today = new Date().toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'});
-  let text = `[인시스 창원 13층] ${today}\n━━━━━━━━━━━━━━━━━\n`;
+  const today=new Date().toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'});
+  let text=`[인시스 점심주문] ${today}\n━━━━━━━━━━━━━━━━━\n`;
   Object.entries(grouped).forEach(([rest,menus])=>{
     text+=`\n▶ ${rest}\n`;
     Object.entries(menus).forEach(([menu,d])=>{ text+=`  ${menu} ${d.qty}개 — ${d.names.join(', ')}\n`; });
   });
   text+=`\n━━━━━━━━━━━━━━━━━\n합계 ${todayOrders.reduce((s,o)=>s+o.qty,0)}개 / ${todayOrders.length}명`;
-  $('summaryText').textContent = text;
+  $('summaryText').textContent=text;
 }
 window.copySummary = () => navigator.clipboard.writeText($('summaryText').textContent).then(()=>showToast('복사 완료!'));
 
@@ -385,9 +429,9 @@ function updateStats() {
 }
 
 function renderHistoryCards(list) {
-  const el = $('historyList');
+  const el=$('historyList');
   if (!list.length) { el.innerHTML='<p class="empty-item">기록 없음</p>'; return; }
-  el.innerHTML = list.map(day=>{
+  el.innerHTML=list.map(day=>{
     const byR={};
     (day.orders||[]).forEach(o=>{ byR[o.restaurant||'기타']=(byR[o.restaurant||'기타']||0)+o.qty; });
     return `<div class="hist-card">
@@ -398,36 +442,34 @@ function renderHistoryCards(list) {
 }
 
 // ══════════════════════════════════════════════════════
-// 시계 & 알림 (10:00)
+// 시계 & 10:00 알림
 // ══════════════════════════════════════════════════════
 function startClock() {
-  let notified = false;
+  let notified=false;
   setInterval(()=>{
-    const now = new Date();
-    $('clock').textContent = [now.getHours(),now.getMinutes(),now.getSeconds()]
+    const now=new Date();
+    $('clock').textContent=[now.getHours(),now.getMinutes(),now.getSeconds()]
       .map(n=>String(n).padStart(2,'0')).join(':');
-    const is10 = now.getHours()===10 && now.getMinutes()===0;
-    if (is10 && !notified) {
-      notified = true;
+    const is10=now.getHours()===10&&now.getMinutes()===0;
+    if (is10&&!notified) {
+      notified=true;
       $('noticeBanner').classList.add('show');
-      setTimeout(()=>$('noticeBanner').classList.remove('show'), 90000);
-      if ('Notification' in window && Notification.permission==='granted')
+      setTimeout(()=>$('noticeBanner').classList.remove('show'),90000);
+      if ('Notification' in window&&Notification.permission==='granted')
         new Notification('🍱 점심 주문 시간!',{body:'지금 메뉴를 등록해 주세요 (마감 10:30)'});
     }
-    if (!is10) notified = false;
-  }, 1000);
+    if (!is10) notified=false;
+  },1000);
 }
 function requestNotifPerm() {
-  if ('Notification' in window && Notification.permission==='default') Notification.requestPermission();
+  if ('Notification' in window&&Notification.permission==='default') Notification.requestPermission();
 }
 
-// ── 탭 ─────────────────────────────────────────────
 window.switchTab = tab => {
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('hidden',p.dataset.panel!==tab));
 };
 
-// ── 토스트 ──────────────────────────────────────────
 function showToast(msg) {
   const t=$('toast'); t.textContent=msg; t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),2600);
@@ -435,7 +477,6 @@ function showToast(msg) {
 </script>
 
 <style>
-/* ── 기본 ───────────────────────────────────────────── */
 :root {
   --navy:   #1A3A5C;
   --orange: #E85D26;
@@ -443,7 +484,7 @@ function showToast(msg) {
   --card:   #FFFFFF;
   --border: #DDD8CF;
   --text:   #1A1A1A;
-  --muted:  #5A5A5A;
+  --muted:  #505050;
   --green:  #2D7A4F;
   --red:    #B03020;
   --teal:   #0D6B70;
@@ -453,77 +494,106 @@ function showToast(msg) {
 body {
   font-family:'Noto Sans KR',sans-serif;
   background:var(--bg); color:var(--text);
-  min-height:100vh; font-size:14px;
+  min-height:100vh; font-size:15px;
 }
 .hidden { display:none !important; }
 
-/* ── 헤더 ────────────────────────────────────────────── */
+/* ── 헤더 ─────────────────────────────────────────── */
 header {
   background:var(--navy); color:#fff;
-  padding:11px 16px;
+  padding:10px 18px;
   display:flex; align-items:center; justify-content:space-between;
   position:sticky; top:0; z-index:200;
+  flex-wrap:wrap; gap:6px;
 }
-.hd-left .hd-sub { font-size:10px; opacity:.6; margin-bottom:2px; }
-.hd-left h1 { font-size:15px; font-weight:700; }
-.hd-right { display:flex; align-items:center; gap:12px; }
-#clock { font-size:19px; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:1px; }
+.hd-left .hd-sub { font-size:11px; opacity:.6; margin-bottom:2px; }
+.hd-left h1 { font-size:17px; font-weight:700; }
+.hd-right { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+
+/* 날씨 */
+#weatherInfo {
+  font-size:13px; color:#fff; opacity:.9;
+  display:flex; align-items:center; gap:4px;
+}
+.w-temp { font-size:15px; font-weight:700; }
+.w-desc { font-size:12px; opacity:.8; }
+
+/* 날짜 */
+#headerDate { font-size:12px; opacity:.7; }
+
+/* 시계 */
+#clock { font-size:18px; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:1px; }
+
+/* 사용자 뱃지 */
 #userBadge {
   background:rgba(255,255,255,.15); color:#fff;
   border:1px solid rgba(255,255,255,.25);
-  border-radius:14px; padding:3px 10px;
-  font-size:11px; cursor:pointer;
+  border-radius:14px; padding:4px 12px;
+  font-size:13px; cursor:pointer;
 }
 #userBadge:hover { background:rgba(255,255,255,.25); }
-.ver-badge {
-  font-size:10px; opacity:.5; letter-spacing:.5px;
-}
 
-/* ── 배너 ────────────────────────────────────────────── */
+/* 버전 */
+.ver-badge { font-size:11px; opacity:.45; }
+
+/* 화면 전환 버튼 */
+.vm-row { display:flex; gap:4px; }
+.vm-btn {
+  background:rgba(255,255,255,.12); color:#fff;
+  border:1px solid rgba(255,255,255,.22);
+  border-radius:6px; padding:3px 8px; font-size:11px;
+  cursor:pointer; font-family:inherit; transition:all .15s;
+}
+.vm-btn.active, .vm-btn:hover { background:var(--orange); border-color:var(--orange); }
+
+/* ── 배너 ─────────────────────────────────────────── */
 #noticeBanner {
   background:var(--orange); color:#fff;
-  padding:11px 16px; display:none;
+  padding:12px 18px; display:none;
   animation:slideDown .3s ease;
 }
 #noticeBanner.show { display:block; }
 @keyframes slideDown { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
-#noticeBanner strong { font-size:13px; }
-#noticeBanner p { font-size:11px; opacity:.9; margin-top:2px; }
+#noticeBanner strong { font-size:15px; }
+#noticeBanner p { font-size:13px; opacity:.9; margin-top:3px; }
 
-/* ── 메인 ────────────────────────────────────────────── */
-main { max-width:660px; margin:0 auto; padding:14px 13px 80px; }
+/* ── 메인 ─────────────────────────────────────────── */
+main { max-width:660px; margin:0 auto; padding:16px 14px 80px; transition:max-width .3s; }
 
-/* ── 로그인 ──────────────────────────────────────────── */
+/* PC 모드 2열 */
+body.pc-mode main { max-width:1100px; }
+body.pc-mode .pc-grid {
+  display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start;
+}
+
+/* ── 로그인 ───────────────────────────────────────── */
 #loginScreen {
   min-height:80vh; display:flex; flex-direction:column;
   align-items:center; justify-content:center; padding:20px;
 }
 .login-card {
-  background:var(--card); border-radius:16px; padding:30px 24px;
-  width:100%; max-width:320px; text-align:center;
-  box-shadow:0 4px 18px rgba(0,0,0,.08);
+  background:var(--card); border-radius:16px; padding:34px 28px;
+  width:100%; max-width:340px; text-align:center;
+  box-shadow:0 4px 20px rgba(0,0,0,.09);
 }
-.login-card .lc-dept { font-size:10px; color:var(--muted); margin-bottom:4px; letter-spacing:.5px; }
-.login-card h2 { font-size:19px; font-weight:700; color:var(--navy); margin-bottom:4px; }
-.login-card p  { font-size:12px; color:var(--muted); margin-bottom:20px; line-height:1.6; }
+.login-card .lc-dept { font-size:11px; color:var(--muted); margin-bottom:5px; }
+.login-card h2 { font-size:21px; font-weight:700; color:var(--navy); margin-bottom:5px; }
+.login-card p  { font-size:13px; color:var(--muted); margin-bottom:22px; line-height:1.7; }
 .login-card select {
-  width:100%; padding:10px 11px; border:1.5px solid var(--border);
-  border-radius:8px; font-size:13px; font-family:inherit;
-  background:#fff; color:var(--text); outline:none; margin-bottom:10px;
+  width:100%; padding:12px 13px; border:1.5px solid var(--border);
+  border-radius:8px; font-size:15px; font-family:inherit;
+  background:#fff; color:var(--text); outline:none; margin-bottom:12px;
 }
 .btn-primary {
   width:100%; background:var(--orange); color:#fff; border:none;
-  border-radius:9px; padding:12px; font-size:14px; font-weight:700;
+  border-radius:9px; padding:13px; font-size:15px; font-weight:700;
   font-family:inherit; cursor:pointer;
 }
 .btn-primary:hover { background:#c94d1c; }
 
-/* ── 상단 상태/통계 ──────────────────────────────────── */
-.top-bar {
-  display:flex; align-items:center; justify-content:space-between;
-  margin-bottom:12px;
-}
-.status-badge { border-radius:14px; padding:4px 11px; font-size:11px; font-weight:700; }
+/* ── 상태/통계 ────────────────────────────────────── */
+.top-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.status-badge { border-radius:14px; padding:5px 13px; font-size:13px; font-weight:700; }
 .status-badge.open   { background:#e6f4ed; color:#1f6b3f; }
 .status-badge.closed { background:#fde8e6; color:var(--red); }
 .status-badge.done   { background:#e3eeff; color:var(--navy); }
@@ -531,181 +601,154 @@ main { max-width:660px; margin:0 auto; padding:14px 13px 80px; }
 .stats-row { display:flex; gap:8px; margin-bottom:14px; }
 .stat-card {
   flex:1; background:var(--card); border:1px solid var(--border);
-  border-radius:10px; padding:9px 6px; text-align:center;
+  border-radius:10px; padding:11px 8px; text-align:center;
 }
-.stat-num { font-size:20px; font-weight:700; color:var(--navy); }
-.stat-lbl { font-size:10px; color:var(--muted); margin-top:1px; }
+.stat-num { font-size:22px; font-weight:700; color:var(--navy); }
+.stat-lbl { font-size:11px; color:var(--muted); margin-top:2px; }
 
-/* ── 탭 ─────────────────────────────────────────────── */
-.tabs { display:flex; gap:5px; margin-bottom:12px; }
+/* ── 탭 ──────────────────────────────────────────── */
+.tabs { display:flex; gap:5px; margin-bottom:13px; }
 .tab-btn {
-  flex:1; padding:8px 4px; border-radius:8px; font-size:12px; font-weight:700;
+  flex:1; padding:9px 4px; border-radius:8px; font-size:13px; font-weight:700;
   cursor:pointer; border:1.5px solid var(--border);
   background:var(--bg); color:var(--muted); font-family:inherit; transition:all .15s;
 }
 .tab-btn.active { background:var(--navy); color:#fff; border-color:var(--navy); }
 
-/* ── 카드 ────────────────────────────────────────────── */
-.card {
-  background:var(--card); border-radius:12px;
-  border:1px solid var(--border); padding:13px; margin-bottom:11px;
-}
-.card-title {
-  font-size:10px; font-weight:700; color:var(--muted);
-  letter-spacing:.5px; text-transform:uppercase; margin-bottom:9px;
-}
+/* ── 카드 ─────────────────────────────────────────── */
+.card { background:var(--card); border-radius:12px; border:1px solid var(--border); padding:15px; margin-bottom:12px; }
+.card-title { font-size:11px; font-weight:700; color:var(--muted); letter-spacing:.5px; text-transform:uppercase; margin-bottom:10px; }
 
-/* ── 식당 버튼 ───────────────────────────────────────── */
-#restaurantGrid { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; margin-bottom:9px; }
+/* ── 식당 버튼 ────────────────────────────────────── */
+#restaurantGrid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:10px; }
+body.pc-mode #restaurantGrid { grid-template-columns:repeat(5,1fr); }
 .rest-btn {
   background:var(--tagbg); border:1.5px solid var(--border); border-radius:7px;
-  padding:7px 5px; font-size:11px; cursor:pointer; text-align:left;
+  padding:8px 6px; font-size:13px; cursor:pointer; text-align:left;
   font-family:inherit; color:var(--text); transition:all .15s; position:relative;
 }
 .rest-btn:hover,.rest-btn.active { background:var(--navy); color:#fff; border-color:var(--navy); }
 .rest-cnt {
   position:absolute; top:3px; right:3px;
-  background:var(--orange); color:#fff;
-  border-radius:7px; font-size:9px; padding:1px 4px;
+  background:var(--orange); color:#fff; border-radius:7px; font-size:10px; padding:1px 4px;
 }
 .rest-btn.active .rest-cnt { background:rgba(255,255,255,.9); color:var(--navy); }
 
-/* ── 메뉴 태그 ──────────────────────────────────────── */
-#menuTags { display:flex; flex-wrap:wrap; gap:5px; min-height:28px; margin-bottom:9px; }
+/* ── 메뉴 태그 ────────────────────────────────────── */
+#menuTags { display:flex; flex-wrap:wrap; gap:6px; min-height:30px; margin-bottom:10px; }
 .menu-tag {
   background:var(--tagbg); border:1.5px solid var(--border);
-  border-radius:14px; padding:4px 10px; font-size:11px;
+  border-radius:16px; padding:6px 12px; font-size:13px;
   cursor:pointer; font-family:inherit; color:var(--text); transition:all .15s;
 }
 .menu-tag:hover,.menu-tag.active { background:var(--orange); color:#fff; border-color:var(--orange); }
-.tag-cnt {
-  background:rgba(0,0,0,.1); border-radius:7px;
-  font-size:9px; padding:1px 4px; margin-left:3px;
-}
-.tag-hint { font-size:11px; color:var(--muted); align-self:center; }
+.tag-cnt { background:rgba(0,0,0,.1); border-radius:7px; font-size:10px; padding:1px 4px; margin-left:3px; }
+.tag-hint { font-size:13px; color:var(--muted); align-self:center; }
 
-/* ── 추천 ────────────────────────────────────────────── */
-#recommendList { display:flex; flex-wrap:wrap; gap:6px; }
+/* ── 추천 ─────────────────────────────────────────── */
+#recommendList { display:flex; flex-wrap:wrap; gap:7px; }
 .rec-btn {
   display:flex; flex-direction:column;
   background:var(--tagbg); border:1.5px solid var(--border); border-radius:8px;
-  padding:7px 10px; font-size:11px; cursor:pointer; font-family:inherit;
-  color:var(--text); transition:all .15s; min-width:90px;
+  padding:8px 12px; font-size:13px; cursor:pointer; font-family:inherit;
+  color:var(--text); transition:all .15s; min-width:96px;
 }
 .rec-btn:hover { background:var(--navy); color:#fff; border-color:var(--navy); }
-.rec-menu { font-weight:700; font-size:12px; }
-.rec-rest { font-size:10px; color:var(--muted); margin-top:1px; }
-.rec-cnt  { font-size:10px; color:var(--orange); margin-top:2px; }
+.rec-menu { font-weight:700; font-size:13px; }
+.rec-rest { font-size:11px; color:var(--muted); margin-top:2px; }
+.rec-cnt  { font-size:11px; color:var(--orange); margin-top:2px; }
 .rec-btn:hover .rec-rest,.rec-btn:hover .rec-cnt { color:rgba(255,255,255,.75); }
 
-/* ── 폼 ─────────────────────────────────────────────── */
-.form-row { margin-bottom:9px; }
-.form-row label { display:block; font-size:10px; font-weight:700; color:var(--muted); margin-bottom:3px; }
+/* ── 폼 ──────────────────────────────────────────── */
+.form-row { margin-bottom:11px; }
+.form-row label { display:block; font-size:12px; font-weight:700; color:var(--muted); margin-bottom:5px; }
 .form-row input,.form-row textarea {
   width:100%; border:1.5px solid var(--border); border-radius:8px;
-  padding:9px 11px; font-size:13px; font-family:inherit;
+  padding:11px 13px; font-size:15px; font-family:inherit;
   background:var(--bg); color:var(--text); outline:none; transition:border-color .15s;
 }
 .form-row input:focus,.form-row textarea:focus { border-color:var(--navy); background:#fff; }
-.form-row textarea { height:52px; resize:none; }
-.qty-row { display:flex; align-items:center; gap:10px; }
+.form-row textarea { height:58px; resize:none; }
+.qty-row { display:flex; align-items:center; gap:12px; }
 .qty-btn {
-  width:30px; height:30px; border:1.5px solid var(--border); border-radius:7px;
-  background:var(--bg); font-size:16px; cursor:pointer;
+  width:34px; height:34px; border:1.5px solid var(--border); border-radius:7px;
+  background:var(--bg); font-size:18px; cursor:pointer;
   display:flex; align-items:center; justify-content:center; flex-shrink:0;
 }
 .qty-btn:hover { background:var(--border); }
-#qtyDisplay { font-size:15px; font-weight:700; min-width:20px; text-align:center; }
+#qtyDisplay { font-size:17px; font-weight:700; min-width:22px; text-align:center; }
 
-/* ── 컨트롤 버튼 ─────────────────────────────────────── */
+/* ── 컨트롤 ───────────────────────────────────────── */
 .ctrl-row { display:flex; gap:8px; margin-top:4px; }
-.ctrl-btn {
-  flex:1; border:none; border-radius:9px; padding:11px;
-  font-size:12px; font-weight:700; font-family:inherit; cursor:pointer;
-}
+.ctrl-btn { flex:1; border:none; border-radius:9px; padding:13px; font-size:14px; font-weight:700; font-family:inherit; cursor:pointer; }
 .btn-close    { background:#fde8e6; color:var(--red); }
 .btn-reopen   { background:#fff3cd; color:#7a5c00; }
 .btn-complete { background:var(--green); color:#fff; }
 
-/* ── 주문 목록 ───────────────────────────────────────── */
+/* ── 주문 목록 ────────────────────────────────────── */
 #orderList { list-style:none; }
-.empty-item { padding:22px; text-align:center; color:var(--muted); font-size:12px; }
-.order-group {
-  background:var(--card); border:1px solid var(--border);
-  border-radius:10px; margin-bottom:9px; overflow:hidden;
-}
-.group-header {
-  background:var(--navy); color:#fff;
-  padding:7px 12px; display:flex; justify-content:space-between; align-items:center;
-}
-.group-rest { font-size:13px; font-weight:700; }
-.group-cnt  { font-size:10px; opacity:.7; }
+.empty-item { padding:26px; text-align:center; color:var(--muted); font-size:14px; }
+.order-group { background:var(--card); border:1px solid var(--border); border-radius:10px; margin-bottom:10px; overflow:hidden; }
+.group-header { background:var(--navy); color:#fff; padding:9px 14px; display:flex; justify-content:space-between; align-items:center; }
+.group-rest { font-size:15px; font-weight:700; }
+.group-cnt  { font-size:12px; opacity:.7; }
 .order-row {
-  display:flex; align-items:center; gap:8px;
-  padding:8px 12px; border-top:1px solid var(--border);
+  display:flex; align-items:center; gap:9px;
+  padding:10px 14px; border-top:1px solid var(--border);
 }
 .order-row.mine { background:#f0f6ff; }
 .order-seq {
-  width:19px; height:19px; background:var(--tagbg);
-  border-radius:50%; font-size:10px; font-weight:700; color:var(--muted);
+  width:22px; height:22px; background:var(--tagbg);
+  border-radius:50%; font-size:12px; font-weight:700; color:var(--muted);
   display:flex; align-items:center; justify-content:center; flex-shrink:0;
 }
 .order-body { flex:1; }
-.order-name { font-size:12px; font-weight:700; }
-.order-menu { font-size:12px; color:var(--teal); margin-left:5px; }
-.order-note { display:block; font-size:10px; color:var(--muted); margin-top:1px; }
-.order-time { font-size:10px; color:var(--muted); flex-shrink:0; }
-.del-btn { background:none; border:none; color:#bbb; font-size:15px; cursor:pointer; padding:0 2px; flex-shrink:0; }
+.order-name { font-size:14px; font-weight:700; }
+.order-menu { font-size:14px; color:var(--teal); margin-left:6px; }
+.order-note { display:block; font-size:12px; color:var(--muted); margin-top:2px; }
+.order-time { font-size:12px; color:var(--muted); flex-shrink:0; }
+.del-btn { background:none; border:none; color:#bbb; font-size:17px; cursor:pointer; padding:0 3px; flex-shrink:0; }
 .del-btn:hover { color:var(--red); }
 
-/* ── 요약 ────────────────────────────────────────────── */
-#summaryBox { background:var(--navy); color:#fff; border-radius:12px; padding:14px; margin-bottom:12px; }
-#summaryText { font-size:12px; line-height:2; white-space:pre-line; }
+/* ── 요약 ─────────────────────────────────────────── */
+#summaryBox { background:var(--navy); color:#fff; border-radius:12px; padding:16px; margin-bottom:12px; }
+#summaryText { font-size:13px; line-height:2.1; white-space:pre-line; }
 .btn-copy {
-  width:100%; margin-top:10px; background:rgba(255,255,255,.13); color:#fff;
-  border:1.5px solid rgba(255,255,255,.28); border-radius:7px; padding:9px;
-  font-size:12px; font-weight:700; font-family:inherit; cursor:pointer;
+  width:100%; margin-top:11px; background:rgba(255,255,255,.13); color:#fff;
+  border:1.5px solid rgba(255,255,255,.28); border-radius:7px; padding:11px;
+  font-size:13px; font-weight:700; font-family:inherit; cursor:pointer;
 }
 .btn-copy:hover { background:rgba(255,255,255,.22); }
 
-/* ── 이력 ────────────────────────────────────────────── */
-.hist-card {
-  background:var(--card); border:1px solid var(--border);
-  border-radius:9px; padding:10px 12px; margin-bottom:7px;
-}
-.hist-date { font-size:12px; font-weight:700; margin-bottom:2px; }
-.hist-rest { font-size:11px; color:var(--muted); }
+/* ── 이력 ─────────────────────────────────────────── */
+.hist-card { background:var(--card); border:1px solid var(--border); border-radius:9px; padding:12px 14px; margin-bottom:8px; }
+.hist-date { font-size:13px; font-weight:700; margin-bottom:3px; }
+.hist-rest { font-size:12px; color:var(--muted); }
 
-/* ── Firebase 설정 안내 ──────────────────────────────── */
-#configWarn {
-  background:#fff8e1; border:1px solid #f0c040; border-radius:8px;
-  padding:11px 13px; margin-bottom:13px; font-size:11px; color:#7a5c00; line-height:1.7;
-}
-#configWarn code { background:rgba(0,0,0,.06); border-radius:4px; padding:1px 5px; font-size:11px; }
+/* ── 푸터 ─────────────────────────────────────────── */
+.footer-info { text-align:center; font-size:11px; color:var(--muted); padding:12px 0; margin-top:8px; border-top:1px solid var(--border); }
 
-/* ── 푸터 ────────────────────────────────────────────── */
-.footer-info {
-  text-align:center; font-size:10px; color:var(--muted);
-  padding:10px 0; margin-top:8px; border-top:1px solid var(--border);
-}
-
-/* ── 토스트 ──────────────────────────────────────────── */
+/* ── 토스트 ───────────────────────────────────────── */
 #toast {
-  position:fixed; bottom:20px; left:50%;
+  position:fixed; bottom:22px; left:50%;
   transform:translateX(-50%) translateY(14px);
   background:var(--navy); color:#fff; border-radius:18px;
-  padding:9px 18px; font-size:12px; font-weight:700;
+  padding:10px 20px; font-size:13px; font-weight:700;
   opacity:0; transition:all .27s; pointer-events:none; z-index:999;
 }
 #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 
-/* ── 반응형 ──────────────────────────────────────────── */
-@media(max-width:400px) {
+/* ── 반응형 ───────────────────────────────────────── */
+@media(max-width:420px) {
   #restaurantGrid { grid-template-columns:repeat(2,1fr); }
   .stats-row .stat-card:last-child { display:none; }
-  .ctrl-row { flex-direction:column; }
   .tabs { flex-wrap:wrap; }
   .tab-btn { flex:none; width:calc(50% - 3px); }
+  .ctrl-row { flex-direction:column; }
+  header { padding:8px 12px; }
+  .hd-left h1 { font-size:15px; }
+  #clock { font-size:15px; }
+  #weatherInfo { font-size:12px; }
 }
 </style>
 </head>
@@ -714,12 +757,24 @@ main { max-width:660px; margin:0 auto; padding:14px 13px 80px; }
 <header>
   <div class="hd-left">
     <div class="hd-sub">인시스 AI혁신 R&amp;D센터</div>
-    <h1>13층 점심 주문 관리</h1>
+    <h1>인시스 점심주문관리</h1>
   </div>
   <div class="hd-right">
-    <span id="userBadge" onclick="changeName()" title="클릭하여 이름 변경">—</span>
+    <!-- 날씨 -->
+    <div id="weatherInfo">🌡️ 로딩중</div>
+    <!-- 날짜 -->
+    <div id="headerDate"></div>
+    <!-- 시계 -->
     <span id="clock">--:--:--</span>
-    <span class="ver-badge" id="verBadge">v1.0</span>
+    <!-- 이름 -->
+    <span id="userBadge" onclick="changeName()" title="클릭하여 이름 변경">—</span>
+    <!-- 화면 전환 -->
+    <div class="vm-row">
+      <button class="vm-btn" data-vm="mobile" onclick="setViewMode('mobile')" title="모바일">📱</button>
+      <button class="vm-btn" data-vm="auto"   onclick="setViewMode('auto')"   title="기본">🖥</button>
+      <button class="vm-btn" data-vm="pc"     onclick="setViewMode('pc')"     title="PC 넓게">⛶</button>
+    </div>
+    <span class="ver-badge" id="verBadge">v1.1</span>
   </div>
 </header>
 
@@ -729,41 +784,32 @@ main { max-width:660px; margin:0 auto; padding:14px 13px 80px; }
   <p>지금 메뉴를 등록해 주세요 — 10:30 마감 예정</p>
 </div>
 
-<!-- ── 로그인 ── -->
+<!-- 로그인 -->
 <div id="loginScreen" class="hidden">
   <div class="login-card">
     <div class="lc-dept">인시스 AI혁신 R&amp;D센터</div>
-    <h2>점심 주문 시스템</h2>
-    <p>창원본사 13층<br>이름을 선택하고 시작하세요</p>
+    <h2>점심주문관리</h2>
+    <p>이름을 선택하고 시작하세요</p>
     <select id="nameSelect"><option value="">이름 선택</option></select>
     <button class="btn-primary" onclick="doLogin()">시작하기</button>
   </div>
 </div>
 
-<!-- ── 메인 ── -->
+<!-- 메인 -->
 <div id="mainScreen" class="hidden">
 <main>
 
-  <div id="configWarn">
-    ⚙️ <strong>Firebase 연결 필요:</strong> 코드 상단 <code>firebaseConfig</code>를
-    본인 Firebase 프로젝트 값으로 교체하세요.
-    기존 <code>insys-gantt</code> 또는 <code>insys-wms</code> 프로젝트 재사용 가능합니다.
-  </div>
-
-  <!-- 상태 -->
   <div class="top-bar">
     <span id="statusBadge" class="status-badge open">🟢 접수 중</span>
-    <span style="font-size:11px;color:var(--muted)" id="todayDate"></span>
+    <span style="font-size:12px;color:var(--muted)" id="todayDate"></span>
   </div>
 
-  <!-- 통계 -->
   <div class="stats-row">
     <div class="stat-card"><div class="stat-num" id="statPeople">0</div><div class="stat-lbl">참여 인원</div></div>
     <div class="stat-card"><div class="stat-num" id="statQty">0</div><div class="stat-lbl">총 수량</div></div>
     <div class="stat-card"><div class="stat-num" id="statRests">0</div><div class="stat-lbl">식당 수</div></div>
   </div>
 
-  <!-- 탭 -->
   <div class="tabs">
     <button class="tab-btn active" data-tab="order"   onclick="switchTab('order')">📝 주문 등록</button>
     <button class="tab-btn"        data-tab="list"    onclick="switchTab('list')">📋 주문 목록</button>
@@ -774,12 +820,10 @@ main { max-width:660px; margin:0 auto; padding:14px 13px 80px; }
   <!-- 탭: 주문 등록 -->
   <div class="tab-panel" data-panel="order">
     <div id="orderForm">
-      <!-- 추천 메뉴 -->
       <div class="card" id="recommendSection">
         <div class="card-title">⭐ 자주 주문한 메뉴</div>
         <div id="recommendList"></div>
       </div>
-      <!-- 식당 -->
       <div class="card">
         <div class="card-title">식당 선택</div>
         <div id="restaurantGrid"></div>
@@ -787,7 +831,6 @@ main { max-width:660px; margin:0 auto; padding:14px 13px 80px; }
           <input type="text" id="inputRestaurant" placeholder="식당명 (선택 또는 직접 입력)">
         </div>
       </div>
-      <!-- 메뉴 -->
       <div class="card">
         <div class="card-title">메뉴 선택</div>
         <div id="menuTags"><span class="tag-hint">식당을 먼저 선택하세요</span></div>
@@ -821,7 +864,7 @@ main { max-width:660px; margin:0 auto; padding:14px 13px 80px; }
   <!-- 탭: 요약/완료 -->
   <div class="tab-panel hidden" data-panel="summary">
     <div id="summaryBox" class="hidden">
-      <div style="font-size:11px;opacity:.7;margin-bottom:8px;font-weight:700">📞 전화 주문용 요약</div>
+      <div style="font-size:12px;opacity:.7;margin-bottom:8px;font-weight:700">📞 전화 주문용 요약</div>
       <div id="summaryText"></div>
       <button class="btn-copy" onclick="copySummary()">클립보드에 복사</button>
     </div>
@@ -836,17 +879,16 @@ main { max-width:660px; margin:0 auto; padding:14px 13px 80px; }
 
   <!-- 탭: 이력 -->
   <div class="tab-panel hidden" data-panel="history">
-    <div class="card" style="margin-bottom:11px">
+    <div class="card" style="margin-bottom:12px">
       <div class="card-title">⭐ 전체 인기 메뉴 TOP 6</div>
       <div id="recommendList"></div>
     </div>
-    <div class="card-title" style="margin-bottom:8px">최근 주문 기록</div>
+    <div class="card-title" style="margin-bottom:9px">최근 주문 기록</div>
     <div id="historyList"></div>
   </div>
 
-  <!-- 푸터 -->
   <div class="footer-info">
-    인시스 AI혁신 R&amp;D센터 · 점심 주문 관리 시스템 <span id="verBadge2">v1.0</span>
+    인시스 AI혁신 R&amp;D센터 · 점심주문관리 시스템 <span id="verBadge2">v1.1</span>
   </div>
 
 </main>
@@ -855,8 +897,11 @@ main { max-width:660px; margin:0 auto; padding:14px 13px 80px; }
 <div id="toast"></div>
 
 <script>
+const d = new Date();
 document.getElementById('todayDate').textContent =
-  new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
+  d.toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
+document.getElementById('headerDate').textContent =
+  d.toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'});
 </script>
 </body>
 </html>
