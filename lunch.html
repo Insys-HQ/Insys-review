@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>인시스 점심주문관리 v1.5</title>
+<title>인시스 점심주문관리 v1.6</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 
 <script type="module">
@@ -56,14 +56,14 @@ const RESTAURANTS = [
   { name:'기타',           menus:[] },
 ];
 
-const APP_VER  = 'v1.5';
+const APP_VER  = 'v1.6';
 const todayKey = () => new Date().toISOString().slice(0,10);
 const fmtTime  = d => d ? new Date(d.seconds*1000).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}) : '';
 const fmtDate  = s => { const [,m,d]=s.split('-'); return `${+m}월 ${+d}일`; };
 const $        = id => document.getElementById(id);
 const esc      = s  => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
-let myName='', todayOrders=[], isClosed=false, isCompleted=false;
+let myName='', todayOrders=[], isClosed=false, isCompleted=false, restaurantStatus={};
 let recData={}, qty=1, selRest='';
 let unsubOrders, unsubMeta;
 
@@ -201,9 +201,11 @@ function subscribeToday() {
   const dk = todayKey();
   unsubMeta = onSnapshot(doc(db,'lunch_days',dk), snap => {
     const d = snap.exists() ? snap.data() : {};
-    isClosed    = !!d.closed;
-    isCompleted = !!d.completed;
+    isClosed         = !!d.closed;
+    isCompleted      = !!d.completed;
+    restaurantStatus = d.restaurantStatus || {};
     updateStatusUI();
+    renderSummary();
   });
   unsubOrders = onSnapshot(
     query(collection(db,'lunch_days',dk,'orders'), orderBy('createdAt')),
@@ -340,20 +342,40 @@ window.toggleClose = async () => {
   }
 };
 
+// 식당별 완료 토글
+window.toggleRestComplete = async (restName) => {
+  const ref = doc(db,'lunch_days',todayKey());
+  const cur = restaurantStatus[restName] || false;
+  const newStatus = { ...restaurantStatus, [restName]: !cur };
+
+  // 전체 식당 완료 여부 체크
+  const allRests = [...new Set(todayOrders.map(o=>o.restaurant||'기타'))];
+  const allDone  = allRests.every(r => newStatus[r]);
+
+  await setDoc(ref, { restaurantStatus: newStatus }, { merge: true });
+
+  if (allDone && !isCompleted) {
+    if (confirm('모든 식당 주문 완료! 전체 완료 처리할까요?')) {
+      await setDoc(doc(db,'lunch_history',todayKey()),{
+        date:todayKey(),
+        orders:todayOrders.map(o=>({name:o.name,menu:o.menu,restaurant:o.restaurant,qty:o.qty,note:o.note||''})),
+        completedBy:myName, updatedAt:serverTimestamp()
+      },{merge:true});
+      await setDoc(ref,{completed:true,completedBy:myName,completedAt:serverTimestamp()},{merge:true});
+      loadHistory();
+      showToast('전체 주문 완료 처리! 🎉');
+    }
+  } else {
+    showToast(!cur ? `${restName} 주문 완료 ✅` : `${restName} 완료 취소`);
+  }
+};
+
+// 전체 완료 취소
 window.toggleComplete = async () => {
   const ref = doc(db,'lunch_days',todayKey());
-  if (!isCompleted) {
-    if (!confirm('전화 주문 완료 처리할까요?')) return;
-    await setDoc(doc(db,'lunch_history',todayKey()),{
-      date:todayKey(),
-      orders:todayOrders.map(o=>({name:o.name,menu:o.menu,restaurant:o.restaurant,qty:o.qty,note:o.note||''})),
-      completedBy:myName, updatedAt:serverTimestamp()
-    },{merge:true});
-    await setDoc(ref,{completed:true,completedBy:myName,completedAt:serverTimestamp()},{merge:true});
-    loadHistory();
-    showToast('주문 완료 처리! 🎉');
-  } else {
-    await setDoc(ref,{completed:false},{merge:true});
+  if (isCompleted) {
+    if (!confirm('전체 완료를 취소할까요?')) return;
+    await setDoc(ref,{completed:false, restaurantStatus:{}},{merge:true});
     showToast('완료가 취소되었습니다');
   }
 };
@@ -370,8 +392,7 @@ function updateStatusUI() {
   $('orderForm').style.pointerEvents = isClosed ? 'none' : '';
   $('btnClose').textContent    = isClosed    ? '🔓 마감 해제'   : '🔒 주문 마감';
   $('btnClose').className      = 'ctrl-btn ' + (isClosed    ? 'btn-reopen' : 'btn-close');
-  $('btnComplete').textContent = isCompleted ? '↩ 완료 취소'    : '📞 전화주문 완료';
-  $('btnComplete').className   = 'ctrl-btn ' + (isCompleted ? 'btn-reopen' : 'btn-complete');
+  $('btnComplete').style.display = isCompleted ? '' : 'none';
 }
 
 function renderOrders() {
@@ -426,6 +447,15 @@ function renderSummary() {
   });
   text+=`\n━━━━━━━━━━━━━━━━━\n합계 ${todayOrders.reduce((s,o)=>s+o.qty,0)}개 / ${todayOrders.length}명`;
   $('summaryText').textContent=text;
+
+  // 식당별 완료 버튼 렌더
+  const btnArea = $('restCompleteButtons');
+  btnArea.innerHTML = Object.keys(grouped).map(rest => {
+    const done = restaurantStatus[rest] || false;
+    return `<button class="rest-complete-btn ${done?'done':''}" onclick="toggleRestComplete('${esc(rest)}')">
+      ${done ? '✅' : '📞'} ${esc(rest)} ${done ? '완료' : '주문완료 처리'}
+    </button>`;
+  }).join('');
 }
 window.copySummary = () => navigator.clipboard.writeText($('summaryText').textContent).then(()=>showToast('복사 완료!'));
 
@@ -797,6 +827,20 @@ body.pc-mode #restaurantGrid { grid-template-columns:repeat(5,1fr); }
   white-space:nowrap;
 }
 .float-name-btn:hover { background:#c94d1c; }
+
+/* ── 식당별 완료 버튼 ─────────────────────────────── */
+.rest-complete-btn {
+  width:100%; padding:13px 16px; border-radius:9px;
+  border:1.5px solid var(--border); background:var(--card);
+  font-size:14px; font-weight:700; font-family:inherit;
+  color:var(--navy); cursor:pointer; text-align:left;
+  transition:all .15s;
+}
+.rest-complete-btn:hover { background:var(--tagbg); border-color:var(--navy); }
+.rest-complete-btn.done {
+  background:#e6f4ed; border-color:#2D7A4F; color:#1f6b3f;
+  opacity:.75;
+}
 </style>
 </head>
 <body>
@@ -815,7 +859,7 @@ body.pc-mode #restaurantGrid { grid-template-columns:repeat(5,1fr); }
     <!-- 이름 -->
     <span id="userBadge" onclick="changeName()" title="클릭하여 이름 변경">—</span>
 
-    <span class="ver-badge" id="verBadge">v1.5</span>
+    <span class="ver-badge" id="verBadge">v1.6</span>
   </div>
 </header>
 
@@ -913,11 +957,13 @@ body.pc-mode #restaurantGrid { grid-template-columns:repeat(5,1fr); }
       <div id="summaryText"></div>
       <button class="btn-copy" onclick="copySummary()">클립보드에 복사</button>
     </div>
-    <div class="card" style="margin-top:12px">
+    <!-- 식당별 완료 버튼 -->
+    <div id="restCompleteButtons" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px"></div>
+    <div class="card">
       <div class="card-title">주문 관리 (누구나 처리 가능)</div>
       <div class="ctrl-row">
         <button id="btnClose"    class="ctrl-btn btn-close"    onclick="toggleClose()">🔒 주문 마감</button>
-        <button id="btnComplete" class="ctrl-btn btn-complete" onclick="toggleComplete()">📞 전화주문 완료</button>
+        <button id="btnComplete" class="ctrl-btn btn-reopen"   onclick="toggleComplete()">↩ 전체 완료 취소</button>
       </div>
     </div>
   </div>
@@ -933,7 +979,7 @@ body.pc-mode #restaurantGrid { grid-template-columns:repeat(5,1fr); }
   </div>
 
   <div class="footer-info">
-    점심주문관리 시스템 <span id="verBadge2">v1.5</span>
+    점심주문관리 시스템 <span id="verBadge2">v1.6</span>
   </div>
 
 </main>
