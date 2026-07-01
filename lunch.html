@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>인시스 점심주문관리 v2.2</title>
+<title>인시스 점심주문관리 v2.3</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -278,6 +278,12 @@ main.narrow { max-width:420px; }
   color:#1f6b3f !important; opacity:.7; cursor:not-allowed !important;
 }
 .rest-done-tag { position:absolute; top:3px; right:3px; font-size:11px; }
+
+/* ── 주문목록 그룹헤더 메타 ────────────────────────── */
+.group-meta { display:flex; flex-direction:column; align-items:flex-end; gap:3px; }
+.grp-deadline { font-size:12px; color:#ffd0a0; font-weight:700; }
+.grp-duty     { font-size:12px; color:#d0eaff; }
+.group-cnt    { font-size:12px; opacity:.75; }
 </style>
 </head>
 <body>
@@ -290,7 +296,7 @@ main.narrow { max-width:420px; }
     <div id="weatherInfo">🌡️ 로딩중</div>
     <span id="clock">--:--:--</span>
     <span id="userBadge">—</span>
-    <span class="ver-badge">v2.2</span>
+    <span class="ver-badge">v2.3</span>
   </div>
 </header>
 
@@ -425,7 +431,7 @@ main.narrow { max-width:420px; }
     <div id="restaurantAdminList"></div>
   </div>
 
-  <div class="footer-info">점심주문관리 시스템 v2.2</div>
+  <div class="footer-info">점심주문관리 시스템 v2.3</div>
 </main>
 </div>
 
@@ -982,32 +988,32 @@ function renderOrders() {
     if (!grouped[r]) grouped[r]=[];
     grouped[r].push(o);
   });
-  ul.innerHTML = Object.entries(grouped).map(([rest,items]) => `
-    <li class="order-group">
-      <div class="group-header">
-        <span class="group-rest">${esc(rest)}</span>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
-          ${(()=>{
-            const ri=dynRestaurants.find(r=>r.name===rest);
-            const dl=ri&&ri.deadline?'<span style="font-size:11px;color:#ffd0a0;font-weight:700">⏰ '+ri.deadline+' 마감</span>':'';
-            const dy=restDuty[rest]?'<span style="font-size:11px;opacity:.85">👤 '+esc(restDuty[rest])+' 담당</span>':'';
-            return dl+dy;
-          })()}
-          <span class="group-cnt">${items.length}명</span>
-        </div>
-      </div>
-      ${items.map((o,i) => `
-        <div class="order-row${o.name===myName?' mine':''}">
-          <span class="order-seq">${i+1}</span>
-          <div class="order-body">
-            <span class="order-name">${esc(o.name)}</span>
-            <span class="order-menu">${esc(o.menu)} × ${o.qty}</span>
-            ${o.note?`<span class="order-note">${esc(o.note)}</span>`:''}
-          </div>
-          <span class="order-time">${fmtTime(o.createdAt)}</span>
-          ${!isCompleted?`<button class="del-btn" data-id="${o.id}" data-owner="${esc(o.name)}">×</button>`:''}
-        </div>`).join('')}
-    </li>`).join('');
+  ul.innerHTML = Object.entries(grouped).map(([rest,items]) => {
+    const ri  = dynRestaurants.find(r=>r.name===rest);
+    const dl  = ri && ri.deadline ? '<span class="grp-deadline">⏰ '+ri.deadline+' 마감</span>' : '';
+    const dy  = restDuty[rest]    ? '<span class="grp-duty">👤 '+esc(restDuty[rest])+' 담당</span>' : '';
+    const rows = items.map((o,i) => {
+      const del = !isCompleted ? '<button class="del-btn" data-id="'+o.id+'" data-owner="'+esc(o.name)+'">×</button>' : '';
+      const note = o.note ? '<span class="order-note">'+esc(o.note)+'</span>' : '';
+      return '<div class="order-row'+(o.name===myName?' mine':'')+'">'+
+        '<span class="order-seq">'+(i+1)+'</span>'+
+        '<div class="order-body">'+
+          '<span class="order-name">'+esc(o.name)+'</span>'+
+          '<span class="order-menu">'+esc(o.menu)+' × '+o.qty+'</span>'+
+          note+
+        '</div>'+
+        '<span class="order-time">'+fmtTime(o.createdAt)+'</span>'+
+        del+
+      '</div>';
+    }).join('');
+    return '<li class="order-group">'+
+      '<div class="group-header">'+
+        '<span class="group-rest">'+esc(rest)+'</span>'+
+        '<div class="group-meta">'+dl+dy+'<span class="group-cnt">'+items.length+'명</span></div>'+
+      '</div>'+
+      rows+
+    '</li>';
+  }).join('');
   ul.querySelectorAll('.del-btn').forEach(btn => {
     btn.addEventListener('click', () => deleteOrder(btn.dataset.id, btn.dataset.owner));
   });
