@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>인시스 점심주문관리 v2.6</title>
+<title>인시스 점심주문관리 v2.7</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -294,6 +294,27 @@ main.narrow { max-width:420px; }
   font-family:inherit; cursor:pointer; transition:background .15s;
 }
 .grp-duty-btn:hover { background:var(--orange); border-color:var(--orange); }
+
+/* ── STEP 카드 (주문 등록 탭) ───────────────────────── */
+.step-card {
+  background:var(--card); border-radius:12px;
+  border:1px solid var(--border); padding:14px 15px; margin-bottom:10px;
+}
+.step-header {
+  display:flex; align-items:center; gap:10px; margin-bottom:12px;
+}
+.step-num {
+  width:26px; height:26px; border-radius:50%;
+  background:var(--navy); color:#fff;
+  font-size:13px; font-weight:700;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+.step-title { font-size:14px; font-weight:700; color:var(--navy); }
+.step-sub   { font-size:13px; color:var(--orange); font-weight:700; margin-left:auto; }
+.step-hint  { font-size:13px; color:var(--muted); padding:4px 0; }
+
+/* 식당선택 후 STEP2 강조 */
+.step-card.active-step { border-color:var(--navy); border-width:2px; }
 </style>
 </head>
 <body>
@@ -306,7 +327,7 @@ main.narrow { max-width:420px; }
     <div id="weatherInfo">🌡️ 로딩중</div>
     <span id="clock">--:--:--</span>
     <span id="userBadge">—</span>
-    <span class="ver-badge">v2.6</span>
+    <span class="ver-badge">v2.7</span>
   </div>
 </header>
 
@@ -351,19 +372,38 @@ main.narrow { max-width:420px; }
   <!-- 탭: 주문 등록 -->
   <div class="tab-panel" data-panel="order">
     <div id="orderForm">
-      <div class="card" id="recommendSection">
-        <div class="card-title">⭐ 자주 주문한 메뉴</div>
-        <div id="recommendList"></div>
-      </div>
-      <div class="card">
-        <div class="card-title">식당 선택</div>
+
+      <!-- STEP 1: 식당 선택 -->
+      <div class="step-card" id="stepRestCard">
+        <div class="step-header">
+          <span class="step-num">1</span>
+          <span class="step-title">식당 선택</span>
+          <span class="step-sub" id="selectedRestLabel"></span>
+        </div>
         <div id="restaurantGrid"></div>
         <div class="form-row" style="margin-bottom:0">
-          <input type="text" id="inputRestaurant" placeholder="식당명 (선택 또는 직접 입력)">
+          <input type="text" id="inputRestaurant" placeholder="식당명 (직접 입력도 가능)">
         </div>
       </div>
-      <div class="card">
-        <div class="card-title">메뉴 선택</div>
+
+      <!-- STEP 2: 주문 담당자 지정 -->
+      <div class="step-card" id="stepDutyCard">
+        <div class="step-header">
+          <span class="step-num">2</span>
+          <span class="step-title">주문 담당자 지정</span>
+          <span class="step-sub" id="dutyLabelInForm"></span>
+        </div>
+        <div id="dutyInFormPanel">
+          <p class="step-hint">식당을 먼저 선택하면 담당자를 지정할 수 있습니다.</p>
+        </div>
+      </div>
+
+      <!-- STEP 3: 메뉴 선택 + 주문 등록 -->
+      <div class="step-card" id="stepMenuCard">
+        <div class="step-header">
+          <span class="step-num">3</span>
+          <span class="step-title">메뉴 선택 및 주문 등록</span>
+        </div>
         <div id="menuTags"><span class="tag-hint">식당을 먼저 선택하세요</span></div>
         <div class="form-row">
           <label>주문자 이름 <span style="font-weight:400;color:var(--muted);font-size:11px">(본인 또는 대신 입력)</span></label>
@@ -371,7 +411,7 @@ main.narrow { max-width:420px; }
         </div>
         <div class="form-row">
           <label>메뉴</label>
-          <input type="text" id="inputMenu" placeholder="메뉴명 (선택 또는 직접 입력)">
+          <input type="text" id="inputMenu" placeholder="메뉴명 (위에서 선택 또는 직접 입력)">
         </div>
         <div class="form-row">
           <label>수량</label>
@@ -387,6 +427,13 @@ main.narrow { max-width:420px; }
         </div>
         <button class="btn-primary" id="addOrderBtn">주문 등록하기</button>
       </div>
+
+      <!-- 자주 주문한 메뉴 (하단 빠른 재주문) -->
+      <div class="card" id="recommendSection" style="margin-top:4px">
+        <div class="card-title">⭐ 자주 주문한 메뉴 (빠른 재주문)</div>
+        <div id="recommendList"></div>
+      </div>
+
     </div>
   </div>
 
@@ -441,7 +488,7 @@ main.narrow { max-width:420px; }
     <div id="restaurantAdminList"></div>
   </div>
 
-  <div class="footer-info">점심주문관리 시스템 v2.6</div>
+  <div class="footer-info">점심주문관리 시스템 v2.7</div>
 </main>
 </div>
 
@@ -672,6 +719,14 @@ function selectRest(name) {
   selRest = name;
   $('inputRestaurant').value = name;
   document.querySelectorAll('.rest-btn').forEach(b=>b.classList.toggle('active',b.dataset.name===name));
+
+  // STEP1 선택 식당명 표시
+  const lbl = $('selectedRestLabel');
+  if (lbl) lbl.textContent = name;
+
+  // STEP2 담당자 패널 업데이트
+  renderDutyInForm(name);
+
   const rest = dynRestaurants.find(r=>r.name===name);
   const el = $('menuTags');
   if (!rest || !rest.menus || !rest.menus.length) {
@@ -680,8 +735,7 @@ function selectRest(name) {
   const sorted = [...rest.menus].sort((a,b)=>(recData[name+'||'+b]||0)-(recData[name+'||'+a]||0));
   el.innerHTML = sorted.map(m => {
     const cnt = recData[name+'||'+m];
-    const btn = `<button class="menu-tag" data-menu="${esc(m)}">${esc(m)}${cnt?`<span class="tag-cnt">${cnt}</span>`:''}</button>`;
-    return btn;
+    return '<button class="menu-tag" data-menu="'+esc(m)+'">'+esc(m)+(cnt?'<span class="tag-cnt">'+cnt+'</span>':'')+'</button>';
   }).join('');
   el.querySelectorAll('.menu-tag').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -690,6 +744,36 @@ function selectRest(name) {
       btn.classList.add('active');
     });
   });
+}
+
+// STEP2: 폼 내 담당자 패널
+function renderDutyInForm(restName) {
+  const el = $('dutyInFormPanel'); if (!el || !restName) return;
+  const duty = restDuty[restName] || '';
+  const lbl  = $('dutyLabelInForm');
+
+  if (duty) {
+    if (lbl) lbl.textContent = duty + ' 담당';
+    el.innerHTML =
+      '<div class="duty-filled">' +
+        '<span class="duty-icon">👤</span>' +
+        '<span class="duty-name">'+esc(duty)+'</span>' +
+        '<span class="duty-label">님이 '+esc(restName)+' 담당</span>' +
+        (duty===myName
+          ? '<button class="duty-cancel-btn" id="formCancelDutyBtn" data-rest="'+esc(restName)+'">취소</button>'
+          : '') +
+      '</div>';
+    if (duty===myName) {
+      $('formCancelDutyBtn').addEventListener('click', () => cancelDuty($('formCancelDutyBtn').dataset.rest));
+    }
+  } else {
+    if (lbl) lbl.textContent = '';
+    el.innerHTML =
+      '<div class="duty-empty" style="padding:2px 0">' +
+        '<button class="duty-volunteer-btn" id="formVolunteerBtn" data-rest="'+esc(restName)+'">📞 내가 '+esc(restName)+' 주문할게요!</button>' +
+      '</div>';
+    $('formVolunteerBtn').addEventListener('click', () => volunteerDuty($('formVolunteerBtn').dataset.rest));
+  }
 }
 
 // ── 추천 메뉴 ──────────────────────────────────────
@@ -746,6 +830,7 @@ async function addOrder() {
     $('menuTags').innerHTML='<span class="tag-hint">식당을 선택하세요</span>';
     renderDutyPanel();
     updateStatusUI();
+    if (selRest) renderDutyInForm(selRest);
     showToast(orderName+'님 주문 등록 완료!');
   } catch(e) { showToast('오류: '+e.message); }
 }
@@ -988,6 +1073,8 @@ function renderDutyPanel() {
   el.querySelectorAll('.duty-cancel-btn').forEach(btn => {
     btn.addEventListener('click', () => cancelDuty(btn.dataset.rest));
   });
+  // 폼 내 담당자도 동기화
+  if (selRest) renderDutyInForm(selRest);
 }
 
 function renderRestCompleteArea() {
