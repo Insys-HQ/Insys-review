@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>인시스 점심주문관리 v2.5</title>
+<title>인시스 점심주문관리 v2.6</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -159,7 +159,7 @@ main.narrow { max-width:420px; }
 #orderList { list-style:none; }
 .empty-item { padding:26px; text-align:center; color:var(--muted); font-size:14px; }
 .order-group { background:var(--card); border:1px solid var(--border); border-radius:10px; margin-bottom:10px; overflow:hidden; }
-.group-header { background:var(--navy); color:#fff; padding:9px 14px; display:flex; justify-content:space-between; align-items:center; }
+.group-header { background:var(--navy); color:#fff; padding:10px 14px; display:flex; flex-direction:column; }
 .group-rest { font-size:15px; font-weight:700; }
 .group-cnt  { font-size:12px; opacity:.7; }
 .order-row { display:flex; align-items:center; gap:9px; padding:10px 14px; border-top:1px solid var(--border); }
@@ -281,10 +281,19 @@ main.narrow { max-width:420px; }
 .rest-done-tag { position:absolute; top:3px; right:3px; font-size:11px; }
 
 /* ── 주문목록 그룹헤더 메타 ────────────────────────── */
-.group-meta { display:flex; flex-direction:column; align-items:flex-end; gap:3px; }
+.group-top  { display:flex; justify-content:space-between; align-items:center; }
+.group-meta { display:flex; align-items:center; gap:10px; margin-top:5px; flex-wrap:wrap; }
 .grp-deadline { font-size:12px; color:#ffd0a0; font-weight:700; }
+.grp-unset    { opacity:.55; }
 .grp-duty     { font-size:12px; color:#d0eaff; }
 .group-cnt    { font-size:12px; opacity:.75; }
+.grp-duty-btn {
+  background:rgba(255,255,255,.18); color:#fff;
+  border:1px solid rgba(255,255,255,.35); border-radius:12px;
+  padding:3px 10px; font-size:12px; font-weight:700;
+  font-family:inherit; cursor:pointer; transition:background .15s;
+}
+.grp-duty-btn:hover { background:var(--orange); border-color:var(--orange); }
 </style>
 </head>
 <body>
@@ -297,7 +306,7 @@ main.narrow { max-width:420px; }
     <div id="weatherInfo">🌡️ 로딩중</div>
     <span id="clock">--:--:--</span>
     <span id="userBadge">—</span>
-    <span class="ver-badge">v2.5</span>
+    <span class="ver-badge">v2.6</span>
   </div>
 </header>
 
@@ -432,7 +441,7 @@ main.narrow { max-width:420px; }
     <div id="restaurantAdminList"></div>
   </div>
 
-  <div class="footer-info">점심주문관리 시스템 v2.5</div>
+  <div class="footer-info">점심주문관리 시스템 v2.6</div>
 </main>
 </div>
 
@@ -1013,8 +1022,14 @@ function renderOrders() {
   });
   ul.innerHTML = Object.entries(grouped).map(([rest,items]) => {
     const ri  = dynRestaurants.find(r=>r.name===rest);
-    const dl  = ri && ri.deadline ? '<span class="grp-deadline">⏰ '+ri.deadline+' 마감</span>' : '<span class="grp-deadline" style="opacity:.5">⏰ 마감 미설정</span>';
-    const dy  = restDuty[rest]    ? '<span class="grp-duty">👤 '+esc(restDuty[rest])+' 담당</span>'    : '<span class="grp-duty"    style="opacity:.5">👤 담당자 미지정</span>';
+    // 마감시간
+    const dl  = ri && ri.deadline
+      ? '<span class="grp-deadline">⏰ '+ri.deadline+' 마감</span>'
+      : '<span class="grp-deadline grp-unset">⏰ 마감 미설정</span>';
+    // 담당자 — 미지정 시 클릭하면 요약/완료 탭으로 이동
+    const dy  = restDuty[rest]
+      ? '<span class="grp-duty">👤 '+esc(restDuty[rest])+' 담당</span>'
+      : '<button class="grp-duty-btn" data-rest="'+esc(rest)+'">👤 담당자 지정하기 ▶</button>';
     const rows = items.map((o,i) => {
       const del = !isCompleted ? '<button class="del-btn" data-id="'+o.id+'" data-owner="'+esc(o.name)+'">×</button>' : '';
       const note = o.note ? '<span class="order-note">'+esc(o.note)+'</span>' : '';
@@ -1031,12 +1046,24 @@ function renderOrders() {
     }).join('');
     return '<li class="order-group">'+
       '<div class="group-header">'+
-        '<span class="group-rest">'+esc(rest)+'</span>'+
-        '<div class="group-meta">'+dl+dy+'<span class="group-cnt">'+items.length+'명</span></div>'+
+        '<div class="group-top">'+
+          '<span class="group-rest">'+esc(rest)+'</span>'+
+          '<span class="group-cnt">'+items.length+'명</span>'+
+        '</div>'+
+        '<div class="group-meta">'+dl+dy+'</div>'+
       '</div>'+
       rows+
     '</li>';
   }).join('');
+  // 담당자 미지정 버튼 클릭 → 요약/완료 탭으로 이동
+  ul.querySelectorAll('.grp-duty-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab==='summary'));
+      document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('hidden',p.dataset.panel!=='summary'));
+      window.scrollTo({top:0,behavior:'smooth'});
+      showToast(btn.dataset.rest+' 담당자를 지정해 주세요');
+    });
+  });
   ul.querySelectorAll('.del-btn').forEach(btn => {
     btn.addEventListener('click', () => deleteOrder(btn.dataset.id, btn.dataset.owner));
   });
