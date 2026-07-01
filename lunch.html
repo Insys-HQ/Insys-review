@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>인시스 점심주문관리 v2.1</title>
+<title>인시스 점심주문관리 v2.2</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -215,6 +215,8 @@ main.narrow { max-width:420px; }
 .hist-card { background:var(--card); border:1px solid var(--border); border-radius:9px; padding:12px 14px; margin-bottom:8px; }
 .hist-date { font-size:13px; font-weight:700; margin-bottom:3px; }
 .hist-rest { font-size:12px; color:var(--muted); }
+.hist-rest-wrap { display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; }
+.hist-rest-item { font-size:12px; color:var(--muted); background:var(--tagbg); border-radius:6px; padding:3px 8px; }
 
 /* ── 식당 관리 ────────────────────────────────────── */
 .admin-rest-card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:13px 14px; margin-bottom:9px; }
@@ -288,13 +290,13 @@ main.narrow { max-width:420px; }
     <div id="weatherInfo">🌡️ 로딩중</div>
     <span id="clock">--:--:--</span>
     <span id="userBadge">—</span>
-    <span class="ver-badge">v2.1</span>
+    <span class="ver-badge">v2.2</span>
   </div>
 </header>
 
 <div id="noticeBanner">
   <strong>🍱 점심 주문 시간입니다!</strong>
-  <p>지금 메뉴를 등록해 주세요 — 10:30 마감 예정</p>
+  <p>지금 메뉴를 등록해 주세요</p>
 </div>
 
 <!-- ── 로그인 ── -->
@@ -423,7 +425,7 @@ main.narrow { max-width:420px; }
     <div id="restaurantAdminList"></div>
   </div>
 
-  <div class="footer-info">점심주문관리 시스템 v2.1</div>
+  <div class="footer-info">점심주문관리 시스템 v2.2</div>
 </main>
 </div>
 
@@ -765,6 +767,7 @@ async function toggleRestComplete(restName) {
       await setDoc(doc(db,'lunch_history',todayKey()),{
         date:todayKey(),
         orders:todayOrders.map(o=>({name:o.name,menu:o.menu,restaurant:o.restaurant,qty:o.qty,note:o.note||''})),
+        restDuty: restDuty,
         completedBy:myName, updatedAt:serverTimestamp()
       },{merge:true});
       await setDoc(ref,{completed:true,completedBy:myName,completedAt:serverTimestamp()},{merge:true});
@@ -978,11 +981,16 @@ function renderOrders() {
   ul.innerHTML = Object.entries(grouped).map(([rest,items]) => `
     <li class="order-group">
       <div class="group-header">
-        <div style="display:flex;flex-direction:column;gap:2px">
-          <span class="group-rest">${esc(rest)}</span>
-          <span style="font-size:11px;opacity:.75">${(()=>{const ri=dynRestaurants.find(r=>r.name===rest);const dl=ri&&ri.deadline?'⏰ 마감 '+ri.deadline:'';const dy=restDuty[rest]?'👤 '+restDuty[rest]+'담당':'';return [dl,dy].filter(Boolean).join('  ');})()}</span>
+        <span class="group-rest">${esc(rest)}</span>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+          ${(()=>{
+            const ri=dynRestaurants.find(r=>r.name===rest);
+            const dl=ri&&ri.deadline?'<span style="font-size:11px;color:#ffd0a0;font-weight:700">⏰ '+ri.deadline+' 마감</span>':'';
+            const dy=restDuty[rest]?'<span style="font-size:11px;opacity:.85">👤 '+esc(restDuty[rest])+' 담당</span>':'';
+            return dl+dy;
+          })()}
+          <span class="group-cnt">${items.length}명</span>
         </div>
-        <span class="group-cnt">${items.length}명</span>
       </div>
       ${items.map((o,i) => `
         <div class="order-row${o.name===myName?' mine':''}">
@@ -1038,10 +1046,15 @@ function renderHistoryCards(list) {
   el.innerHTML=list.map(day=>{
     const byR={};
     (day.orders||[]).forEach(o=>{byR[o.restaurant||'기타']=(byR[o.restaurant||'기타']||0)+o.qty;});
-    return `<div class="hist-card">
-      <div class="hist-date">${fmtDate(day.date)} · ${(day.orders||[]).length}명</div>
-      <div class="hist-rest">${Object.entries(byR).map(([r,q])=>`${r} ${q}개`).join(' · ')}</div>
-    </div>`;
+    const duty = day.restDuty || {};
+    const restRows = Object.entries(byR).map(([r,q])=>{
+      const d = duty[r] ? ' · 👤 '+esc(duty[r]) : '';
+      return '<span class="hist-rest-item">'+esc(r)+' '+q+'개'+d+'</span>';
+    }).join('');
+    return '<div class="hist-card">' +
+      '<div class="hist-date">'+fmtDate(day.date)+' · '+(day.orders||[]).length+'명'+(day.completedBy?' · ✅ '+esc(day.completedBy)+' 처리':'')+'</div>' +
+      '<div class="hist-rest-wrap">'+restRows+'</div>' +
+    '</div>';
   }).join('');
 }
 
