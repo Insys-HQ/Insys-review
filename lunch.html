@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>인시스 점심주문관리 v2.7</title>
+<title>인시스 점심주문관리 v2.8</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -78,6 +78,12 @@ main.narrow { max-width:420px; }
 
 /* ── 상태/통계 ────────────────────────────────────── */
 .top-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.reset-btn {
+  background:none; border:1.5px solid var(--border); border-radius:7px;
+  padding:4px 10px; font-size:12px; color:var(--muted);
+  font-family:inherit; cursor:pointer; transition:all .15s;
+}
+.reset-btn:hover { border-color:var(--red); color:var(--red); }
 .status-badge { border-radius:14px; padding:5px 13px; font-size:13px; font-weight:700; }
 .status-badge.open   { background:#e6f4ed; color:#1f6b3f; }
 .status-badge.closed { background:#fde8e6; color:var(--red); }
@@ -327,7 +333,7 @@ main.narrow { max-width:420px; }
     <div id="weatherInfo">🌡️ 로딩중</div>
     <span id="clock">--:--:--</span>
     <span id="userBadge">—</span>
-    <span class="ver-badge">v2.7</span>
+    <span class="ver-badge">v2.8</span>
   </div>
 </header>
 
@@ -352,7 +358,10 @@ main.narrow { max-width:420px; }
 
   <div class="top-bar">
     <span id="statusBadge" class="status-badge open">🟢 접수 중</span>
-    <span style="font-size:12px;color:var(--muted)" id="todayDate"></span>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:12px;color:var(--muted)" id="todayDate"></span>
+      <button id="resetOrdersBtn" class="reset-btn" title="오늘 주문 초기화">🗑 초기화</button>
+    </div>
   </div>
 
   <div class="stats-row">
@@ -488,7 +497,7 @@ main.narrow { max-width:420px; }
     <div id="restaurantAdminList"></div>
   </div>
 
-  <div class="footer-info">점심주문관리 시스템 v2.7</div>
+  <div class="footer-info">점심주문관리 시스템 v2.8</div>
 </main>
 </div>
 
@@ -1127,7 +1136,6 @@ function renderOrders() {
           '<span class="order-menu">'+esc(o.menu)+' × '+o.qty+'</span>'+
           note+
         '</div>'+
-        '<span class="order-time">'+fmtTime(o.createdAt)+'</span>'+
         del+
       '</div>';
     }).join('');
@@ -1277,6 +1285,21 @@ function bindEvents() {
   // 복사
   $('copyBtn').addEventListener('click', ()=>{
     navigator.clipboard.writeText($('summaryText').textContent).then(()=>showToast('복사 완료!'));
+  });
+
+  // 주문 초기화
+  $('resetOrdersBtn').addEventListener('click', async () => {
+    if (!confirm('오늘 주문을 모두 초기화할까요?\n(주문 목록, 담당자, 완료 상태가 모두 삭제됩니다)')) return;
+    const dk = todayKey();
+    // 주문 목록 전체 삭제
+    const snap = await getDocs(collection(db,'lunch_days',dk,'orders'));
+    const dels = snap.docs.map(d=>deleteDoc(doc(db,'lunch_days',dk,'orders',d.id)));
+    await Promise.all(dels);
+    // 메타 초기화
+    await setDoc(doc(db,'lunch_days',dk),{
+      closed:false, completed:false, restaurantStatus:{}, restDuty:{}
+    },{merge:true});
+    showToast('오늘 주문이 초기화되었습니다');
   });
 
   // 식당 추가
