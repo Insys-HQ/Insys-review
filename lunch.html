@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>인시스 점심주문관리 v2.4</title>
+<title>인시스 점심주문관리 v2.5</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -198,6 +198,7 @@ main.narrow { max-width:420px; }
 .btn-close    { background:#fde8e6; color:var(--red); }
 .btn-reopen   { background:#fff3cd; color:#7a5c00; }
 .btn-complete { background:var(--green); color:#fff; }
+.btn-warn     { background:#fff3cd; color:#856404; border:1.5px solid #f0c040; font-size:12px; }
 
 /* ── 주문 담당자 ─────────────────────────────────── */
 .duty-card { background:var(--card); border:1.5px solid var(--border); border-radius:10px; padding:14px; margin-bottom:12px; }
@@ -296,7 +297,7 @@ main.narrow { max-width:420px; }
     <div id="weatherInfo">🌡️ 로딩중</div>
     <span id="clock">--:--:--</span>
     <span id="userBadge">—</span>
-    <span class="ver-badge">v2.4</span>
+    <span class="ver-badge">v2.5</span>
   </div>
 </header>
 
@@ -431,7 +432,7 @@ main.narrow { max-width:420px; }
     <div id="restaurantAdminList"></div>
   </div>
 
-  <div class="footer-info">점심주문관리 시스템 v2.4</div>
+  <div class="footer-info">점심주문관리 시스템 v2.5</div>
 </main>
 </div>
 
@@ -574,7 +575,7 @@ function subscribeToday() {
     isCompleted       = !!d.completed;
     restaurantStatus  = d.restaurantStatus || {};
     restDuty          = d.restDuty || {};
-    updateStatusUI();
+    updateStatusUI();    // 담당자 변경 시 마감버튼 상태도 갱신
     renderDutyPanel();
     renderRestCompleteArea();
   });
@@ -734,6 +735,8 @@ async function addOrder() {
     $('inputOrderName').value = myName;
     document.querySelectorAll('.menu-tag,.rest-btn').forEach(t=>t.classList.remove('active'));
     $('menuTags').innerHTML='<span class="tag-hint">식당을 선택하세요</span>';
+    renderDutyPanel();
+    updateStatusUI();
     showToast(orderName+'님 주문 등록 완료!');
   } catch(e) { showToast('오류: '+e.message); }
 }
@@ -751,9 +754,21 @@ async function deleteOrder(id, ownerName) {
 async function toggleClose() {
   const ref = doc(db,'lunch_days',todayKey());
   if (!isClosed) {
-    if (!confirm('주문을 마감할까요?')) return;
+    // 오늘 주문된 식당 목록
+    const rests = [...new Set(todayOrders.map(o=>o.restaurant||'기타'))];
+    if (!rests.length) { showToast('주문이 없습니다'); return; }
+    // 담당자 미지정 식당 확인
+    const unassigned = rests.filter(r=>!(restDuty[r]&&restDuty[r].trim()));
+    if (unassigned.length > 0) {
+      showToast('담당자 미지정: ' + unassigned.join(', '));
+      // 요약/완료 탭으로 이동
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab==='summary'));
+      document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('hidden',p.dataset.panel!=='summary'));
+      return;
+    }
+    if (!confirm('모든 식당 담당자가 지정되었습니다.\n주문을 마감할까요?')) return;
     await setDoc(ref,{closed:true,closedBy:myName,closedAt:serverTimestamp()},{merge:true});
-    showToast('마감되었습니다');
+    showToast('마감되었습니다 🔒');
   } else {
     if (!confirm('마감을 해제할까요?')) return;
     await setDoc(ref,{closed:false},{merge:true});
@@ -910,8 +925,16 @@ function updateStatusUI() {
   else { badge.textContent='🟢 접수 중'; badge.className='status-badge open'; }
   $('orderForm').style.opacity       = isClosed ? '0.45' : '1';
   $('orderForm').style.pointerEvents = isClosed ? 'none' : '';
-  $('btnClose').textContent = isClosed ? '🔓 마감 해제' : '🔒 주문 마감';
-  $('btnClose').className   = 'ctrl-btn ' + (isClosed ? 'btn-reopen' : 'btn-close');
+  // 마감 버튼 — 담당자 미지정 시 경고 스타일
+  const rests = [...new Set(todayOrders.map(o=>o.restaurant||'기타'))];
+  const allAssigned = rests.length > 0 && rests.every(r=>restDuty[r]&&restDuty[r].trim());
+  if (!isClosed) {
+    $('btnClose').textContent = allAssigned ? '🔒 주문 마감' : '⚠️ 담당자 지정 후 마감 가능';
+    $('btnClose').className   = 'ctrl-btn ' + (allAssigned ? 'btn-close' : 'btn-warn');
+  } else {
+    $('btnClose').textContent = '🔓 마감 해제';
+    $('btnClose').className   = 'ctrl-btn btn-reopen';
+  }
   if (isCompleted) $('btnComplete').classList.remove('hidden');
   else $('btnComplete').classList.add('hidden');
 }
