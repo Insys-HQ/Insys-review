@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>인시스 점심주문관리 v2.0</title>
+<title>인시스 점심주문관리 v2.1</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -256,6 +256,26 @@ main.narrow { max-width:420px; }
   .stats-row .stat-card:last-child { display:none; }
   .ctrl-row { flex-direction:column; }
 }
+
+/* ── 식당별 담당자 ───────────────────────────────────── */
+.rest-duty-row {
+  border:1px solid var(--border); border-radius:10px;
+  padding:12px 14px; margin-bottom:8px; background:var(--card);
+}
+.rest-duty-header {
+  display:flex; align-items:center; gap:8px; margin-bottom:6px; flex-wrap:wrap;
+}
+.rest-duty-name { font-size:15px; font-weight:700; color:var(--navy); }
+.rest-duty-deadline { font-size:12px; color:var(--orange); font-weight:700; }
+.rest-duty-done-badge { font-size:12px; color:var(--green); font-weight:700; margin-left:auto; }
+.rest-duty-filled { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+
+/* 완료된 식당 버튼 */
+.rest-btn.rest-done {
+  background:#e6f4ed !important; border-color:#2D7A4F !important;
+  color:#1f6b3f !important; opacity:.7; cursor:not-allowed !important;
+}
+.rest-done-tag { position:absolute; top:3px; right:3px; font-size:11px; }
 </style>
 </head>
 <body>
@@ -268,7 +288,7 @@ main.narrow { max-width:420px; }
     <div id="weatherInfo">🌡️ 로딩중</div>
     <span id="clock">--:--:--</span>
     <span id="userBadge">—</span>
-    <span class="ver-badge">v2.0</span>
+    <span class="ver-badge">v2.1</span>
   </div>
 </header>
 
@@ -363,11 +383,7 @@ main.narrow { max-width:420px; }
   <div class="tab-panel hidden" data-panel="summary">
     <!-- 주문 담당자 -->
     <div class="card-title" style="margin-bottom:8px">📋 오늘의 주문 담당자</div>
-    <div class="duty-card" id="dutyPanel">
-      <div class="duty-empty"><p>오늘 주문 담당자가 없습니다.</p>
-        <button class="duty-volunteer-btn" id="volunteerBtn">📞 내가 오늘 주문할게요!</button>
-      </div>
-    </div>
+    <div class="duty-card" id="dutyPanel"></div>
     <!-- 요약본 -->
     <div id="summaryBox" class="hidden">
       <div style="font-size:12px;color:var(--navy);font-weight:700;margin-bottom:8px;opacity:.8">📞 전화 주문용 요약</div>
@@ -407,7 +423,7 @@ main.narrow { max-width:420px; }
     <div id="restaurantAdminList"></div>
   </div>
 
-  <div class="footer-info">점심주문관리 시스템 v2.0</div>
+  <div class="footer-info">점심주문관리 시스템 v2.1</div>
 </main>
 </div>
 
@@ -485,7 +501,9 @@ let todayOrders     = [];
 let isClosed        = false;
 let isCompleted     = false;
 let restaurantStatus = {};
-let dutyPerson      = '';
+let restDuty        = {}; // {식당명: 담당자이름}
+let lastRestFreq    = {};
+let lastSortedRests = null;
 
 const todayKey = () => new Date().toISOString().slice(0,10);
 const fmtTime  = d  => d ? new Date(d.seconds*1000).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}) : '';
@@ -547,7 +565,7 @@ function subscribeToday() {
     isClosed          = !!d.closed;
     isCompleted       = !!d.completed;
     restaurantStatus  = d.restaurantStatus || {};
-    dutyPerson        = d.dutyPerson || '';
+    restDuty          = d.restDuty || {};
     updateStatusUI();
     renderDutyPanel();
     renderRestCompleteArea();
@@ -603,6 +621,7 @@ async function loadHistory() {
       });
     });
     const sorted = [...dynRestaurants].sort((a,b)=>(restFreq[b.name]||0)-(restFreq[a.name]||0));
+    lastRestFreq = restFreq; lastSortedRests = sorted;
     buildRestButtons(restFreq, sorted);
     renderRecommend();
     renderTopMenus();
@@ -619,11 +638,14 @@ function buildRestButtons(freq, sorted) {
   grid.innerHTML = '';
   list.slice(0,15).forEach(r => {
     const btn = document.createElement('button');
-    btn.className = 'rest-btn';
+    const done = restaurantStatus[r.name] || false;
+    btn.className = 'rest-btn' + (done ? ' rest-done' : '');
     btn.dataset.name = r.name;
-    const cnt = freq[r.name] ? `<span class="rest-cnt">${freq[r.name]}</span>` : '';
-    btn.innerHTML = esc(r.name) + cnt;
-    btn.addEventListener('click', () => selectRest(r.name));
+    if (done) btn.disabled = true;
+    const cnt = freq[r.name] ? '<span class="rest-cnt">'+freq[r.name]+'</span>' : '';
+    const doneTag = done ? '<span class="rest-done-tag">✅</span>' : '';
+    btn.innerHTML = esc(r.name) + cnt + doneTag;
+    if (!done) btn.addEventListener('click', () => selectRest(r.name));
     grid.appendChild(btn);
   });
 }
@@ -756,24 +778,27 @@ async function toggleRestComplete(restName) {
 
 async function cancelAllComplete() {
   if (!confirm('전체 완료를 취소할까요?')) return;
-  await setDoc(doc(db,'lunch_days',todayKey()),{completed:false,restaurantStatus:{}},{merge:true});
+  await setDoc(doc(db,'lunch_days',todayKey()),{completed:false,restaurantStatus:{},restDuty:{}},{merge:true});
   showToast('완료가 취소되었습니다');
 }
 
 // ══════════════════════════════════════════════════════
 // 주문 담당자
 // ══════════════════════════════════════════════════════
-async function volunteerDuty() {
-  if (dutyPerson && dutyPerson!==myName) {
-    if (!confirm(dutyPerson+'님이 담당 중입니다. 변경할까요?')) return;
+async function volunteerDuty(restName) {
+  const cur = restDuty[restName] || '';
+  if (cur && cur!==myName) {
+    if (!confirm(cur+'님이 '+restName+' 담당 중입니다. 변경할까요?')) return;
   }
-  await setDoc(doc(db,'lunch_days',todayKey()),{dutyPerson:myName},{merge:true});
-  showToast(myName+'님이 주문 담당자로 등록되었습니다!');
+  const newDuty = Object.assign({}, restDuty, {[restName]: myName});
+  await setDoc(doc(db,'lunch_days',todayKey()),{restDuty:newDuty},{merge:true});
+  showToast(myName+'님이 '+restName+' 주문 담당자로 등록되었습니다!');
 }
 
-async function cancelDuty() {
-  if (!confirm('주문 담당을 취소할까요?')) return;
-  await setDoc(doc(db,'lunch_days',todayKey()),{dutyPerson:''},{merge:true});
+async function cancelDuty(restName) {
+  if (!confirm(restName+' 주문 담당을 취소할까요?')) return;
+  const newDuty = Object.assign({}, restDuty, {[restName]: ''});
+  await setDoc(doc(db,'lunch_days',todayKey()),{restDuty:newDuty},{merge:true});
   showToast('담당이 취소되었습니다');
 }
 
@@ -880,23 +905,44 @@ function updateStatusUI() {
 
 function renderDutyPanel() {
   const el = $('dutyPanel'); if (!el) return;
-  if (dutyPerson) {
-    el.innerHTML = `<div class="duty-filled">
-      <span class="duty-icon">👤</span>
-      <span class="duty-name">${esc(dutyPerson)}</span>
-      <span class="duty-label">님이 오늘 주문 담당</span>
-      ${dutyPerson===myName ? '<button class="duty-cancel-btn" id="cancelDutyBtn">취소</button>' : ''}
-    </div>`;
-    if (dutyPerson===myName) {
-      $('cancelDutyBtn').addEventListener('click', cancelDuty);
-    }
-  } else {
-    el.innerHTML = `<div class="duty-empty">
-      <p>오늘 주문 담당자가 없습니다.</p>
-      <button class="duty-volunteer-btn" id="volunteerBtn2">📞 내가 오늘 주문할게요!</button>
-    </div>`;
-    $('volunteerBtn2').addEventListener('click', volunteerDuty);
+  // 오늘 주문한 식당 목록
+  const rests = [...new Set(todayOrders.map(o=>o.restaurant||'기타'))];
+  if (!rests.length) {
+    el.innerHTML = '<p style="font-size:13px;color:var(--muted);text-align:center;padding:8px">주문 등록 후 담당자를 지정할 수 있습니다.</p>';
+    return;
   }
+  el.innerHTML = rests.map(rest => {
+    const duty = restDuty[rest] || '';
+    const done = restaurantStatus[rest] || false;
+    const restInfo = dynRestaurants.find(r=>r.name===rest);
+    const deadline = restInfo && restInfo.deadline ? ' (마감 '+restInfo.deadline+')' : '';
+    return '<div class="rest-duty-row">' +
+      '<div class="rest-duty-header">' +
+        '<span class="rest-duty-name">' + esc(rest) + '</span>' +
+        '<span class="rest-duty-deadline">' + esc(deadline) + '</span>' +
+        (done ? '<span class="rest-duty-done-badge">✅ 완료</span>' : '') +
+      '</div>' +
+      (duty
+        ? '<div class="rest-duty-filled">' +
+            '<span class="duty-icon">👤</span>' +
+            '<span class="duty-name">' + esc(duty) + '</span>' +
+            '<span class="duty-label">담당</span>' +
+            (!done && duty===myName ? '<button class="duty-cancel-btn" data-rest="' + esc(rest) + '">취소</button>' : '') +
+          '</div>'
+        : (!done ? '<div class="duty-empty" style="padding:6px 0">' +
+            '<button class="duty-volunteer-btn" data-rest="' + esc(rest) + '">📞 내가 ' + esc(rest) + ' 주문할게요!</button>' +
+          '</div>' : '')
+      ) +
+    '</div>';
+  }).join('');
+
+  // 이벤트 바인딩
+  el.querySelectorAll('.duty-volunteer-btn').forEach(btn => {
+    btn.addEventListener('click', () => volunteerDuty(btn.dataset.rest));
+  });
+  el.querySelectorAll('.duty-cancel-btn').forEach(btn => {
+    btn.addEventListener('click', () => cancelDuty(btn.dataset.rest));
+  });
 }
 
 function renderRestCompleteArea() {
@@ -905,13 +951,18 @@ function renderRestCompleteArea() {
   const rests = [...new Set(todayOrders.map(o=>o.restaurant||'기타'))];
   el.innerHTML = rests.map(rest => {
     const done = restaurantStatus[rest] || false;
-    return `<button class="rest-complete-btn ${done?'done':''}" data-rest="${esc(rest)}">
-      ${done ? '✅' : '📞'} ${esc(rest)} — ${done ? '주문 완료' : '주문완료 처리'}
-    </button>`;
+    const ri = dynRestaurants.find(r=>r.name===rest);
+    const dl = ri&&ri.deadline?' · 마감 '+ri.deadline:'';
+    const dy = restDuty[rest]?' · 👤 '+restDuty[rest]+' 담당':'';
+    return '<button class="rest-complete-btn ' + (done?'done':'') + '" data-rest="' + esc(rest) + '" ' + (done?'disabled style="cursor:default"':'') + '>' +
+      (done ? '✅ ' : '📞 ') + esc(rest) + esc(dl) + esc(dy) + ' — ' + (done ? '주문 완료' : '주문완료 처리') +
+    '</button>';
   }).join('');
-  el.querySelectorAll('.rest-complete-btn').forEach(btn => {
+  el.querySelectorAll('.rest-complete-btn:not([disabled])').forEach(btn => {
     btn.addEventListener('click', () => toggleRestComplete(btn.dataset.rest));
   });
+  // 완료 상태 변경 시 식당 버튼도 재렌더
+  buildRestButtons(lastRestFreq, lastSortedRests);
 }
 
 function renderOrders() {
@@ -927,7 +978,10 @@ function renderOrders() {
   ul.innerHTML = Object.entries(grouped).map(([rest,items]) => `
     <li class="order-group">
       <div class="group-header">
-        <span class="group-rest">${esc(rest)}</span>
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <span class="group-rest">${esc(rest)}</span>
+          <span style="font-size:11px;opacity:.75">${(()=>{const ri=dynRestaurants.find(r=>r.name===rest);const dl=ri&&ri.deadline?'⏰ 마감 '+ri.deadline:'';const dy=restDuty[rest]?'👤 '+restDuty[rest]+'담당':'';return [dl,dy].filter(Boolean).join('  ');})()}</span>
+        </div>
         <span class="group-cnt">${items.length}명</span>
       </div>
       ${items.map((o,i) => `
@@ -962,7 +1016,10 @@ function renderSummary() {
   const today = new Date().toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'});
   let text=`[인시스 점심주문] ${today}\n━━━━━━━━━━━━━━━━━\n`;
   Object.entries(grouped).forEach(([rest,menus]) => {
-    text+=`\n▶ ${rest}\n`;
+    const ri2=dynRestaurants.find(r=>r.name===rest);
+    const dl2=ri2&&ri2.deadline?' (마감 '+ri2.deadline+')':'';
+    const dy2=restDuty[rest]?' → '+restDuty[rest]+' 담당':'';
+    text+=`\n▶ ${rest}${dl2}${dy2}\n`;
     Object.entries(menus).forEach(([menu,d]) => { text+=`  ${menu} ${d.qty}개 — ${d.names.join(', ')}\n`; });
   });
   text+=`\n━━━━━━━━━━━━━━━━━\n합계 ${todayOrders.reduce((s,o)=>s+o.qty,0)}개 / ${todayOrders.length}명`;
@@ -1089,8 +1146,8 @@ function bindEvents() {
     window.scrollTo({top:0,behavior:'smooth'});
   });
 
-  // 담당자 버튼 (초기 렌더)
-  $('volunteerBtn').addEventListener('click', volunteerDuty);
+  // 담당자 패널 초기 렌더 (주문 후 동적 렌더로 대체)
+  renderDutyPanel();
 }
 
 function applyViewMode(mode) {
