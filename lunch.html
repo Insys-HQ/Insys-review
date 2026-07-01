@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>인시스 점심주문관리 v3.2</title>
+<title>인시스 점심주문관리 v3.3</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -365,6 +365,134 @@ main.narrow { max-width:420px; }
   font-family:inherit; cursor:pointer; margin-left:auto;
 }
 .rca-empty { text-align:center; color:var(--muted); font-size:13px; padding:20px 0; }
+
+/* ── AI 추천 + 슬롯 버튼 행 ────────────────────────── */
+.ai-row { display:flex; gap:8px; margin-bottom:10px; }
+.ai-rec-btn {
+  flex:1; background:var(--navy); color:#fff; border:none;
+  border-radius:10px; padding:13px; font-size:14px; font-weight:700;
+  font-family:inherit; cursor:pointer; transition:background .15s;
+}
+.ai-rec-btn:hover { background:#0f2a45; }
+.slot-open-btn {
+  flex:1; background:var(--orange); color:#fff; border:none;
+  border-radius:10px; padding:13px; font-size:14px; font-weight:700;
+  font-family:inherit; cursor:pointer; transition:background .15s;
+}
+.slot-open-btn:hover { background:#c94d1c; }
+
+/* ── 모달 공통 ──────────────────────────────────────── */
+.modal-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,.65);
+  z-index:800; display:flex; align-items:center; justify-content:center;
+  padding:16px;
+}
+.modal-box {
+  background:#fff; border-radius:16px; width:100%; max-width:480px;
+  max-height:90vh; overflow-y:auto;
+  box-shadow:0 8px 40px rgba(0,0,0,.3);
+}
+.modal-header {
+  background:var(--navy); color:#fff; padding:14px 16px;
+  display:flex; justify-content:space-between; align-items:center;
+  border-radius:16px 16px 0 0; font-size:15px; font-weight:700;
+}
+.modal-close, .sound-btn {
+  background:rgba(255,255,255,.2); border:none; color:#fff;
+  width:30px; height:30px; border-radius:50%; font-size:16px;
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+}
+.modal-close:hover, .sound-btn:hover { background:rgba(255,255,255,.35); }
+
+/* ── AI 결과 ────────────────────────────────────────── */
+.ai-result { padding:16px; }
+.ai-loading { text-align:center; padding:30px; }
+.ai-loading p { color:var(--muted); font-size:13px; margin-top:12px; }
+.spinner {
+  width:40px; height:40px; border:4px solid var(--border);
+  border-top-color:var(--navy); border-radius:50%;
+  animation:spin .8s linear infinite; margin:0 auto;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+.ai-rec-card {
+  background:var(--tagbg); border:1.5px solid var(--border);
+  border-radius:10px; padding:12px 14px; margin-bottom:10px;
+}
+.ai-rec-card .rec-num { font-size:11px; color:var(--muted); margin-bottom:4px; }
+.ai-rec-card .rec-rest-name { font-size:15px; font-weight:700; color:var(--navy); }
+.ai-rec-card .rec-menu-name { font-size:14px; color:var(--orange); font-weight:700; margin-top:2px; }
+.ai-rec-card .rec-reason { font-size:12px; color:var(--muted); margin-top:6px; line-height:1.6; }
+.ai-apply-btn {
+  width:100%; background:var(--orange); color:#fff; border:none;
+  border-radius:8px; padding:9px; font-size:13px; font-weight:700;
+  font-family:inherit; cursor:pointer; margin-top:8px;
+}
+.ai-apply-btn:hover { background:#c94d1c; }
+.ai-reason-box {
+  background:#fff8e1; border:1px solid #f0c040; border-radius:8px;
+  padding:10px 12px; margin-bottom:12px; font-size:12px; color:#7a5c00; line-height:1.7;
+}
+
+/* ── 슬롯머신 ───────────────────────────────────────── */
+.slot-modal-box { background:linear-gradient(160deg,#1a1a2e,#16213e); }
+.slot-modal-box .modal-header { background:rgba(0,0,0,.3); border-radius:16px 16px 0 0; }
+.slot-display {
+  display:flex; align-items:center; justify-content:center;
+  gap:8px; padding:24px 16px 16px;
+}
+.slot-reel-wrap {
+  width:140px; height:80px; overflow:hidden;
+  background:#000; border-radius:10px;
+  border:3px solid #ffd700;
+  box-shadow:0 0 20px rgba(255,215,0,.4), inset 0 0 10px rgba(0,0,0,.5);
+  position:relative;
+}
+/* 위아래 그라디언트 마스크 */
+.slot-reel-wrap::before,.slot-reel-wrap::after {
+  content:''; position:absolute; left:0; right:0; height:20px; z-index:2; pointer-events:none;
+}
+.slot-reel-wrap::before { top:0; background:linear-gradient(to bottom,rgba(0,0,0,.8),transparent); }
+.slot-reel-wrap::after  { bottom:0; background:linear-gradient(to top,rgba(0,0,0,.8),transparent); }
+.slot-reel {
+  display:flex; flex-direction:column;
+  transition:transform .08s linear;
+}
+.slot-item {
+  width:140px; height:80px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  font-family:'Noto Sans KR',sans-serif; flex-shrink:0; padding:4px;
+}
+.slot-item .s-rest { font-size:11px; color:#aaa; margin-bottom:2px; }
+.slot-item .s-menu { font-size:12px; font-weight:700; color:#fff; text-align:center; line-height:1.3; }
+.slot-item.highlight { background:rgba(255,215,0,.15); }
+.slot-item.bong { background:rgba(255,50,50,.15); }
+.slot-sep { font-size:28px; color:#ffd700; font-weight:900; text-shadow:0 0 10px #ffd700; }
+
+.slot-result {
+  margin:0 16px 8px; padding:14px; border-radius:10px;
+  text-align:center; font-size:15px; font-weight:700;
+}
+.slot-result.win  { background:rgba(255,215,0,.15); color:#ffd700; border:2px solid #ffd700; }
+.slot-result.lose { background:rgba(255,50,50,.15);  color:#ff6b6b; border:2px solid #ff5555; }
+.slot-result .result-emoji { font-size:40px; display:block; margin-bottom:6px; }
+.slot-result .result-text  { font-size:13px; margin-top:6px; opacity:.85; }
+
+.slot-btns { display:flex; gap:8px; padding:0 16px 8px; }
+.slot-spin-btn {
+  flex:1; background:linear-gradient(135deg,#ffd700,#ff8c00);
+  color:#1a1a1a; border:none; border-radius:10px; padding:14px;
+  font-size:16px; font-weight:900; font-family:inherit; cursor:pointer;
+  box-shadow:0 4px 15px rgba(255,165,0,.5); transition:all .15s;
+  letter-spacing:1px;
+}
+.slot-spin-btn:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(255,165,0,.7); }
+.slot-spin-btn:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+.slot-apply-btn {
+  flex:1; background:var(--green); color:#fff; border:none;
+  border-radius:10px; padding:14px; font-size:14px; font-weight:700;
+  font-family:inherit; cursor:pointer;
+}
+.slot-hint { color:rgba(255,255,255,.45); font-size:11px; text-align:center; padding:0 16px 16px; }
 </style>
 </head>
 <body>
@@ -377,7 +505,7 @@ main.narrow { max-width:420px; }
     <div id="weatherInfo">🌡️ 로딩중</div>
     <span id="clock">--:--:--</span>
     <span id="userBadge">—</span>
-    <span class="ver-badge">v3.2</span>
+    <span class="ver-badge">v3.3</span>
   </div>
 </header>
 
@@ -425,6 +553,12 @@ main.narrow { max-width:420px; }
   <!-- 탭: 주문 등록 -->
   <div class="tab-panel" data-panel="order">
     <div id="orderForm">
+
+      <!-- AI 추천 + 슬롯머신 버튼 -->
+      <div class="ai-row">
+        <button class="ai-rec-btn" id="aiRecBtn">🤖 오늘 메뉴 추천</button>
+        <button class="slot-open-btn" id="slotOpenBtn">🎰 랜덤 뽑기</button>
+      </div>
 
       <!-- STEP 1: 식당 선택 -->
       <div class="step-card" id="stepRestCard">
@@ -537,7 +671,58 @@ main.narrow { max-width:420px; }
     <div id="restaurantAdminList"></div>
   </div>
 
-  <div class="footer-info">점심주문관리 시스템 v3.2</div>
+  <div class="footer-info">점심주문관리 시스템 v3.3</div>
+
+  <!-- ══ AI 추천 모달 ══ -->
+  <div id="aiModal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span>🤖 오늘의 메뉴 추천</span>
+        <button class="modal-close" id="aiModalClose">×</button>
+      </div>
+      <div id="aiResult" class="ai-result">
+        <div class="ai-loading" id="aiLoading">
+          <div class="spinner"></div>
+          <p>AI가 오늘 최적의 메뉴를 분석중...</p>
+        </div>
+        <div id="aiContent" class="hidden"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 슬롯머신 모달 ══ -->
+  <div id="slotModal" class="modal-overlay hidden">
+    <div class="modal-box slot-modal-box">
+      <div class="modal-header">
+        <span>🎰 점심 뽑기!</span>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="sound-btn" id="soundBtn" title="효과음 토글">🔊</button>
+          <button class="modal-close" id="slotModalClose">×</button>
+        </div>
+      </div>
+
+      <!-- 슬롯 디스플레이 -->
+      <div class="slot-display">
+        <div class="slot-reel-wrap">
+          <div class="slot-reel" id="slotReel1"></div>
+        </div>
+        <div class="slot-sep">×</div>
+        <div class="slot-reel-wrap">
+          <div class="slot-reel" id="slotReel2"></div>
+        </div>
+      </div>
+
+      <!-- 결과 표시 -->
+      <div id="slotResult" class="slot-result hidden"></div>
+
+      <!-- 버튼 -->
+      <div class="slot-btns">
+        <button class="slot-spin-btn" id="slotSpinBtn">🎰 START!</button>
+      </div>
+
+      <p class="slot-hint">식당과 메뉴가 결정됩니다!</p>
+    </div>
+  </div>
 </main>
 </div>
 
@@ -667,6 +852,7 @@ function startApp() {
   $('inputOrderName').value  = myName;
   subscribeToday();
   loadRestaurants();
+  scheduleAutoReset();
 }
 
 // ══════════════════════════════════════════════════════
@@ -1371,6 +1557,20 @@ function bindEvents() {
     navigator.clipboard.writeText($('summaryText').textContent).then(()=>showToast('복사 완료!'));
   });
 
+  // AI 추천 버튼
+  $('aiRecBtn').addEventListener('click', openAiRec);
+
+  // 슬롯머신 버튼
+  $('slotOpenBtn').addEventListener('click', openSlot);
+  $('slotModalClose').addEventListener('click', () => $('slotModal').classList.add('hidden'));
+  $('aiModalClose').addEventListener('click', () => $('aiModal').classList.add('hidden'));
+  $('slotSpinBtn').addEventListener('click', spinSlot);
+  $('soundBtn').addEventListener('click', toggleSound);
+
+  // 모달 배경 클릭 닫기
+  $('aiModal').addEventListener('click', e => { if(e.target===$('aiModal')) $('aiModal').classList.add('hidden'); });
+  $('slotModal').addEventListener('click', e => { if(e.target===$('slotModal')) $('slotModal').classList.add('hidden'); });
+
   // 주문 초기화
   $('resetOrdersBtn').addEventListener('click', async () => {
     if (!confirm('오늘 주문을 모두 초기화할까요?\n(주문 목록, 담당자, 완료 상태가 모두 삭제됩니다)')) return;
@@ -1426,6 +1626,406 @@ function applyViewMode(mode) {
   else if (mode==='mobile') m.classList.add('narrow');
   document.querySelectorAll('.vm-btn').forEach(b=>b.classList.toggle('active',b.dataset.vm===mode));
 }
+// ══════════════════════════════════════════════════════
+// 다음날 오전 8시 자동 초기화
+// ══════════════════════════════════════════════════════
+function scheduleAutoReset() {
+  const now  = new Date();
+  const next = new Date(now);
+  // 오늘 이미 8시 지났으면 → 내일 8시, 안 지났으면 → 오늘 8시
+  next.setHours(8,0,0,0);
+  if (now >= next) next.setDate(next.getDate()+1);
+  const ms = next - now;
+  console.log(`자동초기화 예약: ${next.toLocaleString('ko-KR')} (${Math.round(ms/60000)}분 후)`);
+  setTimeout(async () => {
+    // 어제 날짜 키 (자정 넘어 8시 전이면 오늘-1)
+    const yesterday = new Date(next);
+    yesterday.setDate(yesterday.getDate()-1);
+    const dk = yesterday.toISOString().slice(0,10);
+    try {
+      const snap = await getDocs(collection(db,'lunch_days',dk,'orders'));
+      await Promise.all(snap.docs.map(d=>deleteDoc(doc(db,'lunch_days',dk,'orders',d.id))));
+      await setDoc(doc(db,'lunch_days',dk),{closed:false,completed:false,restaurantStatus:{},restDuty:{}},{merge:true});
+      console.log(`${dk} 주문 자동 초기화 완료`);
+      // 다음 날 다시 예약
+      scheduleAutoReset();
+    } catch(e) { console.warn('자동초기화 오류:', e); }
+  }, ms);
+}
+
+// ══════════════════════════════════════════════════════
+// AI 메뉴 추천 (Claude API)
+// ══════════════════════════════════════════════════════
+async function openAiRec() {
+  $('aiModal').classList.remove('hidden');
+  $('aiLoading').classList.remove('hidden');
+  $('aiContent').classList.add('hidden');
+  $('aiContent').innerHTML = '';
+
+  try {
+    // 날씨 정보
+    let weatherDesc = '알 수 없음', tempVal = '?';
+    try {
+      const wr = await fetch('https://api.open-meteo.com/v1/forecast?latitude=35.2281&longitude=128.6812&current=temperature_2m,weathercode&timezone=Asia%2FSeoul');
+      const wd = await wr.json();
+      tempVal  = Math.round(wd.current.temperature_2m);
+      const wc = wd.current.weathercode;
+      weatherDesc = wc===0?'맑음':wc<=2?'구름조금':wc<=3?'흐림':wc<=49?'안개':wc<=59?'이슬비':wc<=69?'비':wc<=79?'눈':'천둥번개';
+    } catch(e) {}
+
+    const now   = new Date();
+    const days  = ['일','월','화','수','목','금','토'];
+    const dow   = days[now.getDay()]+'요일';
+    const month = now.getMonth()+1;
+    const day   = now.getDate();
+
+    // 최근 30일 주문 빈도
+    const freqMap = {};
+    Object.entries(recData).forEach(([k,cnt]) => {
+      const [rest,menu] = k.split('||');
+      if (!freqMap[rest]) freqMap[rest] = {};
+      freqMap[rest][menu] = cnt;
+    });
+    const topRests = Object.entries(freqMap)
+      .sort((a,b)=>Object.values(b[1]).reduce((s,v)=>s+v,0)-Object.values(a[1]).reduce((s,v)=>s+v,0))
+      .slice(0,8)
+      .map(([rest,menus]) => {
+        const topMenu = Object.entries(menus).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([m,c])=>`${m}(${c}회)`).join(', ');
+        return `${rest}: ${topMenu}`;
+      }).join('
+');
+
+    const prompt = `당신은 인시스 창원본사 13층 직원들의 점심 메뉴 추천 AI입니다.
+
+오늘 정보:
+- 날짜: ${month}월 ${day}일 ${dow}
+- 날씨: ${weatherDesc}, 기온 ${tempVal}°C
+- 특별한 날: ${getSpecialDay(month, day)}
+
+최근 자주 주문한 메뉴 (식당: 메뉴순):
+${topRests || '데이터 없음'}
+
+위 정보를 바탕으로 오늘 점심 메뉴 3가지를 추천해 주세요.
+반드시 아래 JSON 형식으로만 답변하세요. 다른 텍스트 없이 JSON만:
+{
+  "context": "오늘 추천 배경 설명 (2~3문장)",
+  "recommendations": [
+    {"restaurant": "식당명", "menu": "메뉴명", "reason": "추천 이유 1~2문장"},
+    {"restaurant": "식당명", "menu": "메뉴명", "reason": "추천 이유 1~2문장"},
+    {"restaurant": "식당명", "menu": "메뉴명", "reason": "추천 이유 1~2문장"}
+  ]
+}`;
+
+    const res  = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-6',
+        max_tokens:1000,
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    const data = await res.json();
+    const raw  = data.content[0].text.trim();
+    const json = JSON.parse(raw.replace(/```json|```/g,'').trim());
+
+    $('aiLoading').classList.add('hidden');
+    $('aiContent').classList.remove('hidden');
+    $('aiContent').innerHTML =
+      '<div class="ai-reason-box">'+esc(json.context)+'</div>' +
+      json.recommendations.map((r,i) =>
+        '<div class="ai-rec-card">'+
+          '<div class="rec-num">추천 '+(i+1)+'</div>'+
+          '<div class="rec-rest-name">'+esc(r.restaurant)+'</div>'+
+          '<div class="rec-menu-name">'+esc(r.menu)+'</div>'+
+          '<div class="rec-reason">'+esc(r.reason)+'</div>'+
+          '<button class="ai-apply-btn" data-rest="'+esc(r.restaurant)+'" data-menu="'+esc(r.menu)+'">이 메뉴로 선택하기</button>'+
+        '</div>'
+      ).join('');
+
+    $('aiContent').querySelectorAll('.ai-apply-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        selectRest(btn.dataset.rest);
+        $('inputMenu').value = btn.dataset.menu;
+        $('aiModal').classList.add('hidden');
+        // 주문 등록 탭으로 이동
+        document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab==='order'));
+        document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('hidden',p.dataset.panel!=='order'));
+        showToast('AI 추천 메뉴가 선택되었습니다!');
+      });
+    });
+
+  } catch(e) {
+    $('aiLoading').classList.add('hidden');
+    $('aiContent').classList.remove('hidden');
+    $('aiContent').innerHTML = '<p style="color:var(--red);text-align:center;padding:20px">추천을 불러오지 못했습니다.<br><small>'+esc(String(e))+'</small></p>';
+  }
+}
+
+function getSpecialDay(month, day) {
+  const special = {
+    '1-1':'신정', '3-1':'삼일절', '5-5':'어린이날', '6-6':'현충일',
+    '8-15':'광복절', '10-3':'개천절', '10-9':'한글날', '12-25':'크리스마스',
+    '2-14':'발렌타인데이', '3-14':'화이트데이', '11-11':'빼빼로데이',
+    '5-8':'어버이날', '5-15':'스승의날',
+  };
+  return special[`${month}-${day}`] || '특별한 날 없음';
+}
+
+// ══════════════════════════════════════════════════════
+// 슬롯머신
+// ══════════════════════════════════════════════════════
+let soundEnabled = true;
+let isSpinning   = false;
+let slotResult   = null;
+let audioCtx     = null;
+
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  $('soundBtn').textContent = soundEnabled ? '🔊' : '🔇';
+  showToast(soundEnabled ? '효과음 켜짐' : '효과음 꺼짐');
+}
+
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function playTone(freq, dur, type='sine', vol=0.3) {
+  if (!soundEnabled) return;
+  try {
+    const ctx  = getAudioCtx();
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type      = type;
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    gain.gain.setValueAtTime(vol, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+dur);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime+dur);
+  } catch(e) {}
+}
+
+function playSpinSound() {
+  if (!soundEnabled) return;
+  // 짧은 틱 반복 (스핀 중)
+  let t = 0;
+  for (let i=0; i<30; i++) {
+    setTimeout(()=>playTone(300+Math.random()*400, 0.06, 'square', 0.1), t);
+    t += 80 + i*5;
+  }
+}
+
+function playWinSound() {
+  if (!soundEnabled) return;
+  const notes = [523,659,784,1047];
+  notes.forEach((f,i) => setTimeout(()=>playTone(f,0.3,'sine',0.4), i*120));
+  setTimeout(()=>playTone(1047,0.6,'sine',0.5), 500);
+}
+
+function playLoseSound() {
+  if (!soundEnabled) return;
+  [200,180,160,140].forEach((f,i) => setTimeout(()=>playTone(f,0.25,'sawtooth',0.3), i*100));
+}
+
+function playSlowTickSound() {
+  if (!soundEnabled) return;
+  playTone(500, 0.08, 'square', 0.2);
+}
+
+function openSlot() {
+  $('slotModal').classList.remove('hidden');
+  $('slotResult').classList.add('hidden');
+  $('slotResult').innerHTML = '';
+  $('slotSpinBtn').textContent = '🎰 START!';
+  $('slotSpinBtn').disabled = false;
+  slotResult = null;
+  buildSlotReels();
+}
+
+// 슬롯 릴 초기 아이템 생성
+function buildSlotReels() {
+  const items = getSlotItems();
+  ['slotReel1','slotReel2'].forEach((id, ri) => {
+    const reel = $(id);
+    reel.innerHTML = '';
+    // 20개 아이템으로 채우기
+    for (let i=0; i<20; i++) {
+      const item = items[(i + ri*7) % items.length];
+      reel.appendChild(makeSlotItem(item, false));
+    }
+    reel.style.transform = 'translateY(0px)';
+  });
+}
+
+function getSlotItems() {
+  // 슬롯 아이템 = 식당+메뉴 조합 + 꽝 1개
+  const items = [];
+  dynRestaurants.forEach(r => {
+    if (r.name === '기타' || !r.menus || !r.menus.length) return;
+    r.menus.slice(0,3).forEach(m => items.push({rest:r.name, menu:m, isBong:false}));
+  });
+  // 꽝 추가 (약 10% 확률)
+  items.push({rest:'꽝!', menu:'오늘은 굶기', isBong:true});
+  items.push({rest:'꽝!', menu:'편의점 도시락', isBong:true});
+  items.push({rest:'다시!', menu:'한 번 더 뽑기', isBong:false, retry:true});
+  return items.length ? items : [{rest:'목화식당',menu:'돌솥비빔밥',isBong:false}];
+}
+
+function makeSlotItem(item, highlight) {
+  const div = document.createElement('div');
+  div.className = 'slot-item' + (highlight?' highlight':'') + (item.isBong?' bong':'');
+  div.innerHTML =
+    '<span class="s-rest">'+esc(item.rest||'')+'</span>' +
+    '<span class="s-menu">'+esc(item.menu||'')+'</span>';
+  div._data = item;
+  return div;
+}
+
+async function spinSlot() {
+  if (isSpinning) return;
+  isSpinning = true;
+  $('slotSpinBtn').disabled = true;
+  $('slotResult').classList.add('hidden');
+
+  const items = getSlotItems();
+
+  // 결과 미리 결정
+  const finalIdx1 = Math.floor(Math.random()*items.length);
+  let   finalIdx2 = Math.floor(Math.random()*items.length);
+  const result1   = items[finalIdx1];
+  const result2   = items[finalIdx2];
+
+  playSpinSound();
+
+  // 두 릴 동시 스핀
+  await Promise.all([
+    spinReel($('slotReel1'), result1, items, 2800),
+    spinReel($('slotReel2'), result2, items, 3400),
+  ]);
+
+  isSpinning = false;
+
+  // 결과 판정 (식당이 같으면 잭팟)
+  const isBong   = result1.isBong || result2.isBong;
+  const isRetry  = result1.retry  || result2.retry;
+  const isJackpot = result1.rest === result2.rest && !isBong;
+
+  slotResult = result1;
+
+  const el = $('slotResult');
+  el.classList.remove('hidden');
+
+  if (isBong) {
+    playLoseSound();
+    el.className = 'slot-result lose';
+    const bongItem = result1.isBong ? result1 : result2;
+    el.innerHTML =
+      '<span class="result-emoji">💀</span>' +
+      '<strong>꽝!!</strong><br>' +
+      '<span class="result-text">'+esc(bongItem.menu)+'</span>';
+    $('slotSpinBtn').textContent = '😭 다시 도전!';
+    $('slotSpinBtn').disabled = false;
+  } else if (isRetry) {
+    el.className = 'slot-result lose';
+    el.innerHTML = '<span class="result-emoji">🔄</span><strong>한 번 더!</strong><br><span class="result-text">다시 뽑아보세요!</span>';
+    $('slotSpinBtn').textContent = '🎰 다시 뽑기!';
+    $('slotSpinBtn').disabled = false;
+  } else if (isJackpot) {
+    playWinSound();
+    el.className = 'slot-result win';
+    el.innerHTML =
+      '<span class="result-emoji">🎉</span>' +
+      '<strong>잭팟!! '+esc(result1.rest)+'</strong><br>' +
+      '<span class="result-text">'+esc(result1.menu)+' × '+esc(result2.menu)+'</span>';
+    showApplyBtn(result1);
+  } else {
+    playWinSound();
+    el.className = 'slot-result win';
+    el.innerHTML =
+      '<span class="result-emoji">🍽</span>' +
+      '<strong>'+esc(result1.rest)+'</strong><br>' +
+      '<span class="result-text">'+esc(result1.menu)+'</span>';
+    showApplyBtn(result1);
+  }
+}
+
+function showApplyBtn(item) {
+  const el = $('slotResult');
+  const btn = document.createElement('button');
+  btn.className = 'slot-apply-btn';
+  btn.style.cssText = 'display:block;width:calc(100% - 32px);margin:10px 16px 0;';
+  btn.textContent = '✅ 이 메뉴로 선택하기';
+  btn.addEventListener('click', () => {
+    selectRest(item.rest);
+    $('inputMenu').value = item.menu;
+    $('slotModal').classList.add('hidden');
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab==='order'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('hidden',p.dataset.panel!=='order'));
+    showToast('🎰 뽑기 결과로 선택되었습니다!');
+  });
+  el.appendChild(btn);
+}
+
+async function spinReel(reel, finalItem, items, duration) {
+  const ITEM_H  = 80;
+  const totalItems = 40;
+
+  // 릴 아이템 재구성
+  reel.innerHTML = '';
+  const shuffled = [...items].sort(()=>Math.random()-0.5);
+  for (let i=0; i<totalItems; i++) {
+    reel.appendChild(makeSlotItem(shuffled[i%shuffled.length], false));
+  }
+  // 마지막에 결과 아이템 추가
+  const finalEl = makeSlotItem(finalItem, true);
+  reel.appendChild(finalEl);
+  const totalH = (totalItems)*ITEM_H;
+
+  // 초기 위치
+  reel.style.transition = 'none';
+  reel.style.transform  = 'translateY(0px)';
+
+  return new Promise(resolve => {
+    const startTime = performance.now();
+    let lastTick = 0;
+
+    function animate(now) {
+      const elapsed  = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      // 이징: 빠르게 시작 → 천천히 멈춤
+      const ease = progress < 0.7
+        ? progress / 0.7                          // 가속
+        : 1 - Math.pow((progress-0.7)/0.3, 2);   // 감속
+
+      const speed   = ease * ITEM_H * 0.8;
+      const traveled = speed * elapsed / 16;
+      const pos     = -(traveled % totalH);
+
+      reel.style.transition = 'none';
+      reel.style.transform  = `translateY(${pos}px)`;
+
+      // 슬로우 틱 사운드
+      if (progress > 0.7 && now - lastTick > 150) {
+        playSlowTickSound();
+        lastTick = now;
+      }
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        // 결과 아이템 중앙 정지
+        reel.style.transition = 'transform 0.3s cubic-bezier(0.25,0.1,0.25,1)';
+        reel.style.transform  = `translateY(-${totalItems * ITEM_H}px)`;
+        setTimeout(resolve, 350);
+      }
+    }
+    requestAnimationFrame(animate);
+  });
+}
+
 </script>
 </body>
 </html>
