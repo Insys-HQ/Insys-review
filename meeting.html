@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>인시스 회의록 시스템 v1.2</title>
+<title>인시스 회의록 시스템 v1.3</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -221,7 +221,7 @@ audio{width:100%;outline:none;}
         <div class="sub">인시스 AI혁신 R&D센터</div>
       </div>
     </div>
-    <div class="header-badge">v1.2</div>
+    <div class="header-badge">v1.3</div>
   </div>
 </div>
 
@@ -272,7 +272,7 @@ audio{width:100%;outline:none;}
       <div class="prog-bar"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
     </div>
     <div class="status-log" id="statusLog">
-      <span class="log-info">[시스템] 인시스 회의록 v1.2 — 파일 업로드 또는 직접 녹음 후 자동으로 처리됩니다.</span>
+      <span class="log-info">[시스템] 인시스 회의록 v1.3 — Whisper AI 고속 변환 적용. 파일 업로드 또는 직접 녹음 후 자동 처리됩니다.</span>
     </div>
   </div>
 
@@ -553,6 +553,7 @@ let recBlob = null;
 let recState = 'idle';
 let micPermGranted = localStorage.getItem('mic_perm_granted') === '1';
 let micNoMore = localStorage.getItem('mic_no_more') === '1';
+let openaiKey = localStorage.getItem('openai_key') || '';
 
 // ══════════════════════════════════════
 //  PIPELINE UI
@@ -786,77 +787,181 @@ function resetPipeline() {
 }
 
 // ══════════════════════════════════════
-//  자동 STT (파일 재생 + Web Speech)
+//  OpenAI Key 입력 모달 (최초 1회)
+// ══════════════════════════════════════
+function ensureOpenAIKey(callback) {
+  if (openaiKey) { callback(openaiKey); return; }
+  const bg = document.createElement('div');
+  bg.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  bg.innerHTML = `
+    <div style="background:#fff;border-radius:14px;max-width:440px;width:90%;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,.25);font-family:'Noto Sans KR',sans-serif;">
+      <h3 style="font-size:17px;font-weight:700;color:#1a3a5c;margin-bottom:10px;">🔑 OpenAI API Key 설정</h3>
+      <p style="font-size:13px;color:#475569;line-height:1.7;margin-bottom:14px;">
+        Whisper AI 고속 변환을 위해 OpenAI API Key가 필요합니다.<br>
+        Key는 이 기기 브라우저에만 저장되며 GitHub에 업로드되지 않습니다.
+      </p>
+      <input id="keyInput" type="password" placeholder="sk-proj-..."
+        style="width:100%;padding:10px 14px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:13px;font-family:'Noto Sans KR',sans-serif;outline:none;margin-bottom:10px;box-sizing:border-box;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;font-size:12px;color:#64748b;">
+        <input type="checkbox" id="keySave" checked style="width:14px;height:14px;cursor:pointer;">
+        <label for="keySave" style="cursor:pointer;">이 기기에 저장 (다음 접속 시 자동 로드)</label>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button id="keyOkBtn" style="flex:1;padding:10px;background:#2563a8;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Noto Sans KR',sans-serif;">✅ 저장 후 변환 시작</button>
+        <button id="keyCancelBtn" style="padding:10px 16px;background:#fff;color:#2563a8;border:1.5px solid #2563a8;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Noto Sans KR',sans-serif;">취소</button>
+      </div>
+      <p style="font-size:11px;color:#94a3b8;margin-top:10px;">💡 platform.openai.com → API keys 에서 발급 | 한국어 1시간 변환 비용 약 500원</p>
+    </div>`;
+  document.body.appendChild(bg);
+  const inp = bg.querySelector('#keyInput');
+  inp.focus();
+  function confirm() {
+    const k = inp.value.trim();
+    if (!k.startsWith('sk-')) { inp.style.borderColor='#dc2626'; return; }
+    openaiKey = k;
+    if (bg.querySelector('#keySave').checked) localStorage.setItem('openai_key', k);
+    document.body.removeChild(bg);
+    callback(k);
+  }
+  inp.addEventListener('keydown', e => { if(e.key==='Enter') confirm(); });
+  bg.querySelector('#keyOkBtn').addEventListener('click', confirm);
+  bg.querySelector('#keyCancelBtn').addEventListener('click', () => {
+    document.body.removeChild(bg);
+    log('warn','API Key 미입력 — 변환 취소');
+  });
+}
+
+// ══════════════════════════════════════
+//  자동 STT — Whisper API (고속, 수십 초)
 // ══════════════════════════════════════
 function autoStartSTT(source) {
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) {
-    log('warn','Web Speech API 미지원 — 텍스트를 직접 입력하세요');
-    showCards('cardEdit','cardMeta','cardSave');
-    setPipelineStep(3, true);
-    return;
-  }
-  const player = document.getElementById('audioPlayer');
-  if (!player.src || player.src === window.location.href) {
-    log('warn','오디오 소스 없음'); return;
-  }
+  ensureOpenAIKey(key => startWhisperSTT(key));
+}
 
+async function startWhisperSTT(key) {
+  let audioBlob = recBlob || currentFile || null;
+  if (!audioBlob) {
+    const player = document.getElementById('audioPlayer');
+    if (!player.src || player.src === window.location.href) { log('warn','오디오 없음'); return; }
+    try { const r = await fetch(player.src); audioBlob = await r.blob(); } catch(e) { log('err','오디오 읽기 실패'); return; }
+  }
   setPipelineStep(1, true);
-  setProgress('음성 텍스트 변환 중... (스피커 음량을 높여주세요)', 5);
   showCards('cardEdit');
-  log('info','자동 변환 시작 — 오디오 재생 + STT 동시 실행');
+  log('info','Whisper 변환 시작 — 파일: ' + formatSize(audioBlob.size));
+  const MAX = 24 * 1024 * 1024;
+  if (audioBlob.size > MAX) {
+    await transcribeInChunks(audioBlob, key);
+  } else {
+    await transcribeSingle(audioBlob, key);
+  }
+}
 
-  let fullText = '';
-  let partCount = 0;
-  if (micRecog) { try { micRecog.stop(); } catch(e){} }
-
-  const recog = new SR();
-  recog.lang = 'ko-KR';
-  recog.continuous = true;
-  recog.interimResults = true;
-  micRecog = recog;
-
-  recog.onresult = e => {
-    let interim = '';
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-      const t = e.results[i][0].transcript;
-      if (e.results[i].isFinal) { fullText += t + ' '; partCount++; log('ok','['+partCount+'] '+t.substring(0,50)); }
-      else interim = t;
+async function transcribeSingle(blob, key) {
+  setProgress('Whisper AI 변환 중...', 15);
+  let pct = 15;
+  const ticker = setInterval(() => { pct = Math.min(pct + 2, 85); setProgress('Whisper AI 변환 중... (잠시 기다려 주세요)', pct); }, 1200);
+  try {
+    const ext = blob.type.includes('mp4')||blob.type.includes('m4a') ? 'audio.mp4'
+      : blob.type.includes('webm') ? 'audio.webm'
+      : blob.type.includes('wav')  ? 'audio.wav'
+      : blob.type.includes('ogg')  ? 'audio.ogg' : 'audio.mp3';
+    const form = new FormData();
+    form.append('file', blob, ext);
+    form.append('model', 'whisper-1');
+    form.append('language', 'ko');
+    form.append('response_format', 'text');
+    const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST', headers: { 'Authorization': 'Bearer ' + key }, body: form
+    });
+    clearInterval(ticker);
+    if (!res.ok) {
+      const err = await res.json().catch(()=>({error:{message:res.statusText}}));
+      if (res.status === 401) { localStorage.removeItem('openai_key'); openaiKey = ''; showToast('API Key 오류 — 다시 입력하세요','error'); }
+      else showToast('변환 실패: ' + (err?.error?.message||res.statusText), 'error');
+      log('err','Whisper 오류 ' + res.status); hideProgress(); return;
     }
-    document.getElementById('transcriptText').value = fullText + interim;
-  };
-  recog.onerror = e => { if(e.error !== 'no-speech') log('err','STT 오류: ' + e.error); };
-  recog.onend = () => {
-    if (!player.paused && !player.ended) { try { recog.start(); } catch(e){} }
-    else { finishSTT(fullText); }
-  };
+    const text = await res.text();
+    setProgress('변환 완료!', 100);
+    log('ok','Whisper 완료 — ' + text.trim().split(/\s+/).length + '단어');
+    document.getElementById('transcriptText').value = text.trim();
+    showToast('✅ 변환 완료! AI 분석 시작', 'success');
+    setTimeout(() => analyzeWithAI(), 400);
+  } catch(e) {
+    clearInterval(ticker);
+    log('err','네트워크 오류: ' + e.message);
+    showToast('변환 실패 — 네트워크 확인', 'error');
+    hideProgress();
+  }
+}
 
-  player.currentTime = 0;
-  player.play().then(() => {
-    try { recog.start(); } catch(e) { log('err','마이크 권한 필요'); }
-  }).catch(() => {
-    log('warn','자동 재생 차단 — 수동으로 재생하세요');
-    try { recog.start(); } catch(e){}
-  });
-
-  player.ontimeupdate = () => {
-    if (player.duration) {
-      const pct = Math.min(95, Math.round((player.currentTime / player.duration) * 90) + 5);
-      setProgress('음성 텍스트 변환 중... (' + Math.round(player.currentTime/player.duration*100) + '%)', pct);
+async function transcribeInChunks(blob, key) {
+  log('info','25MB 초과 — 청크 분할 변환');
+  setProgress('대용량 파일 분석 중...', 5);
+  try {
+    const ab = await blob.arrayBuffer();
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    const decoded = await ac.decodeAudioData(ab);
+    ac.close();
+    const SR = decoded.sampleRate, totalSec = decoded.duration, chunkSec = 300;
+    const total = Math.ceil(totalSec / chunkSec);
+    let fullText = '';
+    for (let i = 0; i < total; i++) {
+      const s = i * chunkSec, e2 = Math.min((i+1)*chunkSec, totalSec);
+      const ss = Math.floor(s*SR), es = Math.floor(e2*SR), len = es-ss;
+      const oac = new OfflineAudioContext(decoded.numberOfChannels, len, SR);
+      const cb = oac.createBuffer(decoded.numberOfChannels, len, SR);
+      for (let c=0; c<decoded.numberOfChannels; c++) cb.copyToChannel(decoded.getChannelData(c).slice(ss,es), c);
+      const src = oac.createBufferSource(); src.buffer = cb; src.connect(oac.destination); src.start();
+      const rendered = await oac.startRendering();
+      const wavBlob = audioBufferToWav(rendered);
+      setProgress('청크 ' + (i+1) + '/' + total + ' 변환 중...', Math.round(((i+0.5)/total)*80)+10);
+      log('info','청크 '+(i+1)+'/'+total+': '+ Math.round(s/60) +'분~'+Math.round(e2/60)+'분');
+      const form = new FormData();
+      form.append('file', wavBlob, 'chunk.wav');
+      form.append('model', 'whisper-1');
+      form.append('language', 'ko');
+      form.append('response_format', 'text');
+      const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+        method:'POST', headers:{'Authorization':'Bearer '+key}, body:form
+      });
+      if (res.ok) { fullText += (await res.text()).trim() + ' '; }
+      else { log('warn','청크 '+(i+1)+' 실패 — 건너뜀'); }
     }
-  };
-  player.onended = () => {
-    setTimeout(() => { try { recog.stop(); } catch(e){} finishSTT(fullText); }, 2500);
-  };
+    setProgress('변환 완료!', 100);
+    document.getElementById('transcriptText').value = fullText.trim();
+    log('ok','전체 변환 완료 — '+total+'청크');
+    showToast('✅ 변환 완료!', 'success');
+    setTimeout(() => analyzeWithAI(), 400);
+  } catch(e) {
+    log('err','분할 변환 실패: '+e.message);
+    showToast('분할 변환 실패', 'error');
+    hideProgress();
+  }
+}
+
+function audioBufferToWav(buf) {
+  const nc=buf.numberOfChannels, SR=buf.sampleRate, nf=buf.length;
+  const ab = new ArrayBuffer(44+nf*nc*2), v = new DataView(ab);
+  const ws=(o,s)=>{for(let i=0;i<s.length;i++) v.setUint8(o+i,s.charCodeAt(i));};
+  ws(0,'RIFF'); v.setUint32(4,36+nf*nc*2,true); ws(8,'WAVE'); ws(12,'fmt ');
+  v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,nc,true);
+  v.setUint32(24,SR,true); v.setUint32(28,SR*nc*2,true);
+  v.setUint16(32,nc*2,true); v.setUint16(34,16,true);
+  ws(36,'data'); v.setUint32(40,nf*nc*2,true);
+  let off=44;
+  for(let f=0;f<nf;f++) for(let c=0;c<nc;c++){
+    const s=Math.max(-1,Math.min(1,buf.getChannelData(c)[f]));
+    v.setInt16(off,s<0?s*0x8000:s*0x7FFF,true); off+=2;
+  }
+  return new Blob([ab],{type:'audio/wav'});
 }
 
 function finishSTT(text) {
-  setProgress('변환 완료 — AI 분석 시작', 100);
-  log('ok','STT 완료 — ' + text.trim().split(' ').length + '단어');
+  setProgress('변환 완료', 100);
+  log('ok','변환 완료');
   if (!document.getElementById('transcriptText').value.trim()) {
     document.getElementById('transcriptText').value = text;
   }
-  // 자동으로 AI 분석 진행
   setTimeout(() => analyzeWithAI(), 500);
 }
 
@@ -1087,7 +1192,7 @@ function exportPDF() {
   const mL=20, cW=170; let y=20;
   doc.setFillColor(37,99,168); doc.rect(0,0,210,18,'F');
   doc.setTextColor(255,255,255); doc.setFontSize(13); doc.setFont('helvetica','bold');
-  doc.text('INSYS Meeting Minutes v1.2', mL, 12);
+  doc.text('INSYS Meeting Minutes v1.3', mL, 12);
   y=28;
   [['Title',d.title],['Date & Time',d.date+' '+d.time],['Location',d.location],['Type',d.type],['Attendees',d.attendees.join(', ')]].forEach(([k,v])=>{
     doc.setFillColor(240,247,255); doc.rect(mL,y-4,40,8,'F');
