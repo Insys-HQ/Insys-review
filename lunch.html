@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>인시스 점심주문관리 v2.8</title>
+<title>인시스 점심주문관리 v2.9</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -321,6 +321,30 @@ main.narrow { max-width:420px; }
 
 /* 식당선택 후 STEP2 강조 */
 .step-card.active-step { border-color:var(--navy); border-width:2px; }
+
+/* ── 요약/완료 탭 — 식당별 완료 카드 ─────────────────── */
+.rca-card {
+  background:var(--card); border:1.5px solid var(--border);
+  border-radius:10px; padding:13px 15px; margin-bottom:9px;
+}
+.rca-card.rca-done { background:#e6f4ed; border-color:#2D7A4F; }
+.rca-top  { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.rca-info { flex:1; }
+.rca-name { font-size:15px; font-weight:700; color:var(--navy); display:block; margin-bottom:5px; }
+.rca-card.rca-done .rca-name { color:var(--green); }
+.rca-meta { display:flex; flex-wrap:wrap; gap:8px; }
+.rca-phone    { font-size:13px; color:var(--text);   font-weight:500; }
+.rca-deadline { font-size:13px; color:var(--orange); font-weight:700; }
+.rca-duty     { font-size:13px; color:var(--teal);   font-weight:500; }
+.rca-unset    { opacity:.45; font-weight:400; }
+.rca-badge { font-size:13px; font-weight:700; color:var(--green); white-space:nowrap; }
+.rca-btn {
+  background:var(--navy); color:#fff; border:none;
+  border-radius:8px; padding:9px 14px; font-size:13px; font-weight:700;
+  font-family:inherit; cursor:pointer; white-space:nowrap; flex-shrink:0;
+  transition:background .15s;
+}
+.rca-btn:hover { background:#0f2a45; }
 </style>
 </head>
 <body>
@@ -333,7 +357,7 @@ main.narrow { max-width:420px; }
     <div id="weatherInfo">🌡️ 로딩중</div>
     <span id="clock">--:--:--</span>
     <span id="userBadge">—</span>
-    <span class="ver-badge">v2.8</span>
+    <span class="ver-badge">v2.9</span>
   </div>
 </header>
 
@@ -497,7 +521,7 @@ main.narrow { max-width:420px; }
     <div id="restaurantAdminList"></div>
   </div>
 
-  <div class="footer-info">점심주문관리 시스템 v2.8</div>
+  <div class="footer-info">점심주문관리 시스템 v2.9</div>
 </main>
 </div>
 
@@ -1092,14 +1116,28 @@ function renderRestCompleteArea() {
   const rests = [...new Set(todayOrders.map(o=>o.restaurant||'기타'))];
   el.innerHTML = rests.map(rest => {
     const done = restaurantStatus[rest] || false;
-    const ri = dynRestaurants.find(r=>r.name===rest);
-    const dl = ri&&ri.deadline?' · 마감 '+ri.deadline:'';
-    const dy = restDuty[rest]?' · 👤 '+restDuty[rest]+' 담당':'';
-    return '<button class="rest-complete-btn ' + (done?'done':'') + '" data-rest="' + esc(rest) + '" ' + (done?'disabled style="cursor:default"':'') + '>' +
-      (done ? '✅ ' : '📞 ') + esc(rest) + esc(dl) + esc(dy) + ' — ' + (done ? '주문 완료' : '주문완료 처리') +
-    '</button>';
+    const ri   = dynRestaurants.find(r=>r.name===rest);
+    const phone    = ri && ri.phone    ? ri.phone    : '';
+    const deadline = ri && ri.deadline ? ri.deadline : '';
+    const duty     = restDuty[rest]    ? restDuty[rest] : '';
+    return '<div class="rca-card ' + (done?'rca-done':'') + '">' +
+      '<div class="rca-top">' +
+        '<div class="rca-info">' +
+          '<span class="rca-name">' + esc(rest) + '</span>' +
+          '<div class="rca-meta">' +
+            (phone    ? '<span class="rca-phone">📞 '+esc(phone)+'</span>'       : '<span class="rca-phone rca-unset">📞 전화번호 미등록</span>') +
+            (deadline ? '<span class="rca-deadline">⏰ '+esc(deadline)+' 마감</span>' : '<span class="rca-deadline rca-unset">⏰ 마감시간 미설정</span>') +
+            (duty     ? '<span class="rca-duty">👤 '+esc(duty)+' 담당</span>'    : '<span class="rca-duty rca-unset">👤 담당자 미지정</span>') +
+          '</div>' +
+        '</div>' +
+        (done
+          ? '<span class="rca-badge done">✅ 주문 완료</span>'
+          : '<button class="rca-btn" data-rest="'+esc(rest)+'">📞 주문완료 처리</button>'
+        ) +
+      '</div>' +
+    '</div>';
   }).join('');
-  el.querySelectorAll('.rest-complete-btn:not([disabled])').forEach(btn => {
+  el.querySelectorAll('.rca-btn').forEach(btn => {
     btn.addEventListener('click', () => toggleRestComplete(btn.dataset.rest));
   });
   // 완료 상태 변경 시 식당 버튼도 재렌더
