@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>인시스 점심주문관리 v3.0</title>
+<title>인시스 점심주문관리 v3.1</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -345,6 +345,26 @@ main.narrow { max-width:420px; }
   transition:background .15s;
 }
 .rca-btn:hover { background:#0f2a45; }
+
+/* ── rca 담당자 행 ───────────────────────────────────── */
+.rca-duty-row {
+  display:flex; align-items:center; gap:10px;
+  margin-top:9px; padding-top:9px;
+  border-top:1px solid var(--border); flex-wrap:wrap;
+}
+.rca-card.rca-done .rca-duty-row { border-top-color:#c3e6cb; }
+.rca-volunteer-btn {
+  background:var(--orange); color:#fff; border:none;
+  border-radius:8px; padding:8px 14px; font-size:13px; font-weight:700;
+  font-family:inherit; cursor:pointer; transition:background .15s;
+}
+.rca-volunteer-btn:hover { background:#c94d1c; }
+.rca-duty-cancel {
+  background:#fde8e6; color:var(--red); border:none;
+  border-radius:6px; padding:4px 10px; font-size:12px; font-weight:700;
+  font-family:inherit; cursor:pointer; margin-left:auto;
+}
+.rca-empty { text-align:center; color:var(--muted); font-size:13px; padding:20px 0; }
 </style>
 </head>
 <body>
@@ -357,7 +377,7 @@ main.narrow { max-width:420px; }
     <div id="weatherInfo">🌡️ 로딩중</div>
     <span id="clock">--:--:--</span>
     <span id="userBadge">—</span>
-    <span class="ver-badge">v3.0</span>
+    <span class="ver-badge">v3.1</span>
   </div>
 </header>
 
@@ -479,20 +499,16 @@ main.narrow { max-width:420px; }
 
   <!-- 탭: 요약/완료 -->
   <div class="tab-panel hidden" data-panel="summary">
-    <!-- 주문 담당자 -->
-    <div class="card-title" style="margin-bottom:8px">📋 오늘의 주문 담당자</div>
-    <div class="duty-card" id="dutyPanel"></div>
-    <!-- 요약본 -->
+    <!-- 식당별 통합 카드 (담당자+전화+마감+완료처리) -->
+    <div id="restCompleteArea"></div>
+    <!-- 전화 주문용 요약본 -->
     <div id="summaryBox" class="hidden">
-      <div style="font-size:12px;color:var(--navy);font-weight:700;margin-bottom:8px;opacity:.8">📞 전화 주문용 요약</div>
+      <div style="font-size:12px;color:var(--navy);font-weight:700;margin-bottom:8px;opacity:.8">📋 전화 주문용 요약</div>
       <div id="summaryText"></div>
       <button class="btn-copy" id="copyBtn">클립보드에 복사</button>
     </div>
-    <!-- 식당별 완료 -->
-    <div id="restCompleteArea"></div>
-    <!-- 주문 관리 -->
-    <div class="card">
-      <div class="card-title">주문 관리</div>
+    <!-- 주문 마감 / 전체 완료 취소 -->
+    <div class="card" style="margin-top:4px">
       <div class="ctrl-row">
         <button id="btnClose" class="ctrl-btn btn-close">🔒 주문 마감</button>
         <button id="btnComplete" class="ctrl-btn btn-reopen hidden">↩ 전체 완료 취소</button>
@@ -521,7 +537,7 @@ main.narrow { max-width:420px; }
     <div id="restaurantAdminList"></div>
   </div>
 
-  <div class="footer-info">점심주문관리 시스템 v3.0</div>
+  <div class="footer-info">점심주문관리 시스템 v3.1</div>
 </main>
 </div>
 
@@ -1071,6 +1087,8 @@ function updateStatusUI() {
 }
 
 function renderDutyPanel() {
+  // dutyPanel 제거됨 → renderRestCompleteArea 로 통합
+  renderRestCompleteArea();
   const el = $('dutyPanel'); if (!el) return;
   // 오늘 주문한 식당 목록
   const rests = [...new Set(todayOrders.map(o=>o.restaurant||'기타'))];
@@ -1116,35 +1134,59 @@ function renderDutyPanel() {
 
 function renderRestCompleteArea() {
   const el = $('restCompleteArea'); if (!el) return;
-  if (!todayOrders.length) { el.innerHTML=''; return; }
+  if (!todayOrders.length) {
+    el.innerHTML = '<div class="rca-empty">주문을 등록하면 여기에 표시됩니다.</div>';
+    return;
+  }
   const rests = [...new Set(todayOrders.map(o=>o.restaurant||'기타'))];
   el.innerHTML = rests.map(rest => {
-    const done = restaurantStatus[rest] || false;
-    const ri   = dynRestaurants.find(r=>r.name===rest);
+    const done     = restaurantStatus[rest] || false;
+    const ri       = dynRestaurants.find(r=>r.name===rest);
     const phone    = ri && ri.phone    ? ri.phone    : '';
     const deadline = ri && ri.deadline ? ri.deadline : '';
     const duty     = restDuty[rest]    ? restDuty[rest] : '';
-    return '<div class="rca-card ' + (done?'rca-done':'') + '">' +
+
+    // 담당자 영역 — 지정/미지정 분기
+    const dutySection = done
+      ? (duty ? '<div class="rca-duty-row"><span class="rca-duty">👤 '+esc(duty)+' 담당</span></div>' : '')
+      : (duty
+          ? '<div class="rca-duty-row">' +
+              '<span class="rca-duty">👤 '+esc(duty)+' 담당</span>' +
+              (duty===myName ? '<button class="rca-duty-cancel" data-rest="'+esc(rest)+'">취소</button>' : '') +
+            '</div>'
+          : '<div class="rca-duty-row">' +
+              '<button class="rca-volunteer-btn" data-rest="'+esc(rest)+'">👤 내가 '+esc(rest)+' 주문할게요!</button>' +
+            '</div>'
+        );
+
+    return '<div class="rca-card '+(done?'rca-done':'')+'">' +
       '<div class="rca-top">' +
         '<div class="rca-info">' +
-          '<span class="rca-name">' + esc(rest) + '</span>' +
+          '<span class="rca-name">'+esc(rest)+'</span>' +
           '<div class="rca-meta">' +
-            (phone    ? '<span class="rca-phone">📞 '+esc(phone)+'</span>'       : '<span class="rca-phone rca-unset">📞 전화번호 미등록</span>') +
-            (deadline ? '<span class="rca-deadline">⏰ '+esc(deadline)+' 마감</span>' : '<span class="rca-deadline rca-unset">⏰ 마감시간 미설정</span>') +
-            (duty     ? '<span class="rca-duty">👤 '+esc(duty)+' 담당</span>'    : '<span class="rca-duty rca-unset">👤 담당자 미지정</span>') +
+            (phone    ? '<span class="rca-phone">📞 '+esc(phone)+'</span>'
+                      : '<span class="rca-phone rca-unset">📞 미등록</span>') +
+            (deadline ? '<span class="rca-deadline">⏰ '+esc(deadline)+' 마감</span>'
+                      : '<span class="rca-deadline rca-unset">⏰ 마감 미설정</span>') +
           '</div>' +
         '</div>' +
         (done
-          ? '<span class="rca-badge done">✅ 주문 완료</span>'
-          : '<button class="rca-btn" data-rest="'+esc(rest)+'">📞 주문완료 처리</button>'
+          ? '<span class="rca-badge">✅ 완료</span>'
+          : '<button class="rca-btn" data-rest="'+esc(rest)+'">📞 완료 처리</button>'
         ) +
       '</div>' +
+      dutySection +
     '</div>';
   }).join('');
-  el.querySelectorAll('.rca-btn').forEach(btn => {
-    btn.addEventListener('click', () => toggleRestComplete(btn.dataset.rest));
-  });
-  // 완료 상태 변경 시 식당 버튼도 재렌더
+
+  // 이벤트 바인딩
+  el.querySelectorAll('.rca-btn').forEach(b =>
+    b.addEventListener('click', () => toggleRestComplete(b.dataset.rest)));
+  el.querySelectorAll('.rca-volunteer-btn').forEach(b =>
+    b.addEventListener('click', () => volunteerDuty(b.dataset.rest)));
+  el.querySelectorAll('.rca-duty-cancel').forEach(b =>
+    b.addEventListener('click', () => cancelDuty(b.dataset.rest)));
+
   buildRestButtons(lastRestFreq, lastSortedRests);
 }
 
