@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>인시스 점심주문관리 v1.6</title>
+<title>인시스 점심주문관리 v1.7</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 
 <script type="module">
@@ -31,7 +31,7 @@ const MEMBERS = [
   '정채윤','조선아','조승현','최진이','하봉군','황혜선'
 ];
 
-const RESTAURANTS = [
+const DEFAULT_RESTAURANTS = [
   { name:'목화식당',       menus:['돌솥비빔밥','김치찌개','육개장','두루치기정식','김치돼지두루치기','된장찌개','순두부찌개'] },
   { name:'대박밀면',       menus:['물비빔밀면정식(쉐어)','물비빔밀면(매운맛)','제육덮밥','등심돈까스'] },
   { name:'찐한순대국밥',   menus:['순대국밥','내장뺀순대국밥','내장국밥','돼지국밥','물밀면'] },
@@ -56,7 +56,7 @@ const RESTAURANTS = [
   { name:'기타',           menus:[] },
 ];
 
-const APP_VER  = 'v1.6';
+const APP_VER  = 'v1.7';
 const todayKey = () => new Date().toISOString().slice(0,10);
 const fmtTime  = d => d ? new Date(d.seconds*1000).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}) : '';
 const fmtDate  = s => { const [,m,d]=s.split('-'); return `${+m}월 ${+d}일`; };
@@ -64,6 +64,7 @@ const $        = id => document.getElementById(id);
 const esc      = s  => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
 let myName='', todayOrders=[], isClosed=false, isCompleted=false, restaurantStatus={};
+let dynRestaurants = []; // Firebase에서 로드한 식당 목록
 let recData={}, qty=1, selRest='';
 let unsubOrders, unsubMeta;
 
@@ -181,7 +182,8 @@ window.doLogin = () => {
   $('userBadge').textContent = myName;
   if ($('inputOrderName')) $('inputOrderName').value = myName;
   subscribeToday();
-  loadHistory();
+  subscribeDuty();
+  loadRestaurants().then(()=>loadHistory());
 };
 
 window.changeName = () => {
@@ -219,6 +221,26 @@ function subscribeToday() {
 // ══════════════════════════════════════════════════════
 // 이력 & 추천
 // ══════════════════════════════════════════════════════
+// ── 식당 목록 Firebase 로드 ──────────────────────────
+async function loadRestaurants() {
+  try {
+    const snap = await getDocs(collection(db,'restaurant_list'));
+    if (snap.empty) {
+      // 최초 실행 시 기본 데이터 Firestore에 저장
+      for (const r of DEFAULT_RESTAURANTS) {
+        await setDoc(doc(db,'restaurant_list', r.name), {
+          name: r.name, menus: r.menus, phone:'', deadline:'', order:0
+        });
+      }
+      dynRestaurants = DEFAULT_RESTAURANTS.map(r=>({...r, phone:'', deadline:''}));
+    } else {
+      dynRestaurants = snap.docs.map(d=>d.data()).sort((a,b)=>(a.order||0)-(b.order||0));
+    }
+    buildRestButtons(dynRestaurants.map(r=>r.name), {});
+    renderRestaurantAdmin();
+  } catch(e) { console.warn('loadRestaurants:', e); dynRestaurants = DEFAULT_RESTAURANTS; }
+}
+
 async function loadHistory() {
   try {
     const snap = await getDocs(query(collection(db,'lunch_history'), orderBy('date','desc'), limit(40)));
@@ -231,7 +253,7 @@ async function loadHistory() {
         restFreq[o.restaurant] = (restFreq[o.restaurant]||0)+1;
       });
     });
-    const sorted = [...RESTAURANTS].sort((a,b)=>(restFreq[b.name]||0)-(restFreq[a.name]||0));
+    const sorted = [...dynRestaurants].sort((a,b)=>(restFreq[b.name]||0)-(restFreq[a.name]||0));
     buildRestButtons(sorted.map(r=>r.name), restFreq);
     renderRecommend();
     renderHistoryCards(snap.docs.map(d=>d.data()).slice(0,5));
@@ -241,6 +263,81 @@ async function loadHistory() {
 // ══════════════════════════════════════════════════════
 // 식당·메뉴
 // ══════════════════════════════════════════════════════
+
+// ── 식당 관리 ────────────────────────────────────────
+function renderRestaurantAdmin() {
+  const el = document.getElementById('restaurantAdminList');
+  if (!el) return;
+  if (!dynRestaurants.length) { el.innerHTML='<p class="empty-item">등록된 식당이 없습니다.</p>'; return; }
+  el.innerHTML = dynRestaurants.map(function(r, i) {
+    return '<div class="admin-rest-card" id="arc_' + i + '">' +
+      '<div class="arc-header">' +
+        '<span class="arc-name">' + esc(r.name) + '</span>' +
+        '<div class="arc-actions">' +
+          '<button class="arc-btn edit" onclick="editRestCard(' + i + ')">수정</button>' +
+          '<button class="arc-btn del"  onclick="deleteRest('' + esc(r.name) + '',' + i + ')">삭제</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="arc-info">' +
+        '<span>📞 ' + (r.phone||'전화번호 없음') + '</span>' +
+        '<span>⏰ 마감 ' + (r.deadline||'미설정') + '</span>' +
+      '</div>' +
+      '<div class="arc-edit hidden" id="are_' + i + '">' +
+        '<div class="form-row"><label>전화번호</label>' +
+          '<input type="tel" id="arPhone_' + i + '" value="' + esc(r.phone||'') + '" placeholder="055-000-0000"></div>' +
+        '<div class="form-row"><label>마감 시간</label>' +
+          '<input type="text" id="arDeadline_' + i + '" value="' + esc(r.deadline||'') + '" placeholder="예: 10:45"></div>' +
+        '<div class="form-row"><label>메뉴 (쉼표로 구분)</label>' +
+          '<textarea id="arMenus_' + i + '" style="height:70px">' + esc((r.menus||[]).join(', ')) + '</textarea></div>' +
+        '<div style="display:flex;gap:8px;margin-top:4px">' +
+          '<button class="arc-btn save" onclick="saveRest('' + esc(r.name) + '',' + i + ')">저장</button>' +
+          '<button class="arc-btn cancel" onclick="cancelEditCard(' + i + ')">취소</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+window.editRestCard = function(i) {
+  document.querySelectorAll('.arc-edit').forEach(function(e){ e.classList.add('hidden'); });
+  document.getElementById('are_' + i).classList.remove('hidden');
+};
+window.cancelEditCard = function(i) { document.getElementById('are_' + i).classList.add('hidden'); };
+
+window.saveRest = async function(name, i) {
+  const phone    = document.getElementById('arPhone_' + i).value.trim();
+  const deadline = document.getElementById('arDeadline_' + i).value.trim();
+  const menus    = document.getElementById('arMenus_' + i).value.split(',').map(function(m){ return m.trim(); }).filter(Boolean);
+  await setDoc(doc(db,'restaurant_list',name), { name, phone, deadline, menus, order:i }, {merge:true});
+  const idx = dynRestaurants.findIndex(function(r){ return r.name===name; });
+  if (idx>=0) dynRestaurants[idx] = Object.assign({}, dynRestaurants[idx], { phone, deadline, menus });
+  document.getElementById('are_' + i).classList.add('hidden');
+  renderRestaurantAdmin();
+  showToast(name + ' 저장 완료');
+};
+
+window.deleteRest = async function(name, i) {
+  if (!confirm('"' + name + '" 을 삭제할까요?')) return;
+  await deleteDoc(doc(db,'restaurant_list',name));
+  dynRestaurants = dynRestaurants.filter(function(r){ return r.name!==name; });
+  buildRestButtons(dynRestaurants.map(function(r){ return r.name; }), {});
+  renderRestaurantAdmin();
+  showToast(name + ' 삭제 완료');
+};
+
+window.addNewRestaurant = async function() {
+  const name = document.getElementById('newRestName').value.trim();
+  if (!name) { showToast('식당 이름을 입력해 주세요'); return; }
+  if (dynRestaurants.find(function(r){ return r.name===name; })) { showToast('이미 등록된 식당입니다'); return; }
+  const newRest = { name, phone:'', deadline:'', menus:[], order: dynRestaurants.length };
+  await setDoc(doc(db,'restaurant_list',name), newRest);
+  dynRestaurants.push(newRest);
+  buildRestButtons(dynRestaurants.map(function(r){ return r.name; }), {});
+  renderRestaurantAdmin();
+  document.getElementById('newRestName').value = '';
+  showToast(name + ' 추가 완료');
+};
+
 function buildRestButtons(names, freq) {
   const grid = $('restaurantGrid');
   grid.innerHTML = '';
@@ -259,7 +356,7 @@ function selectRest(name) {
   selRest = name;
   $('inputRestaurant').value = name;
   document.querySelectorAll('.rest-btn').forEach(b=>b.classList.toggle('active', b.dataset.name===name));
-  const rest = RESTAURANTS.find(r=>r.name===name);
+  const rest = dynRestaurants.find(r=>r.name===name);
   const el = $('menuTags');
   if (!rest || !rest.menus.length) {
     el.innerHTML='<span class="tag-hint">직접 입력해 주세요</span>'; return;
@@ -481,6 +578,50 @@ function renderHistoryCards(list) {
 // ══════════════════════════════════════════════════════
 // 시계 & 10:00 알림
 // ══════════════════════════════════════════════════════
+
+// ── 주문 담당자 ──────────────────────────────────────
+let dutyPerson = '';
+
+function subscribeDuty() {
+  onSnapshot(doc(db,'lunch_days',todayKey()), snap => {
+    const d = snap.exists() ? snap.data() : {};
+    dutyPerson = d.dutyPerson || '';
+    renderDutyPanel();
+  });
+}
+
+function renderDutyPanel() {
+  const el = document.getElementById('dutyPanel');
+  if (!el) return;
+  if (dutyPerson) {
+    el.innerHTML = '<div class="duty-info">' +
+      '<span class="duty-icon">👤</span>' +
+      '<span class="duty-name">' + esc(dutyPerson) + '</span>' +
+      '<span class="duty-label">님이 오늘 주문 담당</span>' +
+      (dutyPerson===myName ? '<button class="duty-cancel-btn" onclick="cancelDuty()">취소</button>' : '') +
+      '</div>';
+  } else {
+    el.innerHTML = '<div class="duty-empty">' +
+      '<p>오늘 주문 담당자가 없습니다.</p>' +
+      '<button class="duty-volunteer-btn" onclick="volunteerDuty()">📞 내가 오늘 주문할게요!</button>' +
+      '</div>';
+  }
+}
+
+window.volunteerDuty = async () => {
+  if (dutyPerson && dutyPerson !== myName) {
+    if (!confirm(dutyPerson + '님이 담당 중입니다. 변경할까요?')) return;
+  }
+  await setDoc(doc(db,'lunch_days',todayKey()), { dutyPerson: myName }, {merge:true});
+  showToast(myName + '님이 오늘 주문 담당자로 등록되었습니다!');
+};
+
+window.cancelDuty = async () => {
+  if (!confirm('주문 담당을 취소할까요?')) return;
+  await setDoc(doc(db,'lunch_days',todayKey()), { dutyPerson: '' }, {merge:true});
+  showToast('담당이 취소되었습니다');
+};
+
 function startClock() {
   let notified=false;
   setInterval(()=>{
@@ -841,6 +982,56 @@ body.pc-mode #restaurantGrid { grid-template-columns:repeat(5,1fr); }
   background:#e6f4ed; border-color:#2D7A4F; color:#1f6b3f;
   opacity:.75;
 }
+
+/* ── 식당 관리 카드 ──────────────────────────────────── */
+.admin-rest-card {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:10px; padding:13px 14px; margin-bottom:9px;
+}
+.arc-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; }
+.arc-name { font-size:15px; font-weight:700; color:var(--navy); }
+.arc-actions { display:flex; gap:6px; }
+.arc-btn { border:none; border-radius:6px; padding:5px 12px; font-size:12px; font-weight:700; font-family:inherit; cursor:pointer; }
+.arc-btn.edit   { background:var(--tagbg); color:var(--navy); }
+.arc-btn.del    { background:#fde8e6; color:var(--red); }
+.arc-btn.save   { background:var(--green); color:#fff; flex:1; padding:9px; font-size:13px; }
+.arc-btn.cancel { background:var(--tagbg); color:var(--muted); flex:1; padding:9px; font-size:13px; }
+.arc-info { font-size:12px; color:var(--muted); display:flex; gap:14px; }
+.arc-edit { margin-top:12px; border-top:1px solid var(--border); padding-top:12px; }
+.add-rest-row { display:flex; gap:8px; margin-bottom:14px; }
+.add-rest-row input {
+  flex:1; border:1.5px solid var(--border); border-radius:8px;
+  padding:10px 13px; font-size:14px; font-family:inherit;
+  background:var(--bg); color:var(--text); outline:none;
+}
+.add-rest-row input:focus { border-color:var(--navy); background:#fff; }
+.add-rest-row button {
+  background:var(--navy); color:#fff; border:none;
+  border-radius:8px; padding:10px 16px; font-size:14px;
+  font-weight:700; font-family:inherit; cursor:pointer; white-space:nowrap;
+}
+
+#dutyPanel {
+  background:var(--card); border:1.5px solid var(--border);
+  border-radius:10px; padding:14px; margin-bottom:12px;
+}
+.duty-info { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.duty-icon { font-size:22px; }
+.duty-name { font-size:16px; font-weight:700; color:var(--navy); }
+.duty-label { font-size:13px; color:var(--muted); }
+.duty-cancel-btn {
+  background:#fde8e6; color:var(--red); border:none;
+  border-radius:6px; padding:4px 10px; font-size:12px;
+  font-weight:700; font-family:inherit; cursor:pointer; margin-left:auto;
+}
+.duty-empty { text-align:center; }
+.duty-empty p { font-size:13px; color:var(--muted); margin-bottom:10px; }
+.duty-volunteer-btn {
+  background:var(--orange); color:#fff; border:none;
+  border-radius:9px; padding:11px 20px; font-size:14px;
+  font-weight:700; font-family:inherit; cursor:pointer;
+}
+.duty-volunteer-btn:hover { background:#c94d1c; }
 </style>
 </head>
 <body>
@@ -859,7 +1050,7 @@ body.pc-mode #restaurantGrid { grid-template-columns:repeat(5,1fr); }
     <!-- 이름 -->
     <span id="userBadge" onclick="changeName()" title="클릭하여 이름 변경">—</span>
 
-    <span class="ver-badge" id="verBadge">v1.6</span>
+    <span class="ver-badge" id="verBadge">v1.7</span>
   </div>
 </header>
 
@@ -900,6 +1091,7 @@ body.pc-mode #restaurantGrid { grid-template-columns:repeat(5,1fr); }
     <button class="tab-btn"        data-tab="list"    onclick="switchTab('list')">📋 주문 목록</button>
     <button class="tab-btn"        data-tab="summary" onclick="switchTab('summary')">📞 요약/완료</button>
     <button class="tab-btn"        data-tab="history" onclick="switchTab('history')">📅 이력</button>
+    <button class="tab-btn"        data-tab="admin"   onclick="switchTab('admin')">🏪 식당관리</button>
   </div>
 
   <!-- 탭: 주문 등록 -->
@@ -952,6 +1144,9 @@ body.pc-mode #restaurantGrid { grid-template-columns:repeat(5,1fr); }
 
   <!-- 탭: 요약/완료 -->
   <div class="tab-panel hidden" data-panel="summary">
+    <!-- 주문 담당자 -->
+    <div class="card-title" style="margin-bottom:8px">📋 오늘의 주문 담당자</div>
+    <div id="dutyPanel"></div>
     <div id="summaryBox" class="hidden">
       <div style="font-size:12px;color:var(--navy);font-weight:700;margin-bottom:8px;opacity:.8">📞 전화 주문용 요약</div>
       <div id="summaryText"></div>
@@ -978,8 +1173,19 @@ body.pc-mode #restaurantGrid { grid-template-columns:repeat(5,1fr); }
     <div id="historyList"></div>
   </div>
 
+  <!-- 탭: 식당 관리 -->
+  <div class="tab-panel hidden" data-panel="admin">
+    <div class="card-title" style="margin-bottom:10px">🏪 식당 추가</div>
+    <div class="add-rest-row">
+      <input type="text" id="newRestName" placeholder="새 식당 이름 입력">
+      <button onclick="addNewRestaurant()">+ 추가</button>
+    </div>
+    <div class="card-title" style="margin-bottom:10px">식당 목록 (전화번호·마감시간·메뉴 관리)</div>
+    <div id="restaurantAdminList"></div>
+  </div>
+
   <div class="footer-info">
-    점심주문관리 시스템 <span id="verBadge2">v1.6</span>
+    점심주문관리 시스템 <span id="verBadge2">v1.7</span>
   </div>
 
 </main>
