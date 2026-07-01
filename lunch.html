@@ -764,10 +764,14 @@ async function toggleRestComplete(restName) {
   const allDone  = allRests.every(r=>newStatus[r]);
   if (allDone && !isCompleted) {
     if (confirm('모든 식당 완료! 전체 완료 처리할까요?')) {
+      // 식당별 마감시간 스냅샷 저장
+      const restDeadlines = {};
+      dynRestaurants.forEach(r=>{ if(r.deadline) restDeadlines[r.name]=r.deadline; });
       await setDoc(doc(db,'lunch_history',todayKey()),{
         date:todayKey(),
         orders:todayOrders.map(o=>({name:o.name,menu:o.menu,restaurant:o.restaurant,qty:o.qty,note:o.note||''})),
         restDuty: restDuty,
+        restDeadlines: restDeadlines,
         completedBy:myName, updatedAt:serverTimestamp()
       },{merge:true});
       await setDoc(ref,{completed:true,completedBy:myName,completedAt:serverTimestamp()},{merge:true});
@@ -1046,10 +1050,12 @@ function renderHistoryCards(list) {
   el.innerHTML=list.map(day=>{
     const byR={};
     (day.orders||[]).forEach(o=>{byR[o.restaurant||'기타']=(byR[o.restaurant||'기타']||0)+o.qty;});
-    const duty = day.restDuty || {};
+    const duty      = day.restDuty || {};
+    const deadlines = day.restDeadlines || {};
     const restRows = Object.entries(byR).map(([r,q])=>{
-      const d = duty[r] ? ' · 👤 '+esc(duty[r]) : '';
-      return '<span class="hist-rest-item">'+esc(r)+' '+q+'개'+d+'</span>';
+      const dl = deadlines[r] ? '<span style="color:var(--orange);font-weight:700"> ⏰'+deadlines[r]+'</span>' : '';
+      const dy = duty[r]      ? '<span style="color:var(--teal)"> 👤'+esc(duty[r])+'</span>' : '';
+      return '<span class="hist-rest-item">'+esc(r)+' '+q+'개'+dl+dy+'</span>';
     }).join('');
     return '<div class="hist-card">' +
       '<div class="hist-date">'+fmtDate(day.date)+' · '+(day.orders||[]).length+'명'+(day.completedBy?' · ✅ '+esc(day.completedBy)+' 처리':'')+'</div>' +
