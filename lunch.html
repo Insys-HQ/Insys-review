@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>인시스 점심주문관리 v3.3</title>
+<title>인시스 점심주문관리 v3.4</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -505,7 +505,7 @@ main.narrow { max-width:420px; }
     <div id="weatherInfo">🌡️ 로딩중</div>
     <span id="clock">--:--:--</span>
     <span id="userBadge">—</span>
-    <span class="ver-badge">v3.3</span>
+    <span class="ver-badge">v3.4</span>
   </div>
 </header>
 
@@ -671,7 +671,7 @@ main.narrow { max-width:420px; }
     <div id="restaurantAdminList"></div>
   </div>
 
-  <div class="footer-info">점심주문관리 시스템 v3.3</div>
+  <div class="footer-info">점심주문관리 시스템 v3.4</div>
 
   <!-- ══ AI 추천 모달 ══ -->
   <div id="aiModal" class="modal-overlay hidden">
@@ -1662,105 +1662,114 @@ async function openAiRec() {
   $('aiContent').classList.add('hidden');
   $('aiContent').innerHTML = '';
 
+  // 날씨 (open-meteo — CORS 허용)
+  let weatherDesc='', tempVal=null, weatherCode=-1;
   try {
-    // 날씨 정보
-    let weatherDesc = '알 수 없음', tempVal = '?';
-    try {
-      const wr = await fetch('https://api.open-meteo.com/v1/forecast?latitude=35.2281&longitude=128.6812&current=temperature_2m,weathercode&timezone=Asia%2FSeoul');
-      const wd = await wr.json();
-      tempVal  = Math.round(wd.current.temperature_2m);
-      const wc = wd.current.weathercode;
-      weatherDesc = wc===0?'맑음':wc<=2?'구름조금':wc<=3?'흐림':wc<=49?'안개':wc<=59?'이슬비':wc<=69?'비':wc<=79?'눈':'천둥번개';
-    } catch(e) {}
+    const wr = await fetch('https://api.open-meteo.com/v1/forecast?latitude=35.2281&longitude=128.6812&current=temperature_2m,weathercode&timezone=Asia%2FSeoul');
+    const wd = await wr.json();
+    tempVal=Math.round(wd.current.temperature_2m); weatherCode=wd.current.weathercode;
+    weatherDesc=weatherCode===0?'맑음':weatherCode<=2?'구름조금':weatherCode<=3?'흐림':
+                weatherCode<=49?'안개':weatherCode<=59?'이슬비':weatherCode<=69?'비':
+                weatherCode<=79?'눈':'천둥번개';
+  } catch(e){}
 
-    const now   = new Date();
-    const days  = ['일','월','화','수','목','금','토'];
-    const dow   = days[now.getDay()]+'요일';
-    const month = now.getMonth()+1;
-    const day   = now.getDate();
+  const now=new Date(), dow=now.getDay(), month=now.getMonth()+1, day=now.getDate();
+  const days=['일','월','화','수','목','금','토'];
+  const special=getSpecialDay(month,day);
 
-    // 최근 30일 주문 빈도
-    const freqMap = {};
-    Object.entries(recData).forEach(([k,cnt]) => {
-      const [rest,menu] = k.split('||');
-      if (!freqMap[rest]) freqMap[rest] = {};
-      freqMap[rest][menu] = cnt;
+  // 주문 빈도 집계
+  const restScore={}, menuScore={};
+  Object.entries(recData).forEach(([k,cnt])=>{
+    const [rest,menu]=k.split('||');
+    restScore[rest]=(restScore[rest]||0)+cnt;
+    if(!menuScore[rest]) menuScore[rest]={};
+    menuScore[rest][menu]=(menuScore[rest][menu]||0)+cnt;
+  });
+
+  // 후보 생성 + 점수
+  const candidates=[];
+  dynRestaurants.forEach(r=>{
+    if(r.name==='기타'||!r.menus||!r.menus.length) return;
+    r.menus.forEach(m=>{
+      let score=(menuScore[r.name]?.[m]||0)*10;
+      if(tempVal!==null){
+        const hot=tempVal>=28, cold=tempVal<=5, rain=weatherCode>=51;
+        const isSoup=['찌개','국밥','탕','해장국','순대국','감자탕','라면','우동','짬뽕'].some(w=>m.includes(w)||r.name.includes(w));
+        const isCool=['냉면','밀면','샐러드','샌드위치','부리또','쌀국수'].some(w=>m.includes(w));
+        if(hot&&isCool) score+=30;
+        if(cold&&isSoup) score+=30;
+        if(rain&&isSoup) score+=20;
+      }
+      const light=['샌드위치','부리또','샐러드','쌀국수','김밥'].some(w=>m.includes(w)||r.name.includes(w));
+      const hearty=['국밥','찌개','두루치기','비빔밥','갈비'].some(w=>m.includes(w));
+      if((dow===1||dow===5)&&light) score+=15;
+      if(dow===3&&hearty) score+=15;
+      if(special!=='특별한 날 없음') score+=5;
+      if(todayOrders.find(o=>o.restaurant===r.name&&o.menu===m)) score-=50;
+      candidates.push({rest:r.name,menu:m,score,phone:r.phone||'',deadline:r.deadline||''});
     });
-    const topRests = Object.entries(freqMap)
-      .sort((a,b)=>Object.values(b[1]).reduce((s,v)=>s+v,0)-Object.values(a[1]).reduce((s,v)=>s+v,0))
-      .slice(0,8)
-      .map(([rest,menus]) => {
-        const topMenu = Object.entries(menus).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([m,c])=>`${m}(${c}회)`).join(', ');
-        return `${rest}: ${topMenu}`;
-      }).join('
-');
+  });
 
-    const prompt = `당신은 인시스 창원본사 13층 직원들의 점심 메뉴 추천 AI입니다.
-
-오늘 정보:
-- 날짜: ${month}월 ${day}일 ${dow}
-- 날씨: ${weatherDesc}, 기온 ${tempVal}°C
-- 특별한 날: ${getSpecialDay(month, day)}
-
-최근 자주 주문한 메뉴 (식당: 메뉴순):
-${topRests || '데이터 없음'}
-
-위 정보를 바탕으로 오늘 점심 메뉴 3가지를 추천해 주세요.
-반드시 아래 JSON 형식으로만 답변하세요. 다른 텍스트 없이 JSON만:
-{
-  "context": "오늘 추천 배경 설명 (2~3문장)",
-  "recommendations": [
-    {"restaurant": "식당명", "menu": "메뉴명", "reason": "추천 이유 1~2문장"},
-    {"restaurant": "식당명", "menu": "메뉴명", "reason": "추천 이유 1~2문장"},
-    {"restaurant": "식당명", "menu": "메뉴명", "reason": "추천 이유 1~2문장"}
-  ]
-}`;
-
-    const res  = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        model:'claude-sonnet-4-6',
-        max_tokens:1000,
-        messages:[{role:'user',content:prompt}]
-      })
-    });
-    const data = await res.json();
-    const raw  = data.content[0].text.trim();
-    const json = JSON.parse(raw.replace(/```json|```/g,'').trim());
-
-    $('aiLoading').classList.add('hidden');
-    $('aiContent').classList.remove('hidden');
-    $('aiContent').innerHTML =
-      '<div class="ai-reason-box">'+esc(json.context)+'</div>' +
-      json.recommendations.map((r,i) =>
-        '<div class="ai-rec-card">'+
-          '<div class="rec-num">추천 '+(i+1)+'</div>'+
-          '<div class="rec-rest-name">'+esc(r.restaurant)+'</div>'+
-          '<div class="rec-menu-name">'+esc(r.menu)+'</div>'+
-          '<div class="rec-reason">'+esc(r.reason)+'</div>'+
-          '<button class="ai-apply-btn" data-rest="'+esc(r.restaurant)+'" data-menu="'+esc(r.menu)+'">이 메뉴로 선택하기</button>'+
-        '</div>'
-      ).join('');
-
-    $('aiContent').querySelectorAll('.ai-apply-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        selectRest(btn.dataset.rest);
-        $('inputMenu').value = btn.dataset.menu;
-        $('aiModal').classList.add('hidden');
-        // 주문 등록 탭으로 이동
-        document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab==='order'));
-        document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('hidden',p.dataset.panel!=='order'));
-        showToast('AI 추천 메뉴가 선택되었습니다!');
-      });
-    });
-
-  } catch(e) {
-    $('aiLoading').classList.add('hidden');
-    $('aiContent').classList.remove('hidden');
-    $('aiContent').innerHTML = '<p style="color:var(--red);text-align:center;padding:20px">추천을 불러오지 못했습니다.<br><small>'+esc(String(e))+'</small></p>';
+  candidates.sort((a,b)=>b.score-a.score);
+  const recs=[]; const usedRest=new Set();
+  for(const c of candidates){
+    if(usedRest.has(c.rest)) continue;
+    usedRest.add(c.rest); recs.push(c);
+    if(recs.length===3) break;
   }
+
+  function makeReason(c){
+    const r=[];
+    if(tempVal!==null){
+      if(tempVal>=28) r.push(`더운 날씨(${tempVal}°C)에 어울리는 메뉴입니다`);
+      else if(tempVal<=5) r.push(`추운 날씨(${tempVal}°C)에 따뜻하게 드실 수 있습니다`);
+      else r.push(`${tempVal}°C ${weatherDesc} 날씨에 잘 맞습니다`);
+    }
+    const freq=menuScore[c.rest]?.[c.menu]||0;
+    if(freq>=5) r.push(`최근 ${freq}회 주문한 인기 메뉴입니다`);
+    else if(freq>=1) r.push(`${freq}회 주문한 검증된 메뉴입니다`);
+    else r.push('새롭게 도전해볼 만한 메뉴입니다');
+    if(c.deadline) r.push(`마감 ${c.deadline}까지 주문 가능합니다`);
+    return r.slice(0,2).join('. ')+'.';
+  }
+
+  let context=`오늘은 ${month}월 ${day}일 ${days[dow]}요일`;
+  if(weatherDesc) context+=`, 창원 ${weatherDesc} ${tempVal}°C`;
+  if(special!=='특별한 날 없음') context+=`, ${special}`;
+  context+='. 주문 이력과 날씨를 분석하여 추천합니다.';
+
+  $('aiLoading').classList.add('hidden');
+  $('aiContent').classList.remove('hidden');
+
+  if(!recs.length){
+    $('aiContent').innerHTML='<p style="text-align:center;color:var(--muted);padding:20px">🏪 식당관리 탭에서 메뉴를 먼저 등록해 주세요.</p>';
+    return;
+  }
+
+  $('aiContent').innerHTML=
+    '<div class="ai-reason-box">'+esc(context)+'</div>'+
+    recs.map((r,i)=>
+      '<div class="ai-rec-card">'+
+        '<div class="rec-num">추천 '+(i+1)+'</div>'+
+        '<div class="rec-rest-name">'+esc(r.rest)+'</div>'+
+        '<div class="rec-menu-name">'+esc(r.menu)+'</div>'+
+        '<div class="rec-reason">'+esc(makeReason(r))+'</div>'+
+        '<button class="ai-apply-btn" data-rest="'+esc(r.rest)+'" data-menu="'+esc(r.menu)+'">이 메뉴로 선택하기</button>'+
+      '</div>'
+    ).join('');
+
+  $('aiContent').querySelectorAll('.ai-apply-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      selectRest(btn.dataset.rest);
+      $('inputMenu').value=btn.dataset.menu;
+      $('aiModal').classList.add('hidden');
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab==='order'));
+      document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('hidden',p.dataset.panel!=='order'));
+      showToast('AI 추천 메뉴가 선택되었습니다!');
+    });
+  });
 }
+
 
 function getSpecialDay(month, day) {
   const special = {
