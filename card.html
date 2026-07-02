@@ -1,0 +1,1310 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>인시스 카드 지출 관리 시스템 v1.0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Noto Sans KR',sans-serif; background:#f0f2f5; color:#2d3748; font-size:14px; }
+:root {
+  --primary:#2563eb; --primary-light:#dbeafe; --primary-dark:#1e40af;
+  --accent:#0ea5e9; --success:#16a34a; --warning:#d97706; --danger:#dc2626;
+  --gray50:#f9fafb; --gray100:#f3f4f6; --gray200:#e5e7eb; --gray300:#d1d5db;
+  --gray500:#6b7280; --gray700:#374151; --gray900:#111827;
+  --personal:#7c3aed; --corporate:#2563eb;
+  --card-shadow:0 1px 3px rgba(0,0,0,.1),0 1px 2px rgba(0,0,0,.06);
+  --card-shadow-lg:0 4px 6px rgba(0,0,0,.07),0 2px 4px rgba(0,0,0,.06);
+}
+
+/* ── LAYOUT ── */
+.app-header { background:#fff; border-bottom:1px solid var(--gray200); position:sticky; top:0; z-index:100; }
+.header-inner { max-width:1200px; margin:0 auto; padding:0 20px; height:56px; display:flex; align-items:center; justify-content:space-between; }
+.logo { font-size:16px; font-weight:700; color:var(--primary-dark); display:flex; align-items:center; gap:8px; }
+.logo span { font-weight:300; color:var(--gray500); font-size:12px; }
+.version-badge { background:var(--primary-light); color:var(--primary); font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px; }
+.user-info { display:flex; align-items:center; gap:10px; font-size:13px; color:var(--gray700); }
+.user-badge { background:var(--gray100); padding:4px 10px; border-radius:20px; font-weight:500; }
+
+.nav-tabs { background:#fff; border-bottom:1px solid var(--gray200); }
+.nav-inner { max-width:1200px; margin:0 auto; padding:0 20px; display:flex; gap:4px; }
+.nav-tab { padding:12px 18px; font-size:13px; font-weight:500; color:var(--gray500); border:none; background:none; cursor:pointer; border-bottom:2px solid transparent; transition:all .2s; }
+.nav-tab:hover { color:var(--primary); }
+.nav-tab.active { color:var(--primary); border-bottom-color:var(--primary); font-weight:700; }
+
+.main { max-width:1200px; margin:0 auto; padding:24px 20px; }
+
+/* ── CARDS ── */
+.card { background:#fff; border-radius:10px; box-shadow:var(--card-shadow); }
+.card-header { padding:16px 20px; border-bottom:1px solid var(--gray100); display:flex; align-items:center; justify-content:space-between; }
+.card-title { font-size:15px; font-weight:700; color:var(--gray900); }
+.card-body { padding:20px; }
+
+/* ── BUTTONS ── */
+.btn { display:inline-flex; align-items:center; gap:6px; padding:8px 16px; border-radius:7px; font-size:13px; font-weight:500; cursor:pointer; border:none; transition:all .15s; font-family:inherit; }
+.btn-primary { background:var(--primary); color:#fff; }
+.btn-primary:hover { background:var(--primary-dark); }
+.btn-success { background:var(--success); color:#fff; }
+.btn-danger { background:var(--danger); color:#fff; }
+.btn-outline { background:#fff; border:1px solid var(--gray300); color:var(--gray700); }
+.btn-outline:hover { background:var(--gray50); }
+.btn-sm { padding:5px 10px; font-size:12px; }
+.btn-personal { background:var(--personal); color:#fff; }
+.btn-corporate { background:var(--corporate); color:#fff; }
+
+/* ── FORMS ── */
+.form-grid { display:grid; gap:14px; }
+.form-grid-2 { grid-template-columns:1fr 1fr; }
+.form-grid-3 { grid-template-columns:1fr 1fr 1fr; }
+.form-group label { display:block; font-size:12px; font-weight:600; color:var(--gray700); margin-bottom:5px; }
+.form-control { width:100%; padding:9px 12px; border:1px solid var(--gray300); border-radius:7px; font-size:13px; font-family:inherit; color:var(--gray900); outline:none; transition:border .15s; }
+.form-control:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(37,99,235,.1); }
+.form-control:disabled { background:var(--gray100); color:var(--gray500); }
+select.form-control { cursor:pointer; }
+
+/* ── CARD TYPE SELECTOR ── */
+.card-type-modal { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:500; display:flex; align-items:center; justify-content:center; }
+.card-type-box { background:#fff; border-radius:16px; padding:32px; width:420px; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,.2); }
+.card-type-box h3 { font-size:18px; font-weight:700; color:var(--gray900); margin-bottom:8px; }
+.card-type-box p { font-size:13px; color:var(--gray500); margin-bottom:24px; }
+.card-type-options { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.card-type-opt { padding:20px 16px; border-radius:12px; cursor:pointer; border:2px solid var(--gray200); transition:all .2s; }
+.card-type-opt:hover { border-color:var(--primary); transform:translateY(-2px); box-shadow:var(--card-shadow-lg); }
+.card-type-opt .icon { font-size:28px; margin-bottom:8px; }
+.card-type-opt .label { font-size:14px; font-weight:700; }
+.card-type-opt .desc { font-size:11px; color:var(--gray500); margin-top:4px; }
+.card-type-opt.personal { border-color:var(--personal); background:#faf5ff; }
+.card-type-opt.corporate { border-color:var(--corporate); background:#eff6ff; }
+
+/* ── RECEIPT UPLOAD ── */
+.receipt-area { border:2px dashed var(--gray300); border-radius:10px; padding:24px; text-align:center; cursor:pointer; transition:all .2s; position:relative; }
+.receipt-area:hover { border-color:var(--primary); background:var(--primary-light); }
+.receipt-area .receipt-icon { font-size:32px; margin-bottom:8px; }
+.receipt-area p { font-size:13px; color:var(--gray500); }
+.receipt-preview-wrap { position:relative; display:inline-block; margin-top:10px; }
+.receipt-preview-wrap img { max-width:100%; max-height:200px; border-radius:8px; border:1px solid var(--gray200); }
+.remove-img { position:absolute; top:-8px; right:-8px; background:var(--danger); color:#fff; border:none; border-radius:50%; width:22px; height:22px; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+#receiptInput { display:none; }
+
+/* ── CANVAS CROP ── */
+.crop-modal { position:fixed; inset:0; background:rgba(0,0,0,.85); z-index:600; display:none; flex-direction:column; align-items:center; justify-content:center; gap:12px; }
+.crop-modal.open { display:flex; }
+.crop-canvas-wrap { position:relative; background:#000; border-radius:8px; overflow:hidden; max-width:90vw; max-height:70vh; }
+#cropCanvas { display:block; cursor:crosshair; }
+.crop-selection { position:absolute; border:2px solid #fff; box-shadow:0 0 0 9999px rgba(0,0,0,.55); pointer-events:none; display:none; }
+.crop-actions { display:flex; gap:10px; }
+
+/* ── TABLE ── */
+.data-table { width:100%; border-collapse:collapse; font-size:13px; }
+.data-table th { background:#eff6ff; color:var(--gray700); font-weight:600; font-size:12px; padding:10px 12px; text-align:left; border-bottom:2px solid var(--gray200); white-space:nowrap; }
+.data-table td { padding:10px 12px; border-bottom:1px solid var(--gray100); color:var(--gray800); vertical-align:middle; }
+.data-table tr:hover td { background:var(--gray50); }
+.data-table .amount { text-align:right; font-weight:600; }
+.data-table .total-row td { background:#f0fdf4; font-weight:700; color:var(--success); border-top:2px solid var(--success); }
+.table-wrap { overflow-x:auto; }
+
+/* ── BADGES ── */
+.badge { display:inline-block; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:600; }
+.badge-personal { background:#f3e8ff; color:#7c3aed; }
+.badge-corporate { background:#dbeafe; color:#1e40af; }
+.badge-account { background:#f0fdf4; color:#15803d; font-size:10px; }
+.badge-pending { background:#fef3c7; color:#92400e; }
+.badge-approved { background:#d1fae5; color:#065f46; }
+
+/* ── SUMMARY CARDS ── */
+.summary-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }
+.summary-card { background:#fff; border-radius:10px; padding:16px; box-shadow:var(--card-shadow); border-left:4px solid var(--primary); }
+.summary-card .s-label { font-size:11px; color:var(--gray500); font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
+.summary-card .s-value { font-size:22px; font-weight:700; color:var(--gray900); margin-top:4px; }
+.summary-card .s-sub { font-size:11px; color:var(--gray500); margin-top:2px; }
+.summary-card.personal { border-left-color:var(--personal); }
+.summary-card.corporate { border-left-color:var(--corporate); }
+
+/* ── ANALYSIS CHART ── */
+.chart-bar-wrap { display:flex; flex-direction:column; gap:6px; }
+.chart-bar-row { display:flex; align-items:center; gap:8px; }
+.chart-bar-label { width:100px; font-size:12px; color:var(--gray700); text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.chart-bar-track { flex:1; background:var(--gray100); border-radius:4px; height:20px; overflow:hidden; }
+.chart-bar-fill { height:100%; border-radius:4px; background:var(--primary); transition:width .4s; display:flex; align-items:center; padding-left:6px; }
+.chart-bar-fill span { font-size:11px; color:#fff; font-weight:600; white-space:nowrap; }
+.chart-bar-amount { width:90px; font-size:12px; font-weight:600; color:var(--gray700); text-align:right; }
+
+/* ── APPROVAL MODAL ── */
+.modal { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:400; display:none; align-items:center; justify-content:center; }
+.modal.open { display:flex; }
+.modal-box { background:#fff; border-radius:12px; padding:24px; width:700px; max-width:95vw; max-height:90vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,.2); }
+.modal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
+.modal-title { font-size:16px; font-weight:700; color:var(--gray900); }
+.modal-close { background:none; border:none; font-size:20px; cursor:pointer; color:var(--gray500); }
+
+/* ── USER MGMT ── */
+.user-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:12px; }
+.user-card { border:1px solid var(--gray200); border-radius:10px; padding:16px; cursor:pointer; transition:all .2s; }
+.user-card:hover, .user-card.selected { border-color:var(--primary); background:var(--primary-light); }
+.user-card .u-name { font-weight:700; font-size:14px; margin-bottom:4px; }
+.user-card .u-card { font-size:11px; color:var(--gray500); }
+
+/* ── TABS (inner) ── */
+.inner-tabs { display:flex; gap:4px; margin-bottom:16px; }
+.inner-tab { padding:7px 14px; font-size:12px; font-weight:500; border-radius:6px; cursor:pointer; border:1px solid var(--gray200); background:#fff; color:var(--gray600); transition:all .15s; font-family:inherit; }
+.inner-tab.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+
+/* ── MISC ── */
+.flex { display:flex; } .items-center { align-items:center; } .justify-between { justify-content:space-between; }
+.gap-8 { gap:8px; } .gap-12 { gap:12px; } .gap-16 { gap:16px; }
+.mt-12 { margin-top:12px; } .mt-16 { margin-top:16px; } .mt-20 { margin-top:20px; }
+.mb-12 { margin-bottom:12px; } .mb-16 { margin-bottom:16px; }
+.text-right { text-align:right; } .text-center { text-align:center; }
+.text-sm { font-size:12px; } .text-xs { font-size:11px; }
+.text-gray { color:var(--gray500); } .text-success { color:var(--success); }
+.hidden { display:none !important; }
+.empty-state { text-align:center; padding:48px 20px; color:var(--gray500); }
+.empty-state .e-icon { font-size:40px; margin-bottom:12px; }
+.divider { border:none; border-top:1px solid var(--gray100); margin:16px 0; }
+.chip { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; background:var(--gray100); color:var(--gray700); }
+.info-box { background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:12px 16px; font-size:12px; color:#1e40af; }
+.loading { text-align:center; padding:32px; color:var(--gray500); font-size:13px; }
+
+@media(max-width:768px){
+  .summary-grid { grid-template-columns:1fr 1fr; }
+  .form-grid-2, .form-grid-3 { grid-template-columns:1fr; }
+  .nav-tab { padding:10px 12px; font-size:12px; }
+}
+</style>
+</head>
+<body>
+
+<!-- APP HEADER -->
+<div class="app-header">
+  <div class="header-inner">
+    <div class="logo">
+      💳 인시스 카드지출 관리
+      <span>AI혁신 R&D센터</span>
+      <span class="version-badge">v1.0</span>
+    </div>
+    <div class="user-info">
+      <span id="headerUserName" class="user-badge">사용자 미선택</span>
+      <button class="btn btn-outline btn-sm" onclick="showUserSelect()">사용자 변경</button>
+    </div>
+  </div>
+</div>
+
+<!-- NAV -->
+<div class="nav-tabs">
+  <div class="nav-inner">
+    <button class="nav-tab active" onclick="showTab('input')">📝 지출 입력</button>
+    <button class="nav-tab" onclick="showTab('corporate')">🏢 법인카드 마감</button>
+    <button class="nav-tab" onclick="showTab('personal')">👤 개인카드 마감</button>
+    <button class="nav-tab" onclick="showTab('history')">📋 내역 조회</button>
+    <button class="nav-tab" onclick="showTab('analysis')">📊 패턴 분석</button>
+    <button class="nav-tab" onclick="showTab('users')">👥 사용자 관리</button>
+  </div>
+</div>
+
+<div class="main">
+
+<!-- ════════════════ TAB: 지출 입력 ════════════════ -->
+<div id="tab-input">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">📝 카드 지출 입력</span>
+      <div class="flex gap-8">
+        <span id="inputCardTypeBadge" class="badge badge-corporate hidden">법인카드</span>
+        <button class="btn btn-primary btn-sm" onclick="openCardTypeModal()">카드 종류 선택</button>
+      </div>
+    </div>
+    <div class="card-body">
+      <div id="noUserWarn" class="info-box mb-16">⚠️ 먼저 사용자를 선택하세요. 우측 상단 [사용자 변경] 버튼을 클릭하세요.</div>
+      <div id="inputFormWrap" class="hidden">
+        <div class="form-grid">
+          <div class="form-grid form-grid-3">
+            <div class="form-group">
+              <label>카드 구분</label>
+              <div id="cardTypeDisplay" style="padding:9px 12px;border:1px solid var(--gray300);border-radius:7px;font-size:13px;background:var(--gray50);color:var(--gray500);">선택 전</div>
+            </div>
+            <div class="form-group">
+              <label>카드번호 (사용자)</label>
+              <div id="userCardDisplay" style="padding:9px 12px;border:1px solid var(--gray300);border-radius:7px;font-size:13px;background:var(--gray50);">—</div>
+            </div>
+            <div class="form-group">
+              <label>사용 일자 *</label>
+              <input type="date" id="inputDate" class="form-control">
+            </div>
+          </div>
+          <div class="form-grid form-grid-2">
+            <div class="form-group">
+              <label>사용처 (가맹점명) *</label>
+              <input type="text" id="inputMerchant" class="form-control" placeholder="예: 스타벅스 창원점">
+            </div>
+            <div class="form-group">
+              <label>금액 (원) *</label>
+              <input type="number" id="inputAmount" class="form-control" placeholder="0" oninput="formatAmountDisplay(this)">
+            </div>
+          </div>
+          <div class="form-grid form-grid-2">
+            <div class="form-group">
+              <label>사용내역 (품목/목적) *</label>
+              <input type="text" id="inputDesc" class="form-control" placeholder="예: 팀 회의 음료">
+            </div>
+            <div class="form-group">
+              <label>세법 계정과목</label>
+              <select id="inputAccount" class="form-control">
+                <option value="">-- 선택 --</option>
+                <option value="접대비">접대비 (거래처 접대)</option>
+                <option value="복리후생비">복리후생비 (직원 식대·회식)</option>
+                <option value="교통비">교통비·여비 (출장·교통)</option>
+                <option value="회의비">회의비 (내부 회의)</option>
+                <option value="소모품비">소모품비 (사무용품 등)</option>
+                <option value="통신비">통신비 (전화·인터넷)</option>
+                <option value="교육훈련비">교육훈련비</option>
+                <option value="도서인쇄비">도서인쇄비</option>
+                <option value="수수료">수수료</option>
+                <option value="잡비">잡비 (기타)</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>메모 (선택)</label>
+            <input type="text" id="inputMemo" class="form-control" placeholder="추가 메모 입력">
+          </div>
+
+          <!-- RECEIPT UPLOAD -->
+          <div class="form-group">
+            <label>영수증 첨부 (촬영/업로드 후 자동 트리밍)</label>
+            <div class="receipt-area" onclick="document.getElementById('receiptInput').click()">
+              <div class="receipt-icon">📷</div>
+              <p>클릭하여 영수증 사진 촬영 또는 업로드<br><span class="text-xs">업로드 후 트리밍 가능합니다</span></p>
+              <div id="receiptPreviewWrap" class="receipt-preview-wrap hidden">
+                <img id="receiptPreview" src="" alt="영수증">
+                <button class="remove-img" onclick="removeReceipt(event)">✕</button>
+              </div>
+            </div>
+            <input type="file" id="receiptInput" accept="image/*" capture="environment" onchange="handleReceiptUpload(event)">
+            <div id="cropBtn" class="hidden mt-12">
+              <button class="btn btn-outline btn-sm" onclick="openCropModal()">✂️ 영수증 트리밍</button>
+              <span class="text-xs text-gray" style="margin-left:8px;">드래그로 필요한 부분만 선택·저장</span>
+            </div>
+          </div>
+        </div>
+        <hr class="divider">
+        <div class="flex justify-between items-center">
+          <div id="amountPreview" class="text-sm text-gray">금액을 입력하면 표시됩니다</div>
+          <div class="flex gap-8">
+            <button class="btn btn-outline" onclick="resetInputForm()">초기화</button>
+            <button class="btn btn-primary" onclick="submitExpense()">💾 저장</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════ TAB: 법인카드 마감 ════════════════ -->
+<div id="tab-corporate" class="hidden">
+  <div class="summary-grid" id="corpSummaryGrid"></div>
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">🏢 법인카드 주간 마감</span>
+      <div class="flex gap-8 items-center">
+        <div class="form-group" style="margin:0">
+          <select id="corpWeekSelect" class="form-control" onchange="loadCorpWeek()" style="min-width:180px;">
+            <option value="">주간 선택</option>
+          </select>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="generateWeeks()">주간 목록 갱신</button>
+      </div>
+    </div>
+    <div class="card-body">
+      <div id="corpTableWrap">
+        <div class="empty-state"><div class="e-icon">📅</div><p>주간을 선택하면 마감 내역이 표시됩니다</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════ TAB: 개인카드 마감 ════════════════ -->
+<div id="tab-personal" class="hidden">
+  <div class="summary-grid" id="persSummaryGrid"></div>
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">👤 개인카드 월간 마감</span>
+      <div class="flex gap-8 items-center">
+        <div class="form-group" style="margin:0">
+          <select id="persMonthSelect" class="form-control" onchange="loadPersMonth()" style="min-width:140px;">
+            <option value="">월 선택</option>
+          </select>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="generateMonths()">월 목록 갱신</button>
+      </div>
+    </div>
+    <div class="card-body">
+      <div id="persTableWrap">
+        <div class="empty-state"><div class="e-icon">📅</div><p>월을 선택하면 마감 내역이 표시됩니다</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════ TAB: 내역 조회 ════════════════ -->
+<div id="tab-history" class="hidden">
+  <div class="card mb-16">
+    <div class="card-body">
+      <div class="form-grid form-grid-3">
+        <div class="form-group">
+          <label>카드 구분</label>
+          <select id="filterCardType" class="form-control">
+            <option value="">전체</option>
+            <option value="법인">법인카드</option>
+            <option value="개인">개인카드</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>사용자</label>
+          <select id="filterUser" class="form-control">
+            <option value="">전체</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>계정과목</label>
+          <select id="filterAccount" class="form-control">
+            <option value="">전체</option>
+            <option value="접대비">접대비</option>
+            <option value="복리후생비">복리후생비</option>
+            <option value="교통비">교통비·여비</option>
+            <option value="회의비">회의비</option>
+            <option value="소모품비">소모품비</option>
+            <option value="통신비">통신비</option>
+            <option value="교육훈련비">교육훈련비</option>
+            <option value="도서인쇄비">도서인쇄비</option>
+            <option value="수수료">수수료</option>
+            <option value="잡비">잡비</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>시작일</label>
+          <input type="date" id="filterStart" class="form-control">
+        </div>
+        <div class="form-group">
+          <label>종료일</label>
+          <input type="date" id="filterEnd" class="form-control">
+        </div>
+        <div class="form-group" style="display:flex;align-items:flex-end;">
+          <button class="btn btn-primary" style="width:100%" onclick="searchHistory()">🔍 조회</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">조회 결과</span>
+      <span id="historyCount" class="text-sm text-gray"></span>
+    </div>
+    <div class="card-body" id="historyTableWrap">
+      <div class="empty-state"><div class="e-icon">🔍</div><p>조건을 설정하고 조회 버튼을 클릭하세요</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════ TAB: 패턴 분석 ════════════════ -->
+<div id="tab-analysis" class="hidden">
+  <div class="form-grid form-grid-2 mb-16">
+    <div class="form-group">
+      <label>분석 기간</label>
+      <select id="analysisRange" class="form-control" onchange="runAnalysis()">
+        <option value="1">이번 달</option>
+        <option value="3">최근 3개월</option>
+        <option value="6">최근 6개월</option>
+        <option value="12">최근 1년</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>카드 구분</label>
+      <select id="analysisCardType" class="form-control" onchange="runAnalysis()">
+        <option value="">전체</option>
+        <option value="법인">법인카드</option>
+        <option value="개인">개인카드</option>
+      </select>
+    </div>
+  </div>
+  <div class="summary-grid" id="analysisSummary"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;" class="mt-12">
+    <div class="card">
+      <div class="card-header"><span class="card-title">📊 계정과목별 지출</span></div>
+      <div class="card-body" id="accountChart"><div class="loading">분석 중...</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">🏪 사용처별 TOP 10</span></div>
+      <div class="card-body" id="merchantChart"><div class="loading">분석 중...</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">👤 사용자별 지출</span></div>
+      <div class="card-body" id="userChart"><div class="loading">분석 중...</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">📅 월별 지출 추이</span></div>
+      <div class="card-body" id="monthlyChart"><div class="loading">분석 중...</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════ TAB: 사용자 관리 ════════════════ -->
+<div id="tab-users" class="hidden">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+    <div class="card">
+      <div class="card-header"><span class="card-title">👥 사용자 목록</span>
+        <button class="btn btn-primary btn-sm" onclick="openAddUserModal()">+ 추가</button>
+      </div>
+      <div class="card-body" id="userListWrap"><div class="loading">로딩 중...</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">➕ 사용자 등록</span></div>
+      <div class="card-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>이름 *</label>
+            <input type="text" id="newUserName" class="form-control" placeholder="홍길동">
+          </div>
+          <div class="form-group">
+            <label>법인카드번호 (끝 4자리 또는 전체)</label>
+            <input type="text" id="newUserCorpCard" class="form-control" placeholder="1234">
+          </div>
+          <div class="form-group">
+            <label>개인카드번호 (끝 4자리 또는 전체)</label>
+            <input type="text" id="newUserPersCard" class="form-control" placeholder="5678">
+          </div>
+          <div class="form-group">
+            <label>부서</label>
+            <input type="text" id="newUserDept" class="form-control" placeholder="예: 경영지원실">
+          </div>
+        </div>
+        <div class="mt-16 text-right">
+          <button class="btn btn-primary" onclick="addUser()">💾 사용자 등록</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<!-- ════ MODAL: 카드 종류 선택 ════ -->
+<div class="card-type-modal hidden" id="cardTypeModal">
+  <div class="card-type-box">
+    <h3>카드 종류를 선택하세요</h3>
+    <p>결제에 사용한 카드 종류를 선택해 주세요</p>
+    <div class="card-type-options">
+      <div class="card-type-opt corporate" onclick="selectCardType('법인')">
+        <div class="icon">🏢</div>
+        <div class="label">법인카드</div>
+        <div class="desc">주간 마감 (매주 월요일)</div>
+      </div>
+      <div class="card-type-opt personal" onclick="selectCardType('개인')">
+        <div class="icon">👤</div>
+        <div class="label">개인카드</div>
+        <div class="desc">월간 마감 (매월 말일)</div>
+      </div>
+    </div>
+    <div class="mt-16">
+      <button class="btn btn-outline" onclick="closeCardTypeModal()">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════ MODAL: 사용자 선택 ════ -->
+<div class="modal" id="userSelectModal">
+  <div class="modal-box" style="width:480px">
+    <div class="modal-header">
+      <span class="modal-title">👤 사용자 선택</span>
+      <button class="modal-close" onclick="closeUserSelectModal()">✕</button>
+    </div>
+    <div id="userSelectList" class="user-grid"><div class="loading">로딩 중...</div></div>
+  </div>
+</div>
+
+<!-- ════ MODAL: 마감 승인 ════ -->
+<div class="modal" id="approvalModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title" id="approvalModalTitle">마감 확인 및 승인</span>
+      <button class="modal-close" onclick="closeModal('approvalModal')">✕</button>
+    </div>
+    <div id="approvalModalContent"></div>
+    <hr class="divider">
+    <div class="flex justify-between items-center">
+      <div class="text-sm text-gray">내용을 확인하신 후 승인해 주세요</div>
+      <div class="flex gap-8">
+        <button class="btn btn-outline" onclick="closeModal('approvalModal')">취소</button>
+        <button class="btn btn-success" onclick="confirmApproval()">✅ 승인 완료</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ MODAL: 영수증 크롭 ════ -->
+<div class="crop-modal" id="cropModal">
+  <div style="color:#fff;font-size:14px;font-weight:500;">드래그로 영수증 영역 선택 → 트리밍 저장</div>
+  <div class="crop-canvas-wrap">
+    <canvas id="cropCanvas"></canvas>
+    <div class="crop-selection" id="cropSelection"></div>
+  </div>
+  <div class="crop-actions">
+    <button class="btn btn-success" onclick="applyCrop()">✂️ 트리밍 저장</button>
+    <button class="btn btn-outline" onclick="closeCropModal()">취소</button>
+  </div>
+</div>
+
+<!-- ════ TOAST ════ -->
+<div id="toast" style="position:fixed;bottom:24px;right:24px;z-index:9999;display:none;">
+  <div id="toastMsg" style="background:#1e293b;color:#fff;padding:12px 20px;border-radius:8px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.2);max-width:320px;line-height:1.5;"></div>
+</div>
+
+<script>
+// ════════════════════════════════════════════
+// FIREBASE CONFIG (insys-work)
+// ════════════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyBYqd2uRr1ZvFLDCWuS15h9qFkT-Dvg5Es",
+  authDomain: "insys-work.firebaseapp.com",
+  projectId: "insys-work",
+  storageBucket: "insys-work.firebasestorage.app",
+  messagingSenderId: "225275784859",
+  appId: "1:225275784859:web:bd12815c6dc47c0c49e03e"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const storage = firebase.storage();
+
+// ════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════
+let currentUser = null;
+let selectedCardType = null;
+let receiptDataUrl = null;
+let croppedDataUrl = null;
+let pendingApproval = null;
+
+// Crop state
+let cropImg = new Image();
+let cropCanvas = document.getElementById('cropCanvas');
+let cropCtx = cropCanvas.getContext('2d');
+let cropDragging = false, cropStartX=0, cropStartY=0, cropEndX=0, cropEndY=0;
+let cropScale = 1;
+
+// ════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem('insys_card_user');
+  if (saved) {
+    currentUser = JSON.parse(saved);
+    updateUserDisplay();
+  }
+  generateWeeks();
+  generateMonths();
+  loadUsers();
+  setDefaultDate();
+  initCropEvents();
+});
+
+function setDefaultDate() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('inputDate').value = today;
+}
+
+// ════════════════════════════════════════════
+// TAB NAV
+// ════════════════════════════════════════════
+function showTab(name) {
+  ['input','corporate','personal','history','analysis','users'].forEach(t => {
+    document.getElementById('tab-'+t).classList.add('hidden');
+  });
+  document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.remove('hidden');
+  event.target.classList.add('active');
+  if (name==='corporate') { generateWeeks(); loadCorpSummary(); }
+  if (name==='personal') { generateMonths(); loadPersSummary(); }
+  if (name==='history') { populateFilterUsers(); }
+  if (name==='analysis') { runAnalysis(); }
+  if (name==='users') { loadUserList(); }
+}
+
+// ════════════════════════════════════════════
+// USER MANAGEMENT
+// ════════════════════════════════════════════
+async function loadUsers() {
+  try {
+    const snap = await db.collection('card_users').orderBy('name').get();
+    window._users = snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderUserSelectList();
+    populateFilterUsers();
+  } catch(e) { window._users = []; }
+}
+
+function renderUserSelectList() {
+  const el = document.getElementById('userSelectList');
+  if (!window._users || window._users.length === 0) {
+    el.innerHTML = '<div class="empty-state"><div class="e-icon">👤</div><p>등록된 사용자가 없습니다.<br>[사용자 관리] 탭에서 추가하세요.</p></div>';
+    return;
+  }
+  el.innerHTML = window._users.map(u => `
+    <div class="user-card ${currentUser && currentUser.id===u.id?'selected':''}" onclick="selectUser('${u.id}')">
+      <div class="u-name">${u.name}</div>
+      <div class="u-card">${u.dept||''}</div>
+      <div class="u-card" style="margin-top:4px;">
+        ${u.corpCard?`🏢 법인 ···${u.corpCard.slice(-4)}`:''}
+        ${u.persCard?`&nbsp; 👤 개인 ···${u.persCard.slice(-4)}`:''}
+      </div>
+    </div>
+  `).join('');
+}
+
+function selectUser(id) {
+  const u = window._users.find(x=>x.id===id);
+  if (!u) return;
+  currentUser = u;
+  localStorage.setItem('insys_card_user', JSON.stringify(u));
+  updateUserDisplay();
+  closeUserSelectModal();
+  toast('✅ ' + u.name + ' 님으로 전환되었습니다');
+}
+
+function updateUserDisplay() {
+  if (!currentUser) return;
+  document.getElementById('headerUserName').textContent = currentUser.name;
+  document.getElementById('noUserWarn').classList.add('hidden');
+  document.getElementById('inputFormWrap').classList.remove('hidden');
+  updateCardDisplay();
+}
+
+function updateCardDisplay() {
+  if (!currentUser || !selectedCardType) return;
+  const cardNum = selectedCardType==='법인' ? currentUser.corpCard : currentUser.persCard;
+  document.getElementById('userCardDisplay').textContent = cardNum ? `···${cardNum.slice(-4)}` : '카드 미등록';
+}
+
+function showUserSelect() {
+  loadUsers().then(renderUserSelectList);
+  openModal('userSelectModal');
+}
+function closeUserSelectModal() { closeModal('userSelectModal'); }
+
+async function addUser() {
+  const name = document.getElementById('newUserName').value.trim();
+  if (!name) { toast('⚠️ 이름을 입력하세요'); return; }
+  const data = {
+    name,
+    corpCard: document.getElementById('newUserCorpCard').value.trim(),
+    persCard: document.getElementById('newUserPersCard').value.trim(),
+    dept: document.getElementById('newUserDept').value.trim(),
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  try {
+    await db.collection('card_users').add(data);
+    toast('✅ 사용자 등록 완료');
+    ['newUserName','newUserCorpCard','newUserPersCard','newUserDept'].forEach(id=>document.getElementById(id).value='');
+    await loadUsers();
+    loadUserList();
+  } catch(e) { toast('❌ 오류: ' + e.message); }
+}
+
+function loadUserList() {
+  const el = document.getElementById('userListWrap');
+  if (!window._users || window._users.length===0) {
+    el.innerHTML = '<div class="empty-state"><div class="e-icon">👤</div><p>등록된 사용자 없음</p></div>';
+    return;
+  }
+  el.innerHTML = `<table class="data-table"><thead><tr>
+    <th>이름</th><th>부서</th><th>법인카드</th><th>개인카드</th><th></th>
+  </tr></thead><tbody>` +
+  window._users.map(u=>`<tr>
+    <td><strong>${u.name}</strong></td>
+    <td>${u.dept||'—'}</td>
+    <td>${u.corpCard||'—'}</td>
+    <td>${u.persCard||'—'}</td>
+    <td><button class="btn btn-danger btn-sm" onclick="deleteUser('${u.id}')">삭제</button></td>
+  </tr>`).join('') + '</tbody></table>';
+}
+
+async function deleteUser(id) {
+  if (!confirm('정말 삭제하시겠습니까?')) return;
+  try {
+    await db.collection('card_users').doc(id).delete();
+    await loadUsers();
+    loadUserList();
+    toast('삭제 완료');
+  } catch(e) { toast('❌ 오류: ' + e.message); }
+}
+
+function populateFilterUsers() {
+  const sel = document.getElementById('filterUser');
+  sel.innerHTML = '<option value="">전체</option>' +
+    (window._users||[]).map(u=>`<option value="${u.name}">${u.name}</option>`).join('');
+}
+
+// ════════════════════════════════════════════
+// CARD TYPE SELECTION
+// ════════════════════════════════════════════
+function openCardTypeModal() {
+  if (!currentUser) { toast('⚠️ 먼저 사용자를 선택하세요'); return; }
+  document.getElementById('cardTypeModal').classList.remove('hidden');
+}
+function closeCardTypeModal() { document.getElementById('cardTypeModal').classList.add('hidden'); }
+
+function selectCardType(type) {
+  selectedCardType = type;
+  const badge = document.getElementById('inputCardTypeBadge');
+  badge.textContent = type + '카드';
+  badge.className = 'badge ' + (type==='법인'?'badge-corporate':'badge-personal');
+  badge.classList.remove('hidden');
+  document.getElementById('cardTypeDisplay').textContent = type === '법인' ? '🏢 법인카드' : '👤 개인카드';
+  document.getElementById('cardTypeDisplay').style.color = type==='법인' ? '#1e40af' : '#7c3aed';
+  updateCardDisplay();
+  closeCardTypeModal();
+  toast(type + '카드가 선택되었습니다');
+}
+
+// ════════════════════════════════════════════
+// RECEIPT & CROP
+// ════════════════════════════════════════════
+function handleReceiptUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    receiptDataUrl = ev.target.result;
+    croppedDataUrl = null;
+    showReceiptPreview(receiptDataUrl);
+    document.getElementById('cropBtn').classList.remove('hidden');
+  };
+  reader.readAsDataURL(file);
+}
+
+function showReceiptPreview(src) {
+  const preview = document.getElementById('receiptPreview');
+  const wrap = document.getElementById('receiptPreviewWrap');
+  preview.src = src;
+  wrap.classList.remove('hidden');
+}
+
+function removeReceipt(e) {
+  e.stopPropagation();
+  receiptDataUrl = null; croppedDataUrl = null;
+  document.getElementById('receiptPreview').src = '';
+  document.getElementById('receiptPreviewWrap').classList.add('hidden');
+  document.getElementById('cropBtn').classList.add('hidden');
+  document.getElementById('receiptInput').value = '';
+}
+
+function openCropModal() {
+  const src = croppedDataUrl || receiptDataUrl;
+  if (!src) return;
+  cropImg = new Image();
+  cropImg.onload = () => {
+    const maxW = Math.min(cropImg.width, window.innerWidth * 0.85);
+    const maxH = Math.min(cropImg.height, window.innerHeight * 0.65);
+    cropScale = Math.min(maxW / cropImg.width, maxH / cropImg.height, 1);
+    cropCanvas.width = cropImg.width * cropScale;
+    cropCanvas.height = cropImg.height * cropScale;
+    cropCtx.drawImage(cropImg, 0, 0, cropCanvas.width, cropCanvas.height);
+    resetCropSel();
+    document.getElementById('cropModal').classList.add('open');
+  };
+  cropImg.src = src;
+}
+
+function closeCropModal() { document.getElementById('cropModal').classList.remove('open'); }
+
+function initCropEvents() {
+  cropCanvas.addEventListener('mousedown', e => {
+    const r = cropCanvas.getBoundingClientRect();
+    cropStartX = e.clientX - r.left; cropStartY = e.clientY - r.top;
+    cropDragging = true;
+  });
+  cropCanvas.addEventListener('mousemove', e => {
+    if (!cropDragging) return;
+    const r = cropCanvas.getBoundingClientRect();
+    cropEndX = e.clientX - r.left; cropEndY = e.clientY - r.top;
+    drawCropSel();
+  });
+  cropCanvas.addEventListener('mouseup', () => { cropDragging = false; });
+  // Touch support
+  cropCanvas.addEventListener('touchstart', e => {
+    const r = cropCanvas.getBoundingClientRect();
+    const t = e.touches[0];
+    cropStartX = t.clientX-r.left; cropStartY = t.clientY-r.top; cropDragging=true; e.preventDefault();
+  },{passive:false});
+  cropCanvas.addEventListener('touchmove', e => {
+    if (!cropDragging) return;
+    const r = cropCanvas.getBoundingClientRect();
+    const t = e.touches[0];
+    cropEndX = t.clientX-r.left; cropEndY = t.clientY-r.top; drawCropSel(); e.preventDefault();
+  },{passive:false});
+  cropCanvas.addEventListener('touchend', () => { cropDragging=false; });
+}
+
+function drawCropSel() {
+  const sel = document.getElementById('cropSelection');
+  const x = Math.min(cropStartX,cropEndX), y = Math.min(cropStartY,cropEndY);
+  const w = Math.abs(cropEndX-cropStartX), h = Math.abs(cropEndY-cropStartY);
+  const r = cropCanvas.getBoundingClientRect();
+  sel.style.display='block';
+  sel.style.left=(r.left + x + window.scrollX)+'px'; sel.style.top=(r.top + y + window.scrollY)+'px';
+  sel.style.width=w+'px'; sel.style.height=h+'px';
+}
+
+function resetCropSel() {
+  document.getElementById('cropSelection').style.display='none';
+  cropStartX=0; cropStartY=0; cropEndX=0; cropEndY=0;
+}
+
+function applyCrop() {
+  const x = Math.min(cropStartX,cropEndX), y = Math.min(cropStartY,cropEndY);
+  const w = Math.abs(cropEndX-cropStartX), h = Math.abs(cropEndY-cropStartY);
+  if (w<10||h<10) { toast('⚠️ 영역을 더 크게 드래그하세요'); return; }
+  const tmp = document.createElement('canvas');
+  tmp.width=w/cropScale; tmp.height=h/cropScale;
+  tmp.getContext('2d').drawImage(cropImg, x/cropScale, y/cropScale, w/cropScale, h/cropScale, 0, 0, tmp.width, tmp.height);
+  croppedDataUrl = tmp.toDataURL('image/jpeg', 0.85);
+  showReceiptPreview(croppedDataUrl);
+  closeCropModal();
+  toast('✂️ 트리밍 완료');
+}
+
+// ════════════════════════════════════════════
+// EXPENSE INPUT
+// ════════════════════════════════════════════
+function formatAmountDisplay(el) {
+  const v = parseInt(el.value)||0;
+  document.getElementById('amountPreview').textContent = v>0 ? `💰 ${v.toLocaleString()}원` : '금액을 입력하면 표시됩니다';
+}
+
+async function submitExpense() {
+  if (!currentUser) { toast('⚠️ 사용자를 선택하세요'); return; }
+  if (!selectedCardType) { toast('⚠️ 카드 종류를 선택하세요'); return; }
+  const date = document.getElementById('inputDate').value;
+  const merchant = document.getElementById('inputMerchant').value.trim();
+  const amount = parseInt(document.getElementById('inputAmount').value)||0;
+  const desc = document.getElementById('inputDesc').value.trim();
+  if (!date||!merchant||!amount||!desc) { toast('⚠️ 필수 항목을 모두 입력하세요'); return; }
+
+  const data = {
+    userId: currentUser.id,
+    userName: currentUser.name,
+    userDept: currentUser.dept||'',
+    cardType: selectedCardType,
+    cardNum: selectedCardType==='법인' ? currentUser.corpCard : currentUser.persCard,
+    date, merchant, amount, desc,
+    account: document.getElementById('inputAccount').value,
+    memo: document.getElementById('inputMemo').value.trim(),
+    status: 'pending',
+    weekKey: getWeekKey(date),
+    monthKey: date.slice(0,7),
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  try {
+    // Upload receipt if exists
+    const imgSrc = croppedDataUrl || receiptDataUrl;
+    if (imgSrc) {
+      const blob = await dataUrlToBlob(imgSrc);
+      const ref = storage.ref(`receipts/${Date.now()}_${currentUser.id}.jpg`);
+      await ref.put(blob);
+      data.receiptUrl = await ref.getDownloadURL();
+    }
+    await db.collection('card_expenses').add(data);
+    toast('✅ 저장 완료! ' + merchant + ' ' + amount.toLocaleString() + '원');
+    resetInputForm();
+  } catch(e) { toast('❌ 저장 오류: ' + e.message); }
+}
+
+function resetInputForm() {
+  ['inputDate','inputMerchant','inputAmount','inputDesc','inputMemo'].forEach(id=>{
+    const el = document.getElementById(id);
+    if (el) el.value = id==='inputDate' ? new Date().toISOString().split('T')[0] : '';
+  });
+  document.getElementById('inputAccount').value = '';
+  document.getElementById('amountPreview').textContent = '금액을 입력하면 표시됩니다';
+  removeReceipt({stopPropagation:()=>{}});
+}
+
+function dataUrlToBlob(dataUrl) {
+  const arr = dataUrl.split(','); const mime = arr[0].match(/:(.*?);/)[1];
+  const bstr = atob(arr[1]); let n = bstr.length; const u8 = new Uint8Array(n);
+  while(n--) u8[n] = bstr.charCodeAt(n);
+  return new Blob([u8], {type:mime});
+}
+
+// ════════════════════════════════════════════
+// WEEK / MONTH HELPERS
+// ════════════════════════════════════════════
+function getWeekKey(dateStr) {
+  const d = new Date(dateStr);
+  const mon = new Date(d); mon.setDate(d.getDate() - ((d.getDay()+6)%7));
+  const sun = new Date(mon); sun.setDate(mon.getDate()+6);
+  return mon.toISOString().split('T')[0] + '_' + sun.toISOString().split('T')[0];
+}
+
+function getWeekLabel(key) {
+  const [s,e] = key.split('_');
+  return `${s.slice(5)} ~ ${e.slice(5)} 주간`;
+}
+
+function generateWeeks() {
+  const sel = document.getElementById('corpWeekSelect');
+  const weeks = [];
+  const now = new Date();
+  for (let i=0; i<16; i++) {
+    const d = new Date(now); d.setDate(now.getDate() - i*7);
+    const key = getWeekKey(d.toISOString().split('T')[0]);
+    if (!weeks.find(w=>w.key===key)) weeks.push({key, label:getWeekLabel(key)});
+  }
+  sel.innerHTML = '<option value="">주간 선택</option>' + weeks.map(w=>`<option value="${w.key}">${w.label}</option>`).join('');
+}
+
+function generateMonths() {
+  const sel = document.getElementById('persMonthSelect');
+  const months = [];
+  const now = new Date();
+  for (let i=0; i<12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    months.push({key, label:`${d.getFullYear()}년 ${d.getMonth()+1}월`});
+  }
+  sel.innerHTML = '<option value="">월 선택</option>' + months.map(m=>`<option value="${m.key}">${m.label}</option>`).join('');
+}
+
+// ════════════════════════════════════════════
+// CORPORATE WEEKLY CLOSING
+// ════════════════════════════════════════════
+async function loadCorpSummary() {
+  const now = new Date();
+  const snap = await db.collection('card_expenses').where('cardType','==','법인').get();
+  const docs = snap.docs.map(d=>d.data());
+  const thisMonth = docs.filter(d=>d.monthKey===now.toISOString().slice(0,7));
+  const approved = docs.filter(d=>d.status==='approved');
+  const pending = docs.filter(d=>d.status==='pending');
+  const grid = document.getElementById('corpSummaryGrid');
+  grid.innerHTML = [
+    {label:'이달 법인 지출', value: sum(thisMonth), sub:'이번달 합계', cls:'corporate'},
+    {label:'승인 완료', value: sum(approved), sub:`${approved.length}건`, cls:''},
+    {label:'미결 항목', value: sum(pending), sub:`${pending.length}건`, cls:''},
+    {label:'올해 누적', value: sum(docs.filter(d=>d.date&&d.date.startsWith(now.getFullYear()+''))), sub:'법인카드', cls:'corporate'},
+  ].map(s=>`<div class="summary-card ${s.cls}">
+    <div class="s-label">${s.label}</div>
+    <div class="s-value">${s.value.toLocaleString()}원</div>
+    <div class="s-sub">${s.sub}</div>
+  </div>`).join('');
+}
+
+async function loadCorpWeek() {
+  const weekKey = document.getElementById('corpWeekSelect').value;
+  if (!weekKey) return;
+  const wrap = document.getElementById('corpTableWrap');
+  wrap.innerHTML = '<div class="loading">데이터 로딩 중...</div>';
+  try {
+    const snap = await db.collection('card_expenses')
+      .where('cardType','==','법인').where('weekKey','==',weekKey).orderBy('date').get();
+    const rows = snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderClosingTable(wrap, rows, '법인', weekKey, getWeekLabel(weekKey));
+  } catch(e) {
+    wrap.innerHTML = '<div class="empty-state"><div class="e-icon">⚠️</div><p>'+e.message+'</p></div>';
+  }
+}
+
+// ════════════════════════════════════════════
+// PERSONAL MONTHLY CLOSING
+// ════════════════════════════════════════════
+async function loadPersSummary() {
+  const now = new Date();
+  const snap = await db.collection('card_expenses').where('cardType','==','개인').get();
+  const docs = snap.docs.map(d=>d.data());
+  const thisMonth = docs.filter(d=>d.monthKey===now.toISOString().slice(0,7));
+  const approved = docs.filter(d=>d.status==='approved');
+  const grid = document.getElementById('persSummaryGrid');
+  grid.innerHTML = [
+    {label:'이달 개인 지출', value: sum(thisMonth), sub:'이번달 합계', cls:'personal'},
+    {label:'승인 완료', value: sum(approved), sub:`${approved.length}건`, cls:''},
+    {label:'미결 항목', value: sum(docs.filter(d=>d.status==='pending')), sub:`${docs.filter(d=>d.status==='pending').length}건`, cls:''},
+    {label:'올해 누적', value: sum(docs.filter(d=>d.date&&d.date.startsWith(now.getFullYear()+''))), sub:'개인카드', cls:'personal'},
+  ].map(s=>`<div class="summary-card ${s.cls}">
+    <div class="s-label">${s.label}</div>
+    <div class="s-value">${s.value.toLocaleString()}원</div>
+    <div class="s-sub">${s.sub}</div>
+  </div>`).join('');
+}
+
+async function loadPersMonth() {
+  const monthKey = document.getElementById('persMonthSelect').value;
+  if (!monthKey) return;
+  const wrap = document.getElementById('persTableWrap');
+  wrap.innerHTML = '<div class="loading">데이터 로딩 중...</div>';
+  try {
+    const snap = await db.collection('card_expenses')
+      .where('cardType','==','개인').where('monthKey','==',monthKey).orderBy('date').get();
+    const rows = snap.docs.map(d=>({id:d.id,...d.data()}));
+    const [y,m] = monthKey.split('-');
+    renderClosingTable(wrap, rows, '개인', monthKey, `${y}년 ${parseInt(m)}월`);
+  } catch(e) {
+    wrap.innerHTML = '<div class="empty-state"><div class="e-icon">⚠️</div><p>'+e.message+'</p></div>';
+  }
+}
+
+// ════════════════════════════════════════════
+// CLOSING TABLE RENDER
+// ════════════════════════════════════════════
+function renderClosingTable(wrap, rows, cardType, periodKey, periodLabel) {
+  if (rows.length===0) {
+    wrap.innerHTML = '<div class="empty-state"><div class="e-icon">📋</div><p>해당 기간 지출 내역 없음</p></div>';
+    return;
+  }
+  const total = sum(rows);
+  const approvedAll = rows.every(r=>r.status==='approved');
+  const byUser = groupBy(rows, 'userName');
+
+  let html = `<div class="info-box mb-16">
+    📅 <strong>${periodLabel}</strong> &nbsp;|&nbsp; 총 <strong>${rows.length}건</strong> &nbsp;|&nbsp;
+    합계: <strong>${total.toLocaleString()}원</strong>
+    ${approvedAll ? '&nbsp; <span class="badge badge-approved">✅ 승인완료</span>' : ''}
+  </div>`;
+
+  // Per-user tables
+  Object.entries(byUser).forEach(([uName, uRows]) => {
+    const uTotal = sum(uRows);
+    html += `<div style="margin-bottom:20px;">
+      <div class="flex justify-between items-center mb-12">
+        <span style="font-weight:700;font-size:14px;">👤 ${uName} (${uRows.length}건)</span>
+        <span style="font-weight:700;color:var(--primary);">${uTotal.toLocaleString()}원</span>
+      </div>
+      <div class="table-wrap">
+      <table class="data-table"><thead><tr>
+        <th>일자</th><th>사용처</th><th class="amount">금액</th><th>사용내역</th><th>계정과목</th><th>상태</th><th>영수증</th>
+      </tr></thead><tbody>`;
+    uRows.forEach(r => {
+      html += `<tr>
+        <td>${r.date}</td>
+        <td>${r.merchant}</td>
+        <td class="amount">${(r.amount||0).toLocaleString()}원</td>
+        <td>${r.desc}</td>
+        <td>${r.account ? `<span class="badge badge-account">${r.account}</span>` : '—'}</td>
+        <td><span class="badge ${r.status==='approved'?'badge-approved':'badge-pending'}">${r.status==='approved'?'승인':'대기'}</span></td>
+        <td>${r.receiptUrl ? `<a href="${r.receiptUrl}" target="_blank" style="color:var(--primary);font-size:12px;">📷보기</a>` : '—'}</td>
+      </tr>`;
+    });
+    html += `<tr class="total-row"><td colspan="2"><strong>소계</strong></td>
+      <td class="amount"><strong>${uTotal.toLocaleString()}원</strong></td>
+      <td colspan="4"></td></tr></tbody></table></div></div>`;
+  });
+
+  // Grand total
+  html += `<div style="background:#f0fdf4;border:2px solid var(--success);border-radius:8px;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;margin-top:16px;">
+    <span style="font-weight:700;font-size:15px;">📊 ${periodLabel} 합계</span>
+    <span style="font-size:20px;font-weight:900;color:var(--success);">${total.toLocaleString()}원</span>
+  </div>`;
+
+  if (!approvedAll) {
+    html += `<div class="text-right mt-16">
+      <button class="btn btn-success" onclick="openApprovalModal(${JSON.stringify(rows).replace(/"/g,'&quot;')}, '${periodLabel}', '${periodKey}', '${cardType}')">
+        ✅ 내용 확인 및 승인
+      </button>
+    </div>`;
+  }
+  wrap.innerHTML = html;
+}
+
+// ════════════════════════════════════════════
+// APPROVAL
+// ════════════════════════════════════════════
+function openApprovalModal(rows, label, periodKey, cardType) {
+  pendingApproval = {rows, label, periodKey, cardType};
+  const total = sum(rows);
+  document.getElementById('approvalModalTitle').textContent = `${label} 마감 승인`;
+  const content = document.getElementById('approvalModalContent');
+  content.innerHTML = `
+    <div class="info-box mb-16">아래 내역을 확인 후 승인하시면 상태가 <strong>승인완료</strong>로 변경됩니다.</div>
+    <div class="table-wrap"><table class="data-table"><thead><tr>
+      <th>일자</th><th>사용자</th><th>사용처</th><th class="amount">금액</th><th>계정과목</th>
+    </tr></thead><tbody>` +
+    rows.map(r=>`<tr>
+      <td>${r.date}</td><td>${r.userName}</td><td>${r.merchant}</td>
+      <td class="amount">${(r.amount||0).toLocaleString()}원</td>
+      <td>${r.account||'—'}</td>
+    </tr>`).join('') +
+    `<tr class="total-row"><td colspan="3"><strong>합계</strong></td>
+      <td class="amount"><strong>${total.toLocaleString()}원</strong></td><td></td>
+    </tr></tbody></table></div>`;
+  openModal('approvalModal');
+}
+
+async function confirmApproval() {
+  if (!pendingApproval) return;
+  const batch = db.batch();
+  pendingApproval.rows.forEach(r => {
+    const ref = db.collection('card_expenses').doc(r.id);
+    batch.update(ref, {status:'approved', approvedAt: firebase.firestore.FieldValue.serverTimestamp()});
+  });
+  try {
+    await batch.commit();
+    toast('✅ 승인 완료! ' + pendingApproval.label);
+    closeModal('approvalModal');
+    if (pendingApproval.cardType==='법인') loadCorpWeek();
+    else loadPersMonth();
+    pendingApproval = null;
+  } catch(e) { toast('❌ 오류: ' + e.message); }
+}
+
+// ════════════════════════════════════════════
+// HISTORY
+// ════════════════════════════════════════════
+async function searchHistory() {
+  const wrap = document.getElementById('historyTableWrap');
+  wrap.innerHTML = '<div class="loading">조회 중...</div>';
+  try {
+    let q = db.collection('card_expenses').orderBy('date','desc');
+    const ct = document.getElementById('filterCardType').value;
+    const usr = document.getElementById('filterUser').value;
+    const acc = document.getElementById('filterAccount').value;
+    const st = document.getElementById('filterStart').value;
+    const en = document.getElementById('filterEnd').value;
+    if (ct) q = q.where('cardType','==',ct);
+    if (usr) q = q.where('userName','==',usr);
+    if (acc) q = q.where('account','==',acc);
+    if (st) q = q.where('date','>=',st);
+    if (en) q = q.where('date','<=',en);
+    const snap = await q.limit(200).get();
+    const rows = snap.docs.map(d=>({id:d.id,...d.data()}));
+    document.getElementById('historyCount').textContent = `총 ${rows.length}건 / ${sum(rows).toLocaleString()}원`;
+    if (rows.length===0) {
+      wrap.innerHTML = '<div class="empty-state"><div class="e-icon">🔍</div><p>조회 결과 없음</p></div>';
+      return;
+    }
+    wrap.innerHTML = `<div class="table-wrap"><table class="data-table"><thead><tr>
+      <th>일자</th><th>구분</th><th>사용자</th><th>사용처</th><th class="amount">금액</th>
+      <th>사용내역</th><th>계정과목</th><th>상태</th><th>영수증</th>
+    </tr></thead><tbody>` +
+    rows.map(r=>`<tr>
+      <td>${r.date}</td>
+      <td><span class="badge ${r.cardType==='법인'?'badge-corporate':'badge-personal'}">${r.cardType}</span></td>
+      <td>${r.userName}</td>
+      <td>${r.merchant}</td>
+      <td class="amount">${(r.amount||0).toLocaleString()}원</td>
+      <td>${r.desc}${r.memo?'<br><span class="text-xs text-gray">'+r.memo+'</span>':''}</td>
+      <td>${r.account?`<span class="badge badge-account">${r.account}</span>`:'—'}</td>
+      <td><span class="badge ${r.status==='approved'?'badge-approved':'badge-pending'}">${r.status==='approved'?'승인':'대기'}</span></td>
+      <td>${r.receiptUrl?`<a href="${r.receiptUrl}" target="_blank" style="color:var(--primary);font-size:12px;">📷</a>`:'—'}</td>
+    </tr>`).join('') +
+    `<tr class="total-row"><td colspan="4"><strong>합계</strong></td>
+      <td class="amount"><strong>${sum(rows).toLocaleString()}원</strong></td>
+      <td colspan="4"></td>
+    </tr></tbody></table></div>`;
+  } catch(e) {
+    wrap.innerHTML = '<div class="empty-state"><div class="e-icon">⚠️</div><p>'+e.message+'<br><span class="text-xs">복합 필터는 Firestore 인덱스가 필요합니다</span></p></div>';
+  }
+}
+
+// ════════════════════════════════════════════
+// ANALYSIS
+// ════════════════════════════════════════════
+async function runAnalysis() {
+  const months = parseInt(document.getElementById('analysisRange').value)||1;
+  const ct = document.getElementById('analysisCardType').value;
+  const from = new Date(); from.setMonth(from.getMonth()-months+1); from.setDate(1);
+  const fromStr = from.toISOString().split('T')[0];
+  try {
+    let q = db.collection('card_expenses').where('date','>=',fromStr).orderBy('date');
+    if (ct) q = q.where('cardType','==',ct);
+    const snap = await q.get();
+    const rows = snap.docs.map(d=>d.data());
+    renderAnalysis(rows);
+  } catch(e) {
+    ['accountChart','merchantChart','userChart','monthlyChart'].forEach(id=>{
+      document.getElementById(id).innerHTML = '<div class="empty-state"><div class="e-icon">⚠️</div><p>'+e.message+'</p></div>';
+    });
+  }
+}
+
+function renderAnalysis(rows) {
+  const total = sum(rows);
+  const approved = rows.filter(r=>r.status==='approved');
+  const sg = document.getElementById('analysisSummary');
+  sg.innerHTML = [
+    {label:'총 지출', value:total, sub:`${rows.length}건`, cls:''},
+    {label:'법인카드', value:sum(rows.filter(r=>r.cardType==='법인')), sub:'법인', cls:'corporate'},
+    {label:'개인카드', value:sum(rows.filter(r=>r.cardType==='개인')), sub:'개인', cls:'personal'},
+    {label:'승인 완료', value:sum(approved), sub:`${approved.length}건`, cls:''},
+  ].map(s=>`<div class="summary-card ${s.cls}">
+    <div class="s-label">${s.label}</div>
+    <div class="s-value">${s.value.toLocaleString()}원</div>
+    <div class="s-sub">${s.sub}</div>
+  </div>`).join('');
+
+  // Account chart
+  const byAccount = groupBy(rows,'account');
+  renderBarChart('accountChart', byAccount, total);
+  // Merchant chart
+  const byMerchant = groupBy(rows,'merchant');
+  const top10 = Object.entries(byMerchant).sort((a,b)=>sum(b[1])-sum(a[1])).slice(0,10);
+  renderBarChart('merchantChart', Object.fromEntries(top10), total, '#7c3aed');
+  // User chart
+  const byUser = groupBy(rows,'userName');
+  renderBarChart('userChart', byUser, total, '#0ea5e9');
+  // Monthly trend
+  const byMonth = {};
+  rows.forEach(r => { const k=r.monthKey||r.date?.slice(0,7)||''; byMonth[k]=(byMonth[k]||0)+(r.amount||0); });
+  const sortedMonths = Object.keys(byMonth).sort();
+  const maxMonth = Math.max(...Object.values(byMonth),1);
+  document.getElementById('monthlyChart').innerHTML = sortedMonths.length===0
+    ? '<div class="empty-state"><div class="e-icon">📅</div><p>데이터 없음</p></div>'
+    : `<div class="chart-bar-wrap">${sortedMonths.map(k=>{
+        const v=byMonth[k]; const pct=Math.round(v/maxMonth*100);
+        return `<div class="chart-bar-row">
+          <div class="chart-bar-label">${k}</div>
+          <div class="chart-bar-track"><div class="chart-bar-fill" style="width:${pct}%;background:#16a34a;">
+            <span>${pct>15?v.toLocaleString()+'원':''}</span>
+          </div></div>
+          <div class="chart-bar-amount">${v.toLocaleString()}원</div>
+        </div>`;
+      }).join('')}</div>`;
+}
+
+function renderBarChart(elId, grouped, total, color='#2563eb') {
+  const sorted = Object.entries(grouped).sort((a,b)=>sum(b[1])-sum(a[1]));
+  const maxVal = sorted.length>0 ? sum(sorted[0][1]) : 1;
+  document.getElementById(elId).innerHTML = sorted.length===0
+    ? '<div class="empty-state"><div class="e-icon">📊</div><p>데이터 없음</p></div>'
+    : `<div class="chart-bar-wrap">${sorted.map(([k,v])=>{
+        const val=sum(v); const pct=Math.round(val/maxVal*100); const share=total>0?Math.round(val/total*100):0;
+        return `<div class="chart-bar-row">
+          <div class="chart-bar-label" title="${k||'미분류'}">${k||'미분류'}</div>
+          <div class="chart-bar-track"><div class="chart-bar-fill" style="width:${pct}%;background:${color};">
+            <span>${pct>20?val.toLocaleString()+'원':''}</span>
+          </div></div>
+          <div class="chart-bar-amount">${share}%</div>
+        </div>`;
+      }).join('')}</div>`;
+}
+
+// ════════════════════════════════════════════
+// UTILS
+// ════════════════════════════════════════════
+function sum(arr) { return arr.reduce((a,r)=>a+(r.amount||0),0); }
+function groupBy(arr, key) {
+  return arr.reduce((a,r)=>{ const k=r[key]||'미분류'; (a[k]=a[k]||[]).push(r); return a; },{});
+}
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+let toastTimer;
+function toast(msg) {
+  const t=document.getElementById('toast'), m=document.getElementById('toastMsg');
+  m.textContent=msg; t.style.display='block';
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.style.display='none',3200);
+}
+</script>
+</body>
+</html>
