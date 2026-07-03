@@ -1526,28 +1526,31 @@ function startClock() {
 // ══════════════════════════════════════════════════════
 async function openAiRec() {
   $('aiModal').classList.remove('hidden');
-  $('aiLoading').classList.remove('hidden');
-  $('aiContent').classList.add('hidden');
-  $('aiContent').innerHTML = '';
+  $('aiLoading').classList.add('hidden');   // 로딩 즉시 숨김
+  $('aiContent').classList.remove('hidden');
+  $('aiContent').innerHTML = '<p style="text-align:center;color:var(--muted);padding:12px">분석 중...</p>';
 
-  // ── 사용할 식당 목록 (Firebase 로드 전이면 기본값 사용) ──
-  const restList = dynRestaurants.length ? dynRestaurants : DEFAULT_RESTAURANTS;
-
-  // ── 날씨 (open-meteo — CORS 허용) ──
+  // ── 날씨 (최대 2초 타임아웃) ──
   let weatherDesc='', tempVal=null, weatherCode=-1;
   try {
-    const wr = await fetch('https://api.open-meteo.com/v1/forecast?latitude=35.2281&longitude=128.6812&current=temperature_2m,weathercode&timezone=Asia%2FSeoul');
+    const controller = new AbortController();
+    const timer = setTimeout(()=>controller.abort(), 2000);
+    const wr = await fetch(
+      'https://api.open-meteo.com/v1/forecast?latitude=35.2281&longitude=128.6812&current=temperature_2m,weathercode&timezone=Asia%2FSeoul',
+      {signal: controller.signal}
+    );
+    clearTimeout(timer);
     const wd = await wr.json();
-    tempVal=Math.round(wd.current.temperature_2m);
-    weatherCode=wd.current.weathercode;
-    const wDescs=['맑음','구름조금','구름조금','흐림'];
+    tempVal     = Math.round(wd.current.temperature_2m);
+    weatherCode = wd.current.weathercode;
     weatherDesc = weatherCode===0?'맑음':weatherCode<=2?'구름조금':weatherCode<=3?'흐림':
                   weatherCode<=49?'안개':weatherCode<=59?'이슬비':weatherCode<=69?'비':
                   weatherCode<=79?'눈':'천둥번개';
-  } catch(e){ console.warn('날씨 로드 실패:', e); }
+  } catch(e){ /* 날씨 없어도 계속 */ }
 
+  // ── 날짜·요일 ──
   const now=new Date(), dow=now.getDay(), month=now.getMonth()+1, day=now.getDate();
-  const days=['일','월','화','수','목','금','토'];
+  const DAYS=['일','월','화','수','목','금','토'];
   const special=getSpecialDay(month,day);
 
   // ── 주문 빈도 집계 ──
@@ -1558,97 +1561,93 @@ async function openAiRec() {
     menuScore[rest][menu]=(menuScore[rest][menu]||0)+cnt;
   });
 
-  // ── 후보 생성 + 점수 계산 ──
+  // ── 동료 선택 반영 (오늘 이미 주문된 식당 가점) ──
+  const colleagueRest={};
+  todayOrders.forEach(o=>{ colleagueRest[o.restaurant]=(colleagueRest[o.restaurant]||0)+1; });
+
+  // ── 후보 생성 ──
+  const SRC = (dynRestaurants.length ? dynRestaurants : DEFAULT_RESTAURANTS);
   const candidates=[];
-  restList.forEach(r=>{
-    if(r.name==='기타') return;
-    const menus = r.menus && r.menus.length ? r.menus : [];
-    if(!menus.length) return;
+
+  SRC.forEach(r=>{
+    if(!r || r.name==='기타') return;
+    const menus=r.menus&&r.menus.length?r.menus:[];
     menus.forEach(m=>{
-      let score=(menuScore[r.name]?.[m]||0)*10;
+      let score = (menuScore[r.name]&&menuScore[r.name][m]) ? menuScore[r.name][m]*10 : 0;
 
       // 날씨 보정
       if(tempVal!==null){
-        const hot=tempVal>=28, cold=tempVal<=5, rain=weatherCode>=51;
-        const isSoup=['찌개','국밥','탕','해장국','감자탕','라면','우동','짬뽕'].some(w=>m.includes(w)||r.name.includes(w));
-        const isCool=['냉면','밀면','샐러드','샌드위치','부리또','쌀국수'].some(w=>m.includes(w));
-        if(hot&&isCool)  score+=30;
-        if(cold&&isSoup) score+=30;
-        if(rain&&isSoup) score+=20;
-        // 보통 날씨 - 국물류 소폭 가점
-        if(!hot&&!cold&&isSoup) score+=5;
+        const hot=tempVal>=27, cold=tempVal<=8, rain=weatherCode>=51;
+        const soup=['찌개','국밥','탕','해장국','감자탕','라면','우동','짬뽕'].some(w=>m.includes(w)||r.name.includes(w));
+        const cool=['냉면','밀면','샐러드','샌드위치','부리또','쌀국수'].some(w=>m.includes(w));
+        if(hot&&cool)  score+=25;
+        if(cold&&soup) score+=25;
+        if(rain&&soup) score+=15;
       }
 
       // 요일 보정
-      const isLight=['샌드위치','부리또','샐러드','쌀국수','김밥'].some(w=>m.includes(w)||r.name.includes(w));
-      const isHearty=['국밥','찌개','두루치기','비빔밥','갈비','아구','뽈찜'].some(w=>m.includes(w)||r.name.includes(w));
-      if((dow===1||dow===5)&&isLight)  score+=15; // 월·금 가벼운 것
-      if(dow===3&&isHearty)            score+=15; // 수 든든한 것
-      if(dow===6||dow===0)             score+=3;  // 주말(드물지만)
+      if((dow===1||dow===5)&&['샌드위치','부리또','쌀국수','김밥'].some(w=>m.includes(w)||r.name.includes(w))) score+=12;
+      if(dow===3&&['국밥','찌개','두루치기','비빔밥'].some(w=>m.includes(w))) score+=12;
+
+      // 동료 선택 가점 (같은 식당 이미 주문 중)
+      if(colleagueRest[r.name]) score += colleagueRest[r.name]*8;
 
       // 기념일 가점
-      if(special!=='특별한 날 없음') score+=5;
+      if(special!=='없음') score+=8;
 
-      // 오늘 이미 주문된 조합 감점
-      if(todayOrders.find(o=>o.restaurant===r.name&&o.menu===m)) score-=40;
+      // 오늘 내가 이미 주문한 메뉴 감점
+      if(todayOrders.find(o=>o.name===myName&&o.restaurant===r.name&&o.menu===m)) score-=60;
 
-      // 점수 동점 시 약간의 랜덤 요소
-      score += Math.random()*3;
+      // 랜덤 요소 (매번 다른 추천)
+      score+=Math.random()*5;
 
-      candidates.push({rest:r.name, menu:m, score,
-        phone:r.phone||'', deadline:r.deadline||''});
+      candidates.push({rest:r.name,menu:m,score,phone:r.phone||'',deadline:r.deadline||''});
     });
   });
 
-  // ── 식당 중복 없이 상위 3개 선택 ──
+  // ── 식당 중복 없이 상위 3개 ──
   candidates.sort((a,b)=>b.score-a.score);
-  const recs=[], usedRest=new Set();
+  const recs=[], used=new Set();
   for(const c of candidates){
-    if(usedRest.has(c.rest)) continue;
-    usedRest.add(c.rest); recs.push(c);
+    if(used.has(c.rest)) continue;
+    used.add(c.rest); recs.push(c);
     if(recs.length===3) break;
   }
 
-  // ── 추천 이유 생성 ──
-  function makeReason(c){
+  // ── 추천 이유 ──
+  function reason(c){
     const parts=[];
-    if(tempVal!==null){
-      if(tempVal>=28)      parts.push(`더운 날씨(${tempVal}°C)에 어울립니다`);
-      else if(tempVal<=5)  parts.push(`추운 날씨(${tempVal}°C)에 따뜻합니다`);
-      else                 parts.push(`${weatherDesc} ${tempVal}°C 날씨에 잘 맞습니다`);
-    }
-    const freq=menuScore[c.rest]?.[c.menu]||0;
-    if(freq>=5)       parts.push(`최근 ${freq}회 주문한 인기 메뉴`);
-    else if(freq>=1)  parts.push(`${freq}회 주문한 검증 메뉴`);
-    else              parts.push('새롭게 도전해볼 만한 메뉴');
-    if(c.deadline)    parts.push(`마감 ${c.deadline}`);
-    return parts.join(' · ')+'.';
+    if(tempVal!==null) parts.push(`${weatherDesc||'맑음'} ${tempVal}°C`);
+    const f=menuScore[c.rest]&&menuScore[c.rest][c.menu]?menuScore[c.rest][c.menu]:0;
+    if(f>=3) parts.push(`인기 ${f}회 주문`);
+    else if(f>=1) parts.push(`${f}회 검증`);
+    if(colleagueRest[c.rest]) parts.push(`동료 ${colleagueRest[c.rest]}명 선택 중`);
+    if(c.deadline) parts.push(`마감 ${c.deadline}`);
+    if(special!=='없음') parts.push(special);
+    return parts.length ? parts.join(' · ') : '새로운 도전';
   }
 
-  // ── 오늘 배경 설명 ──
-  let context=`${month}월 ${day}일 ${days[dow]}요일`;
-  if(weatherDesc&&tempVal!==null) context+=` · 창원 ${weatherDesc} ${tempVal}°C`;
-  if(special!=='특별한 날 없음')  context+=` · ${special}`;
-  context+=' — 주문 이력·날씨·요일을 분석한 추천입니다.';
+  // ── 오늘 배경 한 줄 ──
+  let ctx=`${month}/${day} ${DAYS[dow]}요일`;
+  if(weatherDesc&&tempVal!==null) ctx+=` · ${weatherDesc} ${tempVal}°C`;
+  if(special!=='없음') ctx+=` · ${special}`;
 
-  // ── 결과 표시 ──
-  $('aiLoading').classList.add('hidden');
-  $('aiContent').classList.remove('hidden');
-
+  // ── 결과 없을 때 ──
   if(!recs.length){
-    $('aiContent').innerHTML='<p style="text-align:center;color:var(--muted);padding:20px">🏪 식당관리 탭에서 식당 메뉴를 등록하면 추천이 시작됩니다.</p>';
+    $('aiContent').innerHTML='<p style="text-align:center;padding:20px;color:var(--muted)">🏪 식당관리에서 메뉴를 등록하면 추천이 시작됩니다.</p>';
     return;
   }
 
+  // ── 결과 표시 ──
   $('aiContent').innerHTML=
-    '<div class="ai-reason-box">'+esc(context)+'</div>'+
+    '<div class="ai-reason-box">'+esc(ctx)+'</div>'+
     recs.map((r,i)=>
       '<div class="ai-rec-card">'+
         '<div class="rec-num">추천 '+(i+1)+'</div>'+
         '<div class="rec-rest-name">'+esc(r.rest)+'</div>'+
         '<div class="rec-menu-name">'+esc(r.menu)+'</div>'+
-        '<div class="rec-reason">'+esc(makeReason(r))+'</div>'+
-        '<button class="ai-apply-btn" data-rest="'+esc(r.rest)+'" data-menu="'+esc(r.menu)+'">이 메뉴로 선택하기</button>'+
+        '<div class="rec-reason">'+esc(reason(r))+'</div>'+
+        '<button class="ai-apply-btn" data-rest="'+esc(r.rest)+'" data-menu="'+esc(r.menu)+'">이 메뉴로 선택</button>'+
       '</div>'
     ).join('');
 
@@ -1659,10 +1658,11 @@ async function openAiRec() {
       $('aiModal').classList.add('hidden');
       document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab==='order'));
       document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('hidden',p.dataset.panel!=='order'));
-      showToast('추천 메뉴가 선택되었습니다!');
+      showToast('추천 메뉴 선택 완료!');
     });
   });
 }
+
 
 function bindEvents() {
   // 로그인
