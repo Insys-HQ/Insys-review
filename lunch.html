@@ -1524,138 +1524,6 @@ function startClock() {
 // ══════════════════════════════════════════════════════
 // 이벤트 바인딩 (모두 addEventListener 방식)
 // ══════════════════════════════════════════════════════
-function bindEvents() {
-  // 로그인
-  $('loginBtn').addEventListener('click', () => {
-    const n=$('nameSelect').value;
-    if (!n) { showToast('이름을 선택해 주세요'); return; }
-    myName=n; localStorage.setItem('insys_lunch_name',n);
-    startApp();
-  });
-
-  // 이름 클릭 → 로그인 화면으로
-  $('userBadge').addEventListener('click', () => {
-    $('mainScreen').classList.add('hidden');
-    $('loginScreen').classList.remove('hidden');
-  });
-
-  // 수량
-  $('qtyMinus').addEventListener('click', ()=>{ qty=Math.max(1,qty-1); $('qtyDisplay').textContent=qty; });
-  $('qtyPlus').addEventListener('click',  ()=>{ qty=Math.min(10,qty+1); $('qtyDisplay').textContent=qty; });
-
-  // 주문 등록
-  $('addOrderBtn').addEventListener('click', addOrder);
-
-  // 마감
-  $('btnClose').addEventListener('click', toggleClose);
-
-  // 전체 완료 취소
-  $('btnComplete').addEventListener('click', cancelAllComplete);
-
-  // 복사
-  $('copyBtn').addEventListener('click', ()=>{
-    navigator.clipboard.writeText($('summaryText').textContent).then(()=>showToast('복사 완료!'));
-  });
-
-  // AI 추천 버튼
-  $('aiRecBtn').addEventListener('click', openAiRec);
-
-  // 슬롯머신 버튼
-  $('slotOpenBtn').addEventListener('click', openSlot);
-  $('slotModalClose').addEventListener('click', () => $('slotModal').classList.add('hidden'));
-  $('aiModalClose').addEventListener('click', () => $('aiModal').classList.add('hidden'));
-  $('slotSpinBtn').addEventListener('click', spinSlot);
-  $('soundBtn').addEventListener('click', toggleSound);
-
-  // 모달 배경 클릭 닫기
-  $('aiModal').addEventListener('click', e => { if(e.target===$('aiModal')) $('aiModal').classList.add('hidden'); });
-  $('slotModal').addEventListener('click', e => { if(e.target===$('slotModal')) $('slotModal').classList.add('hidden'); });
-
-  // 주문 초기화
-  $('resetOrdersBtn').addEventListener('click', async () => {
-    if (!confirm('오늘 주문을 모두 초기화할까요?\n(주문 목록, 담당자, 완료 상태가 모두 삭제됩니다)')) return;
-    const dk = todayKey();
-    // 주문 목록 전체 삭제
-    const snap = await getDocs(collection(db,'lunch_days',dk,'orders'));
-    const dels = snap.docs.map(d=>deleteDoc(doc(db,'lunch_days',dk,'orders',d.id)));
-    await Promise.all(dels);
-    // 메타 초기화
-    await setDoc(doc(db,'lunch_days',dk),{
-      closed:false, completed:false, restaurantStatus:{}, restDuty:{}
-    },{merge:true});
-    showToast('오늘 주문이 초기화되었습니다');
-  });
-
-  // 식당 추가
-  $('addRestBtn').addEventListener('click', addNewRestaurant);
-  $('newRestName').addEventListener('keydown', e=>{ if(e.key==='Enter') addNewRestaurant(); });
-
-  // 탭 전환
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', ()=>{
-      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b===btn));
-      document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('hidden',p.dataset.panel!==btn.dataset.tab));
-    });
-  });
-
-  // 플로팅 화면전환
-  document.querySelectorAll('.vm-btn').forEach(btn => {
-    btn.addEventListener('click', ()=>{
-      const mode=btn.dataset.vm;
-      localStorage.setItem('insys_viewmode',mode);
-      applyViewMode(mode);
-      document.querySelectorAll('.vm-btn').forEach(b=>b.classList.toggle('active',b===btn));
-    });
-  });
-
-  // 플로팅 추가 주문
-  $('floatAddBtn').addEventListener('click', ()=>{
-    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab==='order'));
-    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('hidden',p.dataset.panel!=='order'));
-    window.scrollTo({top:0,behavior:'smooth'});
-  });
-
-  // 담당자 패널 초기 렌더 (주문 후 동적 렌더로 대체)
-  renderDutyPanel();
-}
-
-function applyViewMode(mode) {
-  const m=$('mainEl');
-  m.classList.remove('wide','narrow');
-  if (mode==='pc') m.classList.add('wide');
-  else if (mode==='mobile') m.classList.add('narrow');
-  document.querySelectorAll('.vm-btn').forEach(b=>b.classList.toggle('active',b.dataset.vm===mode));
-}
-// ══════════════════════════════════════════════════════
-// 다음날 오전 8시 자동 초기화
-// ══════════════════════════════════════════════════════
-function scheduleAutoReset() {
-  const now  = new Date();
-  const next = new Date(now);
-  // 오늘 이미 8시 지났으면 → 내일 8시, 안 지났으면 → 오늘 8시
-  next.setHours(8,0,0,0);
-  if (now >= next) next.setDate(next.getDate()+1);
-  const ms = next - now;
-  console.log(`자동초기화 예약: ${next.toLocaleString('ko-KR')} (${Math.round(ms/60000)}분 후)`);
-  setTimeout(async () => {
-    // 어제 날짜 키 (자정 넘어 8시 전이면 오늘-1)
-    const yesterday = new Date(next);
-    yesterday.setDate(yesterday.getDate()-1);
-    const dk = yesterday.toISOString().slice(0,10);
-    try {
-      const snap = await getDocs(collection(db,'lunch_days',dk,'orders'));
-      await Promise.all(snap.docs.map(d=>deleteDoc(doc(db,'lunch_days',dk,'orders',d.id))));
-      await setDoc(doc(db,'lunch_days',dk),{closed:false,completed:false,restaurantStatus:{},restDuty:{}},{merge:true});
-      console.log(`${dk} 주문 자동 초기화 완료`);
-      // 다음 날 다시 예약
-      scheduleAutoReset();
-    } catch(e) { console.warn('자동초기화 오류:', e); }
-  }, ms);
-}
-
-// ══════════════════════════════════════════════════════
-// AI 메뉴 추천 (Claude API)
-// ══════════════════════════════════════════════════════
 async function openAiRec() {
   $('aiModal').classList.remove('hidden');
   $('aiLoading').classList.remove('hidden');
@@ -1795,6 +1663,139 @@ async function openAiRec() {
     });
   });
 }
+
+function bindEvents() {
+  // 로그인
+  $('loginBtn').addEventListener('click', () => {
+    const n=$('nameSelect').value;
+    if (!n) { showToast('이름을 선택해 주세요'); return; }
+    myName=n; localStorage.setItem('insys_lunch_name',n);
+    startApp();
+  });
+
+  // 이름 클릭 → 로그인 화면으로
+  $('userBadge').addEventListener('click', () => {
+    $('mainScreen').classList.add('hidden');
+    $('loginScreen').classList.remove('hidden');
+  });
+
+  // 수량
+  $('qtyMinus').addEventListener('click', ()=>{ qty=Math.max(1,qty-1); $('qtyDisplay').textContent=qty; });
+  $('qtyPlus').addEventListener('click',  ()=>{ qty=Math.min(10,qty+1); $('qtyDisplay').textContent=qty; });
+
+  // 주문 등록
+  $('addOrderBtn').addEventListener('click', addOrder);
+
+  // 마감
+  $('btnClose').addEventListener('click', toggleClose);
+
+  // 전체 완료 취소
+  $('btnComplete').addEventListener('click', cancelAllComplete);
+
+  // 복사
+  $('copyBtn').addEventListener('click', ()=>{
+    navigator.clipboard.writeText($('summaryText').textContent).then(()=>showToast('복사 완료!'));
+  });
+
+  // AI 추천 버튼
+  $('aiRecBtn').addEventListener('click', () => openAiRec());
+
+  // 슬롯머신 버튼
+  $('slotOpenBtn').addEventListener('click', openSlot);
+  $('slotModalClose').addEventListener('click', () => $('slotModal').classList.add('hidden'));
+  $('aiModalClose').addEventListener('click', () => $('aiModal').classList.add('hidden'));
+  $('slotSpinBtn').addEventListener('click', () => spinSlot());
+  $('soundBtn').addEventListener('click', () => toggleSound());
+
+  // 모달 배경 클릭 닫기
+  $('aiModal').addEventListener('click', e => { if(e.target===$('aiModal')) $('aiModal').classList.add('hidden'); });
+  $('slotModal').addEventListener('click', e => { if(e.target===$('slotModal')) $('slotModal').classList.add('hidden'); });
+
+  // 주문 초기화
+  $('resetOrdersBtn').addEventListener('click', async () => {
+    if (!confirm('오늘 주문을 모두 초기화할까요?\n(주문 목록, 담당자, 완료 상태가 모두 삭제됩니다)')) return;
+    const dk = todayKey();
+    // 주문 목록 전체 삭제
+    const snap = await getDocs(collection(db,'lunch_days',dk,'orders'));
+    const dels = snap.docs.map(d=>deleteDoc(doc(db,'lunch_days',dk,'orders',d.id)));
+    await Promise.all(dels);
+    // 메타 초기화
+    await setDoc(doc(db,'lunch_days',dk),{
+      closed:false, completed:false, restaurantStatus:{}, restDuty:{}
+    },{merge:true});
+    showToast('오늘 주문이 초기화되었습니다');
+  });
+
+  // 식당 추가
+  $('addRestBtn').addEventListener('click', addNewRestaurant);
+  $('newRestName').addEventListener('keydown', e=>{ if(e.key==='Enter') addNewRestaurant(); });
+
+  // 탭 전환
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b===btn));
+      document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('hidden',p.dataset.panel!==btn.dataset.tab));
+    });
+  });
+
+  // 플로팅 화면전환
+  document.querySelectorAll('.vm-btn').forEach(btn => {
+    btn.addEventListener('click', ()=>{
+      const mode=btn.dataset.vm;
+      localStorage.setItem('insys_viewmode',mode);
+      applyViewMode(mode);
+      document.querySelectorAll('.vm-btn').forEach(b=>b.classList.toggle('active',b===btn));
+    });
+  });
+
+  // 플로팅 추가 주문
+  $('floatAddBtn').addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab==='order'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('hidden',p.dataset.panel!=='order'));
+    window.scrollTo({top:0,behavior:'smooth'});
+  });
+
+  // 담당자 패널 초기 렌더 (주문 후 동적 렌더로 대체)
+  renderDutyPanel();
+}
+
+function applyViewMode(mode) {
+  const m=$('mainEl');
+  m.classList.remove('wide','narrow');
+  if (mode==='pc') m.classList.add('wide');
+  else if (mode==='mobile') m.classList.add('narrow');
+  document.querySelectorAll('.vm-btn').forEach(b=>b.classList.toggle('active',b.dataset.vm===mode));
+}
+// ══════════════════════════════════════════════════════
+// 다음날 오전 8시 자동 초기화
+// ══════════════════════════════════════════════════════
+function scheduleAutoReset() {
+  const now  = new Date();
+  const next = new Date(now);
+  // 오늘 이미 8시 지났으면 → 내일 8시, 안 지났으면 → 오늘 8시
+  next.setHours(8,0,0,0);
+  if (now >= next) next.setDate(next.getDate()+1);
+  const ms = next - now;
+  console.log(`자동초기화 예약: ${next.toLocaleString('ko-KR')} (${Math.round(ms/60000)}분 후)`);
+  setTimeout(async () => {
+    // 어제 날짜 키 (자정 넘어 8시 전이면 오늘-1)
+    const yesterday = new Date(next);
+    yesterday.setDate(yesterday.getDate()-1);
+    const dk = yesterday.toISOString().slice(0,10);
+    try {
+      const snap = await getDocs(collection(db,'lunch_days',dk,'orders'));
+      await Promise.all(snap.docs.map(d=>deleteDoc(doc(db,'lunch_days',dk,'orders',d.id))));
+      await setDoc(doc(db,'lunch_days',dk),{closed:false,completed:false,restaurantStatus:{},restDuty:{}},{merge:true});
+      console.log(`${dk} 주문 자동 초기화 완료`);
+      // 다음 날 다시 예약
+      scheduleAutoReset();
+    } catch(e) { console.warn('자동초기화 오류:', e); }
+  }, ms);
+}
+
+// ══════════════════════════════════════════════════════
+// AI 메뉴 추천 (Claude API)
+// ══════════════════════════════════════════════════════
 
 
 
