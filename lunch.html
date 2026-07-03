@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>인시스 점심주문관리 v3.6</title>
+<title>인시스 점심주문관리 v3.7</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -35,6 +35,7 @@ header {
 #weatherInfo { font-size:13px; color:#fff; opacity:.9; display:flex; align-items:center; gap:4px; }
 .w-temp { font-size:15px; font-weight:700; }
 .w-desc { font-size:12px; opacity:.8; }
+.w-rain { font-size:12px; color:#7dd3fc; font-weight:700; }
 #clock { font-size:18px; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:1px; }
 #userBadge {
   background:rgba(255,255,255,.15); color:#fff;
@@ -505,7 +506,7 @@ main.narrow { max-width:420px; }
     <div id="weatherInfo">🌡️ 로딩중</div>
     <span id="clock">--:--:--</span>
     <span id="userBadge">—</span>
-    <span class="ver-badge">v3.6</span>
+    <span class="ver-badge">v3.7</span>
   </div>
 </header>
 
@@ -671,7 +672,7 @@ main.narrow { max-width:420px; }
     <div id="restaurantAdminList"></div>
   </div>
 
-  <div class="footer-info">점심주문관리 시스템 v3.6</div>
+  <div class="footer-info">점심주문관리 시스템 v3.7</div>
 
   <!-- ══ AI 추천 모달 ══ -->
   <div id="aiModal" class="modal-overlay hidden">
@@ -791,6 +792,9 @@ const DEFAULT_RESTAURANTS = [
 ];
 
 // ── 상태 ─────────────────────────────────────────────
+// 전역 날씨 캐시 (loadWeather → openAiRec 공유)
+let G_WEATHER = {temp:null, wcode:-1, wdesc:'', humidity:0, precipProb:0, loaded:false};
+
 let myName          = localStorage.getItem('insys_lunch_name') || '';
 let qty             = 1;
 let selRest         = '';
@@ -1490,14 +1494,40 @@ function renderHistoryCards(list) {
 // ══════════════════════════════════════════════════════
 async function loadWeather() {
   try {
-    const res  = await fetch('https://api.open-meteo.com/v1/forecast?latitude=35.2281&longitude=128.6812&current=temperature_2m,weathercode&timezone=Asia%2FSeoul');
+    const res  = await fetch(
+      'https://api.open-meteo.com/v1/forecast?latitude=35.2281&longitude=128.6812' +
+      '&current=temperature_2m,weathercode,relative_humidity_2m' +
+      '&hourly=precipitation_probability&timezone=Asia%2FSeoul&forecast_days=1'
+    );
     const data = await res.json();
-    const temp = Math.round(data.current.temperature_2m);
-    const code = data.current.weathercode;
-    const icon = code===0?'☀️':code<=2?'🌤️':code<=3?'☁️':code<=49?'🌫️':code<=59?'🌦️':code<=69?'🌧️':code<=79?'🌨️':'⛈️';
-    const desc = code===0?'맑음':code<=2?'구름조금':code<=3?'흐림':code<=49?'안개':code<=59?'이슬비':code<=69?'비':code<=79?'눈':'천둥번개';
-    $('weatherInfo').innerHTML = `${icon} <span class="w-temp">${temp}°C</span><span class="w-desc">${desc}</span>`;
-  } catch(e) { $('weatherInfo').textContent=''; }
+    const temp  = Math.round(data.current.temperature_2m);
+    const code  = data.current.weathercode;
+    const humid = data.current.relative_humidity_2m || 0;
+    const WMAP  = {
+      0:'☀️ 맑음',1:'🌤 구름조금',2:'⛅ 구름많음',3:'☁️ 흐림',
+      45:'🌫 안개',48:'🌫 안개',
+      51:'🌦 이슬비',53:'🌦 이슬비',55:'🌧 비',
+      61:'🌧 비',63:'🌧 비',65:'🌧 폭우',
+      80:'🌦 소나기',81:'🌧 소나기',82:'⛈ 강소나기',
+      95:'⛈ 천둥번개',96:'⛈ 천둥번개'
+    };
+    const wdesc = WMAP[code] || (code<=3?'☀️ 맑음':code<=49?'🌫 안개':'🌧 비');
+    // 낮 12시 강수확률
+    const idx12 = (data.hourly && data.hourly.time)
+      ? data.hourly.time.findIndex(h=>h.includes('T12:00')) : -1;
+    const precip = idx12>=0 ? (data.hourly.precipitation_probability[idx12]||0) : 0;
+    // 전역 날씨 캐시 저장
+    G_WEATHER = {temp, wcode:code, wdesc, humidity:humid, precipProb:precip, loaded:true};
+    // 헤더 표시: 날씨아이콘 + 기온 + 강수확률(있을 때)
+    const precipTxt = precip>0 ? ` <span class="w-rain">💧${precip}%</span>` : '';
+    $('weatherInfo').innerHTML =
+      `${wdesc.split(' ')[0]} <span class="w-temp">${temp}°C</span>` +
+      `<span class="w-desc">${wdesc.split(' ').slice(1).join(' ')}</span>` +
+      precipTxt;
+  } catch(e) {
+    $('weatherInfo').textContent = '날씨 없음';
+    G_WEATHER.loaded = false;
+  }
 }
 
 // ══════════════════════════════════════════════════════
@@ -1530,47 +1560,13 @@ async function openAiRec() {
   $('aiContent').classList.remove('hidden');
   $('aiContent').innerHTML = '<p style="text-align:center;padding:16px;color:var(--muted);font-size:13px">🔍 창원 날씨 확인 중...</p>';
 
-  // ── 날씨 (타임아웃 4초, 변수명 충돌 없이) ──
-  let temp=null, wcode=-1, wdesc='', humidity=0, precipProb=0;
-  try {
-    const abortCtrl = new AbortController();
-    const abortTimer = setTimeout(()=>abortCtrl.abort(), 4000);
-    const weatherRes = await fetch(
-      'https://api.open-meteo.com/v1/forecast' +
-      '?latitude=35.2281&longitude=128.6812' +
-      '&current=temperature_2m,weathercode,relative_humidity_2m' +
-      '&hourly=precipitation_probability' +
-      '&timezone=Asia%2FSeoul&forecast_days=1',
-      {signal: abortCtrl.signal}
-    );
-    clearTimeout(abortTimer);
-    const wd = await weatherRes.json();
-
-    temp     = Math.round(wd.current.temperature_2m);
-    wcode    = wd.current.weathercode;
-    humidity = wd.current.relative_humidity_2m || 0;
-
-    // 낮 12시 강수확률 (변수명 충돌 방지: hr → idx12)
-    const idx12 = (wd.hourly && wd.hourly.time)
-      ? wd.hourly.time.findIndex(h => h.includes('T12:00'))
-      : -1;
-    precipProb = idx12 >= 0
-      ? (wd.hourly.precipitation_probability[idx12] || 0)
-      : 0;
-
-    const WMAP = {
-      0:'☀️ 맑음', 1:'🌤 구름조금', 2:'⛅ 구름많음', 3:'☁️ 흐림',
-      45:'🌫 안개', 48:'🌫 안개',
-      51:'🌦 이슬비', 53:'🌦 이슬비', 55:'🌧 비',
-      61:'🌧 비', 63:'🌧 비', 65:'🌧 폭우',
-      80:'🌦 소나기', 81:'🌧 소나기', 82:'⛈ 강한소나기',
-      95:'⛈ 천둥번개', 96:'⛈ 천둥번개'
-    };
-    wdesc = WMAP[wcode] || (wcode<=3?'☀️ 맑음':wcode<=49?'🌫 안개':'🌧 비');
-    console.log('날씨 로드 성공:', temp+'°C', wdesc, '강수확률'+precipProb+'%');
-  } catch(e) {
-    console.warn('날씨 로드 실패:', e.message);
-  }
+  // ── 전역 날씨 캐시 사용 (loadWeather에서 이미 로드됨) ──
+  const temp       = G_WEATHER.temp;
+  const wcode      = G_WEATHER.wcode;
+  const wdesc      = G_WEATHER.wdesc;
+  const humidity   = G_WEATHER.humidity;
+  const precipProb = G_WEATHER.precipProb;
+  console.log('날씨 캐시:', G_WEATHER.loaded, temp, wdesc, precipProb+'%');
 
   // ── 날씨 조건 판단 ──
   const isRain    = wcode>=51 || precipProb>=50;
