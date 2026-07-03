@@ -1525,28 +1525,66 @@ function startClock() {
 // 이벤트 바인딩 (모두 addEventListener 방식)
 // ══════════════════════════════════════════════════════
 async function openAiRec() {
+  // ── 모달 열고 즉시 "분석 중" 표시 ──
   $('aiModal').classList.remove('hidden');
-  $('aiLoading').classList.add('hidden');   // 로딩 즉시 숨김
+  $('aiLoading').classList.add('hidden');
   $('aiContent').classList.remove('hidden');
-  $('aiContent').innerHTML = '<p style="text-align:center;color:var(--muted);padding:12px">분석 중...</p>';
+  $('aiContent').innerHTML = '<p style="text-align:center;padding:16px;color:var(--muted);font-size:13px">🔍 분석 중...</p>';
 
   // ── 날씨 (최대 2초 타임아웃) ──
-  let weatherDesc='', tempVal=null, weatherCode=-1;
+  let temp=null, wcode=-1, wdesc='', humidity=0, precipProb=0, windSpeed=0;
   try {
-    const controller = new AbortController();
-    const timer = setTimeout(()=>controller.abort(), 2000);
-    const wr = await fetch(
-      'https://api.open-meteo.com/v1/forecast?latitude=35.2281&longitude=128.6812&current=temperature_2m,weathercode&timezone=Asia%2FSeoul',
-      {signal: controller.signal}
+    const ctrl=new AbortController();
+    const t=setTimeout(()=>ctrl.abort(),2000);
+    const res=await fetch(
+      'https://api.open-meteo.com/v1/forecast?latitude=35.2281&longitude=128.6812'+
+      '&current=temperature_2m,weathercode,relative_humidity_2m,wind_speed_10m'+
+      '&hourly=precipitation_probability&timezone=Asia%2FSeoul&forecast_days=1',
+      {signal:ctrl.signal}
     );
-    clearTimeout(timer);
-    const wd = await wr.json();
-    tempVal     = Math.round(wd.current.temperature_2m);
-    weatherCode = wd.current.weathercode;
-    weatherDesc = weatherCode===0?'맑음':weatherCode<=2?'구름조금':weatherCode<=3?'흐림':
-                  weatherCode<=49?'안개':weatherCode<=59?'이슬비':weatherCode<=69?'비':
-                  weatherCode<=79?'눈':'천둥번개';
+    clearTimeout(t);
+    const d=await res.json();
+    temp       = Math.round(d.current.temperature_2m);
+    wcode      = d.current.weathercode;
+    humidity   = d.current.relative_humidity_2m||0;
+    windSpeed  = Math.round(d.current.wind_speed_10m||0);
+    // 낮 12시 강수확률
+    const hr12 = d.hourly&&d.hourly.time ? d.hourly.time.findIndex(t=>t.includes('T12:00')) : -1;
+    precipProb = hr12>=0 ? (d.hourly.precipitation_probability[hr12]||0) : 0;
+    const W={
+      0:'☀️ 맑음', 1:'🌤 구름조금', 2:'⛅ 구름많음', 3:'☁️ 흐림',
+      45:'🌫 안개', 48:'🌫 안개',
+      51:'🌦 이슬비', 53:'🌦 이슬비', 55:'🌧 비',
+      61:'🌧 비', 63:'🌧 비', 65:'🌧 폭우',
+      80:'🌦 소나기', 81:'🌧 소나기', 82:'⛈ 강한소나기',
+      95:'⛈ 천둥번개', 96:'⛈ 천둥번개'
+    };
+    wdesc = W[wcode] || (wcode<=3?'☀️ 맑음':wcode<=49?'🌫 안개':'🌧 비');
   } catch(e){ /* 날씨 없어도 계속 */ }
+
+  // ── 날씨 조건 판단 ──
+  const isRain    = wcode>=51 || precipProb>=50;   // 비/소나기/강수확률 50%+
+  const isVeryHot = temp!==null && temp>=32;         // 폭염
+  const isHot     = temp!==null && temp>=28;         // 더움
+  const isMild    = temp!==null && temp>=20 && temp<28; // 적당
+  const isCool    = temp!==null && temp>=10 && temp<20; // 선선
+  const isCold    = temp!==null && temp<10;           // 추움
+  const isHumid   = humidity>=75;                    // 습함
+
+  // ── 날씨별 메뉴 선호 정의 ──
+  const PREFER = {
+    // 비 오는 날 → 따뜻한 국물, 실내 배달 선호
+    rain:    ['찌개','국밥','탕','해장국','감자탕','라면','우동','짬뽕','순대국','어탕','부대찌개'],
+    // 폭염 → 냉면, 시원한 것
+    veryHot: ['냉면','밀면','쌀국수','샐러드','부리또','샌드위치','물냉면'],
+    // 더운 날 → 가벼운 것, 시원한 것 선호
+    hot:     ['냉면','밀면','쌀국수','샐러드','샌드위치','부리또','비빔밥','소바'],
+    // 선선한 날 → 무난
+    mild:    ['비빔밥','덮밥','볶음밥','국수','짜장','짬뽕'],
+    // 선선/추운 날 → 따뜻한 것
+    cool:    ['찌개','국밥','탕','해장국','두루치기','전골'],
+    cold:    ['찌개','국밥','탕','해장국','감자탕','전골','설렁탕','곰탕'],
+  };
 
   // ── 날짜·요일 ──
   const now=new Date(), dow=now.getDay(), month=now.getMonth()+1, day=now.getDate();
@@ -1561,45 +1599,63 @@ async function openAiRec() {
     menuScore[rest][menu]=(menuScore[rest][menu]||0)+cnt;
   });
 
-  // ── 동료 선택 반영 (오늘 이미 주문된 식당 가점) ──
+  // ── 오늘 동료 주문 현황 ──
   const colleagueRest={};
-  todayOrders.forEach(o=>{ colleagueRest[o.restaurant]=(colleagueRest[o.restaurant]||0)+1; });
+  todayOrders.forEach(o=>{colleagueRest[o.restaurant]=(colleagueRest[o.restaurant]||0)+1;});
 
-  // ── 후보 생성 ──
-  const SRC = (dynRestaurants.length ? dynRestaurants : DEFAULT_RESTAURANTS);
+  // ── 후보 생성 + 점수 ──
+  const SRC = dynRestaurants.length ? dynRestaurants : DEFAULT_RESTAURANTS;
   const candidates=[];
 
   SRC.forEach(r=>{
-    if(!r || r.name==='기타') return;
+    if(!r||r.name==='기타') return;
     const menus=r.menus&&r.menus.length?r.menus:[];
     menus.forEach(m=>{
-      let score = (menuScore[r.name]&&menuScore[r.name][m]) ? menuScore[r.name][m]*10 : 0;
+      // 기본 점수: 주문 빈도
+      let score=(menuScore[r.name]?.[m]||0)*10;
 
-      // 날씨 보정
-      if(tempVal!==null){
-        const hot=tempVal>=27, cold=tempVal<=8, rain=weatherCode>=51;
-        const soup=['찌개','국밥','탕','해장국','감자탕','라면','우동','짬뽕'].some(w=>m.includes(w)||r.name.includes(w));
-        const cool=['냉면','밀면','샐러드','샌드위치','부리또','쌀국수'].some(w=>m.includes(w));
-        if(hot&&cool)  score+=25;
-        if(cold&&soup) score+=25;
-        if(rain&&soup) score+=15;
+      // ── 날씨 점수 (가장 큰 비중) ──
+      const menuText=m+r.name;
+      const matchPref=(list)=>list.some(w=>menuText.includes(w));
+
+      if(isRain){
+        if(matchPref(PREFER.rain))  score+=50;  // 비 오는 날 국물류 대폭 가점
+        else score-=10;                          // 비 오는 날 차가운 것 감점
+      }
+      if(isVeryHot){
+        if(matchPref(PREFER.veryHot)) score+=50;
+        if(matchPref(PREFER.rain))    score-=20; // 폭염에 뜨거운 국물 감점
+      } else if(isHot){
+        if(matchPref(PREFER.hot))   score+=35;
+        if(matchPref(PREFER.rain))  score-=10;
+      } else if(isCool){
+        if(matchPref(PREFER.cool))  score+=30;
+      } else if(isCold){
+        if(matchPref(PREFER.cold))  score+=50;
+      } else if(isMild){
+        if(matchPref(PREFER.mild))  score+=15;
       }
 
-      // 요일 보정
-      if((dow===1||dow===5)&&['샌드위치','부리또','쌀국수','김밥'].some(w=>m.includes(w)||r.name.includes(w))) score+=12;
-      if(dow===3&&['국밥','찌개','두루치기','비빔밥'].some(w=>m.includes(w))) score+=12;
+      // 습한 날 → 시원한 것 추가 가점
+      if(isHumid&&matchPref(PREFER.hot)) score+=10;
 
-      // 동료 선택 가점 (같은 식당 이미 주문 중)
-      if(colleagueRest[r.name]) score += colleagueRest[r.name]*8;
+      // ── 요일 보정 ──
+      const isLight=matchPref(['샌드위치','부리또','쌀국수','김밥','샐러드']);
+      const isHearty=matchPref(['국밥','찌개','두루치기','비빔밥','아구','뽈찜','전골']);
+      if((dow===1||dow===5)&&isLight)  score+=12;
+      if(dow===3&&isHearty)            score+=12;
 
-      // 기념일 가점
+      // ── 동료 선택 가점 ──
+      if(colleagueRest[r.name]) score+=colleagueRest[r.name]*8;
+
+      // ── 기념일 가점 ──
       if(special!=='없음') score+=8;
 
-      // 오늘 내가 이미 주문한 메뉴 감점
-      if(todayOrders.find(o=>o.name===myName&&o.restaurant===r.name&&o.menu===m)) score-=60;
+      // ── 오늘 내가 이미 주문한 것 감점 ──
+      if(todayOrders.find(o=>o.name===myName&&o.restaurant===r.name&&o.menu===m)) score-=80;
 
-      // 랜덤 요소 (매번 다른 추천)
-      score+=Math.random()*5;
+      // ── 랜덤 요소 ──
+      score+=Math.random()*4;
 
       candidates.push({rest:r.name,menu:m,score,phone:r.phone||'',deadline:r.deadline||''});
     });
@@ -1607,30 +1663,40 @@ async function openAiRec() {
 
   // ── 식당 중복 없이 상위 3개 ──
   candidates.sort((a,b)=>b.score-a.score);
-  const recs=[], used=new Set();
+  const recs=[],used=new Set();
   for(const c of candidates){
     if(used.has(c.rest)) continue;
     used.add(c.rest); recs.push(c);
     if(recs.length===3) break;
   }
 
-  // ── 추천 이유 ──
-  function reason(c){
+  // ── 추천 이유 생성 ──
+  function makeReason(c){
     const parts=[];
-    if(tempVal!==null) parts.push(`${weatherDesc||'맑음'} ${tempVal}°C`);
-    const f=menuScore[c.rest]&&menuScore[c.rest][c.menu]?menuScore[c.rest][c.menu]:0;
-    if(f>=3) parts.push(`인기 ${f}회 주문`);
-    else if(f>=1) parts.push(`${f}회 검증`);
+    // 날씨 이유 (1순위)
+    if(isRain)         parts.push('비 오는 날 국물 메뉴 추천');
+    else if(isVeryHot) parts.push(`폭염(${temp}°C) 시원한 메뉴 추천`);
+    else if(isHot)     parts.push(`더운 날씨(${temp}°C) 가벼운 메뉴 추천`);
+    else if(isCold)    parts.push(`추운 날씨(${temp}°C) 따뜻한 메뉴 추천`);
+    else if(temp!==null) parts.push(`${wdesc} ${temp}°C`);
+    // 빈도
+    const f=menuScore[c.rest]?.[c.menu]||0;
+    if(f>=5)      parts.push(`인기 ${f}회 주문`);
+    else if(f>=1) parts.push(`${f}회 검증 메뉴`);
+    // 동료
     if(colleagueRest[c.rest]) parts.push(`동료 ${colleagueRest[c.rest]}명 선택 중`);
+    // 마감
     if(c.deadline) parts.push(`마감 ${c.deadline}`);
     if(special!=='없음') parts.push(special);
-    return parts.length ? parts.join(' · ') : '새로운 도전';
+    return parts.slice(0,3).join(' · ')+'.';
   }
 
-  // ── 오늘 배경 한 줄 ──
+  // ── 오늘 배경 설명 ──
   let ctx=`${month}/${day} ${DAYS[dow]}요일`;
-  if(weatherDesc&&tempVal!==null) ctx+=` · ${weatherDesc} ${tempVal}°C`;
-  if(special!=='없음') ctx+=` · ${special}`;
+  if(temp!==null) ctx+=` · ${wdesc} ${temp}°C`;
+  if(precipProb>0) ctx+=` · 강수확률 ${precipProb}%`;
+  if(isHumid)  ctx+=` · 습도 ${humidity}%`;
+  if(special!=='없음') ctx+=` · 오늘은 ${special}`;
 
   // ── 결과 없을 때 ──
   if(!recs.length){
@@ -1646,7 +1712,7 @@ async function openAiRec() {
         '<div class="rec-num">추천 '+(i+1)+'</div>'+
         '<div class="rec-rest-name">'+esc(r.rest)+'</div>'+
         '<div class="rec-menu-name">'+esc(r.menu)+'</div>'+
-        '<div class="rec-reason">'+esc(reason(r))+'</div>'+
+        '<div class="rec-reason">'+esc(makeReason(r))+'</div>'+
         '<button class="ai-apply-btn" data-rest="'+esc(r.rest)+'" data-menu="'+esc(r.menu)+'">이 메뉴로 선택</button>'+
       '</div>'
     ).join('');
@@ -1662,6 +1728,7 @@ async function openAiRec() {
     });
   });
 }
+
 
 
 function bindEvents() {
