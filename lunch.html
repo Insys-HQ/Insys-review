@@ -1662,87 +1662,113 @@ async function openAiRec() {
   $('aiContent').classList.add('hidden');
   $('aiContent').innerHTML = '';
 
-  // 날씨 (open-meteo — CORS 허용)
+  // ── 사용할 식당 목록 (Firebase 로드 전이면 기본값 사용) ──
+  const restList = dynRestaurants.length ? dynRestaurants : DEFAULT_RESTAURANTS;
+
+  // ── 날씨 (open-meteo — CORS 허용) ──
   let weatherDesc='', tempVal=null, weatherCode=-1;
   try {
     const wr = await fetch('https://api.open-meteo.com/v1/forecast?latitude=35.2281&longitude=128.6812&current=temperature_2m,weathercode&timezone=Asia%2FSeoul');
     const wd = await wr.json();
-    tempVal=Math.round(wd.current.temperature_2m); weatherCode=wd.current.weathercode;
-    weatherDesc=weatherCode===0?'맑음':weatherCode<=2?'구름조금':weatherCode<=3?'흐림':
-                weatherCode<=49?'안개':weatherCode<=59?'이슬비':weatherCode<=69?'비':
-                weatherCode<=79?'눈':'천둥번개';
-  } catch(e){}
+    tempVal=Math.round(wd.current.temperature_2m);
+    weatherCode=wd.current.weathercode;
+    const wDescs=['맑음','구름조금','구름조금','흐림'];
+    weatherDesc = weatherCode===0?'맑음':weatherCode<=2?'구름조금':weatherCode<=3?'흐림':
+                  weatherCode<=49?'안개':weatherCode<=59?'이슬비':weatherCode<=69?'비':
+                  weatherCode<=79?'눈':'천둥번개';
+  } catch(e){ console.warn('날씨 로드 실패:', e); }
 
   const now=new Date(), dow=now.getDay(), month=now.getMonth()+1, day=now.getDate();
   const days=['일','월','화','수','목','금','토'];
   const special=getSpecialDay(month,day);
 
-  // 주문 빈도 집계
-  const restScore={}, menuScore={};
+  // ── 주문 빈도 집계 ──
+  const menuScore={};
   Object.entries(recData).forEach(([k,cnt])=>{
     const [rest,menu]=k.split('||');
-    restScore[rest]=(restScore[rest]||0)+cnt;
     if(!menuScore[rest]) menuScore[rest]={};
     menuScore[rest][menu]=(menuScore[rest][menu]||0)+cnt;
   });
 
-  // 후보 생성 + 점수
+  // ── 후보 생성 + 점수 계산 ──
   const candidates=[];
-  dynRestaurants.forEach(r=>{
-    if(r.name==='기타'||!r.menus||!r.menus.length) return;
-    r.menus.forEach(m=>{
+  restList.forEach(r=>{
+    if(r.name==='기타') return;
+    const menus = r.menus && r.menus.length ? r.menus : [];
+    if(!menus.length) return;
+    menus.forEach(m=>{
       let score=(menuScore[r.name]?.[m]||0)*10;
+
+      // 날씨 보정
       if(tempVal!==null){
         const hot=tempVal>=28, cold=tempVal<=5, rain=weatherCode>=51;
-        const isSoup=['찌개','국밥','탕','해장국','순대국','감자탕','라면','우동','짬뽕'].some(w=>m.includes(w)||r.name.includes(w));
+        const isSoup=['찌개','국밥','탕','해장국','감자탕','라면','우동','짬뽕'].some(w=>m.includes(w)||r.name.includes(w));
         const isCool=['냉면','밀면','샐러드','샌드위치','부리또','쌀국수'].some(w=>m.includes(w));
-        if(hot&&isCool) score+=30;
+        if(hot&&isCool)  score+=30;
         if(cold&&isSoup) score+=30;
         if(rain&&isSoup) score+=20;
+        // 보통 날씨 - 국물류 소폭 가점
+        if(!hot&&!cold&&isSoup) score+=5;
       }
-      const light=['샌드위치','부리또','샐러드','쌀국수','김밥'].some(w=>m.includes(w)||r.name.includes(w));
-      const hearty=['국밥','찌개','두루치기','비빔밥','갈비'].some(w=>m.includes(w));
-      if((dow===1||dow===5)&&light) score+=15;
-      if(dow===3&&hearty) score+=15;
+
+      // 요일 보정
+      const isLight=['샌드위치','부리또','샐러드','쌀국수','김밥'].some(w=>m.includes(w)||r.name.includes(w));
+      const isHearty=['국밥','찌개','두루치기','비빔밥','갈비','아구','뽈찜'].some(w=>m.includes(w)||r.name.includes(w));
+      if((dow===1||dow===5)&&isLight)  score+=15; // 월·금 가벼운 것
+      if(dow===3&&isHearty)            score+=15; // 수 든든한 것
+      if(dow===6||dow===0)             score+=3;  // 주말(드물지만)
+
+      // 기념일 가점
       if(special!=='특별한 날 없음') score+=5;
-      if(todayOrders.find(o=>o.restaurant===r.name&&o.menu===m)) score-=50;
-      candidates.push({rest:r.name,menu:m,score,phone:r.phone||'',deadline:r.deadline||''});
+
+      // 오늘 이미 주문된 조합 감점
+      if(todayOrders.find(o=>o.restaurant===r.name&&o.menu===m)) score-=40;
+
+      // 점수 동점 시 약간의 랜덤 요소
+      score += Math.random()*3;
+
+      candidates.push({rest:r.name, menu:m, score,
+        phone:r.phone||'', deadline:r.deadline||''});
     });
   });
 
+  // ── 식당 중복 없이 상위 3개 선택 ──
   candidates.sort((a,b)=>b.score-a.score);
-  const recs=[]; const usedRest=new Set();
+  const recs=[], usedRest=new Set();
   for(const c of candidates){
     if(usedRest.has(c.rest)) continue;
     usedRest.add(c.rest); recs.push(c);
     if(recs.length===3) break;
   }
 
+  // ── 추천 이유 생성 ──
   function makeReason(c){
-    const r=[];
+    const parts=[];
     if(tempVal!==null){
-      if(tempVal>=28) r.push(`더운 날씨(${tempVal}°C)에 어울리는 메뉴입니다`);
-      else if(tempVal<=5) r.push(`추운 날씨(${tempVal}°C)에 따뜻하게 드실 수 있습니다`);
-      else r.push(`${tempVal}°C ${weatherDesc} 날씨에 잘 맞습니다`);
+      if(tempVal>=28)      parts.push(`더운 날씨(${tempVal}°C)에 어울립니다`);
+      else if(tempVal<=5)  parts.push(`추운 날씨(${tempVal}°C)에 따뜻합니다`);
+      else                 parts.push(`${weatherDesc} ${tempVal}°C 날씨에 잘 맞습니다`);
     }
     const freq=menuScore[c.rest]?.[c.menu]||0;
-    if(freq>=5) r.push(`최근 ${freq}회 주문한 인기 메뉴입니다`);
-    else if(freq>=1) r.push(`${freq}회 주문한 검증된 메뉴입니다`);
-    else r.push('새롭게 도전해볼 만한 메뉴입니다');
-    if(c.deadline) r.push(`마감 ${c.deadline}까지 주문 가능합니다`);
-    return r.slice(0,2).join('. ')+'.';
+    if(freq>=5)       parts.push(`최근 ${freq}회 주문한 인기 메뉴`);
+    else if(freq>=1)  parts.push(`${freq}회 주문한 검증 메뉴`);
+    else              parts.push('새롭게 도전해볼 만한 메뉴');
+    if(c.deadline)    parts.push(`마감 ${c.deadline}`);
+    return parts.join(' · ')+'.';
   }
 
-  let context=`오늘은 ${month}월 ${day}일 ${days[dow]}요일`;
-  if(weatherDesc) context+=`, 창원 ${weatherDesc} ${tempVal}°C`;
-  if(special!=='특별한 날 없음') context+=`, ${special}`;
-  context+='. 주문 이력과 날씨를 분석하여 추천합니다.';
+  // ── 오늘 배경 설명 ──
+  let context=`${month}월 ${day}일 ${days[dow]}요일`;
+  if(weatherDesc&&tempVal!==null) context+=` · 창원 ${weatherDesc} ${tempVal}°C`;
+  if(special!=='특별한 날 없음')  context+=` · ${special}`;
+  context+=' — 주문 이력·날씨·요일을 분석한 추천입니다.';
 
+  // ── 결과 표시 ──
   $('aiLoading').classList.add('hidden');
   $('aiContent').classList.remove('hidden');
 
   if(!recs.length){
-    $('aiContent').innerHTML='<p style="text-align:center;color:var(--muted);padding:20px">🏪 식당관리 탭에서 메뉴를 먼저 등록해 주세요.</p>';
+    $('aiContent').innerHTML='<p style="text-align:center;color:var(--muted);padding:20px">🏪 식당관리 탭에서 식당 메뉴를 등록하면 추천이 시작됩니다.</p>';
     return;
   }
 
@@ -1765,10 +1791,11 @@ async function openAiRec() {
       $('aiModal').classList.add('hidden');
       document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab==='order'));
       document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('hidden',p.dataset.panel!=='order'));
-      showToast('AI 추천 메뉴가 선택되었습니다!');
+      showToast('추천 메뉴가 선택되었습니다!');
     });
   });
 }
+
 
 
 function getSpecialDay(month, day) {
