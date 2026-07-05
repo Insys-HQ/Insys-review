@@ -139,9 +139,9 @@ tr:nth-child(even) td { background: #f4f7fc; }
 <!-- 언어 바 -->
 <div class="lang-bar">
   <span class="lb-title">LANGUAGE</span>
-  <button class="lang-btn active" onclick="setLang('ko')">한국어</button>
-  <button class="lang-btn" onclick="setLang('en')">English</button>
-  <button class="lang-btn" onclick="setLang('zh')">中文</button>
+  <button class="lang-btn active" data-lang="ko" onclick="setLang('ko', this)">한국어</button>
+  <button class="lang-btn" data-lang="en" onclick="setLang('en', this)">English</button>
+  <button class="lang-btn" data-lang="zh" onclick="setLang('zh', this)">中文</button>
 </div>
 
 <!-- 커버 -->
@@ -159,7 +159,7 @@ tr:nth-child(even) td { background: #f4f7fc; }
     <div><strong><span data-ko>작성자</span><span data-en>Author</span><span data-zh>撰写人</span></strong>　ys.kim@in-sys.co.kr</div>
     <div><strong><span data-ko>작성일</span><span data-en>Date</span><span data-zh>日期</span></strong>　2026. 06. 24</div>
     <div><strong><span data-ko>적용기종</span><span data-en>Model</span><span data-zh>机型</span></strong>　<span data-ko>박스세척기 출구 직결형 / 박스 세워서 이송</span><span data-en>Box Washer Exit Direct Connect / Vertical Box Feed</span><span data-zh>箱体清洗机出口直连型 / 箱体竖立输送</span></div>
-    <div class="ver">v5.0 Final</div>
+    <div class="ver">v5.1 Final</div>
   </div>
 </div>
 
@@ -583,60 +583,72 @@ tr:nth-child(even) td { background: #f4f7fc; }
 </div>
 
 <div class="footer">
-  Insys Group AI Innovation R&amp;D Center | Air Knife Dryer System Manufacturing Specification v5.0 Final | 2026. 06. 24
+  Insys Group AI Innovation R&amp;D Center | Air Knife Dryer System Manufacturing Specification v5.1 Final | 2026. 06. 24
 </div>
 </div>
 
 <script>
-// 현재 언어
-let curLang = 'ko';
+// ── 변수 선언 먼저 ──
+var curLang = 'ko';
+var isMV = false;
 
-function setLang(lang) {
+// ── 언어 전환 ──
+function setLang(lang, btnEl) {
   curLang = lang;
-  // 버튼 active 처리
-  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
-  event.target.classList.add('active');
+  // 버튼 active — btnEl이 없을 때(초기화)는 data-lang으로 찾음
+  document.querySelectorAll('.lang-btn').forEach(function(b) {
+    b.classList.remove('active');
+  });
+  if (btnEl) {
+    btnEl.classList.add('active');
+  } else {
+    var found = document.querySelector('.lang-btn[data-lang="' + lang + '"]');
+    if (found) found.classList.add('active');
+  }
   // 언어 요소 표시/숨김
-  ['ko','en','zh'].forEach(l => {
-    document.querySelectorAll('[data-' + l + ']').forEach(el => {
+  ['ko','en','zh'].forEach(function(l) {
+    document.querySelectorAll('[data-' + l + ']').forEach(function(el) {
       el.style.display = (l === lang) ? '' : 'none';
     });
   });
-  // html lang 속성
+  // html lang
   document.documentElement.lang = lang === 'zh' ? 'zh-CN' : lang;
-  // 모바일/PC 힌트 언어 처리
-  const hints = {
-    ko: { mob: '모바일 보기', pc: '모바일 보기', curPC: '현재: PC 화면', curMob: '현재: 모바일 화면' },
-    en: { mob: 'Mobile View', pc: 'Mobile View', curPC: 'Current: PC View', curMob: 'Current: Mobile View' },
-    zh: { mob: '移动端视图', pc: '移动端视图', curPC: '当前：PC视图', curMob: '当前：移动端视图' },
+  // 플로팅 버튼 텍스트
+  var hints = {
+    ko: { mob: '모바일 보기', curPC: '현재: PC 화면', curMob: '현재: 모바일 화면' },
+    en: { mob: 'Mobile View', curPC: 'Current: PC View', curMob: 'Current: Mobile View' },
+    zh: { mob: '移动端视图', curPC: '当前：PC视图', curMob: '当前：移动端视图' }
   };
-  const h = hints[lang];
-  const isMV = document.getElementById('bd').classList.contains('mv');
-  document.getElementById('vtl').textContent = isMV ? h.pc : h.mob;
-  document.getElementById('vth').textContent = isMV ? h.curMob : h.curPC;
+  var h = hints[lang];
+  var mv = document.getElementById('bd').classList.contains('mv');
+  document.getElementById('vtl').textContent = h.mob;
+  document.getElementById('vth').textContent = mv ? h.curMob : h.curPC;
 }
 
-// 초기 언어 적용
-setLang('ko');
-
-// 모바일 전환
-let isMV = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
-if (isMV) applyMV();
-
+// ── 모바일/PC 전환 ──
 function toggleView() {
   isMV = !isMV;
-  isMV ? applyMV() : applyPC();
-}
-function applyMV() {
-  document.getElementById('bd').classList.add('mv');
-  document.getElementById('vtb').classList.add('on');
+  if (isMV) {
+    document.getElementById('bd').classList.add('mv');
+    document.getElementById('vtb').classList.add('on');
+  } else {
+    document.getElementById('bd').classList.remove('mv');
+    document.getElementById('vtb').classList.remove('on');
+  }
   setLang(curLang);
 }
-function applyPC() {
-  document.getElementById('bd').classList.remove('mv');
-  document.getElementById('vtb').classList.remove('on');
-  setLang(curLang);
-}
+
+// ── 초기화 (DOM 준비 후 실행) ──
+document.addEventListener('DOMContentLoaded', function() {
+  // 모바일 자동 감지
+  if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
+    isMV = true;
+    document.getElementById('bd').classList.add('mv');
+    document.getElementById('vtb').classList.add('on');
+  }
+  // 언어 초기화
+  setLang('ko');
+});
 </script>
 </body>
 </html>
