@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>인시스 점심주문관리 v3.9</title>
+<title>인시스 점심주문관리 v4.0</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -494,6 +494,32 @@ main.narrow { max-width:420px; }
   font-family:inherit; cursor:pointer;
 }
 .slot-hint { color:rgba(255,255,255,.45); font-size:11px; text-align:center; padding:0 16px 16px; }
+
+/* ── 주문 등록 STEP1 — 빠른 식당 추가 ──────────────── */
+.quick-add-toggle {
+  width:100%; background:none; border:1.5px dashed var(--border);
+  border-radius:8px; padding:9px; font-size:13px; color:var(--muted);
+  font-family:inherit; cursor:pointer; margin-top:6px; transition:all .15s;
+}
+.quick-add-toggle:hover { border-color:var(--navy); color:var(--navy); background:var(--tagbg); }
+.quick-add-grid {
+  display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-top:8px;
+}
+@media(max-width:480px){ .quick-add-grid { grid-template-columns:1fr; } }
+.quick-add-grid input {
+  border:1.5px solid var(--border); border-radius:8px;
+  padding:9px 11px; font-size:13px; font-family:inherit;
+  background:var(--bg); color:var(--text); outline:none;
+}
+.quick-add-grid input:focus { border-color:var(--navy); background:#fff; }
+.quick-add-btns { display:flex; gap:8px; margin-top:8px; }
+.quick-add-btns button {
+  flex:1; border:none; border-radius:8px; padding:10px;
+  font-size:13px; font-weight:700; font-family:inherit; cursor:pointer;
+}
+.quick-add-btns button:first-child { background:var(--navy); color:#fff; }
+.quick-add-btns button:first-child:hover { background:#0f2a45; }
+.quick-add-btns button.cancel { background:var(--tagbg); color:var(--muted); }
 </style>
 </head>
 <body>
@@ -506,7 +532,7 @@ main.narrow { max-width:420px; }
     <div id="weatherInfo">🌡️ 로딩중</div>
     <span id="clock">--:--:--</span>
     <span id="userBadge">—</span>
-    <span class="ver-badge">v3.9</span>
+    <span class="ver-badge">v4.0</span>
   </div>
 </header>
 
@@ -569,8 +595,23 @@ main.narrow { max-width:420px; }
           <span class="step-sub" id="selectedRestLabel"></span>
         </div>
         <div id="restaurantGrid"></div>
-        <div class="form-row" style="margin-bottom:0">
-          <input type="text" id="inputRestaurant" placeholder="식당명 (직접 입력도 가능)">
+        <div class="form-row" style="margin-bottom:6px">
+          <input type="text" id="inputRestaurant" placeholder="식당명 (위에서 선택 또는 직접 입력)">
+        </div>
+        <!-- 식당 빠른 추가 -->
+        <div id="quickAddArea">
+          <button class="quick-add-toggle" id="quickAddToggle">＋ 새 식당 추가</button>
+          <div id="quickAddForm" class="hidden">
+            <div class="quick-add-grid">
+              <input type="text" id="qNewName"     placeholder="식당명 *" maxlength="20">
+              <input type="tel"  id="qNewPhone"    placeholder="전화번호 (예: 055-123-4567)">
+              <input type="text" id="qNewDeadline" placeholder="마감시간 (예: 10:45)">
+            </div>
+            <div class="quick-add-btns">
+              <button id="qNewSaveBtn">저장 후 선택</button>
+              <button id="qNewCancelBtn" class="cancel">취소</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -672,7 +713,7 @@ main.narrow { max-width:420px; }
     <div id="restaurantAdminList"></div>
   </div>
 
-  <div class="footer-info">점심주문관리 시스템 v3.9</div>
+  <div class="footer-info">점심주문관리 시스템 v4.0</div>
 
   <!-- ══ AI 추천 모달 ══ -->
   <div id="aiModal" class="modal-overlay hidden">
@@ -1822,9 +1863,41 @@ function bindEvents() {
     showToast('오늘 주문이 초기화되었습니다');
   });
 
-  // 식당 추가
+  // 식당 추가 (식당관리 탭)
   $('addRestBtn').addEventListener('click', addNewRestaurant);
   $('newRestName').addEventListener('keydown', e=>{ if(e.key==='Enter') addNewRestaurant(); });
+
+  // 주문등록 STEP1 — 빠른 식당 추가
+  $('quickAddToggle').addEventListener('click', () => {
+    const form = $('quickAddForm');
+    const isHidden = form.classList.contains('hidden');
+    form.classList.toggle('hidden');
+    $('quickAddToggle').textContent = isHidden ? '✕ 취소' : '＋ 새 식당 추가';
+  });
+  $('qNewCancelBtn').addEventListener('click', () => {
+    $('quickAddForm').classList.add('hidden');
+    $('quickAddToggle').textContent = '＋ 새 식당 추가';
+    $('qNewName').value=''; $('qNewPhone').value=''; $('qNewDeadline').value='';
+  });
+  $('qNewSaveBtn').addEventListener('click', async () => {
+    const name     = $('qNewName').value.trim();
+    const phone    = $('qNewPhone').value.trim();
+    const deadline = $('qNewDeadline').value.trim();
+    if (!name) { showToast('식당명을 입력해 주세요'); return; }
+    if (dynRestaurants.find(r=>r.name===name)) { showToast('이미 등록된 식당입니다'); return; }
+    const newRest = {name, phone, deadline, menus:[], order:dynRestaurants.length};
+    await setDoc(doc(db,'restaurant_list',name), newRest);
+    dynRestaurants.push(newRest);
+    rebuildRestButtons();
+    renderRestaurantAdmin();
+    // 추가 후 바로 선택
+    selectRest(name);
+    // 폼 닫기
+    $('quickAddForm').classList.add('hidden');
+    $('quickAddToggle').textContent = '＋ 새 식당 추가';
+    $('qNewName').value=''; $('qNewPhone').value=''; $('qNewDeadline').value='';
+    showToast(name + ' 추가 완료! 바로 선택되었습니다');
+  });
 
   // 탭 전환
   document.querySelectorAll('.tab-btn').forEach(btn => {
