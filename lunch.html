@@ -6,7 +6,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>인시스 점심주문관리 v4.5</title>
+<title>인시스 점심주문관리 v4.6</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -52,7 +52,7 @@ body.narrow-mode .hd-inner { max-width:420px; }
   padding:4px 12px; font-size:13px; cursor:pointer;
 }
 #userBadge:hover { background:rgba(255,255,255,.25); }
-.ver-badge { font-size:10px; opacity:.45; }
+.ver-badge { font-size:13px; font-weight:700; opacity:.85; background:rgba(255,255,255,.15); border-radius:10px; padding:3px 9px; letter-spacing:.5px; }
 
 /* ── 배너 ─────────────────────────────────────────── */
 #noticeBanner { background:var(--orange); color:#fff; padding:12px 16px; display:none; }
@@ -583,24 +583,36 @@ main.narrow { max-width:420px; }
 
 /* 이력카드 별점 */
 .hist-stars { font-size:12px; color:#f59e0b; margin-left:6px; }
+
+/* ── 새로고침 안내 배너 ──────────────────────────────── */
+#refreshBanner {
+  background:#2d6a9f; color:#fff; font-size:12px;
+  position:sticky; top:56px; z-index:199;
+}
 </style>
 </head>
 <body>
 
 <header>
   <div class="hd-inner">
-    <div class="hd-left">
+    <div class="hd-left" style="display:flex;align-items:center;gap:10px">
       <h1>인시스 점심주문관리</h1>
+      <span class="ver-badge">v4.6</span>
     </div>
     <div class="hd-right">
       <div id="weatherInfo">🌡️ 로딩중</div>
       <span id="clock">--:--:--</span>
       <span id="userBadge">—</span>
-      <span class="ver-badge">v4.5</span>
     </div>
   </div>
 </header>
 
+<div id="refreshBanner">
+  <div style="max-width:792px;margin:0 auto;padding:6px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px">
+    <span>🔄 최신 정보를 위해 사용 전 새로고침(Ctrl+Shift+R)을 눌러주세요</span>
+    <button id="refreshBannerClose" style="background:none;border:none;color:#fff;font-size:16px;cursor:pointer;padding:0 4px;opacity:.7">×</button>
+  </div>
+</div>
 <div id="noticeBanner">
   <strong>🍱 점심 주문 시간입니다!</strong>
   <p>지금 메뉴를 등록해 주세요</p>
@@ -788,7 +800,7 @@ main.narrow { max-width:420px; }
     <div id="restaurantAdminList"></div>
   </div>
 
-  <div class="footer-info">점심주문관리 시스템 v4.5</div>
+  <div class="footer-info">점심주문관리 시스템 v4.6</div>
 
   <!-- ══ AI 추천 모달 ══ -->
   <div id="aiModal" class="modal-overlay hidden">
@@ -1916,6 +1928,16 @@ function bindEvents() {
   $('copyBtn').addEventListener('click', ()=>{
     navigator.clipboard.writeText($('summaryText').textContent).then(()=>showToast('복사 완료!'));
   });
+
+  // 새로고침 안내 배너 닫기
+  $('refreshBannerClose').addEventListener('click', () => {
+    $('refreshBanner').style.display = 'none';
+    localStorage.setItem('insys_refresh_dismissed', new Date().toDateString());
+  });
+  // 오늘 이미 닫았으면 숨김
+  if (localStorage.getItem('insys_refresh_dismissed') === new Date().toDateString()) {
+    $('refreshBanner').style.display = 'none';
+  }
 
   // AI 추천 버튼
   $('aiRecBtn').addEventListener('click', () => openAiRec());
