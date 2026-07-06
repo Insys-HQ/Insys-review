@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>인시스 점심주문관리 v4.3</title>
+<title>인시스 점심주문관리 v4.4</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -527,6 +527,59 @@ main.narrow { max-width:420px; }
 .quick-add-btns button:first-child { background:var(--navy); color:#fff; }
 .quick-add-btns button:first-child:hover { background:#0f2a45; }
 .quick-add-btns button.cancel { background:var(--tagbg); color:var(--muted); }
+
+/* ── 후기 탭 ─────────────────────────────────────────── */
+.review-date-btn {
+  background:var(--tagbg); border:1.5px solid var(--border);
+  border-radius:8px; padding:6px 12px; font-size:13px; font-weight:700;
+  font-family:inherit; color:var(--text); cursor:pointer; transition:all .15s;
+}
+.review-date-btn.active { background:var(--navy); color:#fff; border-color:var(--navy); }
+
+.review-order-card {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:10px; padding:14px; margin-bottom:10px;
+}
+.review-order-card .ro-name  { font-size:14px; font-weight:700; color:var(--navy); }
+.review-order-card .ro-menu  { font-size:13px; color:var(--teal); margin-top:2px; }
+.review-order-card .ro-rest  { font-size:12px; color:var(--muted); margin-top:1px; }
+
+/* 별점 */
+.star-row { display:flex; align-items:center; gap:4px; margin:10px 0 6px; }
+.star-btn {
+  background:none; border:none; font-size:22px; cursor:pointer;
+  padding:0 2px; transition:transform .1s; line-height:1;
+}
+.star-btn:hover { transform:scale(1.2); }
+.star-label { font-size:12px; color:var(--muted); margin-left:6px; }
+
+/* 댓글 입력 */
+.review-input {
+  width:100%; border:1.5px solid var(--border); border-radius:8px;
+  padding:9px 12px; font-size:13px; font-family:inherit;
+  background:var(--bg); color:var(--text); outline:none;
+  resize:none; height:60px; transition:border-color .15s;
+}
+.review-input:focus { border-color:var(--navy); background:#fff; }
+
+.review-submit-btn {
+  background:var(--navy); color:#fff; border:none;
+  border-radius:8px; padding:8px 18px; font-size:13px; font-weight:700;
+  font-family:inherit; cursor:pointer; margin-top:6px;
+}
+.review-submit-btn:hover { background:#0f2a45; }
+
+/* 저장된 후기 표시 */
+.review-saved {
+  background:var(--tagbg); border-radius:8px; padding:10px 12px;
+  margin-top:8px; border:1px solid var(--border);
+}
+.review-saved .rs-stars { font-size:16px; }
+.review-saved .rs-comment { font-size:13px; color:var(--text); margin-top:4px; }
+.review-saved .rs-meta { font-size:11px; color:var(--muted); margin-top:3px; }
+
+/* 이력카드 별점 */
+.hist-stars { font-size:12px; color:#f59e0b; margin-left:6px; }
 </style>
 </head>
 <body>
@@ -540,7 +593,7 @@ main.narrow { max-width:420px; }
       <div id="weatherInfo">🌡️ 로딩중</div>
       <span id="clock">--:--:--</span>
       <span id="userBadge">—</span>
-      <span class="ver-badge">v4.3</span>
+      <span class="ver-badge">v4.4</span>
     </div>
   </div>
 </header>
@@ -583,6 +636,7 @@ main.narrow { max-width:420px; }
     <button class="tab-btn" data-tab="list">📋 주문 목록</button>
     <button class="tab-btn" data-tab="summary">📞 요약/완료</button>
     <button class="tab-btn" data-tab="history">📅 이력</button>
+    <button class="tab-btn" data-tab="review">⭐ 후기</button>
     <button class="tab-btn" data-tab="admin">🏪 식당관리</button>
   </div>
 
@@ -711,6 +765,15 @@ main.narrow { max-width:420px; }
     <div id="historyList"></div>
   </div>
 
+  <!-- 탭: 후기 -->
+  <div class="tab-panel hidden" data-panel="review">
+    <div class="card" id="reviewDateList">
+      <div class="card-title">📅 날짜 선택</div>
+      <div id="reviewDateBtns" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+    </div>
+    <div id="reviewArea"></div>
+  </div>
+
   <!-- 탭: 식당 관리 -->
   <div class="tab-panel hidden" data-panel="admin">
     <div class="card-title" style="margin-bottom:10px">🏪 식당 추가</div>
@@ -722,7 +785,7 @@ main.narrow { max-width:420px; }
     <div id="restaurantAdminList"></div>
   </div>
 
-  <div class="footer-info">점심주문관리 시스템 v4.3</div>
+  <div class="footer-info">점심주문관리 시스템 v4.4</div>
 
   <!-- ══ AI 추천 모달 ══ -->
   <div id="aiModal" class="modal-overlay hidden">
@@ -980,9 +1043,11 @@ async function loadHistory() {
     const sorted = [...dynRestaurants].sort((a,b)=>(restFreq[b.name]||0)-(restFreq[a.name]||0));
     lastRestFreq = restFreq; lastSortedRests = sorted;
     buildRestButtons(restFreq, sorted);
+    reviewHistoryCache = snap.docs.map(d=>d.data());
     renderRecommend();
     renderTopMenus();
-    renderHistoryCards(snap.docs.map(d=>d.data()).slice(0,5));
+    renderHistoryCards(reviewHistoryCache.slice(0,5));
+    renderReviewDateList();
   } catch(e) { console.warn('history:', e); }
 }
 
@@ -1542,6 +1607,11 @@ function renderHistoryCards(list) {
       const dy = duty[r]      ? '<span style="color:var(--teal)"> 👤'+esc(duty[r])+'</span>' : '';
       return '<span class="hist-rest-item">'+esc(r)+' '+q+'개'+dl+dy+'</span>';
     }).join('');
+    const avgStars = (() => {
+      if(!reviewHistoryCache) return '';
+      // 캐시에서 별점 계산 (비동기 없이 간단 표시)
+      return '';
+    })();
     return '<div class="hist-card">' +
       '<div class="hist-date">'+fmtDate(day.date)+' · '+(day.orders||[]).length+'명'+(day.completedBy?' · ✅ '+esc(day.completedBy)+' 처리':'')+'</div>' +
       '<div class="hist-rest-wrap">'+restRows+'</div>' +
@@ -1913,6 +1983,7 @@ function bindEvents() {
     btn.addEventListener('click', ()=>{
       document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b===btn));
       document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('hidden',p.dataset.panel!==btn.dataset.tab));
+      if(btn.dataset.tab==='review') renderReviewDateList();
     });
   });
 
@@ -1935,6 +2006,181 @@ function bindEvents() {
 
   // 담당자 패널 초기 렌더 (주문 후 동적 렌더로 대체)
   renderDutyPanel();
+}
+
+
+// ══════════════════════════════════════════════════════
+// 후기 시스템
+// ══════════════════════════════════════════════════════
+let reviewHistoryCache = []; // loadHistory에서 공유
+
+// 후기 탭 진입 시 날짜 목록 렌더
+function renderReviewDateList() {
+  const el = $('reviewDateBtns'); if(!el) return;
+  const completedDays = reviewHistoryCache.filter(d=>d.orders&&d.orders.length>0);
+  if(!completedDays.length){
+    el.innerHTML='<p style="font-size:13px;color:var(--muted)">주문 완료 기록이 없습니다.</p>';
+    return;
+  }
+  el.innerHTML = completedDays.slice(0,10).map(d=>
+    `<button class="review-date-btn" data-date="${esc(d.date)}">${fmtDate(d.date)}</button>`
+  ).join('');
+  el.querySelectorAll('.review-date-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      el.querySelectorAll('.review-date-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      loadReviewArea(btn.dataset.date);
+    });
+  });
+  // 첫 번째 자동 선택
+  if(completedDays.length>0){
+    el.querySelectorAll('.review-date-btn')[0].classList.add('active');
+    loadReviewArea(completedDays[0].date);
+  }
+}
+
+// 선택한 날짜의 주문목록 + 기존 후기 표시
+async function loadReviewArea(dateKey) {
+  const el = $('reviewArea'); if(!el) return;
+  el.innerHTML = '<p style="text-align:center;padding:16px;color:var(--muted);font-size:13px">후기 불러오는 중...</p>';
+
+  const dayData = reviewHistoryCache.find(d=>d.date===dateKey);
+  if(!dayData||!dayData.orders||!dayData.orders.length){
+    el.innerHTML='<p style="text-align:center;padding:16px;color:var(--muted)">주문 기록이 없습니다.</p>';
+    return;
+  }
+
+  // 기존 후기 로드
+  const reviews = {};
+  try {
+    const snap = await getDocs(collection(db,'lunch_reviews',dateKey,'items'));
+    snap.docs.forEach(d=>{ reviews[d.id]=d.data(); });
+  } catch(e){}
+
+  const STAR_LABELS = ['','별로','그저그래','보통','맛있어','최고!'];
+
+  el.innerHTML = dayData.orders.map((o,i)=>{
+    const rid = (o.name+'||'+o.restaurant+'||'+o.menu).replace(/[^a-zA-Z0-9가-힣]/g,'_');
+    const rv  = reviews[rid];
+    const starHtml = [1,2,3,4,5].map(s=>
+      `<button class="star-btn" data-rid="${esc(rid)}" data-star="${s}">${rv&&rv.star>=s?'⭐':'☆'}</button>`
+    ).join('');
+
+    return `<div class="review-order-card" id="roc_${i}">
+      <div class="ro-name">${esc(o.name)}</div>
+      <div class="ro-menu">${esc(o.menu)} × ${o.qty||1}</div>
+      <div class="ro-rest">${esc(o.restaurant)}</div>
+      ${rv ? `
+        <div class="review-saved">
+          <div class="rs-stars">${'⭐'.repeat(rv.star)} <span style="font-size:13px;font-weight:700">${STAR_LABELS[rv.star]||''}</span></div>
+          <div class="rs-comment">${rv.comment?esc(rv.comment):''}</div>
+          <div class="rs-meta">${rv.updatedAt?'수정됨':''}</div>
+        </div>
+        <button class="review-submit-btn" style="background:var(--muted);margin-top:6px" data-edit="${esc(rid)}" data-idx="${i}">✏️ 수정</button>
+      ` : `
+        <div class="star-row" id="stars_${i}">
+          ${starHtml}
+          <span class="star-label" id="slbl_${i}">별점을 선택하세요</span>
+        </div>
+        <textarea class="review-input" id="rinput_${i}" placeholder="한 줄 후기를 남겨보세요 (선택)"></textarea>
+        <button class="review-submit-btn" data-rid="${esc(rid)}" data-idx="${i}" data-date="${esc(dateKey)}" data-name="${esc(o.name)}" data-rest="${esc(o.restaurant)}" data-menu="${esc(o.menu)}">후기 저장</button>
+      `}
+    </div>`;
+  }).join('');
+
+  // 별점 클릭 이벤트
+  const STAR_LABELS2 = ['','별로','그저그래','보통','맛있어','최고!'];
+  el.querySelectorAll('.star-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const star = +btn.dataset.star;
+      const rid  = btn.dataset.rid;
+      // 같은 카드의 별 전체 갱신
+      const cardStars = el.querySelectorAll(`.star-btn[data-rid="${rid}"]`);
+      cardStars.forEach(b=>{ b.textContent = +b.dataset.star<=star?'⭐':'☆'; });
+      // 별점 라벨
+      const cardIdx = btn.closest('.review-order-card').id.replace('roc_','');
+      const lbl = $('slbl_'+cardIdx);
+      if(lbl) lbl.textContent = STAR_LABELS2[star]||'';
+      btn.closest('.review-order-card').dataset.selectedStar = star;
+    });
+  });
+
+  // 후기 저장 버튼
+  el.querySelectorAll('.review-submit-btn:not([data-edit])').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const rid     = btn.dataset.rid;
+      const idx     = btn.dataset.idx;
+      const dateKey2= btn.dataset.date;
+      const card    = $('roc_'+idx);
+      const star    = +(card.dataset.selectedStar||0);
+      const comment = ($('rinput_'+idx)||{value:''}).value.trim();
+      if(!star){ showToast('별점을 선택해 주세요'); return; }
+      await setDoc(doc(db,'lunch_reviews',dateKey2,'items',rid),{
+        name:btn.dataset.name, restaurant:btn.dataset.rest, menu:btn.dataset.menu,
+        star, comment, reviewer:myName, updatedAt:serverTimestamp()
+      });
+      showToast('후기가 저장되었습니다 ⭐');
+      loadReviewArea(dateKey2);
+      // 이력 카드 재렌더
+      renderHistoryCards(reviewHistoryCache.slice(0,5));
+    });
+  });
+
+  // 수정 버튼
+  el.querySelectorAll('[data-edit]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const rid = btn.dataset.edit;
+      const idx = btn.dataset.idx;
+      // 저장된 후기 지우고 입력폼 재표시
+      const card = $('roc_'+idx);
+      const rv = reviews[rid]||{};
+      const starHtml = [1,2,3,4,5].map(s=>
+        `<button class="star-btn" data-rid="${esc(rid)}" data-star="${s}">${rv.star>=s?'⭐':'☆'}</button>`
+      ).join('');
+      card.dataset.selectedStar = rv.star||0;
+      card.querySelector('.review-saved').outerHTML='';
+      btn.remove();
+      card.insertAdjacentHTML('beforeend',`
+        <div class="star-row" id="stars_${idx}">${starHtml}<span class="star-label" id="slbl_${idx}">${['','별로','그저그래','보통','맛있어','최고!'][rv.star]||''}</span></div>
+        <textarea class="review-input" id="rinput_${idx}">${esc(rv.comment||'')}</textarea>
+        <button class="review-submit-btn" data-rid="${esc(rid)}" data-idx="${idx}" data-date="${esc(dateKey)}" data-name="${esc(dayData.orders[+idx]?.name||'')}" data-rest="${esc(dayData.orders[+idx]?.restaurant||'')}" data-menu="${esc(dayData.orders[+idx]?.menu||'')}">후기 저장</button>
+      `);
+      // 별점 재바인딩
+      card.querySelectorAll('.star-btn').forEach(sb=>{
+        sb.addEventListener('click',()=>{
+          const s2 = +sb.dataset.star;
+          card.querySelectorAll(`.star-btn[data-rid="${rid}"]`).forEach(b=>{ b.textContent=+b.dataset.star<=s2?'⭐':'☆'; });
+          card.dataset.selectedStar=s2;
+          const lb=$('slbl_'+idx); if(lb) lb.textContent=['','별로','그저그래','보통','맛있어','최고!'][s2]||'';
+        });
+      });
+      // 저장버튼 재바인딩
+      card.querySelector('.review-submit-btn').addEventListener('click', async ()=>{
+        const star2  = +(card.dataset.selectedStar||0);
+        const comment2 = ($('rinput_'+idx)||{value:''}).value.trim();
+        if(!star2){ showToast('별점을 선택해 주세요'); return; }
+        await setDoc(doc(db,'lunch_reviews',dateKey,'items',rid),{
+          name:dayData.orders[+idx]?.name||'', restaurant:dayData.orders[+idx]?.restaurant||'', menu:dayData.orders[+idx]?.menu||'',
+          star:star2, comment:comment2, reviewer:myName, updatedAt:serverTimestamp()
+        });
+        showToast('후기가 수정되었습니다 ⭐');
+        loadReviewArea(dateKey);
+        renderHistoryCards(reviewHistoryCache.slice(0,5));
+      });
+    });
+  });
+}
+
+// 이력 카드에 평균 별점 표시 (renderHistoryCards 오버라이드)
+async function loadReviewSummary(dateKey) {
+  try {
+    const snap = await getDocs(collection(db,'lunch_reviews',dateKey,'items'));
+    if(snap.empty) return null;
+    const stars = snap.docs.map(d=>d.data().star||0).filter(s=>s>0);
+    if(!stars.length) return null;
+    const avg = (stars.reduce((a,b)=>a+b,0)/stars.length).toFixed(1);
+    return {avg, count:stars.length};
+  } catch(e){ return null; }
 }
 
 function applyViewMode(mode) {
