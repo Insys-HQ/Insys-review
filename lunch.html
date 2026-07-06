@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>인시스 점심주문관리 v3.8</title>
+<title>인시스 점심주문관리 v3.9</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -506,7 +506,7 @@ main.narrow { max-width:420px; }
     <div id="weatherInfo">🌡️ 로딩중</div>
     <span id="clock">--:--:--</span>
     <span id="userBadge">—</span>
-    <span class="ver-badge">v3.8</span>
+    <span class="ver-badge">v3.9</span>
   </div>
 </header>
 
@@ -672,7 +672,7 @@ main.narrow { max-width:420px; }
     <div id="restaurantAdminList"></div>
   </div>
 
-  <div class="footer-info">점심주문관리 시스템 v3.8</div>
+  <div class="footer-info">점심주문관리 시스템 v3.9</div>
 
   <!-- ══ AI 추천 모달 ══ -->
   <div id="aiModal" class="modal-overlay hidden">
@@ -939,6 +939,15 @@ async function loadHistory() {
 // ══════════════════════════════════════════════════════
 // 식당 버튼
 // ══════════════════════════════════════════════════════
+// 식당 목록 변경(추가/수정/삭제) 후 즉시 버튼 재빌드
+function rebuildRestButtons() {
+  const freq = lastRestFreq || {};
+  // dynRestaurants 를 빈도 순으로 정렬
+  const sorted = [...dynRestaurants].sort((a,b)=>(freq[b.name]||0)-(freq[a.name]||0));
+  lastSortedRests = sorted;
+  buildRestButtons(freq, sorted);
+}
+
 function buildRestButtons(freq, sorted) {
   const list = sorted || dynRestaurants;
   const grid = $('restaurantGrid');
@@ -1221,8 +1230,9 @@ function renderRestaurantAdmin() {
       await setDoc(doc(db,'restaurant_list',name),{name,phone,deadline,menus,order:+i},{merge:true});
       const idx = dynRestaurants.findIndex(r=>r.name===name);
       if (idx>=0) dynRestaurants[idx] = Object.assign({},dynRestaurants[idx],{phone,deadline,menus});
+      rebuildRestButtons();
       renderRestaurantAdmin();
-      renderRestCompleteArea(); // 저장 즉시 요약탭 반영
+      renderRestCompleteArea();
       showToast(name+' 저장 완료');
     });
   });
@@ -1232,7 +1242,7 @@ function renderRestaurantAdmin() {
       if (!confirm('"'+name+'" 을 삭제할까요?')) return;
       await deleteDoc(doc(db,'restaurant_list',name));
       dynRestaurants = dynRestaurants.filter(r=>r.name!==name);
-      buildRestButtons({});
+      rebuildRestButtons();
       renderRestaurantAdmin();
       showToast(name+' 삭제 완료');
     });
@@ -1246,10 +1256,10 @@ async function addNewRestaurant() {
   const newRest = {name, phone:'', deadline:'', menus:[], order:dynRestaurants.length};
   await setDoc(doc(db,'restaurant_list',name), newRest);
   dynRestaurants.push(newRest);
-  buildRestButtons({});
+  rebuildRestButtons();
   renderRestaurantAdmin();
   $('newRestName').value = '';
-  showToast(name+' 추가 완료');
+  showToast(name+' 추가 완료 — 주문 등록 탭에 바로 반영됩니다');
 }
 
 // ══════════════════════════════════════════════════════
