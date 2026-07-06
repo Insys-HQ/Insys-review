@@ -1,0 +1,2496 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>인시스 점심주문관리 v4.4</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:   #1A3A5C;
+  --orange: #E85D26;
+  --bg:     #F2F0EB;
+  --card:   #FFFFFF;
+  --border: #DDD8CF;
+  --text:   #1A1A1A;
+  --muted:  #505050;
+  --green:  #2D7A4F;
+  --red:    #B03020;
+  --teal:   #0D6B70;
+  --tagbg:  #EEF2F7;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:'Noto Sans KR',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; font-size:15px; }
+.hidden { display:none !important; }
+
+/* ── 헤더 ─────────────────────────────────────────── */
+header {
+  background:var(--navy); color:#fff;
+  padding:0;
+  position:sticky; top:0; z-index:200;
+}
+.hd-inner {
+  max-width:792px; margin:0 auto; padding:10px 16px;
+  display:flex; align-items:center; justify-content:space-between;
+  gap:8px; flex-wrap:wrap; transition:max-width .3s;
+}
+body.pc-mode .hd-inner { max-width:1320px; }
+body.narrow-mode .hd-inner { max-width:420px; }
+.hd-left h1 { font-size:16px; font-weight:700; }
+.hd-right { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+#weatherInfo { font-size:13px; color:#fff; opacity:.9; display:flex; align-items:center; gap:4px; }
+.w-temp { font-size:15px; font-weight:700; }
+.w-desc { font-size:12px; opacity:.8; }
+.w-rain { font-size:12px; color:#7dd3fc; font-weight:700; }
+#clock { font-size:18px; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:1px; }
+#userBadge {
+  background:rgba(255,255,255,.15); color:#fff;
+  border:1px solid rgba(255,255,255,.25); border-radius:14px;
+  padding:4px 12px; font-size:13px; cursor:pointer;
+}
+#userBadge:hover { background:rgba(255,255,255,.25); }
+.ver-badge { font-size:10px; opacity:.45; }
+
+/* ── 배너 ─────────────────────────────────────────── */
+#noticeBanner { background:var(--orange); color:#fff; padding:12px 16px; display:none; }
+#noticeBanner.show { display:block; }
+#noticeBanner strong { font-size:15px; }
+#noticeBanner p { font-size:13px; opacity:.9; margin-top:3px; }
+
+/* ── 메인 ─────────────────────────────────────────── */
+main { max-width:792px; margin:0 auto; padding:14px 13px 100px; transition:max-width .3s; }
+main.wide { max-width:1320px; }
+main.narrow { max-width:420px; }
+
+/* ── 로그인 ───────────────────────────────────────── */
+#loginScreen { min-height:80vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px; }
+.login-card {
+  background:var(--card); border-radius:16px; padding:34px 28px;
+  width:100%; max-width:340px; text-align:center;
+  box-shadow:0 4px 20px rgba(0,0,0,.09);
+}
+.login-card h2 { font-size:21px; font-weight:700; color:var(--navy); margin-bottom:6px; }
+.login-card p  { font-size:13px; color:var(--muted); margin-bottom:22px; line-height:1.7; }
+.login-card select {
+  width:100%; padding:12px 13px; border:1.5px solid var(--border);
+  border-radius:8px; font-size:15px; font-family:inherit;
+  background:#fff; color:var(--text); outline:none; margin-bottom:12px;
+}
+.btn-primary {
+  width:100%; background:var(--orange); color:#fff; border:none;
+  border-radius:9px; padding:13px; font-size:15px; font-weight:700;
+  font-family:inherit; cursor:pointer;
+}
+.btn-primary:hover { background:#c94d1c; }
+
+/* ── 상태/통계 ────────────────────────────────────── */
+.top-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.reset-btn {
+  background:none; border:1.5px solid var(--border); border-radius:7px;
+  padding:4px 10px; font-size:12px; color:var(--muted);
+  font-family:inherit; cursor:pointer; transition:all .15s;
+}
+.reset-btn:hover { border-color:var(--red); color:var(--red); }
+.status-badge { border-radius:14px; padding:5px 13px; font-size:13px; font-weight:700; }
+.status-badge.open   { background:#e6f4ed; color:#1f6b3f; }
+.status-badge.closed { background:#fde8e6; color:var(--red); }
+.status-badge.done   { background:#e3eeff; color:var(--navy); }
+.stats-row { display:flex; gap:8px; margin-bottom:14px; }
+.stat-card { flex:1; background:var(--card); border:1px solid var(--border); border-radius:10px; padding:11px 8px; text-align:center; }
+.stat-num { font-size:22px; font-weight:700; color:var(--navy); }
+.stat-lbl { font-size:11px; color:var(--muted); margin-top:2px; }
+
+/* ── 탭 ──────────────────────────────────────────── */
+.tabs { display:flex; gap:5px; margin-bottom:13px; flex-wrap:wrap; }
+.tab-btn {
+  flex:1; min-width:calc(33% - 4px); padding:9px 4px; border-radius:8px;
+  font-size:12px; font-weight:700; cursor:pointer;
+  border:1.5px solid var(--border); background:var(--bg); color:var(--muted);
+  font-family:inherit; transition:all .15s;
+}
+.tab-btn.active { background:var(--navy); color:#fff; border-color:var(--navy); }
+
+/* ── 카드 ─────────────────────────────────────────── */
+.card { background:var(--card); border-radius:12px; border:1px solid var(--border); padding:15px; margin-bottom:12px; }
+.card-title { font-size:11px; font-weight:700; color:var(--muted); letter-spacing:.5px; text-transform:uppercase; margin-bottom:10px; }
+
+/* ── 식당 버튼 ────────────────────────────────────── */
+#restaurantGrid { display:grid; grid-template-columns:repeat(4,1fr); gap:5px; margin-bottom:10px; }
+.rest-btn {
+  background:var(--tagbg); border:1.5px solid var(--border); border-radius:7px;
+  padding:7px 5px; font-size:12px; cursor:pointer; text-align:center;
+  font-family:inherit; color:var(--text); transition:all .15s; position:relative;
+  line-height:1.3; word-break:keep-all;
+}
+.rest-btn:hover,.rest-btn.active { background:var(--navy); color:#fff; border-color:var(--navy); }
+.rest-cnt { position:absolute; top:3px; right:3px; background:var(--orange); color:#fff; border-radius:7px; font-size:10px; padding:1px 4px; }
+.rest-btn.active .rest-cnt { background:rgba(255,255,255,.9); color:var(--navy); }
+
+/* ── 메뉴 태그 ────────────────────────────────────── */
+#menuTags { display:flex; flex-wrap:wrap; gap:6px; min-height:30px; margin-bottom:10px; }
+.menu-tag {
+  background:var(--tagbg); border:1.5px solid var(--border); border-radius:16px;
+  padding:6px 12px; font-size:13px; cursor:pointer; font-family:inherit;
+  color:var(--text); transition:all .15s;
+}
+.menu-tag:hover,.menu-tag.active { background:var(--orange); color:#fff; border-color:var(--orange); }
+.tag-cnt { background:rgba(0,0,0,.1); border-radius:7px; font-size:10px; padding:1px 4px; margin-left:3px; }
+.tag-hint { font-size:13px; color:var(--muted); align-self:center; }
+
+/* ── 추천 ─────────────────────────────────────────── */
+#recommendList { display:flex; flex-wrap:wrap; gap:7px; }
+.rec-btn {
+  display:flex; flex-direction:column; background:var(--tagbg); border:1.5px solid var(--border);
+  border-radius:8px; padding:8px 12px; font-size:13px; cursor:pointer;
+  font-family:inherit; color:var(--text); transition:all .15s; min-width:96px;
+}
+.rec-btn:hover { background:var(--navy); color:#fff; border-color:var(--navy); }
+.rec-menu { font-weight:700; font-size:13px; }
+.rec-rest { font-size:11px; color:var(--muted); margin-top:2px; }
+.rec-cnt  { font-size:11px; color:var(--orange); margin-top:2px; }
+.rec-btn:hover .rec-rest,.rec-btn:hover .rec-cnt { color:rgba(255,255,255,.75); }
+
+/* ── 폼 ──────────────────────────────────────────── */
+.form-row { margin-bottom:11px; }
+.form-row label { display:block; font-size:12px; font-weight:700; color:var(--muted); margin-bottom:5px; }
+.form-row input,.form-row select,.form-row textarea {
+  width:100%; border:1.5px solid var(--border); border-radius:8px;
+  padding:11px 13px; font-size:15px; font-family:inherit;
+  background:var(--bg); color:var(--text); outline:none; transition:border-color .15s;
+}
+.form-row input:focus,.form-row select:focus,.form-row textarea:focus { border-color:var(--navy); background:#fff; }
+.form-row textarea { resize:none; }
+.qty-row { display:flex; align-items:center; gap:12px; }
+.qty-btn {
+  width:34px; height:34px; border:1.5px solid var(--border); border-radius:7px;
+  background:var(--bg); font-size:18px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+.qty-btn:hover { background:var(--border); }
+#qtyDisplay { font-size:17px; font-weight:700; min-width:22px; text-align:center; }
+
+/* ── 주문 목록 ────────────────────────────────────── */
+#orderList { list-style:none; }
+.empty-item { padding:26px; text-align:center; color:var(--muted); font-size:14px; }
+.order-group { background:var(--card); border:1px solid var(--border); border-radius:10px; margin-bottom:10px; overflow:hidden; }
+.group-header { background:var(--navy); color:#fff; padding:10px 14px; display:flex; flex-direction:column; }
+.group-rest { font-size:15px; font-weight:700; }
+.group-cnt  { font-size:12px; opacity:.7; }
+.order-row { display:flex; align-items:center; gap:9px; padding:10px 14px; border-top:1px solid var(--border); }
+.order-row.mine { background:#f0f6ff; }
+.order-seq { width:22px; height:22px; background:var(--tagbg); border-radius:50%; font-size:12px; font-weight:700; color:var(--muted); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.order-body { flex:1; }
+.order-name { font-size:14px; font-weight:700; }
+.order-menu { font-size:14px; color:var(--teal); margin-left:6px; }
+.order-note { display:block; font-size:12px; color:var(--muted); margin-top:2px; }
+.order-time { font-size:12px; color:var(--muted); flex-shrink:0; }
+.del-btn { background:none; border:none; color:#bbb; font-size:17px; cursor:pointer; padding:0 3px; flex-shrink:0; }
+.del-btn:hover { color:var(--red); }
+
+/* ── 요약 ─────────────────────────────────────────── */
+#summaryBox { background:#f0f6ff; border:1.5px solid #b8d0f0; border-radius:10px; padding:10px 12px; margin-bottom:10px; }
+#summaryText { font-size:12px; line-height:1.55; white-space:pre-line; color:var(--text); }
+.btn-copy {
+  width:100%; margin-top:7px; background:var(--navy); color:#fff; border:none;
+  border-radius:7px; padding:8px; font-size:12px; font-weight:700; font-family:inherit; cursor:pointer;
+}
+.btn-copy:hover { background:#0f2a45; }
+
+/* ── 식당별 완료 버튼 ─────────────────────────────── */
+.rest-complete-btn {
+  width:100%; padding:13px 16px; border-radius:9px; border:1.5px solid var(--border);
+  background:var(--card); font-size:14px; font-weight:700; font-family:inherit;
+  color:var(--navy); cursor:pointer; text-align:left; transition:all .15s; margin-bottom:8px;
+  display:block;
+}
+.rest-complete-btn:hover { background:var(--tagbg); border-color:var(--navy); }
+.rest-complete-btn.done { background:#e6f4ed; border-color:#2D7A4F; color:#1f6b3f; }
+
+/* ── 컨트롤 버튼 ──────────────────────────────────── */
+.ctrl-row { display:flex; gap:8px; margin-top:4px; }
+.ctrl-btn { flex:1; border:none; border-radius:9px; padding:13px; font-size:13px; font-weight:700; font-family:inherit; cursor:pointer; }
+.btn-close    { background:#fde8e6; color:var(--red); }
+.btn-reopen   { background:#fff3cd; color:#7a5c00; }
+.btn-complete { background:var(--green); color:#fff; }
+.btn-warn     { background:#fff3cd; color:#856404; border:1.5px solid #f0c040; font-size:12px; }
+
+/* ── 주문 담당자 ─────────────────────────────────── */
+.duty-card { background:var(--card); border:1.5px solid var(--border); border-radius:10px; padding:14px; margin-bottom:12px; }
+.duty-filled { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.duty-icon { font-size:24px; }
+.duty-name { font-size:16px; font-weight:700; color:var(--navy); }
+.duty-label { font-size:13px; color:var(--muted); }
+.duty-cancel-btn { background:#fde8e6; color:var(--red); border:none; border-radius:6px; padding:5px 12px; font-size:12px; font-weight:700; font-family:inherit; cursor:pointer; margin-left:auto; }
+.duty-empty { text-align:center; padding:6px 0; }
+.duty-empty p { font-size:13px; color:var(--muted); margin-bottom:10px; }
+.duty-volunteer-btn { background:var(--orange); color:#fff; border:none; border-radius:9px; padding:12px 24px; font-size:14px; font-weight:700; font-family:inherit; cursor:pointer; }
+.duty-volunteer-btn:hover { background:#c94d1c; }
+
+/* ── 이력 ─────────────────────────────────────────── */
+.hist-card { background:var(--card); border:1px solid var(--border); border-radius:9px; padding:12px 14px; margin-bottom:8px; }
+.hist-date { font-size:13px; font-weight:700; margin-bottom:3px; }
+.hist-rest { font-size:12px; color:var(--muted); }
+.hist-rest-wrap { display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; }
+.hist-rest-item { font-size:12px; color:var(--muted); background:var(--tagbg); border-radius:6px; padding:3px 8px; }
+
+/* ── 식당 관리 ────────────────────────────────────── */
+.admin-rest-card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:13px 14px; margin-bottom:9px; }
+.arc-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+.arc-name { font-size:15px; font-weight:700; color:var(--navy); }
+.arc-actions { display:flex; gap:6px; }
+.arc-info { font-size:12px; color:var(--muted); display:flex; gap:14px; flex-wrap:wrap; }
+.arc-edit { margin-top:12px; border-top:1px solid var(--border); padding-top:12px; }
+.arc-edit-row { display:flex; gap:8px; margin-top:8px; }
+.arc-btn { border:none; border-radius:6px; padding:5px 12px; font-size:12px; font-weight:700; font-family:inherit; cursor:pointer; }
+.arc-btn.edit   { background:var(--tagbg); color:var(--navy); }
+.arc-btn.del    { background:#fde8e6; color:var(--red); }
+.arc-btn.save   { background:var(--green); color:#fff; flex:1; padding:10px; font-size:13px; }
+.arc-btn.cancel { background:var(--tagbg); color:var(--muted); flex:1; padding:10px; font-size:13px; }
+.add-rest-row { display:flex; gap:8px; margin-bottom:14px; }
+.add-rest-row input { flex:1; border:1.5px solid var(--border); border-radius:8px; padding:11px 13px; font-size:15px; font-family:inherit; background:var(--bg); color:var(--text); outline:none; }
+.add-rest-row input:focus { border-color:var(--navy); background:#fff; }
+.add-rest-row button { background:var(--navy); color:#fff; border:none; border-radius:8px; padding:11px 16px; font-size:14px; font-weight:700; font-family:inherit; cursor:pointer; white-space:nowrap; }
+.add-rest-row button:hover { background:#0f2a45; }
+
+/* ── 플로팅 패널 ──────────────────────────────────── */
+#floatPanel { position:fixed; bottom:20px; right:14px; z-index:500; display:flex; flex-direction:column; align-items:flex-end; gap:8px; }
+.float-vm-row { display:flex; gap:4px; background:rgba(26,58,92,.92); border-radius:22px; padding:7px 10px; box-shadow:0 3px 12px rgba(0,0,0,.2); }
+.vm-btn { background:rgba(255,255,255,.15); color:#fff; border:1px solid rgba(255,255,255,.22); border-radius:6px; padding:4px 9px; font-size:12px; cursor:pointer; font-family:inherit; transition:all .15s; }
+.vm-btn.active,.vm-btn:hover { background:var(--orange); border-color:var(--orange); }
+.float-add-btn { background:var(--orange); color:#fff; border:none; border-radius:20px; padding:10px 18px; font-size:14px; font-weight:700; font-family:inherit; cursor:pointer; box-shadow:0 3px 12px rgba(232,93,38,.4); white-space:nowrap; }
+.float-add-btn:hover { background:#c94d1c; }
+
+/* ── 푸터 ─────────────────────────────────────────── */
+.footer-info { text-align:center; font-size:11px; color:var(--muted); padding:12px 0; margin-top:8px; border-top:1px solid var(--border); }
+
+/* ── 토스트 ───────────────────────────────────────── */
+#toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%) translateY(14px); background:var(--navy); color:#fff; border-radius:18px; padding:10px 20px; font-size:13px; font-weight:700; opacity:0; transition:all .27s; pointer-events:none; z-index:999; }
+#toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+/* ── 반응형 ───────────────────────────────────────── */
+@media(max-width:420px) {
+  #restaurantGrid { grid-template-columns:repeat(2,1fr); }
+  .stats-row .stat-card:last-child { display:none; }
+  .ctrl-row { flex-direction:column; }
+}
+
+/* ── 식당별 담당자 ───────────────────────────────────── */
+.rest-duty-row {
+  border:1px solid var(--border); border-radius:10px;
+  padding:12px 14px; margin-bottom:8px; background:var(--card);
+}
+.rest-duty-header {
+  display:flex; align-items:center; gap:8px; margin-bottom:6px; flex-wrap:wrap;
+}
+.rest-duty-name { font-size:15px; font-weight:700; color:var(--navy); }
+.rest-duty-deadline { font-size:12px; color:var(--orange); font-weight:700; }
+.rest-duty-done-badge { font-size:12px; color:var(--green); font-weight:700; margin-left:auto; }
+.rest-duty-filled { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+
+/* 완료된 식당 버튼 */
+.rest-btn.rest-done {
+  background:#e6f4ed !important; border-color:#2D7A4F !important;
+  color:#1f6b3f !important; opacity:.7; cursor:not-allowed !important;
+}
+.rest-done-tag { position:absolute; top:3px; right:3px; font-size:11px; }
+
+/* ── 주문목록 그룹헤더 메타 ────────────────────────── */
+.group-top  { display:flex; justify-content:space-between; align-items:center; }
+.group-meta { display:flex; align-items:center; gap:10px; margin-top:5px; flex-wrap:wrap; }
+.grp-deadline { font-size:12px; color:#ffd0a0; font-weight:700; }
+.grp-unset    { opacity:.55; }
+.grp-duty     { font-size:12px; color:#d0eaff; }
+.group-cnt    { font-size:12px; opacity:.75; }
+.grp-duty-btn {
+  background:rgba(255,255,255,.18); color:#fff;
+  border:1px solid rgba(255,255,255,.35); border-radius:12px;
+  padding:3px 10px; font-size:12px; font-weight:700;
+  font-family:inherit; cursor:pointer; transition:background .15s;
+}
+.grp-duty-btn:hover { background:var(--orange); border-color:var(--orange); }
+
+/* ── STEP 카드 (주문 등록 탭) ───────────────────────── */
+.step-card {
+  background:var(--card); border-radius:12px;
+  border:1px solid var(--border); padding:14px 15px; margin-bottom:10px;
+}
+.step-header {
+  display:flex; align-items:center; gap:10px; margin-bottom:12px;
+}
+.step-num {
+  width:26px; height:26px; border-radius:50%;
+  background:var(--navy); color:#fff;
+  font-size:13px; font-weight:700;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+.step-title { font-size:14px; font-weight:700; color:var(--navy); }
+.step-sub   { font-size:13px; color:var(--orange); font-weight:700; margin-left:auto; }
+.step-hint  { font-size:13px; color:var(--muted); padding:4px 0; }
+
+/* 식당선택 후 STEP2 강조 */
+.step-card.active-step { border-color:var(--navy); border-width:2px; }
+
+/* ── 요약/완료 탭 — 식당별 완료 카드 ─────────────────── */
+.rca-card {
+  background:var(--card); border:1.5px solid var(--border);
+  border-radius:10px; padding:13px 15px; margin-bottom:9px;
+}
+.rca-card.rca-done { background:#e6f4ed; border-color:#2D7A4F; }
+.rca-top  { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.rca-info { flex:1; }
+.rca-name { font-size:15px; font-weight:700; color:var(--navy); display:block; margin-bottom:5px; }
+.rca-card.rca-done .rca-name { color:var(--green); }
+.rca-meta { display:flex; flex-wrap:wrap; gap:8px; }
+.rca-phone    { font-size:13px; color:var(--text);   font-weight:500; }
+.rca-deadline { font-size:13px; color:var(--orange); font-weight:700; }
+.rca-duty     { font-size:13px; color:var(--teal);   font-weight:500; }
+.rca-unset    { opacity:.45; font-weight:400; }
+.rca-badge { font-size:13px; font-weight:700; color:var(--green); white-space:nowrap; }
+.rca-btn {
+  background:var(--navy); color:#fff; border:none;
+  border-radius:8px; padding:9px 14px; font-size:13px; font-weight:700;
+  font-family:inherit; cursor:pointer; white-space:nowrap; flex-shrink:0;
+  transition:background .15s;
+}
+.rca-btn:hover { background:#0f2a45; }
+
+/* ── rca 담당자 행 ───────────────────────────────────── */
+.rca-duty-row {
+  display:flex; align-items:center; gap:10px;
+  margin-top:9px; padding-top:9px;
+  border-top:1px solid var(--border); flex-wrap:wrap;
+}
+.rca-card.rca-done .rca-duty-row { border-top-color:#c3e6cb; }
+.rca-volunteer-btn {
+  background:var(--orange); color:#fff; border:none;
+  border-radius:8px; padding:8px 14px; font-size:13px; font-weight:700;
+  font-family:inherit; cursor:pointer; transition:background .15s;
+}
+.rca-volunteer-btn:hover { background:#c94d1c; }
+.rca-duty-cancel {
+  background:#fde8e6; color:var(--red); border:none;
+  border-radius:6px; padding:4px 10px; font-size:12px; font-weight:700;
+  font-family:inherit; cursor:pointer; margin-left:auto;
+}
+.rca-empty { text-align:center; color:var(--muted); font-size:13px; padding:20px 0; }
+
+/* ── AI 추천 + 슬롯 버튼 행 ────────────────────────── */
+.ai-row { display:flex; gap:8px; margin-bottom:10px; }
+.ai-rec-btn {
+  flex:1; background:var(--navy); color:#fff; border:none;
+  border-radius:10px; padding:13px; font-size:14px; font-weight:700;
+  font-family:inherit; cursor:pointer; transition:background .15s;
+}
+.ai-rec-btn:hover { background:#0f2a45; }
+.slot-open-btn {
+  flex:1; background:var(--orange); color:#fff; border:none;
+  border-radius:10px; padding:13px; font-size:14px; font-weight:700;
+  font-family:inherit; cursor:pointer; transition:background .15s;
+}
+.slot-open-btn:hover { background:#c94d1c; }
+
+/* ── 모달 공통 ──────────────────────────────────────── */
+.modal-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,.65);
+  z-index:800; display:flex; align-items:center; justify-content:center;
+  padding:16px;
+}
+.modal-box {
+  background:#fff; border-radius:16px; width:100%; max-width:480px;
+  max-height:90vh; overflow-y:auto;
+  box-shadow:0 8px 40px rgba(0,0,0,.3);
+}
+.modal-header {
+  background:var(--navy); color:#fff; padding:14px 16px;
+  display:flex; justify-content:space-between; align-items:center;
+  border-radius:16px 16px 0 0; font-size:15px; font-weight:700;
+}
+.modal-close, .sound-btn {
+  background:rgba(255,255,255,.2); border:none; color:#fff;
+  width:30px; height:30px; border-radius:50%; font-size:16px;
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+}
+.modal-close:hover, .sound-btn:hover { background:rgba(255,255,255,.35); }
+
+/* ── AI 결과 ────────────────────────────────────────── */
+.ai-result { padding:16px; }
+.ai-loading { text-align:center; padding:30px; }
+.ai-loading p { color:var(--muted); font-size:13px; margin-top:12px; }
+.spinner {
+  width:40px; height:40px; border:4px solid var(--border);
+  border-top-color:var(--navy); border-radius:50%;
+  animation:spin .8s linear infinite; margin:0 auto;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+.ai-rec-card {
+  background:var(--tagbg); border:1.5px solid var(--border);
+  border-radius:10px; padding:12px 14px; margin-bottom:10px;
+}
+.ai-rec-card .rec-num { font-size:11px; color:var(--muted); margin-bottom:4px; }
+.ai-rec-card .rec-rest-name { font-size:15px; font-weight:700; color:var(--navy); }
+.ai-rec-card .rec-menu-name { font-size:14px; color:var(--orange); font-weight:700; margin-top:2px; }
+.ai-rec-card .rec-reason { font-size:12px; color:var(--muted); margin-top:6px; line-height:1.6; }
+.ai-apply-btn {
+  width:100%; background:var(--orange); color:#fff; border:none;
+  border-radius:8px; padding:9px; font-size:13px; font-weight:700;
+  font-family:inherit; cursor:pointer; margin-top:8px;
+}
+.ai-apply-btn:hover { background:#c94d1c; }
+.ai-reason-box {
+  background:#fff8e1; border:1px solid #f0c040; border-radius:8px;
+  padding:10px 12px; margin-bottom:12px; font-size:12px; color:#7a5c00; line-height:1.7;
+}
+
+/* ── 슬롯머신 ───────────────────────────────────────── */
+.slot-modal-box { background:linear-gradient(160deg,#1a1a2e,#16213e); }
+.slot-modal-box .modal-header { background:rgba(0,0,0,.3); border-radius:16px 16px 0 0; }
+.slot-display {
+  display:flex; align-items:center; justify-content:center;
+  gap:8px; padding:24px 16px 16px;
+}
+.slot-reel-wrap {
+  width:140px; height:80px; overflow:hidden;
+  background:#000; border-radius:10px;
+  border:3px solid #ffd700;
+  box-shadow:0 0 20px rgba(255,215,0,.4), inset 0 0 10px rgba(0,0,0,.5);
+  position:relative;
+}
+/* 위아래 그라디언트 마스크 */
+.slot-reel-wrap::before,.slot-reel-wrap::after {
+  content:''; position:absolute; left:0; right:0; height:20px; z-index:2; pointer-events:none;
+}
+.slot-reel-wrap::before { top:0; background:linear-gradient(to bottom,rgba(0,0,0,.8),transparent); }
+.slot-reel-wrap::after  { bottom:0; background:linear-gradient(to top,rgba(0,0,0,.8),transparent); }
+.slot-reel {
+  display:flex; flex-direction:column;
+  transition:transform .08s linear;
+}
+.slot-item {
+  width:140px; height:80px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  font-family:'Noto Sans KR',sans-serif; flex-shrink:0; padding:4px;
+}
+.slot-item .s-rest { font-size:11px; color:#aaa; margin-bottom:2px; }
+.slot-item .s-menu { font-size:12px; font-weight:700; color:#fff; text-align:center; line-height:1.3; }
+.slot-item.highlight { background:rgba(255,215,0,.15); }
+.slot-item.bong { background:rgba(255,50,50,.15); }
+.slot-sep { font-size:28px; color:#ffd700; font-weight:900; text-shadow:0 0 10px #ffd700; }
+
+.slot-result {
+  margin:0 16px 8px; padding:14px; border-radius:10px;
+  text-align:center; font-size:15px; font-weight:700;
+}
+.slot-result.win  { background:rgba(255,215,0,.15); color:#ffd700; border:2px solid #ffd700; }
+.slot-result.lose { background:rgba(255,50,50,.15);  color:#ff6b6b; border:2px solid #ff5555; }
+.slot-result .result-emoji { font-size:40px; display:block; margin-bottom:6px; }
+.slot-result .result-text  { font-size:13px; margin-top:6px; opacity:.85; }
+
+.slot-btns { display:flex; gap:8px; padding:0 16px 8px; }
+.slot-spin-btn {
+  flex:1; background:linear-gradient(135deg,#ffd700,#ff8c00);
+  color:#1a1a1a; border:none; border-radius:10px; padding:14px;
+  font-size:16px; font-weight:900; font-family:inherit; cursor:pointer;
+  box-shadow:0 4px 15px rgba(255,165,0,.5); transition:all .15s;
+  letter-spacing:1px;
+}
+.slot-spin-btn:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(255,165,0,.7); }
+.slot-spin-btn:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+.slot-apply-btn {
+  flex:1; background:var(--green); color:#fff; border:none;
+  border-radius:10px; padding:14px; font-size:14px; font-weight:700;
+  font-family:inherit; cursor:pointer;
+}
+.slot-hint { color:rgba(255,255,255,.45); font-size:11px; text-align:center; padding:0 16px 16px; }
+
+/* ── 주문 등록 STEP1 — 빠른 식당 추가 ──────────────── */
+.quick-add-toggle {
+  width:100%; background:none; border:1.5px dashed var(--border);
+  border-radius:8px; padding:9px; font-size:13px; color:var(--muted);
+  font-family:inherit; cursor:pointer; margin-top:6px; transition:all .15s;
+}
+.quick-add-toggle:hover { border-color:var(--navy); color:var(--navy); background:var(--tagbg); }
+.quick-add-grid {
+  display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-top:8px;
+}
+@media(max-width:480px){ .quick-add-grid { grid-template-columns:1fr; } }
+.quick-add-grid input {
+  border:1.5px solid var(--border); border-radius:8px;
+  padding:9px 11px; font-size:13px; font-family:inherit;
+  background:var(--bg); color:var(--text); outline:none;
+}
+.quick-add-grid input:focus { border-color:var(--navy); background:#fff; }
+.quick-add-btns { display:flex; gap:8px; margin-top:8px; }
+.quick-add-btns button {
+  flex:1; border:none; border-radius:8px; padding:10px;
+  font-size:13px; font-weight:700; font-family:inherit; cursor:pointer;
+}
+.quick-add-btns button:first-child { background:var(--navy); color:#fff; }
+.quick-add-btns button:first-child:hover { background:#0f2a45; }
+.quick-add-btns button.cancel { background:var(--tagbg); color:var(--muted); }
+
+/* ── 후기 탭 ─────────────────────────────────────────── */
+.review-date-btn {
+  background:var(--tagbg); border:1.5px solid var(--border);
+  border-radius:8px; padding:6px 12px; font-size:13px; font-weight:700;
+  font-family:inherit; color:var(--text); cursor:pointer; transition:all .15s;
+}
+.review-date-btn.active { background:var(--navy); color:#fff; border-color:var(--navy); }
+
+.review-order-card {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:10px; padding:14px; margin-bottom:10px;
+}
+.review-order-card .ro-name  { font-size:14px; font-weight:700; color:var(--navy); }
+.review-order-card .ro-menu  { font-size:13px; color:var(--teal); margin-top:2px; }
+.review-order-card .ro-rest  { font-size:12px; color:var(--muted); margin-top:1px; }
+
+/* 별점 */
+.star-row { display:flex; align-items:center; gap:4px; margin:10px 0 6px; }
+.star-btn {
+  background:none; border:none; font-size:22px; cursor:pointer;
+  padding:0 2px; transition:transform .1s; line-height:1;
+}
+.star-btn:hover { transform:scale(1.2); }
+.star-label { font-size:12px; color:var(--muted); margin-left:6px; }
+
+/* 댓글 입력 */
+.review-input {
+  width:100%; border:1.5px solid var(--border); border-radius:8px;
+  padding:9px 12px; font-size:13px; font-family:inherit;
+  background:var(--bg); color:var(--text); outline:none;
+  resize:none; height:60px; transition:border-color .15s;
+}
+.review-input:focus { border-color:var(--navy); background:#fff; }
+
+.review-submit-btn {
+  background:var(--navy); color:#fff; border:none;
+  border-radius:8px; padding:8px 18px; font-size:13px; font-weight:700;
+  font-family:inherit; cursor:pointer; margin-top:6px;
+}
+.review-submit-btn:hover { background:#0f2a45; }
+
+/* 저장된 후기 표시 */
+.review-saved {
+  background:var(--tagbg); border-radius:8px; padding:10px 12px;
+  margin-top:8px; border:1px solid var(--border);
+}
+.review-saved .rs-stars { font-size:16px; }
+.review-saved .rs-comment { font-size:13px; color:var(--text); margin-top:4px; }
+.review-saved .rs-meta { font-size:11px; color:var(--muted); margin-top:3px; }
+
+/* 이력카드 별점 */
+.hist-stars { font-size:12px; color:#f59e0b; margin-left:6px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hd-inner">
+    <div class="hd-left">
+      <h1>인시스 점심주문관리</h1>
+    </div>
+    <div class="hd-right">
+      <div id="weatherInfo">🌡️ 로딩중</div>
+      <span id="clock">--:--:--</span>
+      <span id="userBadge">—</span>
+      <span class="ver-badge">v4.4</span>
+    </div>
+  </div>
+</header>
+
+<div id="noticeBanner">
+  <strong>🍱 점심 주문 시간입니다!</strong>
+  <p>지금 메뉴를 등록해 주세요</p>
+</div>
+
+<!-- ── 로그인 ── -->
+<div id="loginScreen" class="hidden">
+  <div class="login-card">
+    <h2>점심주문관리</h2>
+    <p>이름을 선택하고 시작하세요</p>
+    <select id="nameSelect"><option value="">이름 선택</option></select>
+    <button class="btn-primary" id="loginBtn">시작하기</button>
+  </div>
+</div>
+
+<!-- ── 메인 ── -->
+<div id="mainScreen" class="hidden">
+<main id="mainEl">
+
+  <div class="top-bar">
+    <span id="statusBadge" class="status-badge open">🟢 접수 중</span>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:12px;color:var(--muted)" id="todayDate"></span>
+      <button id="resetOrdersBtn" class="reset-btn" title="오늘 주문 초기화">🗑 초기화</button>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-num" id="statPeople">0</div><div class="stat-lbl">참여 인원</div></div>
+    <div class="stat-card"><div class="stat-num" id="statQty">0</div><div class="stat-lbl">총 수량</div></div>
+    <div class="stat-card"><div class="stat-num" id="statRests">0</div><div class="stat-lbl">식당 수</div></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="order">📝 주문 등록</button>
+    <button class="tab-btn" data-tab="list">📋 주문 목록</button>
+    <button class="tab-btn" data-tab="summary">📞 요약/완료</button>
+    <button class="tab-btn" data-tab="history">📅 이력</button>
+    <button class="tab-btn" data-tab="review">⭐ 후기</button>
+    <button class="tab-btn" data-tab="admin">🏪 식당관리</button>
+  </div>
+
+  <!-- 탭: 주문 등록 -->
+  <div class="tab-panel" data-panel="order">
+    <div id="orderForm">
+
+      <!-- AI 추천 + 슬롯머신 버튼 -->
+      <div class="ai-row">
+        <button class="ai-rec-btn" id="aiRecBtn">🤖 오늘 메뉴 추천</button>
+        <button class="slot-open-btn" id="slotOpenBtn">🎰 랜덤 뽑기</button>
+      </div>
+
+      <!-- STEP 1: 식당 선택 -->
+      <div class="step-card" id="stepRestCard">
+        <div class="step-header">
+          <span class="step-num">1</span>
+          <span class="step-title">식당 선택</span>
+          <span class="step-sub" id="selectedRestLabel"></span>
+        </div>
+        <div id="restaurantGrid"></div>
+        <div class="form-row" style="margin-bottom:6px">
+          <input type="text" id="inputRestaurant" placeholder="식당명 (위에서 선택 또는 직접 입력)">
+        </div>
+        <!-- 식당 빠른 추가 -->
+        <div id="quickAddArea">
+          <button class="quick-add-toggle" id="quickAddToggle">＋ 새 식당 추가</button>
+          <div id="quickAddForm" class="hidden">
+            <div class="quick-add-grid">
+              <input type="text" id="qNewName"     placeholder="식당명 *" maxlength="20">
+              <input type="tel"  id="qNewPhone"    placeholder="전화번호 (예: 055-123-4567)">
+              <input type="text" id="qNewDeadline" placeholder="마감시간 (예: 10:45)">
+            </div>
+            <div class="quick-add-btns">
+              <button id="qNewSaveBtn">저장 후 선택</button>
+              <button id="qNewCancelBtn" class="cancel">취소</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 2: 주문 담당자 지정 -->
+      <div class="step-card" id="stepDutyCard">
+        <div class="step-header">
+          <span class="step-num">2</span>
+          <span class="step-title">주문 담당자 지정</span>
+          <span class="step-sub" id="dutyLabelInForm"></span>
+        </div>
+        <div id="dutyInFormPanel">
+          <p class="step-hint">식당을 먼저 선택하면 담당자를 지정할 수 있습니다.</p>
+        </div>
+      </div>
+
+      <!-- STEP 3: 메뉴 선택 + 주문 등록 -->
+      <div class="step-card" id="stepMenuCard">
+        <div class="step-header">
+          <span class="step-num">3</span>
+          <span class="step-title">메뉴 선택 및 주문 등록</span>
+        </div>
+        <div id="menuTags"><span class="tag-hint">식당을 먼저 선택하세요</span></div>
+        <div class="form-row">
+          <label>주문자 이름 <span style="font-weight:400;color:var(--muted);font-size:11px">(본인 또는 대신 입력)</span></label>
+          <select id="inputOrderName"></select>
+        </div>
+        <div class="form-row">
+          <label>메뉴</label>
+          <input type="text" id="inputMenu" placeholder="메뉴명 (위에서 선택 또는 직접 입력)">
+        </div>
+        <div class="form-row">
+          <label>수량</label>
+          <div class="qty-row">
+            <button class="qty-btn" id="qtyMinus">−</button>
+            <span id="qtyDisplay">1</span>
+            <button class="qty-btn" id="qtyPlus">+</button>
+          </div>
+        </div>
+        <div class="form-row">
+          <label>요청사항 (선택)</label>
+          <textarea id="inputNote" rows="2" placeholder="예: 매운맛, 안맵게, 곱빼기 등"></textarea>
+        </div>
+        <button class="btn-primary" id="addOrderBtn">주문 등록하기</button>
+      </div>
+
+      <!-- 자주 주문한 메뉴 (하단 빠른 재주문) -->
+      <div class="card" id="recommendSection" style="margin-top:4px">
+        <div class="card-title">⭐ 자주 주문한 메뉴 (빠른 재주문)</div>
+        <div id="recommendList"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 탭: 주문 목록 -->
+  <div class="tab-panel hidden" data-panel="list">
+    <div class="card" style="padding:0;overflow:hidden">
+      <ul id="orderList"><li class="empty-item">주문이 없습니다.</li></ul>
+    </div>
+  </div>
+
+  <!-- 탭: 요약/완료 -->
+  <div class="tab-panel hidden" data-panel="summary">
+    <!-- 식당별 통합 카드 (담당자+전화+마감+완료처리) -->
+    <div id="restCompleteArea"></div>
+    <!-- 전화 주문용 요약본 -->
+    <div id="summaryBox" class="hidden">
+      <div style="font-size:12px;color:var(--navy);font-weight:700;margin-bottom:8px;opacity:.8">📋 전화 주문용 요약</div>
+      <div id="summaryText"></div>
+      <button class="btn-copy" id="copyBtn">클립보드에 복사</button>
+    </div>
+    <!-- 주문 마감 / 전체 완료 취소 -->
+    <div class="card" style="margin-top:4px">
+      <div class="ctrl-row">
+        <button id="btnClose" class="ctrl-btn btn-close">🔒 주문 마감</button>
+        <button id="btnComplete" class="ctrl-btn btn-reopen hidden">↩ 전체 완료 취소</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 탭: 이력 -->
+  <div class="tab-panel hidden" data-panel="history">
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-title">⭐ 인기 메뉴 TOP 6</div>
+      <div id="topMenuList" style="display:flex;flex-wrap:wrap;gap:7px"></div>
+    </div>
+    <div class="card-title" style="margin-bottom:9px">최근 주문 기록</div>
+    <div id="historyList"></div>
+  </div>
+
+  <!-- 탭: 후기 -->
+  <div class="tab-panel hidden" data-panel="review">
+    <div class="card" id="reviewDateList">
+      <div class="card-title">📅 날짜 선택</div>
+      <div id="reviewDateBtns" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+    </div>
+    <div id="reviewArea"></div>
+  </div>
+
+  <!-- 탭: 식당 관리 -->
+  <div class="tab-panel hidden" data-panel="admin">
+    <div class="card-title" style="margin-bottom:10px">🏪 식당 추가</div>
+    <div class="add-rest-row">
+      <input type="text" id="newRestName" placeholder="새 식당 이름 입력">
+      <button id="addRestBtn">+ 추가</button>
+    </div>
+    <div class="card-title" style="margin-bottom:10px">식당 목록 (전화번호·마감시간·메뉴 관리)</div>
+    <div id="restaurantAdminList"></div>
+  </div>
+
+  <div class="footer-info">점심주문관리 시스템 v4.4</div>
+
+  <!-- ══ AI 추천 모달 ══ -->
+  <div id="aiModal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span>🤖 오늘의 메뉴 추천</span>
+        <button class="modal-close" id="aiModalClose">×</button>
+      </div>
+      <div id="aiResult" class="ai-result">
+        <div class="ai-loading" id="aiLoading">
+          <div class="spinner"></div>
+          <p>AI가 오늘 최적의 메뉴를 분석중...</p>
+        </div>
+        <div id="aiContent" class="hidden"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 슬롯머신 모달 ══ -->
+  <div id="slotModal" class="modal-overlay hidden">
+    <div class="modal-box slot-modal-box">
+      <div class="modal-header">
+        <span>🎰 점심 뽑기!</span>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="sound-btn" id="soundBtn" title="효과음 토글">🔊</button>
+          <button class="modal-close" id="slotModalClose">×</button>
+        </div>
+      </div>
+
+      <!-- 슬롯 디스플레이 -->
+      <div class="slot-display">
+        <div class="slot-reel-wrap">
+          <div class="slot-reel" id="slotReel1"></div>
+        </div>
+        <div class="slot-sep">×</div>
+        <div class="slot-reel-wrap">
+          <div class="slot-reel" id="slotReel2"></div>
+        </div>
+      </div>
+
+      <!-- 결과 표시 -->
+      <div id="slotResult" class="slot-result hidden"></div>
+
+      <!-- 버튼 -->
+      <div class="slot-btns">
+        <button class="slot-spin-btn" id="slotSpinBtn">🎰 START!</button>
+      </div>
+
+      <p class="slot-hint">식당과 메뉴가 결정됩니다!</p>
+    </div>
+  </div>
+</main>
+</div>
+
+<!-- 플로팅 -->
+<div id="floatPanel">
+  <div class="float-vm-row">
+    <button class="vm-btn" data-vm="mobile">📱</button>
+    <button class="vm-btn active" data-vm="auto">🖥</button>
+    <button class="vm-btn" data-vm="pc">⛶</button>
+  </div>
+  <button class="float-add-btn" id="floatAddBtn">➕ 추가 주문</button>
+</div>
+
+<div id="toast"></div>
+
+<!-- ══════════════════════════════════════════════════════
+     Firebase + 앱 로직
+════════════════════════════════════════════════════════ -->
+<script type="module">
+import { initializeApp }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, collection, onSnapshot, setDoc, addDoc,
+         getDocs, query, orderBy, limit, serverTimestamp, deleteDoc }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// ── Firebase ─────────────────────────────────────────
+const firebaseConfig = {
+  apiKey:            "AIzaSyBYqd2uRr1ZvFLDCWuS15h9qFkT-Dvg5Es",
+  authDomain:        "insys-work.firebaseapp.com",
+  projectId:         "insys-work",
+  storageBucket:     "insys-work.firebasestorage.app",
+  messagingSenderId: "225275784859",
+  appId:             "1:225275784859:web:bd12815c6dc47c0c49e03e"
+};
+const db = getFirestore(initializeApp(firebaseConfig));
+
+// ── 기본 데이터 ───────────────────────────────────────
+const MEMBERS = [
+  '권창오','권하정','기상운','김양섭','김원효','김임정',
+  '김진섭','김진익','김효중','박영은','박태희','백하경',
+  '손경숙','이가은','이미하','이주란','임혜수','정보라',
+  '정채윤','조선아','조승현','최진이','하봉군','황혜선'
+];
+
+const DEFAULT_RESTAURANTS = [
+  { name:'목화식당',       phone:'', deadline:'', menus:['돌솥비빔밥','김치찌개','육개장','두루치기정식','된장찌개','순두부찌개'] },
+  { name:'대박밀면',       phone:'', deadline:'', menus:['물비빔밀면정식(쉐어)','물비빔밀면(매운맛)','제육덮밥','등심돈까스'] },
+  { name:'찐한순대국밥',   phone:'', deadline:'', menus:['순대국밥','내장뺀순대국밥','내장국밥','돼지국밥'] },
+  { name:'달리는커피',     phone:'', deadline:'', menus:['훈제오리&고구마박스','오리엔탈케이준현미부리또','케이준치킨샌드위치','시그니처파스타샐러드','단호박베이컨샌드위치'] },
+  { name:'맥도날드',       phone:'', deadline:'', menus:['1955버거단품','빅맥세트','슈비버거세트','맥스파이시상하이버거세트','맥앤치즈더블비프(단품)'] },
+  { name:'쌈마이닭쌈밥',   phone:'', deadline:'', menus:['양념닭쌈밥','마늘닭쌈밥','불닭쌈밥','고바비(쉐어)'] },
+  { name:'부산식당',       phone:'', deadline:'', menus:['순두부찌개','된장찌개','청국장찌개','직화제육볶음','김치찌개'] },
+  { name:'짬뽕도감',       phone:'', deadline:'', menus:['짜장면','순두부짬뽕밥','짬뽕밥(맵게)','짬뽕밥(보통)','새우볶음밥'] },
+  { name:'양평해장국',     phone:'', deadline:'', menus:['양평해장국','선지해장국','소고기국','내장탕'] },
+  { name:'청기와감자탕',   phone:'', deadline:'', menus:['해장국','감자탕'] },
+  { name:'가마솥국밥',     phone:'', deadline:'', menus:['순대국밥','살코기국밥','돼지국밥','섞어국밥'] },
+  { name:'미가식당',       phone:'', deadline:'', menus:['오징어볶음','돼지두루치기'] },
+  { name:'경창아구찜',     phone:'', deadline:'', menus:['아구찜보통','대구뽈찜(소-순한맛)','대구뽈찜(소-매운맛)'] },
+  { name:'김밥천국',       phone:'', deadline:'', menus:['치즈돈까스','갈비탕','참치김밥','떡라면','치즈라면','오므라이스'] },
+  { name:'홍콩반점',       phone:'', deadline:'', menus:['짜장면','짬뽕','볶음밥','탕수육'] },
+  { name:'사이공본가',     phone:'', deadline:'', menus:['소고기쌀국수','파인애플볶음밥'] },
+  { name:'조쉐프의쌀국수', phone:'', deadline:'', menus:['소고기쌀국수','왕새우팟타이','나시고랭'] },
+  { name:'시댁',           phone:'', deadline:'', menus:['돼지김치전골','제육볶음+찌개+공기밥'] },
+  { name:'배부장',         phone:'', deadline:'', menus:['김치찌개','된장찌개'] },
+  { name:'기타',           phone:'', deadline:'', menus:[] },
+];
+
+// ── 상태 ─────────────────────────────────────────────
+// 전역 날씨 캐시 (loadWeather → openAiRec 공유)
+let G_WEATHER = {temp:null, wcode:-1, wdesc:'', humidity:0, precipProb:0, loaded:false};
+
+let myName          = localStorage.getItem('insys_lunch_name') || '';
+let qty             = 1;
+let selRest         = '';
+let dynRestaurants  = [];
+let recData         = {};
+let todayOrders     = [];
+let isClosed        = false;
+let isCompleted     = false;
+let restaurantStatus = {};
+let restDuty        = {}; // {식당명: 담당자이름}
+let lastRestFreq    = {};
+let lastSortedRests = null;
+
+const todayKey = () => new Date().toISOString().slice(0,10);
+const fmtTime  = d  => d ? new Date(d.seconds*1000).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}) : '';
+const fmtDate  = s  => { const [,m,d]=s.split('-'); return `${+m}월 ${+d}일`; };
+const $        = id => document.getElementById(id);
+const esc      = s  => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const showToast = msg => {
+  const t=$('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2600);
+};
+
+// ══════════════════════════════════════════════════════
+// 초기화
+// ══════════════════════════════════════════════════════
+$('todayDate').textContent = new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
+populateNames();
+bindEvents();
+startClock();
+loadWeather();
+applyViewMode(localStorage.getItem('insys_viewmode')||'auto');
+
+if (myName) {
+  $('nameSelect').value = myName;
+  startApp();
+} else {
+  $('loginScreen').classList.remove('hidden');
+}
+
+// ── 이름 목록 채우기 ──────────────────────────────────
+function populateNames() {
+  ['nameSelect','inputOrderName'].forEach(id => {
+    const sel = $(id); if (!sel) return;
+    if (id==='inputOrderName') {
+      const def=document.createElement('option'); def.value=''; def.textContent='이름 선택'; sel.appendChild(def);
+    }
+    MEMBERS.forEach(n => {
+      const o=document.createElement('option'); o.value=n; o.textContent=n; sel.appendChild(o);
+    });
+  });
+}
+
+// ── 앱 시작 ───────────────────────────────────────────
+function startApp() {
+  $('loginScreen').classList.add('hidden');
+  $('mainScreen').classList.remove('hidden');
+  $('userBadge').textContent = myName;
+  $('inputOrderName').value  = myName;
+  subscribeToday();
+  loadRestaurants();
+  scheduleAutoReset();
+}
+
+// ══════════════════════════════════════════════════════
+// Firebase 실시간 구독
+// ══════════════════════════════════════════════════════
+function subscribeToday() {
+  const dk = todayKey();
+  onSnapshot(doc(db,'lunch_days',dk), snap => {
+    const d = snap.exists() ? snap.data() : {};
+    isClosed          = !!d.closed;
+    isCompleted       = !!d.completed;
+    restaurantStatus  = d.restaurantStatus || {};
+    restDuty          = d.restDuty || {};
+    updateStatusUI();    // 담당자 변경 시 마감버튼 상태도 갱신
+    renderDutyPanel();
+    renderRestCompleteArea();
+  });
+  onSnapshot(
+    query(collection(db,'lunch_days',dk,'orders'), orderBy('createdAt')),
+    snap => {
+      todayOrders = snap.docs.map(d=>({id:d.id,...d.data()}));
+      renderOrders();
+      renderSummary();
+      renderRestCompleteArea();
+      updateStats();
+    }
+  );
+}
+
+// ══════════════════════════════════════════════════════
+// 식당 목록 로드 (Firebase)
+// ══════════════════════════════════════════════════════
+async function loadRestaurants() {
+  try {
+    const snap = await getDocs(collection(db,'restaurant_list'));
+    if (snap.empty) {
+      for (let i=0; i<DEFAULT_RESTAURANTS.length; i++) {
+        const r = DEFAULT_RESTAURANTS[i];
+        await setDoc(doc(db,'restaurant_list',r.name), {...r, order:i});
+      }
+      dynRestaurants = DEFAULT_RESTAURANTS.map((r,i)=>({...r,order:i}));
+    } else {
+      dynRestaurants = snap.docs.map(d=>d.data()).sort((a,b)=>(a.order||0)-(b.order||0));
+    }
+  } catch(e) {
+    dynRestaurants = DEFAULT_RESTAURANTS;
+  }
+  buildRestButtons({});
+  renderRestaurantAdmin();
+  // 식당 데이터 로드 완료 후 요약/완료 탭 재렌더 (phone·deadline 반영)
+  renderRestCompleteArea();
+  renderDutyPanel();
+  loadHistory();
+}
+
+// ══════════════════════════════════════════════════════
+// 이력 & 추천
+// ══════════════════════════════════════════════════════
+async function loadHistory() {
+  try {
+    const snap = await getDocs(query(collection(db,'lunch_history'),orderBy('date','desc'),limit(40)));
+    recData = {};
+    const restFreq = {};
+    snap.docs.forEach(d => {
+      (d.data().orders||[]).forEach(o => {
+        if (!o.menu||!o.restaurant) return;
+        recData[o.restaurant+'||'+o.menu] = (recData[o.restaurant+'||'+o.menu]||0)+1;
+        restFreq[o.restaurant] = (restFreq[o.restaurant]||0)+1;
+      });
+    });
+    const sorted = [...dynRestaurants].sort((a,b)=>(restFreq[b.name]||0)-(restFreq[a.name]||0));
+    lastRestFreq = restFreq; lastSortedRests = sorted;
+    buildRestButtons(restFreq, sorted);
+    reviewHistoryCache = snap.docs.map(d=>d.data());
+    renderRecommend();
+    renderTopMenus();
+    renderHistoryCards(reviewHistoryCache.slice(0,5));
+    renderReviewDateList();
+  } catch(e) { console.warn('history:', e); }
+}
+
+// ══════════════════════════════════════════════════════
+// 식당 버튼
+// ══════════════════════════════════════════════════════
+// 식당 목록 변경(추가/수정/삭제) 후 즉시 버튼 재빌드
+function rebuildRestButtons() {
+  const freq = lastRestFreq || {};
+  // dynRestaurants 를 빈도 순으로 정렬
+  const sorted = [...dynRestaurants].sort((a,b)=>(freq[b.name]||0)-(freq[a.name]||0));
+  lastSortedRests = sorted;
+  buildRestButtons(freq, sorted);
+}
+
+function buildRestButtons(freq, sorted) {
+  const list = sorted || dynRestaurants;
+  const grid = $('restaurantGrid');
+  grid.innerHTML = '';
+  list.forEach(r => {
+    const btn = document.createElement('button');
+    const done = restaurantStatus[r.name] || false;
+    btn.className = 'rest-btn' + (done ? ' rest-done' : '');
+    btn.dataset.name = r.name;
+    if (done) btn.disabled = true;
+    const cnt = freq[r.name] ? '<span class="rest-cnt">'+freq[r.name]+'</span>' : '';
+    const doneTag = done ? '<span class="rest-done-tag">✅</span>' : '';
+    btn.innerHTML = esc(r.name) + cnt + doneTag;
+    if (!done) btn.addEventListener('click', () => selectRest(r.name));
+    grid.appendChild(btn);
+  });
+}
+
+function selectRest(name) {
+  selRest = name;
+  $('inputRestaurant').value = name;
+  document.querySelectorAll('.rest-btn').forEach(b=>b.classList.toggle('active',b.dataset.name===name));
+
+  // STEP1 선택 식당명 표시
+  const lbl = $('selectedRestLabel');
+  if (lbl) lbl.textContent = name;
+
+  // STEP2 담당자 패널 업데이트
+  renderDutyInForm(name);
+
+  const rest = dynRestaurants.find(r=>r.name===name);
+  const el = $('menuTags');
+  if (!rest || !rest.menus || !rest.menus.length) {
+    el.innerHTML='<span class="tag-hint">직접 입력해 주세요</span>'; return;
+  }
+  const sorted = [...rest.menus].sort((a,b)=>(recData[name+'||'+b]||0)-(recData[name+'||'+a]||0));
+  el.innerHTML = sorted.map(m => {
+    const cnt = recData[name+'||'+m];
+    return '<button class="menu-tag" data-menu="'+esc(m)+'">'+esc(m)+(cnt?'<span class="tag-cnt">'+cnt+'</span>':'')+'</button>';
+  }).join('');
+  el.querySelectorAll('.menu-tag').forEach(btn => {
+    btn.addEventListener('click', () => {
+      $('inputMenu').value = btn.dataset.menu;
+      el.querySelectorAll('.menu-tag').forEach(t=>t.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+}
+
+// STEP2: 폼 내 담당자 패널
+function renderDutyInForm(restName) {
+  const el = $('dutyInFormPanel'); if (!el || !restName) return;
+  const duty = restDuty[restName] || '';
+  const lbl  = $('dutyLabelInForm');
+
+  if (duty) {
+    if (lbl) lbl.textContent = duty + ' 담당';
+    el.innerHTML =
+      '<div class="duty-filled">' +
+        '<span class="duty-icon">👤</span>' +
+        '<span class="duty-name">'+esc(duty)+'</span>' +
+        '<span class="duty-label">님이 '+esc(restName)+' 담당</span>' +
+        (duty===myName
+          ? '<button class="duty-cancel-btn" id="formCancelDutyBtn" data-rest="'+esc(restName)+'">취소</button>'
+          : '') +
+      '</div>';
+    if (duty===myName) {
+      $('formCancelDutyBtn').addEventListener('click', () => cancelDuty($('formCancelDutyBtn').dataset.rest));
+    }
+  } else {
+    if (lbl) lbl.textContent = '';
+    el.innerHTML =
+      '<div class="duty-empty" style="padding:2px 0">' +
+        '<button class="duty-volunteer-btn" id="formVolunteerBtn" data-rest="'+esc(restName)+'">📞 내가 '+esc(restName)+' 주문할게요!</button>' +
+      '</div>';
+    $('formVolunteerBtn').addEventListener('click', () => volunteerDuty($('formVolunteerBtn').dataset.rest));
+  }
+}
+
+// ── 추천 메뉴 ──────────────────────────────────────
+function renderRecommend() {
+  const top = Object.entries(recData).sort((a,b)=>b[1]-a[1]).slice(0,6)
+    .map(([k,cnt])=>{ const [rest,menu]=k.split('||'); return {rest,menu,cnt}; });
+  if (!top.length) { $('recommendSection').classList.add('hidden'); return; }
+  $('recommendSection').classList.remove('hidden');
+  const el = $('recommendList');
+  el.innerHTML = '';
+  top.forEach(({rest,menu,cnt}) => {
+    const btn = document.createElement('button');
+    btn.className = 'rec-btn';
+    btn.innerHTML = `<span class="rec-menu">${esc(menu)}</span><span class="rec-rest">${esc(rest)}</span><span class="rec-cnt">${cnt}회</span>`;
+    btn.addEventListener('click', () => { selectRest(rest); $('inputMenu').value=menu; });
+    el.appendChild(btn);
+  });
+}
+
+function renderTopMenus() {
+  const top = Object.entries(recData).sort((a,b)=>b[1]-a[1]).slice(0,6)
+    .map(([k,cnt])=>{ const [rest,menu]=k.split('||'); return {rest,menu,cnt}; });
+  const el = $('topMenuList'); if (!el) return;
+  el.innerHTML = top.map(({rest,menu,cnt})=>
+    `<div style="background:var(--tagbg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px;">
+      <div style="font-weight:700;font-size:13px">${esc(menu)}</div>
+      <div style="color:var(--muted);margin-top:2px">${esc(rest)} · ${cnt}회</div>
+    </div>`
+  ).join('');
+}
+
+// ══════════════════════════════════════════════════════
+// 주문 추가
+// ══════════════════════════════════════════════════════
+async function addOrder() {
+  if (isClosed) { showToast('주문이 마감되었습니다'); return; }
+  const orderName  = $('inputOrderName').value || myName;
+  const menu       = $('inputMenu').value.trim();
+  const restaurant = $('inputRestaurant').value.trim();
+  const note       = $('inputNote').value.trim();
+  if (!orderName)  { showToast('주문자 이름을 선택해 주세요'); return; }
+  if (!restaurant) { showToast('식당을 선택해 주세요'); return; }
+  if (!menu)       { showToast('메뉴를 입력해 주세요'); return; }
+  if (todayOrders.find(o=>o.name===orderName&&o.restaurant===restaurant&&o.menu===menu))
+    { showToast('이미 같은 주문이 있습니다'); return; }
+  try {
+    await addDoc(collection(db,'lunch_days',todayKey(),'orders'),
+      { name:orderName, menu, restaurant, qty, note, createdAt:serverTimestamp() });
+    $('inputMenu').value=''; $('inputNote').value='';
+    qty=1; $('qtyDisplay').textContent='1';
+    selRest=''; $('inputRestaurant').value='';
+    $('inputOrderName').value = myName;
+    document.querySelectorAll('.menu-tag,.rest-btn').forEach(t=>t.classList.remove('active'));
+    $('menuTags').innerHTML='<span class="tag-hint">식당을 선택하세요</span>';
+    renderDutyPanel();
+    updateStatusUI();
+    if (selRest) renderDutyInForm(selRest);
+    showToast(orderName+'님 주문 등록 완료!');
+  } catch(e) { showToast('오류: '+e.message); }
+}
+
+async function deleteOrder(id, ownerName) {
+  if (isCompleted) { showToast('주문 완료 건은 삭제 불가합니다'); return; }
+  if (ownerName !== myName && !confirm(ownerName+'님 주문을 삭제할까요?')) return;
+  await deleteDoc(doc(db,'lunch_days',todayKey(),'orders',id));
+  showToast('삭제되었습니다');
+}
+
+// ══════════════════════════════════════════════════════
+// 마감 / 식당별 완료
+// ══════════════════════════════════════════════════════
+async function toggleClose() {
+  const ref = doc(db,'lunch_days',todayKey());
+  if (!isClosed) {
+    // 오늘 주문된 식당 목록
+    const rests = [...new Set(todayOrders.map(o=>o.restaurant||'기타'))];
+    if (!rests.length) { showToast('주문이 없습니다'); return; }
+    // 담당자 미지정 식당 확인
+    const unassigned = rests.filter(r=>!(restDuty[r]&&restDuty[r].trim()));
+    if (unassigned.length > 0) {
+      showToast('담당자 미지정: ' + unassigned.join(', '));
+      // 요약/완료 탭으로 이동
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab==='summary'));
+      document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('hidden',p.dataset.panel!=='summary'));
+      return;
+    }
+    if (!confirm('모든 식당 담당자가 지정되었습니다.\n주문을 마감할까요?')) return;
+    await setDoc(ref,{closed:true,closedBy:myName,closedAt:serverTimestamp()},{merge:true});
+    showToast('마감되었습니다 🔒');
+  } else {
+    if (!confirm('마감을 해제할까요?')) return;
+    await setDoc(ref,{closed:false},{merge:true});
+    showToast('마감이 해제되었습니다');
+  }
+}
+
+async function toggleRestComplete(restName) {
+  const ref = doc(db,'lunch_days',todayKey());
+  const cur = restaurantStatus[restName] || false;
+  const newStatus = Object.assign({}, restaurantStatus, {[restName]: !cur});
+  await setDoc(ref,{restaurantStatus:newStatus},{merge:true});
+  const allRests = [...new Set(todayOrders.map(o=>o.restaurant||'기타'))];
+  const allDone  = allRests.every(r=>newStatus[r]);
+  if (allDone && !isCompleted) {
+    if (confirm('모든 식당 완료! 전체 완료 처리할까요?')) {
+      // 식당별 마감시간 스냅샷 저장
+      const restDeadlines = {};
+      dynRestaurants.forEach(r=>{ if(r.deadline) restDeadlines[r.name]=r.deadline; });
+      await setDoc(doc(db,'lunch_history',todayKey()),{
+        date:todayKey(),
+        orders:todayOrders.map(o=>({name:o.name,menu:o.menu,restaurant:o.restaurant,qty:o.qty,note:o.note||''})),
+        restDuty: restDuty,
+        restDeadlines: restDeadlines,
+        completedBy:myName, updatedAt:serverTimestamp()
+      },{merge:true});
+      await setDoc(ref,{completed:true,completedBy:myName,completedAt:serverTimestamp()},{merge:true});
+      loadHistory();
+      showToast('전체 주문 완료! 🎉');
+    }
+  } else {
+    showToast(!cur ? restName+' 완료 ✅' : restName+' 완료 취소');
+  }
+}
+
+async function cancelAllComplete() {
+  if (!confirm('전체 완료를 취소할까요?')) return;
+  await setDoc(doc(db,'lunch_days',todayKey()),{completed:false,restaurantStatus:{},restDuty:{}},{merge:true});
+  showToast('완료가 취소되었습니다');
+}
+
+// ══════════════════════════════════════════════════════
+// 주문 담당자
+// ══════════════════════════════════════════════════════
+async function volunteerDuty(restName) {
+  const cur = restDuty[restName] || '';
+  if (cur && cur!==myName) {
+    if (!confirm(cur+'님이 '+restName+' 담당 중입니다. 변경할까요?')) return;
+  }
+  const newDuty = Object.assign({}, restDuty, {[restName]: myName});
+  await setDoc(doc(db,'lunch_days',todayKey()),{restDuty:newDuty},{merge:true});
+  showToast(myName+'님이 '+restName+' 주문 담당자로 등록되었습니다!');
+}
+
+async function cancelDuty(restName) {
+  if (!confirm(restName+' 주문 담당을 취소할까요?')) return;
+  const newDuty = Object.assign({}, restDuty, {[restName]: ''});
+  await setDoc(doc(db,'lunch_days',todayKey()),{restDuty:newDuty},{merge:true});
+  showToast('담당이 취소되었습니다');
+}
+
+// ══════════════════════════════════════════════════════
+// 식당 관리
+// ══════════════════════════════════════════════════════
+function renderRestaurantAdmin() {
+  const el = $('restaurantAdminList'); if (!el) return;
+  if (!dynRestaurants.length) { el.innerHTML='<p class="empty-item">등록된 식당이 없습니다.</p>'; return; }
+  el.innerHTML = dynRestaurants.map((r,i) => `
+    <div class="admin-rest-card">
+      <div class="arc-header">
+        <span class="arc-name">${esc(r.name)}</span>
+        <div class="arc-actions">
+          <button class="arc-btn edit" data-edit="${i}">수정</button>
+          <button class="arc-btn del"  data-del="${i}" data-name="${esc(r.name)}">삭제</button>
+        </div>
+      </div>
+      <div class="arc-info">
+        <span>📞 ${esc(r.phone)||'전화번호 없음'}</span>
+        <span>⏰ 마감 ${esc(r.deadline)||'미설정'}</span>
+      </div>
+      <div class="arc-edit hidden" id="are_${i}">
+        <div class="form-row" style="margin-top:10px"><label>전화번호</label>
+          <input type="tel" id="arPhone_${i}" value="${esc(r.phone||'')}" placeholder="055-000-0000">
+        </div>
+        <div class="form-row"><label>마감 시간</label>
+          <input type="text" id="arDeadline_${i}" value="${esc(r.deadline||'')}" placeholder="예: 10:45">
+        </div>
+        <div class="form-row"><label>메뉴 (쉼표로 구분)</label>
+          <textarea id="arMenus_${i}" rows="3">${esc((r.menus||[]).join(', '))}</textarea>
+        </div>
+        <div class="arc-edit-row">
+          <button class="arc-btn save" data-save="${i}" data-name="${esc(r.name)}">저장</button>
+          <button class="arc-btn cancel" data-cancel="${i}">취소</button>
+        </div>
+      </div>
+    </div>`).join('');
+
+  // 이벤트 바인딩
+  el.querySelectorAll('[data-edit]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      el.querySelectorAll('.arc-edit').forEach(e=>e.classList.add('hidden'));
+      $(`are_${btn.dataset.edit}`).classList.remove('hidden');
+    });
+  });
+  el.querySelectorAll('[data-cancel]').forEach(btn => {
+    btn.addEventListener('click', () => $(`are_${btn.dataset.cancel}`).classList.add('hidden'));
+  });
+  el.querySelectorAll('[data-save]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const i = btn.dataset.save, name = btn.dataset.name;
+      const phone    = $(`arPhone_${i}`).value.trim();
+      const deadline = $(`arDeadline_${i}`).value.trim();
+      const menus    = $(`arMenus_${i}`).value.split(',').map(m=>m.trim()).filter(Boolean);
+      await setDoc(doc(db,'restaurant_list',name),{name,phone,deadline,menus,order:+i},{merge:true});
+      const idx = dynRestaurants.findIndex(r=>r.name===name);
+      if (idx>=0) dynRestaurants[idx] = Object.assign({},dynRestaurants[idx],{phone,deadline,menus});
+      rebuildRestButtons();
+      renderRestaurantAdmin();
+      renderRestCompleteArea();
+      showToast(name+' 저장 완료');
+    });
+  });
+  el.querySelectorAll('[data-del]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const name = btn.dataset.name;
+      if (!confirm('"'+name+'" 을 삭제할까요?')) return;
+      await deleteDoc(doc(db,'restaurant_list',name));
+      dynRestaurants = dynRestaurants.filter(r=>r.name!==name);
+      rebuildRestButtons();
+      renderRestaurantAdmin();
+      showToast(name+' 삭제 완료');
+    });
+  });
+}
+
+async function addNewRestaurant() {
+  const name = $('newRestName').value.trim();
+  if (!name) { showToast('식당 이름을 입력해 주세요'); return; }
+  if (dynRestaurants.find(r=>r.name===name)) { showToast('이미 등록된 식당입니다'); return; }
+  const newRest = {name, phone:'', deadline:'', menus:[], order:dynRestaurants.length};
+  await setDoc(doc(db,'restaurant_list',name), newRest);
+  dynRestaurants.push(newRest);
+  rebuildRestButtons();
+  renderRestaurantAdmin();
+  $('newRestName').value = '';
+  showToast(name+' 추가 완료 — 주문 등록 탭에 바로 반영됩니다');
+}
+
+// ══════════════════════════════════════════════════════
+// 렌더링
+// ══════════════════════════════════════════════════════
+function updateStatusUI() {
+  const badge = $('statusBadge');
+  if (isCompleted) { badge.textContent='✅ 주문 완료'; badge.className='status-badge done'; }
+  else if (isClosed) { badge.textContent='🔒 마감'; badge.className='status-badge closed'; }
+  else { badge.textContent='🟢 접수 중'; badge.className='status-badge open'; }
+  $('orderForm').style.opacity       = isClosed ? '0.45' : '1';
+  $('orderForm').style.pointerEvents = isClosed ? 'none' : '';
+  // 마감 버튼 — 담당자 미지정 시 경고 스타일
+  const rests = [...new Set(todayOrders.map(o=>o.restaurant||'기타'))];
+  const allAssigned = rests.length > 0 && rests.every(r=>restDuty[r]&&restDuty[r].trim());
+  if (!isClosed) {
+    $('btnClose').textContent = allAssigned ? '🔒 주문 마감' : '⚠️ 담당자 지정 후 마감 가능';
+    $('btnClose').className   = 'ctrl-btn ' + (allAssigned ? 'btn-close' : 'btn-warn');
+  } else {
+    $('btnClose').textContent = '🔓 마감 해제';
+    $('btnClose').className   = 'ctrl-btn btn-reopen';
+  }
+  if (isCompleted) $('btnComplete').classList.remove('hidden');
+  else $('btnComplete').classList.add('hidden');
+}
+
+function renderDutyPanel() {
+  // dutyPanel 제거됨 → renderRestCompleteArea 로 통합
+  renderRestCompleteArea();
+  const el = $('dutyPanel'); if (!el) return;
+  // 오늘 주문한 식당 목록
+  const rests = [...new Set(todayOrders.map(o=>o.restaurant||'기타'))];
+  if (!rests.length) {
+    el.innerHTML = '<p style="font-size:13px;color:var(--muted);text-align:center;padding:8px">주문 등록 후 담당자를 지정할 수 있습니다.</p>';
+    return;
+  }
+  el.innerHTML = rests.map(rest => {
+    const duty = restDuty[rest] || '';
+    const done = restaurantStatus[rest] || false;
+    const restInfo = dynRestaurants.find(r=>r.name===rest);
+    const deadline = restInfo && restInfo.deadline ? ' (마감 '+restInfo.deadline+')' : '';
+    return '<div class="rest-duty-row">' +
+      '<div class="rest-duty-header">' +
+        '<span class="rest-duty-name">' + esc(rest) + '</span>' +
+        '<span class="rest-duty-deadline">' + esc(deadline) + '</span>' +
+        (done ? '<span class="rest-duty-done-badge">✅ 완료</span>' : '') +
+      '</div>' +
+      (duty
+        ? '<div class="rest-duty-filled">' +
+            '<span class="duty-icon">👤</span>' +
+            '<span class="duty-name">' + esc(duty) + '</span>' +
+            '<span class="duty-label">담당</span>' +
+            (!done && duty===myName ? '<button class="duty-cancel-btn" data-rest="' + esc(rest) + '">취소</button>' : '') +
+          '</div>'
+        : (!done ? '<div class="duty-empty" style="padding:6px 0">' +
+            '<button class="duty-volunteer-btn" data-rest="' + esc(rest) + '">📞 내가 ' + esc(rest) + ' 주문할게요!</button>' +
+          '</div>' : '')
+      ) +
+    '</div>';
+  }).join('');
+
+  // 이벤트 바인딩
+  el.querySelectorAll('.duty-volunteer-btn').forEach(btn => {
+    btn.addEventListener('click', () => volunteerDuty(btn.dataset.rest));
+  });
+  el.querySelectorAll('.duty-cancel-btn').forEach(btn => {
+    btn.addEventListener('click', () => cancelDuty(btn.dataset.rest));
+  });
+  // 폼 내 담당자도 동기화
+  if (selRest) renderDutyInForm(selRest);
+}
+
+function renderRestCompleteArea() {
+  const el = $('restCompleteArea'); if (!el) return;
+  if (!todayOrders.length) {
+    el.innerHTML = '<div class="rca-empty">주문을 등록하면 여기에 표시됩니다.</div>';
+    return;
+  }
+  const rests = [...new Set(todayOrders.map(o=>o.restaurant||'기타'))];
+  el.innerHTML = rests.map(rest => {
+    const done     = restaurantStatus[rest] || false;
+    const ri       = dynRestaurants.find(r=>r.name===rest);
+    const phone    = ri && ri.phone    ? ri.phone    : '';
+    const deadline = ri && ri.deadline ? ri.deadline : '';
+    const duty     = restDuty[rest]    ? restDuty[rest] : '';
+
+    // 담당자 영역 — 지정/미지정 분기
+    const dutySection = done
+      ? (duty ? '<div class="rca-duty-row"><span class="rca-duty">👤 '+esc(duty)+' 담당</span></div>' : '')
+      : (duty
+          ? '<div class="rca-duty-row">' +
+              '<span class="rca-duty">👤 '+esc(duty)+' 담당</span>' +
+              (duty===myName ? '<button class="rca-duty-cancel" data-rest="'+esc(rest)+'">취소</button>' : '') +
+            '</div>'
+          : '<div class="rca-duty-row">' +
+              '<button class="rca-volunteer-btn" data-rest="'+esc(rest)+'">👤 내가 '+esc(rest)+' 주문할게요!</button>' +
+            '</div>'
+        );
+
+    return '<div class="rca-card '+(done?'rca-done':'')+'">' +
+      '<div class="rca-top">' +
+        '<div class="rca-info">' +
+          '<span class="rca-name">'+esc(rest)+'</span>' +
+          '<div class="rca-meta">' +
+            (phone    ? '<span class="rca-phone">📞 '+esc(phone)+'</span>'
+                      : '<span class="rca-phone rca-unset">📞 미등록</span>') +
+            (deadline ? '<span class="rca-deadline">⏰ '+esc(deadline)+' 마감</span>'
+                      : '<span class="rca-deadline rca-unset">⏰ 마감 미설정</span>') +
+          '</div>' +
+        '</div>' +
+        (done
+          ? '<span class="rca-badge">✅ 완료</span>'
+          : '<button class="rca-btn" data-rest="'+esc(rest)+'">📞 완료 처리</button>'
+        ) +
+      '</div>' +
+      dutySection +
+    '</div>';
+  }).join('');
+
+  // 이벤트 바인딩
+  el.querySelectorAll('.rca-btn').forEach(b =>
+    b.addEventListener('click', () => toggleRestComplete(b.dataset.rest)));
+  el.querySelectorAll('.rca-volunteer-btn').forEach(b =>
+    b.addEventListener('click', () => volunteerDuty(b.dataset.rest)));
+  el.querySelectorAll('.rca-duty-cancel').forEach(b =>
+    b.addEventListener('click', () => cancelDuty(b.dataset.rest)));
+
+  buildRestButtons(lastRestFreq, lastSortedRests);
+}
+
+function renderOrders() {
+  const ul = $('orderList');
+  updateStats();
+  if (!todayOrders.length) { ul.innerHTML='<li class="empty-item">아직 주문이 없습니다.</li>'; return; }
+  const grouped = {};
+  todayOrders.forEach(o => {
+    const r=o.restaurant||'기타';
+    if (!grouped[r]) grouped[r]=[];
+    grouped[r].push(o);
+  });
+  ul.innerHTML = Object.entries(grouped).map(([rest,items]) => {
+    const ri  = dynRestaurants.find(r=>r.name===rest);
+    // 마감시간
+    const dl  = ri && ri.deadline
+      ? '<span class="grp-deadline">⏰ '+ri.deadline+' 마감</span>'
+      : '<span class="grp-deadline grp-unset">⏰ 마감 미설정</span>';
+    // 담당자 — 미지정 시 클릭하면 요약/완료 탭으로 이동
+    const dy  = restDuty[rest]
+      ? '<span class="grp-duty">👤 '+esc(restDuty[rest])+' 담당</span>'
+      : '<button class="grp-duty-btn" data-rest="'+esc(rest)+'">👤 담당자 지정하기 ▶</button>';
+    const rows = items.map((o,i) => {
+      const del = !isCompleted ? '<button class="del-btn" data-id="'+o.id+'" data-owner="'+esc(o.name)+'">×</button>' : '';
+      const note = o.note ? '<span class="order-note">'+esc(o.note)+'</span>' : '';
+      return '<div class="order-row'+(o.name===myName?' mine':'')+'">'+
+        '<span class="order-seq">'+(i+1)+'</span>'+
+        '<div class="order-body">'+
+          '<span class="order-name">'+esc(o.name)+'</span>'+
+          '<span class="order-menu">'+esc(o.menu)+' × '+o.qty+'</span>'+
+          note+
+        '</div>'+
+        del+
+      '</div>';
+    }).join('');
+    return '<li class="order-group">'+
+      '<div class="group-header">'+
+        '<div class="group-top">'+
+          '<span class="group-rest">'+esc(rest)+'</span>'+
+          '<span class="group-cnt">'+items.length+'명</span>'+
+        '</div>'+
+        '<div class="group-meta">'+dl+dy+'</div>'+
+      '</div>'+
+      rows+
+    '</li>';
+  }).join('');
+  // 담당자 미지정 버튼 클릭 → 요약/완료 탭으로 이동
+  ul.querySelectorAll('.grp-duty-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab==='summary'));
+      document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('hidden',p.dataset.panel!=='summary'));
+      window.scrollTo({top:0,behavior:'smooth'});
+      showToast(btn.dataset.rest+' 담당자를 지정해 주세요');
+    });
+  });
+  ul.querySelectorAll('.del-btn').forEach(btn => {
+    btn.addEventListener('click', () => deleteOrder(btn.dataset.id, btn.dataset.owner));
+  });
+}
+
+function renderSummary() {
+  const el = $('summaryBox');
+  if (!todayOrders.length) { el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+  const grouped = {};
+  todayOrders.forEach(o => {
+    const r=o.restaurant||'기타';
+    if (!grouped[r]) grouped[r]={};
+    const k=o.note?`${o.menu}(${o.note})`:o.menu;
+    if (!grouped[r][k]) grouped[r][k]={qty:0,names:[]};
+    grouped[r][k].qty+=o.qty; grouped[r][k].names.push(o.name);
+  });
+  const today = new Date().toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'});
+  let text=`[인시스 점심주문] ${today}\n`;
+  Object.entries(grouped).forEach(([rest,menus]) => {
+    const ri2=dynRestaurants.find(r=>r.name===rest);
+    const dl2=ri2&&ri2.deadline?' ⏰'+ri2.deadline:'';
+    const dy2=restDuty[rest]?' 👤'+restDuty[rest]:'';
+    text+=`▶${rest}${dl2}${dy2}\n`;
+    Object.entries(menus).forEach(([menu,d]) => { text+=` · ${menu} ${d.qty}개 ${d.names.join(',')}\n`; });
+  });
+  text+=`합계 ${todayOrders.reduce((s,o)=>s+o.qty,0)}개/${todayOrders.length}명`;
+  $('summaryText').textContent=text;
+}
+
+function updateStats() {
+  $('statPeople').textContent = todayOrders.length;
+  $('statQty').textContent    = todayOrders.reduce((s,o)=>s+o.qty,0);
+  $('statRests').textContent  = new Set(todayOrders.map(o=>o.restaurant)).size;
+}
+
+function renderHistoryCards(list) {
+  const el=$('historyList'); if (!el) return;
+  if (!list.length) { el.innerHTML='<p class="empty-item">기록 없음</p>'; return; }
+  el.innerHTML=list.map(day=>{
+    const byR={};
+    (day.orders||[]).forEach(o=>{byR[o.restaurant||'기타']=(byR[o.restaurant||'기타']||0)+o.qty;});
+    const duty      = day.restDuty || {};
+    const deadlines = day.restDeadlines || {};
+    const restRows = Object.entries(byR).map(([r,q])=>{
+      const dl = deadlines[r] ? '<span style="color:var(--orange);font-weight:700"> ⏰'+deadlines[r]+'</span>' : '';
+      const dy = duty[r]      ? '<span style="color:var(--teal)"> 👤'+esc(duty[r])+'</span>' : '';
+      return '<span class="hist-rest-item">'+esc(r)+' '+q+'개'+dl+dy+'</span>';
+    }).join('');
+    const avgStars = (() => {
+      if(!reviewHistoryCache) return '';
+      // 캐시에서 별점 계산 (비동기 없이 간단 표시)
+      return '';
+    })();
+    return '<div class="hist-card">' +
+      '<div class="hist-date">'+fmtDate(day.date)+' · '+(day.orders||[]).length+'명'+(day.completedBy?' · ✅ '+esc(day.completedBy)+' 처리':'')+'</div>' +
+      '<div class="hist-rest-wrap">'+restRows+'</div>' +
+    '</div>';
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════
+// 날씨 (창원)
+// ══════════════════════════════════════════════════════
+async function loadWeather() {
+  try {
+    const res = await fetch(
+      'https://api.open-meteo.com/v1/forecast?latitude=35.2281&longitude=128.6812' +
+      '&current=temperature_2m,weathercode,relative_humidity_2m' +
+      '&hourly=precipitation_probability&timezone=Asia%2FSeoul&forecast_days=1'
+    );
+    const data = await res.json();
+    const temp  = Math.round(data.current.temperature_2m);
+    const code  = data.current.weathercode;
+    const humid = data.current.relative_humidity_2m || 0;
+
+    // 아이콘과 텍스트 분리 저장
+    const ICONS = {
+      0:'☀️', 1:'🌤', 2:'⛅', 3:'☁️',
+      45:'🌫', 48:'🌫',
+      51:'🌦', 53:'🌦', 55:'🌧',
+      61:'🌧', 63:'🌧', 65:'🌧',
+      80:'🌦', 81:'🌧', 82:'⛈',
+      95:'⛈', 96:'⛈'
+    };
+    const DESCS = {
+      0:'맑음', 1:'구름조금', 2:'구름많음', 3:'흐림',
+      45:'안개', 48:'안개',
+      51:'이슬비', 53:'이슬비', 55:'비',
+      61:'비', 63:'비', 65:'폭우',
+      80:'소나기', 81:'소나기', 82:'강소나기',
+      95:'천둥번개', 96:'천둥번개'
+    };
+    const icon  = ICONS[code] || (code<=3?'☀️':code<=49?'🌫':'🌧');
+    const desc  = DESCS[code] || (code<=3?'맑음':code<=49?'안개':'비');
+    const wdesc = icon + ' ' + desc;
+
+    // 낮 12시 강수확률
+    const idx12 = (data.hourly && data.hourly.time)
+      ? data.hourly.time.findIndex(h => h.includes('T12:00')) : -1;
+    const precip = idx12 >= 0
+      ? (data.hourly.precipitation_probability[idx12] || 0) : 0;
+
+    // 전역 캐시 저장
+    G_WEATHER = {temp, wcode:code, wdesc, icon, desc, humidity:humid, precipProb:precip, loaded:true};
+
+    // 헤더 표시 (이모지·기온·날씨·강수확률)
+    const precipTxt = precip > 0
+      ? '<span class="w-rain"> 💧' + precip + '%</span>' : '';
+    $('weatherInfo').innerHTML =
+      icon +
+      ' <span class="w-temp">' + temp + '°C</span>' +
+      ' <span class="w-desc">' + desc + '</span>' +
+      precipTxt;
+
+    console.log('날씨 로드:', temp + '°C', wdesc, '강수확률' + precip + '%');
+  } catch(e) {
+    console.warn('날씨 로드 실패:', e);
+    $('weatherInfo').textContent = '';
+    G_WEATHER.loaded = false;
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// 시계 & 알림
+// ══════════════════════════════════════════════════════
+function startClock() {
+  let notified=false;
+  setInterval(()=>{
+    const now=new Date();
+    $('clock').textContent=[now.getHours(),now.getMinutes(),now.getSeconds()].map(n=>String(n).padStart(2,'0')).join(':');
+    const is10=now.getHours()===10&&now.getMinutes()===0;
+    if (is10&&!notified) {
+      notified=true;
+      $('noticeBanner').classList.add('show');
+      setTimeout(()=>$('noticeBanner').classList.remove('show'),90000);
+      if ('Notification' in window&&Notification.permission==='granted')
+        new Notification('🍱 점심 주문 시간!',{body:'지금 메뉴를 등록해 주세요 (마감 10:30)'});
+    }
+    if (!is10) notified=false;
+  },1000);
+  if ('Notification' in window&&Notification.permission==='default') Notification.requestPermission();
+}
+
+// ══════════════════════════════════════════════════════
+// 이벤트 바인딩 (모두 addEventListener 방식)
+// ══════════════════════════════════════════════════════
+async function openAiRec() {
+  $('aiModal').classList.remove('hidden');
+  $('aiLoading').classList.add('hidden');
+  $('aiContent').classList.remove('hidden');
+  $('aiContent').innerHTML = '<p style="text-align:center;padding:16px;color:var(--muted);font-size:13px">🔍 창원 날씨 확인 중...</p>';
+
+  // ── 전역 날씨 캐시 사용 (loadWeather에서 이미 로드됨) ──
+  const temp       = G_WEATHER.temp;
+  const wcode      = G_WEATHER.wcode;
+  const wdesc      = G_WEATHER.wdesc;
+  const humidity   = G_WEATHER.humidity;
+  const precipProb = G_WEATHER.precipProb;
+  console.log('날씨 캐시:', G_WEATHER.loaded, temp, wdesc, precipProb+'%');
+
+  // ── 날씨 조건 판단 ──
+  const isRain    = wcode>=51 || precipProb>=50;
+  const isVeryHot = temp!==null && temp>=32;
+  const isHot     = temp!==null && temp>=28;
+  const isMild    = temp!==null && temp>=20 && temp<28;
+  const isCool    = temp!==null && temp>=10 && temp<20;
+  const isCold    = temp!==null && temp<10;
+  const isHumid   = humidity>=75;
+
+  // ── 날씨별 선호 메뉴 키워드 ──
+  const PREFER = {
+    rain:    ['찌개','국밥','탕','해장국','감자탕','라면','우동','짬뽕','순대국','부대찌개','어탕','설렁탕'],
+    veryHot: ['냉면','밀면','쌀국수','샐러드','부리또','샌드위치','물냉면'],
+    hot:     ['냉면','밀면','쌀국수','샐러드','샌드위치','부리또','비빔밥'],
+    mild:    ['비빔밥','덮밥','볶음밥','국수','짜장','짬뽕','돈까스'],
+    cool:    ['찌개','국밥','탕','해장국','두루치기','전골','덮밥'],
+    cold:    ['찌개','국밥','탕','해장국','감자탕','전골','설렁탕','곰탕','부대찌개'],
+  };
+
+  // ── 날짜·요일 ──
+  const now=new Date(), dow=now.getDay(), month=now.getMonth()+1, day=now.getDate();
+  const DAYS=['일','월','화','수','목','금','토'];
+  const special=getSpecialDay(month,day);
+
+  // ── 주문 빈도 집계 ──
+  const menuScore={};
+  Object.entries(recData).forEach(([k,cnt])=>{
+    const [rest,menu]=k.split('||');
+    if(!menuScore[rest]) menuScore[rest]={};
+    menuScore[rest][menu]=(menuScore[rest][menu]||0)+cnt;
+  });
+
+  // ── 오늘 동료 주문 현황 ──
+  const colleagueRest={};
+  todayOrders.forEach(o=>{ colleagueRest[o.restaurant]=(colleagueRest[o.restaurant]||0)+1; });
+
+  // ── 후보 생성 + 점수 ──
+  const SRC = dynRestaurants.length ? dynRestaurants : DEFAULT_RESTAURANTS;
+  const candidates=[];
+
+  SRC.forEach(r=>{
+    if(!r || r.name==='기타') return;
+    const menus = (r.menus && r.menus.length) ? r.menus : [];
+    menus.forEach(m=>{
+      let score = (menuScore[r.name] && menuScore[r.name][m]) ? menuScore[r.name][m]*10 : 0;
+      const txt = m + r.name;
+      const match = list => list.some(w=>txt.includes(w));
+
+      // ── 날씨 점수 (최대 비중) ──
+      if(isRain){
+        if(match(PREFER.rain))   score+=50;
+        else                      score-=15;
+      }
+      if(isVeryHot){
+        if(match(PREFER.veryHot)) score+=50;
+        if(match(PREFER.cold))    score-=25;
+      } else if(isHot){
+        if(match(PREFER.hot))    score+=35;
+        if(match(PREFER.cold))   score-=15;
+      } else if(isCool){
+        if(match(PREFER.cool))   score+=30;
+      } else if(isCold){
+        if(match(PREFER.cold))   score+=50;
+        if(match(PREFER.hot))    score-=20;
+      } else if(isMild){
+        if(match(PREFER.mild))   score+=15;
+      }
+      if(isHumid && match(PREFER.hot)) score+=10;
+
+      // ── 요일 보정 ──
+      if((dow===1||dow===5) && match(['샌드위치','부리또','쌀국수','김밥','샐러드'])) score+=12;
+      if(dow===3 && match(['국밥','찌개','두루치기','비빔밥','갈비','아구','전골'])) score+=12;
+
+      // ── 동료 선택 가점 ──
+      if(colleagueRest[r.name]) score += colleagueRest[r.name]*8;
+
+      // ── 기념일 가점 ──
+      if(special!=='없음') score+=8;
+
+      // ── 오늘 내가 이미 주문 감점 ──
+      if(todayOrders.find(o=>o.name===myName&&o.restaurant===r.name&&o.menu===m)) score-=80;
+
+      // ── 랜덤 요소 ──
+      score += Math.random()*4;
+
+      candidates.push({rest:r.name, menu:m, score, phone:r.phone||'', deadline:r.deadline||''});
+    });
+  });
+
+  // ── 식당 중복 없이 상위 3개 ──
+  candidates.sort((a,b)=>b.score-a.score);
+  const recs=[], used=new Set();
+  for(const c of candidates){
+    if(used.has(c.rest)) continue;
+    used.add(c.rest); recs.push(c);
+    if(recs.length===3) break;
+  }
+
+  // ── 추천 이유 ──
+  function makeReason(c){
+    const parts=[];
+    if(isRain)         parts.push('비 오는 날 따뜻한 국물 메뉴 추천');
+    else if(isVeryHot) parts.push(`폭염(${temp}°C) 시원한 메뉴 추천`);
+    else if(isHot)     parts.push(`더운 날씨(${temp}°C) 가벼운 메뉴 추천`);
+    else if(isCold)    parts.push(`추운 날씨(${temp}°C) 따뜻한 메뉴 추천`);
+    else if(temp!==null) parts.push(`${wdesc} ${temp}°C`);
+    const f = menuScore[c.rest] && menuScore[c.rest][c.menu] ? menuScore[c.rest][c.menu] : 0;
+    if(f>=5)      parts.push(`인기 ${f}회 주문`);
+    else if(f>=1) parts.push(`${f}회 검증 메뉴`);
+    if(colleagueRest[c.rest]) parts.push(`동료 ${colleagueRest[c.rest]}명 선택 중`);
+    if(c.deadline) parts.push(`마감 ${c.deadline}`);
+    if(special!=='없음') parts.push(special);
+    return parts.slice(0,3).join(' · ')+'.';
+  }
+
+  // ── 오늘 배경 설명 (안내 문구) ──
+  let ctx = `${month}/${day} ${DAYS[dow]}요일`;
+  if(temp!==null){
+    ctx += ` · 창원 ${wdesc} ${temp}°C`;
+    if(precipProb>0)  ctx += ` · 강수확률 ${precipProb}%`;
+    if(isHumid)       ctx += ` · 습도 ${humidity}%`;
+    ctx += '\n오늘 창원 날씨를 반영한 메뉴 추천입니다.';
+  } else {
+    ctx += '\n날씨 정보를 불러오지 못해 주문 이력 기반으로 추천합니다.';
+  }
+  if(special!=='없음') ctx += ` (오늘은 ${special})`;
+
+  // ── 결과 없을 때 ──
+  if(!recs.length){
+    $('aiContent').innerHTML='<p style="text-align:center;padding:20px;color:var(--muted)">🏪 식당관리에서 메뉴를 등록하면 추천이 시작됩니다.</p>';
+    return;
+  }
+
+  // ── 결과 표시 ──
+  $('aiContent').innerHTML =
+    '<div class="ai-reason-box">'+esc(ctx)+'</div>'+
+    recs.map((r,i)=>
+      '<div class="ai-rec-card">'+
+        '<div class="rec-num">추천 '+(i+1)+'</div>'+
+        '<div class="rec-rest-name">'+esc(r.rest)+'</div>'+
+        '<div class="rec-menu-name">'+esc(r.menu)+'</div>'+
+        '<div class="rec-reason">'+esc(makeReason(r))+'</div>'+
+        '<button class="ai-apply-btn" data-rest="'+esc(r.rest)+'" data-menu="'+esc(r.menu)+'">이 메뉴로 선택</button>'+
+      '</div>'
+    ).join('');
+
+  $('aiContent').querySelectorAll('.ai-apply-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      selectRest(btn.dataset.rest);
+      $('inputMenu').value=btn.dataset.menu;
+      $('aiModal').classList.add('hidden');
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab==='order'));
+      document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('hidden',p.dataset.panel!=='order'));
+      showToast('추천 메뉴 선택 완료!');
+    });
+  });
+}
+
+
+
+
+function bindEvents() {
+  // 로그인
+  $('loginBtn').addEventListener('click', () => {
+    const n=$('nameSelect').value;
+    if (!n) { showToast('이름을 선택해 주세요'); return; }
+    myName=n; localStorage.setItem('insys_lunch_name',n);
+    startApp();
+  });
+
+  // 이름 클릭 → 로그인 화면으로
+  $('userBadge').addEventListener('click', () => {
+    $('mainScreen').classList.add('hidden');
+    $('loginScreen').classList.remove('hidden');
+  });
+
+  // 수량
+  $('qtyMinus').addEventListener('click', ()=>{ qty=Math.max(1,qty-1); $('qtyDisplay').textContent=qty; });
+  $('qtyPlus').addEventListener('click',  ()=>{ qty=Math.min(10,qty+1); $('qtyDisplay').textContent=qty; });
+
+  // 주문 등록
+  $('addOrderBtn').addEventListener('click', addOrder);
+
+  // 마감
+  $('btnClose').addEventListener('click', toggleClose);
+
+  // 전체 완료 취소
+  $('btnComplete').addEventListener('click', cancelAllComplete);
+
+  // 복사
+  $('copyBtn').addEventListener('click', ()=>{
+    navigator.clipboard.writeText($('summaryText').textContent).then(()=>showToast('복사 완료!'));
+  });
+
+  // AI 추천 버튼
+  $('aiRecBtn').addEventListener('click', () => openAiRec());
+
+  // 슬롯머신 버튼
+  $('slotOpenBtn').addEventListener('click', openSlot);
+  $('slotModalClose').addEventListener('click', () => $('slotModal').classList.add('hidden'));
+  $('aiModalClose').addEventListener('click', () => $('aiModal').classList.add('hidden'));
+  $('slotSpinBtn').addEventListener('click', () => spinSlot());
+  $('soundBtn').addEventListener('click', () => toggleSound());
+
+  // 모달 배경 클릭 닫기
+  $('aiModal').addEventListener('click', e => { if(e.target===$('aiModal')) $('aiModal').classList.add('hidden'); });
+  $('slotModal').addEventListener('click', e => { if(e.target===$('slotModal')) $('slotModal').classList.add('hidden'); });
+
+  // 주문 초기화
+  $('resetOrdersBtn').addEventListener('click', async () => {
+    if (!confirm('오늘 주문을 모두 초기화할까요?\n(주문 목록, 담당자, 완료 상태가 모두 삭제됩니다)')) return;
+    const dk = todayKey();
+    // 주문 목록 전체 삭제
+    const snap = await getDocs(collection(db,'lunch_days',dk,'orders'));
+    const dels = snap.docs.map(d=>deleteDoc(doc(db,'lunch_days',dk,'orders',d.id)));
+    await Promise.all(dels);
+    // 메타 초기화
+    await setDoc(doc(db,'lunch_days',dk),{
+      closed:false, completed:false, restaurantStatus:{}, restDuty:{}
+    },{merge:true});
+    showToast('오늘 주문이 초기화되었습니다');
+  });
+
+  // 식당 추가 (식당관리 탭)
+  $('addRestBtn').addEventListener('click', addNewRestaurant);
+  $('newRestName').addEventListener('keydown', e=>{ if(e.key==='Enter') addNewRestaurant(); });
+
+  // 주문등록 STEP1 — 빠른 식당 추가
+  $('quickAddToggle').addEventListener('click', () => {
+    const form = $('quickAddForm');
+    const isHidden = form.classList.contains('hidden');
+    form.classList.toggle('hidden');
+    $('quickAddToggle').textContent = isHidden ? '✕ 취소' : '＋ 새 식당 추가';
+  });
+  $('qNewCancelBtn').addEventListener('click', () => {
+    $('quickAddForm').classList.add('hidden');
+    $('quickAddToggle').textContent = '＋ 새 식당 추가';
+    $('qNewName').value=''; $('qNewPhone').value=''; $('qNewDeadline').value='';
+  });
+  $('qNewSaveBtn').addEventListener('click', async () => {
+    const name     = $('qNewName').value.trim();
+    const phone    = $('qNewPhone').value.trim();
+    const deadline = $('qNewDeadline').value.trim();
+    if (!name) { showToast('식당명을 입력해 주세요'); return; }
+    if (dynRestaurants.find(r=>r.name===name)) { showToast('이미 등록된 식당입니다'); return; }
+    const newRest = {name, phone, deadline, menus:[], order:dynRestaurants.length};
+    await setDoc(doc(db,'restaurant_list',name), newRest);
+    dynRestaurants.push(newRest);
+    rebuildRestButtons();
+    renderRestaurantAdmin();
+    // DOM 재빌드 후 선택 (setTimeout으로 다음 틱에 실행)
+    setTimeout(() => selectRest(name), 0);
+    // 폼 닫기
+    $('quickAddForm').classList.add('hidden');
+    $('quickAddToggle').textContent = '＋ 새 식당 추가';
+    $('qNewName').value=''; $('qNewPhone').value=''; $('qNewDeadline').value='';
+    showToast(name + ' 추가 완료! 바로 선택되었습니다');
+  });
+
+  // 탭 전환
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b===btn));
+      document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('hidden',p.dataset.panel!==btn.dataset.tab));
+      if(btn.dataset.tab==='review') renderReviewDateList();
+    });
+  });
+
+  // 플로팅 화면전환
+  document.querySelectorAll('.vm-btn').forEach(btn => {
+    btn.addEventListener('click', ()=>{
+      const mode=btn.dataset.vm;
+      localStorage.setItem('insys_viewmode',mode);
+      applyViewMode(mode);
+      document.querySelectorAll('.vm-btn').forEach(b=>b.classList.toggle('active',b===btn));
+    });
+  });
+
+  // 플로팅 추가 주문
+  $('floatAddBtn').addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab==='order'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('hidden',p.dataset.panel!=='order'));
+    window.scrollTo({top:0,behavior:'smooth'});
+  });
+
+  // 담당자 패널 초기 렌더 (주문 후 동적 렌더로 대체)
+  renderDutyPanel();
+}
+
+
+// ══════════════════════════════════════════════════════
+// 후기 시스템
+// ══════════════════════════════════════════════════════
+let reviewHistoryCache = []; // loadHistory에서 공유
+
+// 후기 탭 진입 시 날짜 목록 렌더
+function renderReviewDateList() {
+  const el = $('reviewDateBtns'); if(!el) return;
+  const completedDays = reviewHistoryCache.filter(d=>d.orders&&d.orders.length>0);
+  if(!completedDays.length){
+    el.innerHTML='<p style="font-size:13px;color:var(--muted)">주문 완료 기록이 없습니다.</p>';
+    return;
+  }
+  el.innerHTML = completedDays.slice(0,10).map(d=>
+    `<button class="review-date-btn" data-date="${esc(d.date)}">${fmtDate(d.date)}</button>`
+  ).join('');
+  el.querySelectorAll('.review-date-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      el.querySelectorAll('.review-date-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      loadReviewArea(btn.dataset.date);
+    });
+  });
+  // 첫 번째 자동 선택
+  if(completedDays.length>0){
+    el.querySelectorAll('.review-date-btn')[0].classList.add('active');
+    loadReviewArea(completedDays[0].date);
+  }
+}
+
+// 선택한 날짜의 주문목록 + 기존 후기 표시
+async function loadReviewArea(dateKey) {
+  const el = $('reviewArea'); if(!el) return;
+  el.innerHTML = '<p style="text-align:center;padding:16px;color:var(--muted);font-size:13px">후기 불러오는 중...</p>';
+
+  const dayData = reviewHistoryCache.find(d=>d.date===dateKey);
+  if(!dayData||!dayData.orders||!dayData.orders.length){
+    el.innerHTML='<p style="text-align:center;padding:16px;color:var(--muted)">주문 기록이 없습니다.</p>';
+    return;
+  }
+
+  // 기존 후기 로드
+  const reviews = {};
+  try {
+    const snap = await getDocs(collection(db,'lunch_reviews',dateKey,'items'));
+    snap.docs.forEach(d=>{ reviews[d.id]=d.data(); });
+  } catch(e){}
+
+  const STAR_LABELS = ['','별로','그저그래','보통','맛있어','최고!'];
+
+  el.innerHTML = dayData.orders.map((o,i)=>{
+    const rid = (o.name+'||'+o.restaurant+'||'+o.menu).replace(/[^a-zA-Z0-9가-힣]/g,'_');
+    const rv  = reviews[rid];
+    const starHtml = [1,2,3,4,5].map(s=>
+      `<button class="star-btn" data-rid="${esc(rid)}" data-star="${s}">${rv&&rv.star>=s?'⭐':'☆'}</button>`
+    ).join('');
+
+    return `<div class="review-order-card" id="roc_${i}">
+      <div class="ro-name">${esc(o.name)}</div>
+      <div class="ro-menu">${esc(o.menu)} × ${o.qty||1}</div>
+      <div class="ro-rest">${esc(o.restaurant)}</div>
+      ${rv ? `
+        <div class="review-saved">
+          <div class="rs-stars">${'⭐'.repeat(rv.star)} <span style="font-size:13px;font-weight:700">${STAR_LABELS[rv.star]||''}</span></div>
+          <div class="rs-comment">${rv.comment?esc(rv.comment):''}</div>
+          <div class="rs-meta">${rv.updatedAt?'수정됨':''}</div>
+        </div>
+        <button class="review-submit-btn" style="background:var(--muted);margin-top:6px" data-edit="${esc(rid)}" data-idx="${i}">✏️ 수정</button>
+      ` : `
+        <div class="star-row" id="stars_${i}">
+          ${starHtml}
+          <span class="star-label" id="slbl_${i}">별점을 선택하세요</span>
+        </div>
+        <textarea class="review-input" id="rinput_${i}" placeholder="한 줄 후기를 남겨보세요 (선택)"></textarea>
+        <button class="review-submit-btn" data-rid="${esc(rid)}" data-idx="${i}" data-date="${esc(dateKey)}" data-name="${esc(o.name)}" data-rest="${esc(o.restaurant)}" data-menu="${esc(o.menu)}">후기 저장</button>
+      `}
+    </div>`;
+  }).join('');
+
+  // 별점 클릭 이벤트
+  const STAR_LABELS2 = ['','별로','그저그래','보통','맛있어','최고!'];
+  el.querySelectorAll('.star-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const star = +btn.dataset.star;
+      const rid  = btn.dataset.rid;
+      // 같은 카드의 별 전체 갱신
+      const cardStars = el.querySelectorAll(`.star-btn[data-rid="${rid}"]`);
+      cardStars.forEach(b=>{ b.textContent = +b.dataset.star<=star?'⭐':'☆'; });
+      // 별점 라벨
+      const cardIdx = btn.closest('.review-order-card').id.replace('roc_','');
+      const lbl = $('slbl_'+cardIdx);
+      if(lbl) lbl.textContent = STAR_LABELS2[star]||'';
+      btn.closest('.review-order-card').dataset.selectedStar = star;
+    });
+  });
+
+  // 후기 저장 버튼
+  el.querySelectorAll('.review-submit-btn:not([data-edit])').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const rid     = btn.dataset.rid;
+      const idx     = btn.dataset.idx;
+      const dateKey2= btn.dataset.date;
+      const card    = $('roc_'+idx);
+      const star    = +(card.dataset.selectedStar||0);
+      const comment = ($('rinput_'+idx)||{value:''}).value.trim();
+      if(!star){ showToast('별점을 선택해 주세요'); return; }
+      await setDoc(doc(db,'lunch_reviews',dateKey2,'items',rid),{
+        name:btn.dataset.name, restaurant:btn.dataset.rest, menu:btn.dataset.menu,
+        star, comment, reviewer:myName, updatedAt:serverTimestamp()
+      });
+      showToast('후기가 저장되었습니다 ⭐');
+      loadReviewArea(dateKey2);
+      // 이력 카드 재렌더
+      renderHistoryCards(reviewHistoryCache.slice(0,5));
+    });
+  });
+
+  // 수정 버튼
+  el.querySelectorAll('[data-edit]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const rid = btn.dataset.edit;
+      const idx = btn.dataset.idx;
+      // 저장된 후기 지우고 입력폼 재표시
+      const card = $('roc_'+idx);
+      const rv = reviews[rid]||{};
+      const starHtml = [1,2,3,4,5].map(s=>
+        `<button class="star-btn" data-rid="${esc(rid)}" data-star="${s}">${rv.star>=s?'⭐':'☆'}</button>`
+      ).join('');
+      card.dataset.selectedStar = rv.star||0;
+      card.querySelector('.review-saved').outerHTML='';
+      btn.remove();
+      card.insertAdjacentHTML('beforeend',`
+        <div class="star-row" id="stars_${idx}">${starHtml}<span class="star-label" id="slbl_${idx}">${['','별로','그저그래','보통','맛있어','최고!'][rv.star]||''}</span></div>
+        <textarea class="review-input" id="rinput_${idx}">${esc(rv.comment||'')}</textarea>
+        <button class="review-submit-btn" data-rid="${esc(rid)}" data-idx="${idx}" data-date="${esc(dateKey)}" data-name="${esc(dayData.orders[+idx]?.name||'')}" data-rest="${esc(dayData.orders[+idx]?.restaurant||'')}" data-menu="${esc(dayData.orders[+idx]?.menu||'')}">후기 저장</button>
+      `);
+      // 별점 재바인딩
+      card.querySelectorAll('.star-btn').forEach(sb=>{
+        sb.addEventListener('click',()=>{
+          const s2 = +sb.dataset.star;
+          card.querySelectorAll(`.star-btn[data-rid="${rid}"]`).forEach(b=>{ b.textContent=+b.dataset.star<=s2?'⭐':'☆'; });
+          card.dataset.selectedStar=s2;
+          const lb=$('slbl_'+idx); if(lb) lb.textContent=['','별로','그저그래','보통','맛있어','최고!'][s2]||'';
+        });
+      });
+      // 저장버튼 재바인딩
+      card.querySelector('.review-submit-btn').addEventListener('click', async ()=>{
+        const star2  = +(card.dataset.selectedStar||0);
+        const comment2 = ($('rinput_'+idx)||{value:''}).value.trim();
+        if(!star2){ showToast('별점을 선택해 주세요'); return; }
+        await setDoc(doc(db,'lunch_reviews',dateKey,'items',rid),{
+          name:dayData.orders[+idx]?.name||'', restaurant:dayData.orders[+idx]?.restaurant||'', menu:dayData.orders[+idx]?.menu||'',
+          star:star2, comment:comment2, reviewer:myName, updatedAt:serverTimestamp()
+        });
+        showToast('후기가 수정되었습니다 ⭐');
+        loadReviewArea(dateKey);
+        renderHistoryCards(reviewHistoryCache.slice(0,5));
+      });
+    });
+  });
+}
+
+// 이력 카드에 평균 별점 표시 (renderHistoryCards 오버라이드)
+async function loadReviewSummary(dateKey) {
+  try {
+    const snap = await getDocs(collection(db,'lunch_reviews',dateKey,'items'));
+    if(snap.empty) return null;
+    const stars = snap.docs.map(d=>d.data().star||0).filter(s=>s>0);
+    if(!stars.length) return null;
+    const avg = (stars.reduce((a,b)=>a+b,0)/stars.length).toFixed(1);
+    return {avg, count:stars.length};
+  } catch(e){ return null; }
+}
+
+function applyViewMode(mode) {
+  const m=$('mainEl');
+  m.classList.remove('wide','narrow');
+  document.body.classList.remove('pc-mode','narrow-mode');
+  if (mode==='pc')     { m.classList.add('wide');   document.body.classList.add('pc-mode'); }
+  else if (mode==='mobile') { m.classList.add('narrow'); document.body.classList.add('narrow-mode'); }
+  document.querySelectorAll('.vm-btn').forEach(b=>b.classList.toggle('active',b.dataset.vm===mode));
+}
+// ══════════════════════════════════════════════════════
+// 다음날 오전 8시 자동 초기화
+// ══════════════════════════════════════════════════════
+function scheduleAutoReset() {
+  const now  = new Date();
+  const next = new Date(now);
+  // 오늘 이미 8시 지났으면 → 내일 8시, 안 지났으면 → 오늘 8시
+  next.setHours(8,0,0,0);
+  if (now >= next) next.setDate(next.getDate()+1);
+  const ms = next - now;
+  console.log(`자동초기화 예약: ${next.toLocaleString('ko-KR')} (${Math.round(ms/60000)}분 후)`);
+  setTimeout(async () => {
+    // 어제 날짜 키 (자정 넘어 8시 전이면 오늘-1)
+    const yesterday = new Date(next);
+    yesterday.setDate(yesterday.getDate()-1);
+    const dk = yesterday.toISOString().slice(0,10);
+    try {
+      const snap = await getDocs(collection(db,'lunch_days',dk,'orders'));
+      await Promise.all(snap.docs.map(d=>deleteDoc(doc(db,'lunch_days',dk,'orders',d.id))));
+      await setDoc(doc(db,'lunch_days',dk),{closed:false,completed:false,restaurantStatus:{},restDuty:{}},{merge:true});
+      console.log(`${dk} 주문 자동 초기화 완료`);
+      // 다음 날 다시 예약
+      scheduleAutoReset();
+    } catch(e) { console.warn('자동초기화 오류:', e); }
+  }, ms);
+}
+
+// ══════════════════════════════════════════════════════
+// AI 메뉴 추천 (Claude API)
+// ══════════════════════════════════════════════════════
+
+
+
+function getSpecialDay(month, day) {
+  const special = {
+    '1-1':'신정', '3-1':'삼일절', '5-5':'어린이날', '6-6':'현충일',
+    '8-15':'광복절', '10-3':'개천절', '10-9':'한글날', '12-25':'크리스마스',
+    '2-14':'발렌타인데이', '3-14':'화이트데이', '11-11':'빼빼로데이',
+    '5-8':'어버이날', '5-15':'스승의날',
+  };
+  return special[`${month}-${day}`] || '특별한 날 없음';
+}
+
+// ══════════════════════════════════════════════════════
+// 슬롯머신
+// ══════════════════════════════════════════════════════
+let soundEnabled = true;
+let isSpinning   = false;
+let slotResult   = null;
+let audioCtx     = null;
+
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  $('soundBtn').textContent = soundEnabled ? '🔊' : '🔇';
+  showToast(soundEnabled ? '효과음 켜짐' : '효과음 꺼짐');
+}
+
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function playTone(freq, dur, type='sine', vol=0.3) {
+  if (!soundEnabled) return;
+  try {
+    const ctx  = getAudioCtx();
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type      = type;
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    gain.gain.setValueAtTime(vol, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+dur);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime+dur);
+  } catch(e) {}
+}
+
+function playSpinSound() {
+  if (!soundEnabled) return;
+  // 짧은 틱 반복 (스핀 중)
+  let t = 0;
+  for (let i=0; i<30; i++) {
+    setTimeout(()=>playTone(300+Math.random()*400, 0.06, 'square', 0.1), t);
+    t += 80 + i*5;
+  }
+}
+
+function playWinSound() {
+  if (!soundEnabled) return;
+  const notes = [523,659,784,1047];
+  notes.forEach((f,i) => setTimeout(()=>playTone(f,0.3,'sine',0.4), i*120));
+  setTimeout(()=>playTone(1047,0.6,'sine',0.5), 500);
+}
+
+function playLoseSound() {
+  if (!soundEnabled) return;
+  [200,180,160,140].forEach((f,i) => setTimeout(()=>playTone(f,0.25,'sawtooth',0.3), i*100));
+}
+
+function playSlowTickSound() {
+  if (!soundEnabled) return;
+  playTone(500, 0.08, 'square', 0.2);
+}
+
+function openSlot() {
+  $('slotModal').classList.remove('hidden');
+  $('slotResult').classList.add('hidden');
+  $('slotResult').innerHTML = '';
+  $('slotSpinBtn').textContent = '🎰 START!';
+  $('slotSpinBtn').disabled = false;
+  slotResult = null;
+  buildSlotReels();
+}
+
+// 슬롯 릴 초기 아이템 생성
+function buildSlotReels() {
+  const items = getSlotItems();
+  ['slotReel1','slotReel2'].forEach((id, ri) => {
+    const reel = $(id);
+    reel.innerHTML = '';
+    // 20개 아이템으로 채우기
+    for (let i=0; i<20; i++) {
+      const item = items[(i + ri*7) % items.length];
+      reel.appendChild(makeSlotItem(item, false));
+    }
+    reel.style.transform = 'translateY(0px)';
+  });
+}
+
+function getSlotItems() {
+  // 슬롯 아이템 = 식당+메뉴 조합 + 꽝 1개
+  const items = [];
+  dynRestaurants.forEach(r => {
+    if (r.name === '기타' || !r.menus || !r.menus.length) return;
+    r.menus.slice(0,3).forEach(m => items.push({rest:r.name, menu:m, isBong:false}));
+  });
+  // 꽝 추가 (약 10% 확률)
+  items.push({rest:'꽝!', menu:'오늘은 굶기', isBong:true});
+  items.push({rest:'꽝!', menu:'편의점 도시락', isBong:true});
+  items.push({rest:'다시!', menu:'한 번 더 뽑기', isBong:false, retry:true});
+  return items.length ? items : [{rest:'목화식당',menu:'돌솥비빔밥',isBong:false}];
+}
+
+function makeSlotItem(item, highlight) {
+  const div = document.createElement('div');
+  div.className = 'slot-item' + (highlight?' highlight':'') + (item.isBong?' bong':'');
+  div.innerHTML =
+    '<span class="s-rest">'+esc(item.rest||'')+'</span>' +
+    '<span class="s-menu">'+esc(item.menu||'')+'</span>';
+  div._data = item;
+  return div;
+}
+
+async function spinSlot() {
+  if (isSpinning) return;
+  isSpinning = true;
+  $('slotSpinBtn').disabled = true;
+  $('slotResult').classList.add('hidden');
+
+  const items = getSlotItems();
+
+  // 결과 미리 결정
+  const finalIdx1 = Math.floor(Math.random()*items.length);
+  let   finalIdx2 = Math.floor(Math.random()*items.length);
+  const result1   = items[finalIdx1];
+  const result2   = items[finalIdx2];
+
+  playSpinSound();
+
+  // 두 릴 동시 스핀
+  await Promise.all([
+    spinReel($('slotReel1'), result1, items, 2800),
+    spinReel($('slotReel2'), result2, items, 3400),
+  ]);
+
+  isSpinning = false;
+
+  // 결과 판정 (식당이 같으면 잭팟)
+  const isBong   = result1.isBong || result2.isBong;
+  const isRetry  = result1.retry  || result2.retry;
+  const isJackpot = result1.rest === result2.rest && !isBong;
+
+  slotResult = result1;
+
+  const el = $('slotResult');
+  el.classList.remove('hidden');
+
+  if (isBong) {
+    playLoseSound();
+    el.className = 'slot-result lose';
+    const bongItem = result1.isBong ? result1 : result2;
+    el.innerHTML =
+      '<span class="result-emoji">💀</span>' +
+      '<strong>꽝!!</strong><br>' +
+      '<span class="result-text">'+esc(bongItem.menu)+'</span>';
+    $('slotSpinBtn').textContent = '😭 다시 도전!';
+    $('slotSpinBtn').disabled = false;
+  } else if (isRetry) {
+    el.className = 'slot-result lose';
+    el.innerHTML = '<span class="result-emoji">🔄</span><strong>한 번 더!</strong><br><span class="result-text">다시 뽑아보세요!</span>';
+    $('slotSpinBtn').textContent = '🎰 다시 뽑기!';
+    $('slotSpinBtn').disabled = false;
+  } else if (isJackpot) {
+    playWinSound();
+    el.className = 'slot-result win';
+    el.innerHTML =
+      '<span class="result-emoji">🎉</span>' +
+      '<strong>잭팟!! '+esc(result1.rest)+'</strong><br>' +
+      '<span class="result-text">'+esc(result1.menu)+' × '+esc(result2.menu)+'</span>';
+    showApplyBtn(result1);
+  } else {
+    playWinSound();
+    el.className = 'slot-result win';
+    el.innerHTML =
+      '<span class="result-emoji">🍽</span>' +
+      '<strong>'+esc(result1.rest)+'</strong><br>' +
+      '<span class="result-text">'+esc(result1.menu)+'</span>';
+    showApplyBtn(result1);
+  }
+}
+
+function showApplyBtn(item) {
+  const el = $('slotResult');
+  const btn = document.createElement('button');
+  btn.className = 'slot-apply-btn';
+  btn.style.cssText = 'display:block;width:calc(100% - 32px);margin:10px 16px 0;';
+  btn.textContent = '✅ 이 메뉴로 선택하기';
+  btn.addEventListener('click', () => {
+    selectRest(item.rest);
+    $('inputMenu').value = item.menu;
+    $('slotModal').classList.add('hidden');
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab==='order'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('hidden',p.dataset.panel!=='order'));
+    showToast('🎰 뽑기 결과로 선택되었습니다!');
+  });
+  el.appendChild(btn);
+}
+
+async function spinReel(reel, finalItem, items, duration) {
+  const ITEM_H  = 80;
+  const totalItems = 40;
+
+  // 릴 아이템 재구성
+  reel.innerHTML = '';
+  const shuffled = [...items].sort(()=>Math.random()-0.5);
+  for (let i=0; i<totalItems; i++) {
+    reel.appendChild(makeSlotItem(shuffled[i%shuffled.length], false));
+  }
+  // 마지막에 결과 아이템 추가
+  const finalEl = makeSlotItem(finalItem, true);
+  reel.appendChild(finalEl);
+  const totalH = (totalItems)*ITEM_H;
+
+  // 초기 위치
+  reel.style.transition = 'none';
+  reel.style.transform  = 'translateY(0px)';
+
+  return new Promise(resolve => {
+    const startTime = performance.now();
+    let lastTick = 0;
+
+    function animate(now) {
+      const elapsed  = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      // 이징: 빠르게 시작 → 천천히 멈춤
+      const ease = progress < 0.7
+        ? progress / 0.7                          // 가속
+        : 1 - Math.pow((progress-0.7)/0.3, 2);   // 감속
+
+      const speed   = ease * ITEM_H * 0.8;
+      const traveled = speed * elapsed / 16;
+      const pos     = -(traveled % totalH);
+
+      reel.style.transition = 'none';
+      reel.style.transform  = `translateY(${pos}px)`;
+
+      // 슬로우 틱 사운드
+      if (progress > 0.7 && now - lastTick > 150) {
+        playSlowTickSound();
+        lastTick = now;
+      }
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        // 결과 아이템 중앙 정지
+        reel.style.transition = 'transform 0.3s cubic-bezier(0.25,0.1,0.25,1)';
+        reel.style.transform  = `translateY(-${totalItems * ITEM_H}px)`;
+        setTimeout(resolve, 350);
+      }
+    }
+    requestAnimationFrame(animate);
+  });
+}
+
+</script>
+</body>
+</html>
