@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>태양광설비 대금 지급배제 내부보고 v1.1</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Noto Sans KR',sans-serif;background:#F0F2F5;color:#1E2A3A;font-size:13px;line-height:1.6}
+  .cover{background:linear-gradient(135deg,#1A3C6E 0%,#2E5FA3 100%);color:#fff;padding:28px 0 20px}
+  .cover-inner{max-width:1100px;margin:0 auto;padding:0 24px}
+  .cover-badge{display:inline-block;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:4px;font-size:11px;font-weight:500;padding:3px 10px;letter-spacing:.5px;margin-bottom:10px}
+  .cover-title{font-size:20px;font-weight:700;line-height:1.4;margin-bottom:6px}
+  .cover-sub{font-size:12px;color:rgba(255,255,255,.75);display:flex;gap:20px;flex-wrap:wrap}
+  .cover-sub span{display:flex;align-items:center;gap:5px}
+  .cover-sub span::before{content:'';display:inline-block;width:4px;height:4px;background:rgba(255,255,255,.6);border-radius:50%}
+  .wrap{max-width:1100px;margin:0 auto;padding:20px 24px 40px}
+  .verdict{background:#fff;border-left:5px solid #C00000;border-radius:0 8px 8px 0;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:14px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+  .verdict-icon{font-size:22px;flex-shrink:0}
+  .verdict-text strong{font-size:14px;color:#C00000;font-weight:700;display:block;margin-bottom:2px}
+  .verdict-text span{font-size:12px;color:#444}
+  .sec-title{font-size:13px;font-weight:700;color:#1A3C6E;border-bottom:2px solid #1A3C6E;padding-bottom:5px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+  .sec-num{background:#1A3C6E;color:#fff;font-size:11px;font-weight:700;padding:1px 7px;border-radius:3px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
+  .card{background:#fff;border-radius:8px;padding:14px 16px;box-shadow:0 1px 4px rgba(0,0,0,.07)}
+  .info-table{width:100%;border-collapse:collapse;font-size:12px}
+  .info-table th,.info-table td{padding:6px 10px;border:1px solid #DEE3EC;text-align:left;vertical-align:middle}
+  .info-table th{background:#EBF0FA;color:#1A3C6E;font-weight:600;width:22%;white-space:nowrap}
+  .info-table td{color:#2C2C2C}
+  .info-table tr:hover td{background:#F7F9FC}
+  .tag-red{background:#FEE2E2;color:#C00000;font-size:10px;font-weight:700;padding:2px 7px;border-radius:3px;margin-left:6px}
+  .tag-blue{background:#DBEAFE;color:#1A3C6E;font-size:10px;font-weight:600;padding:2px 7px;border-radius:3px;margin-left:6px}
+  .tag-gray{background:#F1F3F6;color:#555;font-size:10px;font-weight:500;padding:2px 7px;border-radius:3px;margin-left:6px}
+  .basis-card{background:#fff;border-radius:8px;padding:14px 16px;box-shadow:0 1px 4px rgba(0,0,0,.07);border-top:3px solid #2E5FA3}
+  .basis-num{font-size:10px;font-weight:700;color:#2E5FA3;letter-spacing:.5px;margin-bottom:4px}
+  .basis-title{font-size:12px;font-weight:700;color:#1E2A3A;margin-bottom:6px}
+  .basis-clause{font-size:11px;color:#666;background:#F5F7FC;padding:5px 9px;border-radius:4px;margin-bottom:6px;font-style:italic}
+  .basis-desc{font-size:12px;color:#333;line-height:1.6}
+  .basis-result{margin-top:7px;padding:6px 10px;background:#FFF2F2;border-radius:4px;font-size:11px;color:#C00000;font-weight:600}
+  .issue-table{width:100%;border-collapse:collapse;font-size:12px}
+  .issue-table th{background:#EBF0FA;color:#1A3C6E;font-weight:600;padding:7px 10px;border:1px solid #DEE3EC;text-align:center}
+  .issue-table td{padding:6px 10px;border:1px solid #DEE3EC;vertical-align:middle}
+  .issue-table tr:nth-child(even) td{background:#F7F9FC}
+  .result-no{color:#C00000;font-weight:700}
+  .result-yes{color:#1F6B3A;font-weight:700}
+  .actions{display:flex;flex-direction:column;gap:8px}
+  .action-row{display:flex;align-items:flex-start;gap:12px;background:#F7F9FC;border-radius:7px;padding:10px 14px}
+  .action-step{background:#1A3C6E;color:#fff;font-size:11px;font-weight:700;padding:2px 9px;border-radius:3px;flex-shrink:0;margin-top:1px}
+  .action-step.urgent{background:#C00000}
+  .action-content strong{font-size:12px;font-weight:600;color:#1E2A3A;display:block}
+  .action-content span{font-size:11px;color:#666}
+  .action-due{margin-left:auto;font-size:11px;font-weight:600;color:#C00000;flex-shrink:0;padding-top:2px}
+  .attach-list{display:flex;flex-direction:column;gap:6px}
+  .attach-item{display:flex;align-items:center;gap:10px;background:#F7F9FC;border-radius:6px;padding:9px 13px;font-size:12px}
+  .attach-icon{width:28px;height:28px;border-radius:5px;background:#EBF0FA;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+  .attach-name{font-weight:600;color:#1E2A3A}
+  .attach-note{font-size:11px;color:#888;margin-left:auto}
+
+  /* ── 이메일 원문 ── */
+  .email-wrap{background:#fff;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.07);margin-bottom:20px;overflow:hidden}
+  .email-top{background:#1A3C6E;padding:12px 20px;display:flex;justify-content:space-between;align-items:center}
+  .email-top-title{font-size:13px;font-weight:700;color:#fff}
+  .email-top-right{display:flex;align-items:center;gap:10px}
+  .copy-btn{background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:5px;padding:4px 14px;font-size:11px;font-weight:600;cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:background .2s}
+  .copy-btn:hover{background:rgba(255,255,255,.35)}
+  .copy-toast{font-size:11px;color:#90EE90;font-weight:600;display:none}
+  .email-meta{border-bottom:1px solid #DEE3EC}
+  .email-meta-row{display:flex;border-bottom:1px solid #EEF1F6;font-size:12px}
+  .email-meta-row:last-child{border-bottom:none}
+  .email-meta-label{background:#EBF0FA;color:#1A3C6E;font-weight:600;padding:7px 14px;min-width:68px;flex-shrink:0;display:flex;align-items:center}
+  .email-meta-val{padding:7px 14px;color:#1E2A3A;flex:1;line-height:1.5}
+  .email-body{padding:22px 24px;font-size:12.5px;line-height:2;color:#1E2A3A;border-top:1px solid #EEF1F6}
+  .eb-to{font-weight:700;font-size:13px;margin-bottom:14px}
+  .eb-p{margin-bottom:10px}
+  .eb-sec{font-weight:700;color:#1A3C6E;margin:16px 0 6px}
+  .eb-item{margin-left:14px;margin-bottom:4px}
+  .eb-sub{margin-left:28px;color:#444;font-size:12px;margin-bottom:8px}
+  .eb-sign{margin-top:24px;padding-top:16px;border-top:1px solid #EEF1F6;font-size:12px;color:#444;line-height:1.9}
+  .eb-sign strong{color:#1E2A3A;font-weight:700}
+
+  .footer{margin-top:8px;padding-top:14px;border-top:1px solid #DEE3EC;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+  .footer-left{font-size:11px;color:#888}
+  .footer-right{font-size:11px;color:#888}
+  @media(max-width:700px){
+    .grid-2,.grid-3{grid-template-columns:1fr}
+    .cover-sub{flex-direction:column;gap:4px}
+    .action-row{flex-wrap:wrap}
+    .action-due{margin-left:0}
+    .email-top{flex-direction:column;align-items:flex-start;gap:8px}
+  }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="cover-inner">
+    <div class="cover-badge">내부보고 · 기밀</div>
+    <div class="cover-title">태양광발전설비 납품·설치대금<br>지급의무 배제 검토 보고</div>
+    <div class="cover-sub">
+      <span>㈜인텍코리아 → ㈜한국그린전력</span>
+      <span>계약금액 ₩114,125,000 (VAT포함)</span>
+      <span>화재일 2026.06.07.</span>
+      <span>보고일 2026.07.07.</span>
+      <span>인시스 AI혁신 R&D센터 · v1.1</span>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="verdict">
+    <div class="verdict-icon">⚖️</div>
+    <div class="verdict-text">
+      <strong>결론 : 잔금 ₩103,125,000 지급의무 없음</strong>
+      <span>3중 법리 근거 확정 — 소유권유보 조항 · 인도 미성립 · 민법 제537조 채무자위험부담주의</span>
+    </div>
+  </div>
+
+  <!-- 1. 계약 개요 -->
+  <div class="card" style="margin-bottom:20px">
+    <div class="sec-title"><span class="sec-num">1</span>계약 개요</div>
+    <table class="info-table">
+      <tr><th>계약명</th><td>㈜인텍코리아 태양광발전소 설치공사 제작납품계약 (125KW급)<span class="tag-blue">도급계약</span></td></tr>
+      <tr><th>공급자(을)</th><td>㈜한국그린전력 · 대표이사 정재희, 정구훈 · 충남 계룡시 두마면 입암길 76-33</td></tr>
+      <tr><th>계약금액</th><td>₩114,125,000 (VAT 포함) · 공급가 ₩103,750,000 · VAT ₩10,375,000</td></tr>
+      <tr><th>대금 구조</th><td>계약금 ₩11,000,000 (기지급) · 기성금 미확정 · 잔금 <strong style="color:#C00000">₩103,125,000</strong><span class="tag-red">지급배제 대상</span></td></tr>
+      <tr><th>공사기간</th><td>2026.05.21. ~ 2026.08.21. (준공예정)</td></tr>
+      <tr><th>공사진행</th><td>태양전지·전력변환장치 설치 완료 — 완공통지·검수·준공 전<span class="tag-red">인도 미성립</span></td></tr>
+      <tr><th>화재발생</th><td>2026.06.07. 21:05 · 인근 공장 화재 전이 (발화공장 확인중) · 설비 전소</td></tr>
+      <tr><th>화재증명원</th><td>NFDS-260608115638702 · 경기도 안산소방서장 발급 · 2026.06.13.<span class="tag-gray">법원 제출용</span></td></tr>
+    </table>
+  </div>
+
+  <!-- 2. 쟁점 및 결론 -->
+  <div class="card" style="margin-bottom:20px">
+    <div class="sec-title"><span class="sec-num">2</span>쟁점 및 결론 요약</div>
+    <table class="issue-table">
+      <tr><th style="width:28%">쟁 점</th><th style="width:50%">검토 내용</th><th style="width:22%">결 론</th></tr>
+      <tr><td><strong>잔금 지급의무 존부</strong></td><td>소유권유보·인도미성립·민법537조 3중 근거 → 이행불능</td><td class="result-no" style="text-align:center">지급의무 없음</td></tr>
+      <tr><td><strong>기성고 비례 지급 가능성</strong></td><td>설비 전소 → 갑이 얻은 이익 전무 → 기성고 지급 근거 없음</td><td class="result-no" style="text-align:center">지급 불가</td></tr>
+      <tr><td><strong>을의 손해 전보 경로</strong></td><td>제5조① 보험가입 의무 → 공사보험·생산물배상책임보험 확인 요구</td><td class="result-yes" style="text-align:center">보험 청구 유도</td></tr>
+      <tr><td><strong>재시공 협의 여지</strong></td><td>화재 원인 확정 후 계약 제22조 합의 조항 활용 협의</td><td class="result-yes" style="text-align:center">원인 확정 후</td></tr>
+    </table>
+  </div>
+
+  <!-- 3. 3중 법리 근거 -->
+  <div class="sec-title" style="margin-bottom:12px"><span class="sec-num">3</span>지급배제 3중 법리 근거</div>
+  <div class="grid-3" style="margin-bottom:20px">
+    <div class="basis-card">
+      <div class="basis-num">근거 ① · 계약 제14조⑥</div>
+      <div class="basis-title">소유권유보 약정</div>
+      <div class="basis-clause">"잔금지급 전 태양광발전소의 소유권은 공급자(을)에게 있으며…"</div>
+      <div class="basis-desc">화재 당시 목적물 소유자 = 을 → 멸실 위험도 소유자인 을에 귀속</div>
+      <div class="basis-result">→ 갑은 소유권 주장 불가 · 을이 위험 부담</div>
+    </div>
+    <div class="basis-card">
+      <div class="basis-num">근거 ② · 계약 제13조 + 제9조③④</div>
+      <div class="basis-title">인도 미성립</div>
+      <div class="basis-clause">"완공통지 → 인수성능검사(7일) → 시운전 최종검수(7일) 완료 시 준공"</div>
+      <div class="basis-desc">완공통지·검사·검수 전혀 없음 → 인도 전 불가항력 손해는 공급자 부담</div>
+      <div class="basis-result">→ 인도 미성립 확정 · 을의 위험 영역</div>
+    </div>
+    <div class="basis-card">
+      <div class="basis-num">근거 ③ · 민법 제537조</div>
+      <div class="basis-title">채무자위험부담주의</div>
+      <div class="basis-clause">"쌍방 책임 없는 사유로 채무 이행불능 시 채무자는 반대급부를 청구하지 못함"</div>
+      <div class="basis-desc">화재원인 조사중(쌍방 무귀책) → 을의 인도채무 이행불능 → 잔금 청구권 소멸</div>
+      <div class="basis-result">→ 잔금 청구권 법률상 소멸</div>
+    </div>
+  </div>
+
+  <!-- 4. 향후 조치 / 첨부 -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="sec-title"><span class="sec-num">4</span>향후 조치 사항</div>
+      <div class="actions">
+        <div class="action-row">
+          <span class="action-step urgent">즉시</span>
+          <div class="action-content"><strong>내용증명 발송</strong><span>변호사 작성 내용증명 통지서 → 한국그린전력 등기 발송</span></div>
+          <span class="action-due">오늘</span>
+        </div>
+        <div class="action-row">
+          <span class="action-step urgent">7일내</span>
+          <div class="action-content"><strong>보험 가입 증서 제출 요구</strong><span>공사보험·생산물배상책임보험 증서 수취 → 손해 전보 경로 확보</span></div>
+          <span class="action-due">~7.14.</span>
+        </div>
+        <div class="action-row">
+          <span class="action-step">모니터링</span>
+          <div class="action-content"><strong>화재 원인 조사 결과 확인</strong><span>발화공장 확정 시 → 손해배상 청구 연계 검토</span></div>
+          <span class="action-due">결과후</span>
+        </div>
+        <div class="action-row">
+          <span class="action-step">추후</span>
+          <div class="action-content"><strong>재시공 여부 협의</strong><span>계약 제22조 합의 조항 활용 · 조건 협의</span></div>
+          <span class="action-due">원인확정후</span>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="sec-title"><span class="sec-num">5</span>이메일 발송 첨부 파일</div>
+      <div class="attach-list">
+        <div class="attach-item">
+          <div class="attach-icon">📄</div>
+          <div><div class="attach-name">법리검토서 및 내용증명 통지서</div><div style="font-size:11px;color:#888">변호사 작성 완성본 · PDF 또는 원본</div></div>
+          <span class="attach-note">첨부 ①</span>
+        </div>
+        <div class="attach-item">
+          <div class="attach-icon">🔥</div>
+          <div><div class="attach-name">화재증명원 사본</div><div style="font-size:11px;color:#888">NFDS-260608115638702 · 경기도 안산소방서장</div></div>
+          <span class="attach-note">첨부 ②</span>
+        </div>
+        <div class="attach-item">
+          <div class="attach-icon">📋</div>
+          <div><div class="attach-name">태양광발전시설 제작납품 표준계약서 사본</div><div style="font-size:11px;color:#888">계약 조항 근거 확인용</div></div>
+          <span class="attach-note">첨부 ③</span>
+        </div>
+      </div>
+      <div style="margin-top:12px;padding:10px 13px;background:#FFF8E1;border-radius:6px;border-left:3px solid #F59E0B">
+        <div style="font-size:11px;font-weight:700;color:#92400E;margin-bottom:4px">⚠️ 주의사항</div>
+        <div style="font-size:11px;color:#78350F;line-height:1.7">
+          · 구두 합의 또는 분할 지급 제안 → 즉시 거절<br>
+          · 추가 연락·협의는 반드시 서면으로만 진행<br>
+          · 최종 법적 판단은 담당 변호사 확인 후 집행
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. 이메일 원문 -->
+  <div class="sec-title" style="margin-bottom:12px"><span class="sec-num">6</span>발송 이메일 원문</div>
+  <div class="email-wrap">
+    <div class="email-top">
+      <div class="email-top-title">📧 ㈜한국그린전력 발송 이메일 원문</div>
+      <div class="email-top-right">
+        <span class="copy-toast" id="toast">✔ 복사 완료!</span>
+        <button class="copy-btn" onclick="copyEmail()">본문 복사</button>
+      </div>
+    </div>
+    <div class="email-meta">
+      <div class="email-meta-row">
+        <div class="email-meta-label">수 신</div>
+        <div class="email-meta-val">㈜한국그린전력 대표이사 정재희, 정구훈 / PM팀장 황영철 (010-3563-3307)</div>
+      </div>
+      <div class="email-meta-row">
+        <div class="email-meta-label">발 신</div>
+        <div class="email-meta-val">㈜인텍코리아 대표이사 김진섭</div>
+      </div>
+      <div class="email-meta-row">
+        <div class="email-meta-label">제 목</div>
+        <div class="email-meta-val" style="font-weight:600;color:#1A3C6E">[㈜인텍코리아] 태양광발전설비 납품·설치대금 지급의무 배제 통지 및 관련 서류 송부</div>
+      </div>
+      <div class="email-meta-row">
+        <div class="email-meta-label">첨 부</div>
+        <div class="email-meta-val">① 법리검토서 및 내용증명 통지서 (변호사 작성본)&nbsp;&nbsp;② 화재증명원 사본 (NFDS-260608115638702)&nbsp;&nbsp;③ 계약서 사본</div>
+      </div>
+    </div>
+    <div class="email-body" id="emailBody">
+      <div class="eb-to">㈜한국그린전력 대표이사 귀중</div>
+
+      <div class="eb-p">귀사의 무궁한 발전을 기원합니다.</div>
+      <div class="eb-p">저희 ㈜인텍코리아는 귀사와 체결한 「태양광발전소 설치공사 제작납품계약」(계약금액 ₩114,125,000, 이하 "본 계약")과 관련하여, 아래와 같이 공식 통지드립니다.</div>
+
+      <div class="eb-sec">■ 1. 화재 발생 경위</div>
+      <div class="eb-p">2026년 6월 7일 21:05, 인근 공장에서 발생한 화재(발화 공장 현재 확인중)가 불가항력적으로 당사 사업장(경기도 안산시 단원구 정왕천동로36번길 11)에 轉移되어, 귀사가 설치 중이던 태양전지 및 전력변환장치를 포함한 시설 일체가 전소되었습니다.<br>
+      <span style="color:#666;font-size:12px">(화재증명원 발급번호 : NFDS-260608115638702, 경기도 안산소방서장 발급)</span></div>
+
+      <div class="eb-sec">■ 2. 공사대금(잔금) 지급의무 배제 통지</div>
+      <div class="eb-p">당사는 본 계약 및 민법상 법리에 따라 잔금(₩103,125,000) 지급의무가 없음을 아래 세 가지 근거로 통지합니다.</div>
+      <div class="eb-item"><strong>가) 소유권유보 조항 (계약 제14조⑥)</strong></div>
+      <div class="eb-sub">잔금 지급 전 목적물의 소유권은 귀사에 귀속되어 있었으므로, 화재 당시 목적물의 멸실 위험 역시 소유자인 귀사가 부담합니다.</div>
+      <div class="eb-item"><strong>나) 인도 미성립 (계약 제13조, 제9조③④)</strong></div>
+      <div class="eb-sub">완공통지·인수성능검사·최종검수(시운전 7일)가 전혀 이루어지지 않아 목적물의 인도는 성립되지 않았으며, 인도 전 불가항력 손해는 공급자가 부담합니다.</div>
+      <div class="eb-item"><strong>다) 민법 제537조 채무자위험부담주의</strong></div>
+      <div class="eb-sub">화재 원인이 현재 조사 중으로 쌍방 무귀책의 불가항력적 사유에 의해 귀사의 인도채무가 이행불능이 되었으므로, 귀사는 반대급부인 공사대금을 청구할 수 없습니다. 또한 설비가 전소되어 당사가 얻은 이익이 전무하므로 기성고에 따른 일부 대금 지급 근거도 없습니다.</div>
+
+      <div class="eb-sec">■ 3. 보험 가입 증서 제출 요청</div>
+      <div class="eb-p">계약 제5조①에 따라 귀사는 공사 관련 보험(공사보험·생산물배상책임보험 등) 가입 의무가 있습니다. 본 통지 수신 후 <strong>7일 이내</strong>에 보험 가입 증서 사본을 당사로 제출하여 주시기 바랍니다.</div>
+
+      <div class="eb-sec">■ 4. 향후 협의</div>
+      <div class="eb-p">당사는 화재 원인 조사 결과 확정 후 재시공 여부 등에 관하여 귀사와 성실히 협의할 용의가 있습니다. 이견이 있으실 경우 계약 제22조에 따라 원만한 합의를 통해 해결하기를 희망합니다.</div>
+
+      <div class="eb-p">관련 법리검토서, 내용증명 통지서 및 화재증명원은 첨부 파일로 함께 송부드립니다. 확인 후 회신 부탁드립니다.</div>
+
+      <div class="eb-sign">
+        <div style="margin-bottom:8px">2026년 &nbsp; 7월 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 일</div>
+        <strong>㈜인텍코리아 대표이사 &nbsp; 김진섭 &nbsp; (인)</strong><br>
+        담당 : 이사 김양섭 &nbsp;|&nbsp; ys.kim@in-sys.co.kr &nbsp;|&nbsp; 010-3693-4557
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="footer-left">
+      작성 : 인시스 AI혁신 R&D센터 · 이사 김양섭 (ys.kim@in-sys.co.kr)<br>
+      수신 : ㈜인텍코리아 대표이사 김진섭
+    </div>
+    <div class="footer-right">2026. 07. 07. · v1.1 · 내부 기밀문서</div>
+  </div>
+
+</div>
+
+<script>
+function copyEmail() {
+  const el = document.getElementById('emailBody');
+  const lines = [];
+  el.querySelectorAll('div,span,strong,br').forEach(n => {
+    if (n.tagName === 'BR') { lines.push(''); return; }
+    const txt = n.innerText || n.textContent || '';
+    if (txt.trim()) lines.push(txt.trim());
+  });
+  // 텍스트 전체 추출
+  const text = el.innerText || el.textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const t = document.getElementById('toast');
+    t.style.display = 'inline';
+    setTimeout(() => { t.style.display = 'none'; }, 2500);
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    const t = document.getElementById('toast');
+    t.style.display = 'inline';
+    setTimeout(() => { t.style.display = 'none'; }, 2500);
+  });
+}
+</script>
+</body>
+</html>
