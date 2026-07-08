@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>인시스 AI혁신 R&D센터 설립 TODO v2.2</title>
+<title>인시스 AI혁신 R&D센터 설립 TODO v2.3</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -230,6 +230,10 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f4f9;color:#1e2740;font
 .upload-prog{height:4px;background:#e8edf5;border-radius:2px;margin-top:8px;overflow:hidden;display:none;}
 .upload-prog-fill{height:100%;background:#2563eb;border-radius:2px;transition:width .3s;}
 
+.todo-upload-btn{
+  transition:all .15s;white-space:nowrap;
+}
+.todo-upload-btn:hover{filter:brightness(1.1);}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
   background:#1e2740;color:#fff;padding:8px 20px;border-radius:20px;
   font-size:12px;font-weight:700;opacity:0;transition:opacity .3s;
@@ -250,7 +254,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f4f9;color:#1e2740;font
       <span id="fbDot">🔴</span>
       <span id="fbTxt">Firebase 연결 중</span>
     </div>
-    <div class="hdr-ver">v2.2</div>
+    <div class="hdr-ver">v2.3</div>
   </div>
 </div>
 
@@ -514,6 +518,20 @@ const INIT_TASKS=[
 let TASKS = INIT_TASKS.map(t=>({...t}));
 
 // KOITA 제출 서류 정의 (업무편람 기준 필수 8종)
+// TODO ↔ 파일 연결 맵
+const TODO_FILE_MAP = {
+  't30': {catId:'c1', itemId:'f01', itemName:'사업자등록증 사본'},
+  't33': {catId:'c1', itemId:'f02', itemName:'중소기업기준검토표'},
+  't32': {catId:'c2', itemId:'f03', itemName:'4대보험 가입자 명부'},
+  't31': {catId:'c2', itemId:'f04', itemName:'졸업증명서 (센터장)'},
+  't24': {catId:'c3', itemId:'f05', itemName:'연구공간 내부 도면 (Lay-Out)'},
+  't22': {catId:'c3', itemId:'f06', itemName:'현판 근접 사진'},
+  't21': {catId:'c3', itemId:'f06', itemName:'현판 설치 사진'},
+  't25': {catId:'c3', itemId:'f08', itemName:'내부 사방 사진'},
+  't34': {catId:'c4', itemId:'f09', itemName:'연구개발활동개요서'},
+  't35': {catId:'c4', itemId:'f10', itemName:'조직도 (전사)'},
+};
+
 const FILE_CATS = [
   {id:'c1', title:'① 법인 기본 서류', items:[
     {id:'f01', name:'사업자등록증 사본', desc:'홈택스 출력 — 기업정보 입력 대조용', required:true},
@@ -579,6 +597,8 @@ function renderTodo(){
       const isDone=task.status==='done';
       const row=document.createElement('div');
       row.className='todo-row';
+      const fileLink = TODO_FILE_MAP[task.id];
+      const uploadedCount = fileLink ? Object.values(filesMeta).filter(f=>f.itemId===fileLink.itemId).length : 0;
       row.innerHTML=`
         <div class="cb ${task.status==='done'?'done-cb':task.status==='inprogress'?'prog-cb':''}" data-tid="${task.id}"></div>
         <div style="flex:1;min-width:0;">
@@ -586,6 +606,12 @@ function renderTodo(){
           ${task.note?`<div class="todo-note">${task.note}</div>`:''}
         </div>
         <span class="todo-pic">${task.pic}</span>
+        ${fileLink ? `<button class="f-btn ${uploadedCount>0?'dl':'up'} todo-upload-btn"
+          data-catid="${fileLink.catId}" data-itemid="${fileLink.itemId}" data-itemname="${fileLink.itemName}"
+          title="${fileLink.itemName}"
+          style="font-size:10px;padding:2px 7px;flex-shrink:0;">
+          ${uploadedCount>0?`📄 ${uploadedCount}건`:'📎 첨부'}
+        </button>` : ''}
         <span class="status-badge ${SM[task.status]}" data-tid="${task.id}">${SL[task.status]}</span>
         ${task.date?`<span class="todo-date ${isDone?'done-date':''}">${task.date}</span>`:'<span class="todo-date"></span>'}`;
       body.appendChild(row);
@@ -598,6 +624,18 @@ function renderTodo(){
 }
 
 function bindTodoEvents(){
+  // 📎 첨부 버튼 이벤트
+  document.querySelectorAll('.todo-upload-btn').forEach(el=>{
+    el.onclick=e=>{
+      e.stopPropagation();
+      // 파일 관리 탭으로 전환 후 업로드 모달 열기
+      switchTab('files', document.querySelectorAll('.tab-btn')[1]);
+      setTimeout(()=>{
+        openUploadModal(el.dataset.catid, el.dataset.itemid, el.dataset.itemname);
+      }, 100);
+    };
+  });
+
   document.querySelectorAll('.cb').forEach(el=>{
     el.onclick=e=>{
       e.stopPropagation();
@@ -812,6 +850,8 @@ function doUpload(){
           showToast('✅ 업로드 완료: '+file.name);
           closeModal();
           loadFiles();
+          // TODO 탭 첨부 버튼 갱신
+          setTimeout(()=>renderTodo(), 600);
         });
       }
     },
