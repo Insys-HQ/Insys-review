@@ -181,6 +181,14 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f4f9;color:#1e2740;font
 .uf-name{font-size:12px;font-weight:600;color:#1e2740;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .uf-meta{font-size:10px;color:#6080a0;margin-top:1px;}
 .uf-tag{font-size:10px;font-weight:700;padding:1px 6px;border-radius:6px;background:#dbeafe;color:#1e40af;flex-shrink:0;}
+.uf-check{width:16px;height:16px;cursor:pointer;flex-shrink:0;accent-color:#2563eb;}
+.bulk-bar{
+  display:none;background:#EEF4FF;border:1px solid #bfdbfe;border-radius:6px;
+  padding:8px 12px;margin-bottom:10px;
+  align-items:center;gap:10px;flex-wrap:wrap;
+}
+.bulk-bar.show{display:flex;}
+.bulk-cnt{font-size:12px;font-weight:700;color:#1e40af;flex:1;}
 
 /* 모달 */
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;
@@ -298,7 +306,16 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f4f9;color:#1e2740;font
     <div class="uploaded-list" id="uploadedList" style="margin-top:20px;">
       <div class="ul-head">
         <div class="ul-title">☁️ Firebase 저장 파일 목록</div>
+        <label style="font-size:11px;font-weight:600;color:#506080;cursor:pointer;display:flex;align-items:center;gap:4px;">
+          <input type="checkbox" id="checkAll" onchange="toggleCheckAll(this)" style="accent-color:#2563eb;">전체선택
+        </label>
         <button class="btn" onclick="loadFiles()" style="font-size:10px;padding:2px 8px;">🔄 새로고침</button>
+      </div>
+      <!-- 일괄 다운로드 바 -->
+      <div class="bulk-bar" id="bulkBar">
+        <span class="bulk-cnt" id="bulkCnt">0개 선택됨</span>
+        <button class="btn acc" onclick="bulkDownload()" style="font-size:11px;">⬇️ 선택 파일 다운로드</button>
+        <button class="btn" onclick="clearCheck()" style="font-size:11px;">✕ 선택 해제</button>
       </div>
       <div id="fileList"><div style="text-align:center;padding:20px;color:#94a3b8;font-size:12px;">파일 목록 로딩 중...</div></div>
     </div>
@@ -370,7 +387,7 @@ const firebaseConfig = {
   authDomain:"insys-gantt.firebaseapp.com",
   databaseURL:"https://insys-gantt-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId:"insys-gantt",
-  storageBucket:"insys-gantt.appspot.com",
+  storageBucket:"insys-gantt.firebasestorage.app",
   messagingSenderId:"205051617449",
   appId:"1:205051617449:web:72bcfbd633f7679a34c9b8"
 };
@@ -816,6 +833,57 @@ function deleteFile(key, path){
 // ══════════════════════════════
 // 공통 유틸
 // ══════════════════════════════
+// ── 체크박스 선택 관련 ──
+function onCheckChange(){
+  const checks = document.querySelectorAll('.uf-check:checked');
+  const bar = document.getElementById('bulkBar');
+  const cnt = document.getElementById('bulkCnt');
+  const all = document.getElementById('checkAll');
+  const total = document.querySelectorAll('.uf-check').length;
+  if(checks.length > 0){
+    bar.classList.add('show');
+    cnt.textContent = `${checks.length}개 선택됨`;
+  } else {
+    bar.classList.remove('show');
+  }
+  if(all) all.checked = checks.length === total && total > 0;
+}
+
+function toggleCheckAll(el){
+  document.querySelectorAll('.uf-check').forEach(cb=>{ cb.checked = el.checked; });
+  onCheckChange();
+}
+
+function clearCheck(){
+  document.querySelectorAll('.uf-check').forEach(cb=>{ cb.checked = false; });
+  const all = document.getElementById('checkAll');
+  if(all) all.checked = false;
+  onCheckChange();
+}
+
+async function bulkDownload(){
+  const checks = document.querySelectorAll('.uf-check:checked');
+  if(!checks.length){ showToast('선택된 파일이 없습니다'); return; }
+  showToast(`⬇️ ${checks.length}개 파일 다운로드 시작...`, 3000);
+  // 순차 다운로드 (팝업 차단 방지)
+  for(const cb of checks){
+    const url = cb.dataset.url;
+    const name = cb.dataset.name;
+    if(!url) continue;
+    await new Promise(resolve => {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      a.target = '_blank';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(resolve, 500); // 간격 두어 팝업 차단 방지
+    });
+  }
+  showToast(`✅ ${checks.length}개 다운로드 완료`);
+}
+
 function showToast(msg,dur=2000){
   const t=document.getElementById('toast');
   t.textContent=msg; t.style.opacity='1';
