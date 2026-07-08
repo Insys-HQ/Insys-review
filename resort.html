@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>인시스 임직원 리조트 이용 안내 v3.0</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, addDoc, getDocs, updateDoc, doc, query, orderBy, serverTimestamp }
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyC3ePFuSVkGFrFgVWxUMmGWxFJzr5bLzUQ",
+    authDomain: "insys-hq.firebaseapp.com",
+    projectId: "insys-hq",
+    storageBucket: "insys-hq.appspot.com",
+    messagingSenderId: "123456789",
+    appId: "1:123456789:web:abcdef"
+  };
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  window._db = db;
+  window._col = collection(db, "resort_applications");
+  window._fbReady = true;
+
+  // 신청 저장
+  window.submitApplication = async function() {
+    const btn = document.getElementById('submit-btn');
+    const msg = document.getElementById('form-msg');
+    const fields = ['f-name','f-dept','f-resort','f-room','f-adults','f-children','f-from','f-to','f-phone'];
+    let valid = true;
+    fields.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el.value.trim()) { el.style.borderColor='#e04040'; valid=false; }
+      else el.style.borderColor='#d0dae8';
+    });
+    if (!valid) { msg.textContent='⚠️ 모든 항목을 입력해 주세요.'; msg.style.color='#c00'; return; }
+
+    const from = document.getElementById('f-from').value;
+    const to   = document.getElementById('f-to').value;
+    const nights = Math.round((new Date(to)-new Date(from))/(1000*60*60*24));
+    if (nights < 1) { msg.textContent='⚠️ 이용 기간을 올바르게 입력해 주세요.'; msg.style.color='#c00'; return; }
+
+    btn.disabled = true; btn.textContent = '저장 중...';
+    try {
+      const data = {
+        applicantName:   document.getElementById('f-name').value.trim(),
+        dept:            document.getElementById('f-dept').value.trim(),
+        resort:          document.getElementById('f-resort').value.trim(),
+        roomType:        document.getElementById('f-room').value.trim(),
+        adults:          document.getElementById('f-adults').value,
+        children:        document.getElementById('f-children').value,
+        dateFrom:        from,
+        dateTo:          to,
+        nights:          nights,
+        phone:           document.getElementById('f-phone').value.trim(),
+        status:          'pending',   // pending / approved / rejected
+        approvals: { manager: null, director: null, ceo: null },
+        createdAt:       serverTimestamp()
+      };
+      const ref = await addDoc(window._col, data);
+      msg.textContent = '✅ 신청이 완료되었습니다! (신청번호: ' + ref.id.slice(0,8).toUpperCase() + ')';
+      msg.style.color = '#1a7a40';
+      document.getElementById('resort-form').reset();
+      setTimeout(() => { loadApplications(); }, 800);
+    } catch(e) {
+      msg.textContent = '❌ 저장 실패: ' + e.message;
+      msg.style.color = '#c00';
+    }
+    btn.disabled = false; btn.textContent = '품의서 신청';
+  };
+
+  // 목록 불러오기
+  window.loadApplications = async function() {
+    const list = document.getElementById('app-list');
+    if (!list) return;
+    list.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#aaa;padding:20px;">불러오는 중...</td></tr>';
+    try {
+      const q = query(window._col, orderBy('createdAt','desc'));
+      const snap = await getDocs(q);
+      if (snap.empty) {
+        list.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#aaa;padding:20px;">신청 내역이 없습니다.</td></tr>';
+        return;
+      }
+      let rows = '';
+      snap.forEach(d => {
+        const v = d.data();
+        const id = d.id;
+        const statusMap = { pending:'⏳ 대기', approved:'✅ 승인', rejected:'❌ 반려' };
+        const statusColor = { pending:'#b07840', approved:'#1a7a40', rejected:'#c00' };
+        const ap = v.approvals || {};
+        rows += `<tr>
+          <td style="font-size:11px;color:#888;">${id.slice(0,8).toUpperCase()}</td>
+          <td>${v.applicantName||''}</td>
+          <td style="font-size:12px;">${v.dept||''}</td>
+          <td style="font-size:12px;">${v.resort||''}</td>
+          <td style="font-size:12px;">${v.dateFrom||''} ~ ${v.dateTo||''} (${v.nights||0}박)</td>
+          <td style="text-align:center;">
+            <span style="font-size:11px;font-weight:700;color:${ap.manager?'#1a7a40':'#ccc'};">${ap.manager?'✅':'⬜'}</span>
+            <span style="font-size:11px;font-weight:700;color:${ap.director?'#1a7a40':'#ccc'};">${ap.director?'✅':'⬜'}</span>
+            <span style="font-size:11px;font-weight:700;color:${ap.ceo?'#1a7a40':'#ccc'};">${ap.ceo?'✅':'⬜'}</span>
+          </td>
+          <td style="text-align:center;font-weight:700;color:${statusColor[v.status]||'#888'};">${statusMap[v.status]||v.status}</td>
+          <td style="text-align:center;">
+            <button onclick="approveStep('${id}','manager')" style="font-size:11px;padding:3px 7px;margin:1px;background:#e8f0fd;border:1px solid #b0c4e8;border-radius:4px;cursor:pointer;color:#1a3a6e;" title="담당 승인">담당</button>
+            <button onclick="approveStep('${id}','director')" style="font-size:11px;padding:3px 7px;margin:1px;background:#e8f5ec;border:1px solid #90cc98;border-radius:4px;cursor:pointer;color:#1a5a2a;" title="상무 승인">상무</button>
+            <button onclick="approveStep('${id}','ceo')" style="font-size:11px;padding:3px 7px;margin:1px;background:#fef3e0;border:1px solid #e8c870;border-radius:4px;cursor:pointer;color:#6a4a00;" title="대표 승인">대표</button>
+          </td>
+        </tr>`;
+      });
+      list.innerHTML = rows;
+    } catch(e) {
+      list.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#c00;padding:20px;">불러오기 실패: ' + e.message + '</td></tr>';
+    }
+  };
+
+  // 결재 승인
+  window.approveStep = async function(docId, role) {
+    const roleLabel = {manager:'담당',director:'상무',ceo:'대표'};
+    if (!confirm(`[${roleLabel[role]}] 결재를 승인하시겠습니까?`)) return;
+    try {
+      const ref = doc(window._col, docId);
+      const upd = {};
+      upd['approvals.' + role] = new Date().toISOString();
+      // ceo 승인 시 최종 승인
+      if (role === 'ceo') upd['status'] = 'approved';
+      await updateDoc(ref, upd);
+      loadApplications();
+    } catch(e) {
+      alert('결재 실패: ' + e.message);
+    }
+  };
+
+  // 탭 로드 시 목록 자동 불러오기
+  window.addEventListener('load', () => {
+    // 관리 탭 열릴 때 로드
+  });
+</script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { font-family: 'Noto Sans KR', sans-serif; background: #f0f4f9; color: #2c3e50; font-size: 14px; line-height: 1.6; }
+
+.layout-toggle { position: fixed; top: 12px; right: 16px; z-index: 9999; display: flex; background: #fff; border: 1px solid #d0d7de; border-radius: 20px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+.layout-toggle button { padding: 5px 14px; font-size: 12px; font-family: 'Noto Sans KR', sans-serif; border: none; background: transparent; cursor: pointer; color: #666; transition: all .2s; }
+.layout-toggle button.active { background: #1a4fa0; color: #fff; border-radius: 18px; }
+
+.site-header { background: linear-gradient(135deg,#0f2d5e 0%,#1a4fa0 65%,#2a6dd9 100%); }
+.header-inner { max-width: 1100px; margin: 0 auto; padding: 30px 24px 26px; display: flex; align-items: flex-end; gap: 16px; }
+.header-icon { font-size: 38px; line-height: 1; }
+.header-label { font-size: 11px; font-weight: 500; letter-spacing: .1em; color: #9dbee8; margin-bottom: 4px; }
+.header-title { font-size: 23px; font-weight: 700; color: #fff; }
+.header-sub { font-size: 12px; color: #bed4f5; margin-top: 4px; }
+
+.top-nav { background: #132a56; }
+.top-nav-inner { max-width: 1100px; margin: 0 auto; display: flex; padding: 0 24px; overflow-x: auto; }
+.top-nav-inner::-webkit-scrollbar { display: none; }
+.top-btn { padding: 11px 16px; font-size: 13px; font-weight: 500; color: #7aa3d4; cursor: pointer; white-space: nowrap; border: none; border-bottom: 3px solid transparent; background: none; font-family: 'Noto Sans KR', sans-serif; transition: all .2s; }
+.top-btn:hover { color: #c5d9f5; }
+.top-btn.active { color: #fff; border-bottom-color: #4a9eff; font-weight: 700; }
+
+.brand-tabs { max-width: 1100px; margin: 18px auto 0; padding: 0 24px; display: none; }
+.brand-tabs.show { display: flex; gap: 6px; }
+.brand-tab { padding: 8px 20px; border-radius: 8px 8px 0 0; font-size: 13px; font-weight: 700; cursor: pointer; border: 2px solid #d0dae8; border-bottom: none; background: #e8eef7; color: #7a90b0; font-family: 'Noto Sans KR', sans-serif; transition: all .2s; }
+.brand-tab.hanwha.active { background: #fff; border-color: #c8955a; color: #7a4010; border-bottom: 2px solid #fff; }
+.brand-tab.sono.active   { background: #fff; border-color: #5aaa6e; color: #1a6a30; border-bottom: 2px solid #fff; }
+
+.main-wrap { max-width: 1100px; margin: 0 auto; padding: 18px 24px 60px; }
+.section { display: none; }
+.section.active { display: block; }
+.brand-panel { display: none; }
+.brand-panel.active { display: block; }
+.brand-border-hanwha { border-top: 3px solid #c8955a; background: #fff; border-radius: 0 8px 8px 8px; }
+.brand-border-sono    { border-top: 3px solid #5aaa6e; background: #fff; border-radius: 0 8px 8px 8px; }
+
+.card { background: #fff; border-radius: 10px; border: 1px solid #e1e8f0; padding: 18px 20px; margin-bottom: 14px; box-shadow: 0 1px 4px rgba(0,0,0,.05); }
+.card-title { font-size: 14px; font-weight: 700; color: #1a3a6e; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.card-title::before { content: ''; display: inline-block; width: 3px; height: 15px; border-radius: 2px; flex-shrink: 0; }
+.card-title.hanwha::before { background: #c8955a; }
+.card-title.sono::before   { background: #5aaa6e; }
+.card-title.blue::before   { background: #1a4fa0; }
+.card-title.red::before    { background: #c03030; }
+
+.steps { display: flex; flex-direction: column; }
+.step { display: flex; gap: 13px; padding-bottom: 16px; }
+.step:last-child { padding-bottom: 0; }
+.step-left { display: flex; flex-direction: column; align-items: center; }
+.step-num { width: 30px; height: 30px; border-radius: 50%; color: #fff; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.step-num.hanwha { background: #b07840; }
+.step-num.sono   { background: #3a9050; }
+.step-num.blue   { background: #1a4fa0; }
+.step-line { width: 2px; flex: 1; background: #d8e4f4; margin-top: 4px; min-height: 12px; }
+.step:last-child .step-line { display: none; }
+.step-content { padding-top: 3px; flex: 1; }
+.step-title { font-size: 14px; font-weight: 700; color: #1a3a6e; margin-bottom: 3px; }
+.step-desc { font-size: 13px; color: #555; line-height: 1.7; }
+.step-desc strong { color: #1a4fa0; }
+
+.screen-guide { background: #f7f9fc; border: 1px solid #dde5f0; border-radius: 7px; padding: 10px 14px; margin-top: 8px; }
+.screen-guide-title { font-size: 11px; font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 5px; }
+.screen-guide-title.hanwha { color: #8a5a20; }
+.screen-guide-title.sono   { color: #1a6a30; }
+.screen-row { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; color: #444; padding: 4px 0; border-bottom: 1px solid #eef2f8; line-height: 1.6; }
+.screen-row:last-child { border-bottom: none; }
+.screen-row .arrow { color: #aaa; flex-shrink: 0; font-size: 11px; padding-top: 2px; }
+.screen-row .sc-desc b { color: #1a3a6e; }
+
+.login-box { background: #fffbf5; border: 1px solid #e8d5b0; border-radius: 7px; padding: 10px 14px; margin-top: 8px; display: flex; gap: 20px; flex-wrap: wrap; }
+.login-box.sono-box { background: #f5fbf6; border-color: #b0dab8; }
+.login-field .l-label { font-size: 11px; font-weight: 700; color: #888; margin-bottom: 2px; }
+.login-field .l-val { font-size: 13px; font-weight: 700; color: #1a3a6e; font-family: monospace; }
+.login-note { font-size: 11px; color: #888; align-self: flex-end; }
+
+.badge { display: inline-block; padding: 2px 7px; border-radius: 12px; font-size: 11px; font-weight: 700; margin-left: 5px; }
+.badge.hanwha { background: #fff5e0; color: #8a5a20; border: 1px solid #e8c870; }
+.badge.sono   { background: #e8f8ec; color: #1a6a30; border: 1px solid #80cc90; }
+
+.warn-box { background: #fff8e6; border: 1px solid #ffc94d; border-left: 4px solid #f0a000; border-radius: 8px; padding: 11px 14px; margin-bottom: 12px; }
+.warn-title { font-size: 13px; font-weight: 700; color: #a06500; margin-bottom: 6px; }
+.warn-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.warn-list li { font-size: 12px; color: #5c4000; padding-left: 14px; position: relative; line-height: 1.6; }
+.warn-list li::before { content: '•'; position: absolute; left: 3px; color: #f0a000; font-weight: 900; }
+
+.info-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(190px,1fr)); gap: 10px; }
+.info-item { background: #f0f5fb; border-radius: 8px; padding: 11px 13px; border-left: 3px solid #1a4fa0; }
+.info-item .label { font-size: 11px; font-weight: 700; color: #5a7aaa; margin-bottom: 3px; }
+.info-item .value { font-size: 13px; font-weight: 600; color: #1a3a6e; }
+.info-item .sub   { font-size: 11px; color: #777; margin-top: 2px; }
+
+.highlight-row { background: #e8f0fd; border-radius: 8px; padding: 10px 13px; display: flex; align-items: flex-start; gap: 9px; margin-bottom: 12px; border: 1px solid #c8d8f5; font-size: 13px; color: #1a3a6e; line-height: 1.7; }
+.highlight-row .h-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+
+.btn-link { display: inline-flex; align-items: center; gap: 5px; padding: 7px 14px; border-radius: 6px; font-size: 12px; font-weight: 700; text-decoration: none; color: #fff; transition: opacity .2s; }
+.btn-link:hover { opacity: .85; }
+.btn-hanwha { background: #b07840; }
+.btn-sono   { background: #3a9050; }
+.btn-blue   { background: #1a4fa0; }
+
+.overview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.overview-brand { border-radius: 10px; overflow: hidden; border: 2px solid; }
+.overview-brand.hanwha { border-color: #c8955a; }
+.overview-brand.sono   { border-color: #5aaa6e; }
+.overview-brand-header { padding: 11px 15px; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 7px; }
+.overview-brand.hanwha .overview-brand-header { background: #fff5e0; color: #7a4a10; }
+.overview-brand.sono   .overview-brand-header { background: #e8f8ec; color: #1a5a28; }
+.overview-brand-body { padding: 11px 15px; background: #fff; }
+.overview-row { font-size: 12px; color: #444; padding: 3px 0; border-bottom: 1px solid #f0f2f6; line-height: 1.6; }
+.overview-row:last-child { border-bottom: none; }
+.overview-row b { color: #1a3a6e; }
+
+/* ── 한화 외부 연락처 박스 ── */
+.hanwha-contact-bar { background: #1a3060; border-radius: 8px; padding: 10px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; margin-top: 12px; }
+.hanwha-contact-bar .hcb-label { font-size: 12px; font-weight: 700; color: #f0c070; }
+.hanwha-contact-bar .hcb-val   { font-size: 12px; color: #c8daf5; }
+.hanwha-contact-bar .hcb-sep   { color: #5a7aaa; }
+
+/* ── 신청 품의서 Form ── */
+.form-wrap { display: flex; flex-direction: column; gap: 14px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-group label { font-size: 12px; font-weight: 700; color: #3a5a8a; }
+.form-group input, .form-group select {
+  padding: 9px 11px; border: 1.5px solid #d0dae8; border-radius: 6px;
+  font-size: 13px; font-family: 'Noto Sans KR', sans-serif; color: #2c3e50;
+  background: #fafcff; transition: border-color .2s; outline: none;
+}
+.form-group input:focus, .form-group select:focus { border-color: #1a4fa0; }
+.form-group.full { grid-column: 1 / -1; }
+
+/* ── 결재란 ── */
+.approval-box { border: 1.5px solid #c8d8f0; border-radius: 8px; overflow: hidden; margin: 14px 0; }
+.approval-header { background: #1a3a6e; color: #fff; font-size: 12px; font-weight: 700; padding: 7px 14px; }
+.approval-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; }
+.approval-cell { border-right: 1px solid #d0dae8; padding: 0; }
+.approval-cell:last-child { border-right: none; }
+.approval-cell-title { background: #eef3fb; font-size: 11px; font-weight: 700; color: #3a5a8a; text-align: center; padding: 6px; border-bottom: 1px solid #d0dae8; }
+.approval-cell-body { min-height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 8px; }
+.approval-cell-body .ap-name { font-size: 13px; font-weight: 700; color: #1a3a6e; }
+.approval-cell-body .ap-date { font-size: 11px; color: #888; }
+.approval-cell-body .ap-stamp { font-size: 22px; }
+.approval-cell-body.pending .ap-stamp { color: #ddd; }
+.approval-cell-body.approved { background: #f0faf3; }
+.approval-cell-body.approved .ap-stamp { color: #1a7a40; }
+
+.submit-btn-wrap { text-align: center; margin-top: 4px; }
+.submit-btn {
+  background: #1a4fa0; color: #fff; border: none; border-radius: 8px;
+  padding: 12px 40px; font-size: 14px; font-weight: 700;
+  font-family: 'Noto Sans KR', sans-serif; cursor: pointer; transition: background .2s;
+}
+.submit-btn:hover { background: #0f3070; }
+.submit-btn:disabled { background: #aaa; cursor: not-allowed; }
+#form-msg { margin-top: 10px; font-size: 13px; font-weight: 700; text-align: center; min-height: 20px; }
+
+/* ── 관리 테이블 ── */
+.mgmt-table-wrap { overflow-x: auto; }
+.mgmt-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.mgmt-table th { background: #1a3a6e; color: #fff; padding: 8px 10px; text-align: left; font-size: 11px; white-space: nowrap; }
+.mgmt-table td { padding: 8px 10px; border-bottom: 1px solid #e8eef7; vertical-align: middle; }
+.mgmt-table tr:hover td { background: #f5f8ff; }
+
+.contact-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(170px,1fr)); gap: 10px; }
+.contact-item { background: #f0f5fb; border-radius: 8px; padding: 11px 13px; text-align: center; }
+.contact-icon { font-size: 20px; margin-bottom: 4px; }
+.contact-label { font-size: 11px; color: #5a7aaa; font-weight: 700; margin-bottom: 3px; }
+.contact-value { font-size: 13px; font-weight: 600; color: #1a3a6e; }
+
+.coupon-path { background: #f0f4fb; border-radius: 6px; padding: 7px 11px; font-size: 12px; color: #3a5a8a; display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-bottom: 10px; }
+.coupon-path span { font-weight: 700; color: #1a3a6e; }
+.coupon-path .sep { color: #aaa; }
+.coupon-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(190px,1fr)); gap: 10px; }
+.coupon-item { background: #fffbf0; border: 1px solid #e8d080; border-radius: 8px; padding: 11px 13px; }
+.coupon-item .c-name { font-size: 13px; font-weight: 700; color: #5a3a00; margin-bottom: 4px; }
+.coupon-item .c-desc { font-size: 12px; color: #7a5a20; line-height: 1.6; }
+
+.divider-label { font-size: 11px; font-weight: 700; color: #aaa; letter-spacing: .08em; display: flex; align-items: center; gap: 8px; margin: 12px 0 8px; }
+.divider-label::before, .divider-label::after { content: ''; flex: 1; height: 1px; background: #e1e8f0; }
+
+.ver-badge { position: fixed; bottom: 12px; right: 16px; background: rgba(26,63,140,.1); color: #7a90b0; font-size: 10px; padding: 3px 8px; border-radius: 10px; }
+
+/* Mobile */
+body.mobile-view .main-wrap { padding: 14px 12px 60px; }
+body.mobile-view .header-inner { padding: 20px 14px 16px; }
+body.mobile-view .header-title { font-size: 19px; }
+body.mobile-view .header-icon { font-size: 28px; }
+body.mobile-view .top-nav-inner { padding: 0 8px; }
+body.mobile-view .top-btn { padding: 10px 12px; font-size: 12px; }
+body.mobile-view .brand-tabs { padding: 0 12px; margin-top: 14px; }
+body.mobile-view .brand-tab { padding: 7px 12px; font-size: 12px; }
+body.mobile-view .overview-grid { grid-template-columns: 1fr; }
+body.mobile-view .info-grid { grid-template-columns: 1fr 1fr; }
+body.mobile-view .card { padding: 13px 14px; }
+body.mobile-view .form-row { grid-template-columns: 1fr; }
+body.mobile-view .login-box { flex-direction: column; gap: 7px; }
+body.mobile-view .hanwha-contact-bar { flex-direction: column; gap: 4px; }
+</style>
+</head>
+<body class="mobile-view">
+
+<div class="layout-toggle">
+  <button onclick="setLayout('mobile')" id="btn-mobile" class="active">📱 모바일</button>
+  <button onclick="setLayout('pc')" id="btn-pc">🖥️ PC</button>
+</div>
+
+<!-- Header -->
+<div class="site-header">
+  <div class="header-inner">
+    <div class="header-icon">🏖️</div>
+    <div>
+      <div class="header-label">인시스 AI혁신 R&D센터 · 임직원 복리후생</div>
+      <div class="header-title">리조트 이용 안내</div>
+      <div class="header-sub">한화리조트 · 소노호텔앤리조트(대명) — 법인회원가 적용</div>
+    </div>
+  </div>
+</div>
+
+<!-- Top Nav -->
+<div class="top-nav">
+  <div class="top-nav-inner">
+    <button class="top-btn active" onclick="showSection('overview')">📋 이용 개요</button>
+    <button class="top-btn" onclick="showSection('booking')">📝 예약 가이드</button>
+    <button class="top-btn" onclick="showSection('coupon')">🎟️ 쿠폰 안내</button>
+    <button class="top-btn" onclick="showSection('form')">📄 품의서 신청</button>
+    <button class="top-btn" onclick="showSection('mgmt')">🗂️ 신청 관리</button>
+    <button class="top-btn" onclick="showSection('notice')">⚠️ 주의사항</button>
+    <button class="top-btn" onclick="showSection('contact')">📞 문의</button>
+  </div>
+</div>
+
+<div class="main-wrap">
+
+  <!-- ① 이용 개요 -->
+  <div class="section active" id="section-overview">
+    <div class="highlight-row">
+      <div class="h-icon">🎉</div>
+      <div>임직원 여러분의 재충전과 건강한 여가를 위해 <b>전국 한화리조트 · 소노호텔앤리조트(대명) 법인 회원권</b>을 운영합니다. <b>법인회원가</b>로 전국 지점을 이용하실 수 있습니다.</div>
+    </div>
+    <div class="card">
+      <div class="card-title blue">이용 대상 및 혜택</div>
+      <div class="info-grid">
+        <div class="info-item"><div class="label">이용 대상</div><div class="value">임직원 관리직 전체</div><div class="sub">본인 및 동반 가족</div></div>
+        <div class="info-item"><div class="label">적용 요금</div><div class="value">법인 회원가 적용</div><div class="sub">일반가 대비 할인</div></div>
+        <div class="info-item"><div class="label">공용 계정</div><div class="value">ID : insys3233</div><div class="sub">PW : 경영지원실 문의</div></div>
+        <div class="info-item"><div class="label">이용 브랜드</div><div class="value">한화 · 소노(대명)</div><div class="sub">전국 주요 지점</div></div>
+      </div>
+    </div>
+    <div class="overview-grid">
+      <div class="overview-brand hanwha">
+        <div class="overview-brand-header">🌅 한화리조트 <span class="badge hanwha">법인회원</span></div>
+        <div class="overview-brand-body">
+          <div class="overview-row"><b>사이트:</b> hanwharesort.co.kr</div>
+          <div class="overview-row"><b>지점:</b> 설악·경주·제주·대천·거제·용인 등</div>
+          <div class="overview-row"><b>특이사항:</b> 회원권 비밀번호(숫자 4자리) 추가 인증</div>
+          <div class="overview-row"><b>쿠폰:</b> 무기명 혜택쿠폰 + 법인 할인쿠폰</div>
+          <div class="overview-row"><b>체크인:</b> 현장결제 또는 선결제 선택</div>
+        </div>
+      </div>
+      <div class="overview-brand sono">
+        <div class="overview-brand-header">🌿 소노호텔앤리조트 <span class="badge sono">법인회원</span></div>
+        <div class="overview-brand-body">
+          <div class="overview-row"><b>사이트:</b> sonohotelsresorts.com</div>
+          <div class="overview-row"><b>지점:</b> 비발디파크·델피노·컨벤션·쏠비치 등</div>
+          <div class="overview-row"><b>회원명:</b> (주)인시스로 표시됨</div>
+          <div class="overview-row"><b>결제:</b> 즉시결제 / 추후결제 선택</div>
+          <div class="overview-row"><b>체크인:</b> 회원카드 또는 예약번호 제시</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ② 예약 가이드 -->
+  <div class="section" id="section-booking">
+    <div class="brand-tabs show" id="booking-brand-tabs">
+      <button class="brand-tab hanwha active" onclick="showBrand('booking','hanwha')">🌅 한화리조트</button>
+      <button class="brand-tab sono" onclick="showBrand('booking','sono')">🌿 소노호텔앤리조트</button>
+    </div>
+
+    <!-- 한화 -->
+    <div class="brand-border-hanwha" id="booking-hanwha" style="padding:14px 14px 6px;">
+      <div class="card" style="margin-bottom:10px;">
+        <div class="card-title hanwha">🌅 한화리조트 예약 방법 (7단계)</div>
+        <div class="login-box">
+          <div class="login-field"><div class="l-label">사이트</div><div class="l-val">hanwharesort.co.kr</div></div>
+          <div class="login-field"><div class="l-label">ID</div><div class="l-val">insys3233</div></div>
+          <div class="login-field"><div class="l-label">PW</div><div class="l-val">hkjs0215..</div></div>
+        </div>
+        <div style="margin-top:14px;" class="steps">
+          <div class="step"><div class="step-left"><div class="step-num hanwha">1</div><div class="step-line"></div></div><div class="step-content"><div class="step-title">로그인</div><div class="step-desc">사이트 상단 <strong>[로그인]</strong> 클릭 → ID/PW 입력</div></div></div>
+          <div class="step"><div class="step-left"><div class="step-num hanwha">2</div><div class="step-line"></div></div><div class="step-content"><div class="step-title">회원인증 (회원권 비밀번호)</div><div class="step-desc">로그인 후 <strong>회원권 비밀번호 (숫자 4자리)</strong> 추가 입력 → 경영지원실 김원효 대리 문의</div></div></div>
+          <div class="step"><div class="step-left"><div class="step-num hanwha">3</div><div class="step-line"></div></div><div class="step-content"><div class="step-title">객실 예약 메뉴 이동</div><div class="screen-guide"><div class="screen-guide-title hanwha">📌 화면 경로</div><div class="screen-row"><span class="arrow">▸</span><span class="sc-desc">상단 <b>통합예약</b> 클릭 → <b>온라인예약 → 객실예약</b></span></div></div></div></div>
+          <div class="step"><div class="step-left"><div class="step-num hanwha">4</div><div class="step-line"></div></div><div class="step-content"><div class="step-title">지점·날짜 선택 → 잔여객실 확인</div><div class="step-desc">지점 탭 선택 → 기간 입력 → [검색] → 캘린더에서 <b>예약가능</b> 날짜 확인</div></div></div>
+          <div class="step"><div class="step-left"><div class="step-num hanwha">5</div><div class="step-line"></div></div><div class="step-content"><div class="step-title">객실 상세 예약</div><div class="step-desc">객실종류 선택 → 투숙자/예약자 정보 입력 → 결제방식(현장 or 선결제) 선택</div><div class="screen-guide"><div class="screen-guide-title hanwha">📌 요금 안내</div><div class="screen-row"><span class="arrow">▸</span><span class="sc-desc">화면 표시 금액은 <b>정상가</b>, 하단 예약현황에서 <b>할인된 법인가</b> 확인</span></div><div class="screen-row"><span class="arrow">▸</span><span class="sc-desc">예) 제주 디럭스 1박 → 정상가 139,000원 → 법인가 <b>69,500원</b></span></div></div></div></div>
+          <div class="step"><div class="step-left"><div class="step-num hanwha">6</div><div class="step-line"></div></div><div class="step-content"><div class="step-title">예약 완료 · e-쿠폰 출력</div><div class="step-desc">예약 완료 화면 → <strong>[E쿠폰]</strong> 출력 또는 <strong>[알림톡]</strong>으로 이메일 전송 가능</div></div></div>
+          <div class="step"><div class="step-left"><div class="step-num hanwha">7</div><div class="step-line"></div></div><div class="step-content"><div class="step-title">현장 체크인</div><div class="screen-guide"><div class="screen-guide-title hanwha">📌 입실 조건</div><div class="screen-row"><span class="arrow">▸</span><span class="sc-desc"><b>무기명</b>: 예약번호만 있으면 누구나 입실</span></div><div class="screen-row"><span class="arrow">▸</span><span class="sc-desc"><b>기명 동반</b>: 회원요금 / <b>미동반</b>: 추천요금 적용</span></div><div class="screen-row"><span class="arrow">▸</span><span class="sc-desc">모바일 앱 체크인 가능 (주중 13시, 주말 14시 이후)</span></div></div></div></div>
+        </div>
+        <!-- 한화 외부 연락처 -->
+        <div class="hanwha-contact-bar">
+          <span class="hcb-label">한화리조트 회원권 문의</span>
+          <span class="hcb-sep">|</span>
+          <span class="hcb-val">📞 T. 02.755.2419</span>
+          <span class="hcb-val">📱 H. 010.9285.6263</span>
+          <span class="hcb-val">👤 팀장 신미애</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 소노 -->
+    <div class="brand-border-sono" id="booking-sono" style="display:none;padding:14px 14px 6px;">
+      <div class="card" style="margin-bottom:10px;">
+        <div class="card-title sono">🌿 소노호텔앤리조트 예약 방법 (4단계)</div>
+        <div class="login-box sono-box">
+          <div class="login-field"><div class="l-label">사이트</div><div class="l-val">sonohotelsresorts.com</div></div>
+          <div class="login-field"><div class="l-label">ID</div><div class="l-val">insys3233</div></div>
+          <div class="login-field"><div class="l-label">PW</div><div class="l-val">hkjs0215..</div></div>
+          <div class="login-note">로그인 후 상단에 <b>(주)인시스</b>로 표시</div>
+        </div>
+        <div style="margin-top:14px;" class="steps">
+          <div class="step"><div class="step-left"><div class="step-num sono">1</div><div class="step-line"></div></div><div class="step-content"><div class="step-title">로그인</div><div class="screen-guide"><div class="screen-guide-title sono">📌 화면 경로</div><div class="screen-row"><span class="arrow">▸</span><span class="sc-desc">상단 <b>로그인 ›</b> 클릭 → ID/PW 입력</span></div><div class="screen-row"><span class="arrow">▸</span><span class="sc-desc">로그인 후 상단 <b>(주)인시스 ›</b> 표시 확인</span></div></div></div></div>
+          <div class="step"><div class="step-left"><div class="step-num sono">2</div><div class="step-line"></div></div><div class="step-content"><div class="step-title">통합예약 → 객실 선택</div><div class="screen-guide"><div class="screen-guide-title sono">📌 화면 경로</div><div class="screen-row"><span class="arrow">▸</span><span class="sc-desc">상단 <b>통합예약</b> (주황색) 클릭 → <b>객실</b> 선택</span></div><div class="screen-row"><span class="arrow">▸</span><span class="sc-desc">지역·일자·박수 선택 후 잔여 객실 확인</span></div></div></div></div>
+          <div class="step"><div class="step-left"><div class="step-num sono">3</div><div class="step-line"></div></div><div class="step-content"><div class="step-title">결제 방법 선택</div><div class="step-desc"><strong>즉시결제</strong> 또는 <strong>추후결제</strong> 선택<br>※ 추후결제 선택 시 기한 내 미결제 시 자동 취소</div></div></div>
+          <div class="step"><div class="step-left"><div class="step-num sono">4</div><div class="step-line"></div></div><div class="step-content"><div class="step-title">현장 체크인</div><div class="screen-guide"><div class="screen-guide-title sono">📌 체크인</div><div class="screen-row"><span class="arrow">▸</span><span class="sc-desc">프런트에 <b>회원카드 또는 예약번호</b> 제시</span></div><div class="screen-row"><span class="arrow">▸</span><span class="sc-desc">회원 본인 미동반 시 일반요금 적용 (기명회원 기준)</span></div></div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ③ 쿠폰 -->
+  <div class="section" id="section-coupon">
+    <div class="brand-tabs show" id="coupon-brand-tabs">
+      <button class="brand-tab hanwha active" onclick="showBrand('coupon','hanwha')">🌅 한화리조트 쿠폰</button>
+      <button class="brand-tab sono" onclick="showBrand('coupon','sono')">🌿 소노 쿠폰</button>
+    </div>
+    <div class="brand-border-hanwha" id="coupon-hanwha" style="padding:14px 14px 6px;">
+      <div class="card">
+        <div class="card-title hanwha">🎟️ 무기명 신규혜택 쿠폰</div>
+        <div class="coupon-path"><span>마이페이지</span><span class="sep">→</span><span>내정보</span><span class="sep">→</span><span>쿠폰조회</span><span class="sep">→</span><span>회원쿠폰관리</span></div>
+        <div class="coupon-grid">
+          <div class="coupon-item"><div class="c-name">🎡 워터파크 무료이용권</div><div class="c-desc">분양용 / 발행 24장</div></div>
+          <div class="coupon-item"><div class="c-name">🍽️ 조식이용권</div><div class="c-desc">분양용 / 2026.01~2028.01 유효</div></div>
+          <div class="coupon-item"><div class="c-name">🐬 아쿠아리움 50% 할인권</div><div class="c-desc">발행 12장 / 현장 제출</div></div>
+          <div class="coupon-item"><div class="c-name">🏨 63&호텔뷔페 50% 할인</div><div class="c-desc">발행 10장</div></div>
+        </div>
+        <div class="divider-label">사용 방법</div>
+        <div class="steps">
+          <div class="step"><div class="step-left"><div class="step-num hanwha" style="font-size:11px;">①</div><div class="step-line"></div></div><div class="step-content"><div class="step-desc">로그인 → <strong>마이페이지</strong> 클릭</div></div></div>
+          <div class="step"><div class="step-left"><div class="step-num hanwha" style="font-size:11px;">②</div><div class="step-line"></div></div><div class="step-content"><div class="step-desc">우측 메뉴 <strong>내정보 → 쿠폰조회</strong></div></div></div>
+          <div class="step"><div class="step-left"><div class="step-num hanwha" style="font-size:11px;">③</div><div class="step-line"></div></div><div class="step-content"><div class="step-desc"><strong>회원쿠폰관리</strong> 탭 → 원하는 쿠폰 [상세보기] → [발급]</div></div></div>
+          <div class="step"><div class="step-left"><div class="step-num hanwha" style="font-size:11px;">④</div></div><div class="step-content"><div class="step-desc">발급 후 이메일 또는 휴대폰으로 사원에게 전송 가능</div></div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title hanwha">🎫 법인 할인 쿠폰</div>
+        <div class="coupon-path"><span>마이페이지</span><span class="sep">→</span><span>내정보</span><span class="sep">→</span><span>쿠폰조회</span><span class="sep">→</span><span>할인쿠폰 조회</span></div>
+        <div class="coupon-grid">
+          <div class="coupon-item"><div class="c-name">🍽️ 63/플라자 식음 10% 할인</div><div class="c-desc">쿠폰발급 클릭 → 이메일/휴대폰 전송</div></div>
+          <div class="coupon-item"><div class="c-name">🐠 아쿠아플라넷 할인권</div><div class="c-desc">제주·여수·일산·광교 / 여수 20% 할인</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="brand-border-sono" id="coupon-sono" style="display:none;padding:14px 14px 6px;">
+      <div class="card">
+        <div class="card-title sono">🌿 소노호텔앤리조트 쿠폰·혜택</div>
+        <div class="highlight-row"><div class="h-icon">ℹ️</div><div>법인계정 로그인 후 <b>통합예약 → 이용권/상품권</b> 메뉴에서 확인. 추첨점수 메뉴에서 잔여 추첨 기회도 확인 가능합니다.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ④ 품의서 신청 -->
+  <div class="section" id="section-form">
+    <div class="card">
+      <div class="card-title blue">📄 리조트 이용 신청 품의서</div>
+
+      <!-- 결재란 -->
+      <div class="approval-box">
+        <div class="approval-header">결재란</div>
+        <div class="approval-grid">
+          <div class="approval-cell">
+            <div class="approval-cell-title">담당 (경영지원실)</div>
+            <div class="approval-cell-body pending" id="ap-manager">
+              <div class="ap-stamp">⬜</div>
+              <div class="ap-name">김원효 대리</div>
+              <div class="ap-date">결재 전</div>
+            </div>
+          </div>
+          <div class="approval-cell">
+            <div class="approval-cell-title">상무</div>
+            <div class="approval-cell-body pending" id="ap-director">
+              <div class="ap-stamp">⬜</div>
+              <div class="ap-name">상무</div>
+              <div class="ap-date">결재 전</div>
+            </div>
+          </div>
+          <div class="approval-cell">
+            <div class="approval-cell-title">대표이사</div>
+            <div class="approval-cell-body pending" id="ap-ceo">
+              <div class="ap-stamp">⬜</div>
+              <div class="ap-name">김진섭 대표</div>
+              <div class="ap-date">결재 전</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <form id="resort-form" onsubmit="return false;">
+        <div class="form-wrap">
+          <div class="form-row">
+            <div class="form-group"><label>이용자 성명 *</label><input id="f-name" type="text" placeholder="홍길동"></div>
+            <div class="form-group"><label>소속 / 직급 *</label><input id="f-dept" type="text" placeholder="경영지원실 / 대리"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>이용 리조트명 (지점) *</label><input id="f-resort" type="text" placeholder="예) 한화리조트 제주 / 소노호텔 비발디파크"></div>
+            <div class="form-group"><label>객실 타입 *</label><input id="f-room" type="text" placeholder="예) 디럭스(투룸_호텔형)"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>성인 인원 *</label><select id="f-adults"><option value="">선택</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select></div>
+            <div class="form-group"><label>아동 인원 *</label><select id="f-children"><option value="0">0</option><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>이용 시작일 *</label><input id="f-from" type="date"></div>
+            <div class="form-group"><label>이용 종료일 *</label><input id="f-to" type="date"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group full"><label>비상연락처 *</label><input id="f-phone" type="tel" placeholder="010-0000-0000"></div>
+          </div>
+          <div style="font-size:12px;color:#3a5a8a;background:#f0f5fb;border-radius:7px;padding:11px 13px;line-height:1.9;">
+            상기 본인은 사내 복리후생 규정을 준수하며, 리조트 이용 중 시설물 파손 등 회사 명예를 실추시키는 행위 발생 시 일체의 책임을 질 것을 서약합니다.<br>
+            개인 사정으로 인한 예약 취소/변경 시 위약금은 본인 전액 부담하며, 무단 미입실(No-Show)에 따른 페널티를 감수하겠습니다.
+          </div>
+          <div class="submit-btn-wrap">
+            <button id="submit-btn" class="submit-btn" onclick="submitApplication()">품의서 신청</button>
+            <div id="form-msg"></div>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ⑤ 신청 관리 -->
+  <div class="section" id="section-mgmt">
+    <div class="card">
+      <div class="card-title blue" style="justify-content:space-between;">
+        🗂️ 리조트 신청 현황
+        <button onclick="loadApplications()" style="font-size:11px;padding:4px 12px;background:#e8f0fd;border:1px solid #b0c4e8;border-radius:6px;cursor:pointer;color:#1a3a6e;font-family:'Noto Sans KR',sans-serif;">🔄 새로고침</button>
+      </div>
+      <div style="font-size:12px;color:#888;margin-bottom:10px;">결재 버튼 클릭 시 해당 단계 결재가 승인됩니다. 대표 결재 완료 시 최종 승인 처리됩니다.</div>
+      <div class="mgmt-table-wrap">
+        <table class="mgmt-table">
+          <thead>
+            <tr>
+              <th>신청번호</th>
+              <th>성명</th>
+              <th>부서</th>
+              <th>리조트</th>
+              <th>이용기간</th>
+              <th style="text-align:center;">결재현황<br><span style="font-weight:400;font-size:10px;">담당 / 상무 / 대표</span></th>
+              <th style="text-align:center;">상태</th>
+              <th style="text-align:center;">결재</th>
+            </tr>
+          </thead>
+          <tbody id="app-list">
+            <tr><td colspan="8" style="text-align:center;color:#aaa;padding:20px;">새로고침 버튼을 눌러 목록을 불러오세요.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ⑥ 주의사항 -->
+  <div class="section" id="section-notice">
+    <div class="warn-box">
+      <div class="warn-title">⚠️ 취소 및 No-Show 패널티</div>
+      <ul class="warn-list">
+        <li>예약변경 및 취소는 <b>사용 예정일 10일 전까지</b> 가능. 이후 미취소 시 <b>No-Show 처리</b></li>
+        <li>No-Show 발생 시 잔여 예약 자동 취소 + <b>차기 예약 불이익</b></li>
+        <li>선결제 특가 10일 이내 취소 시 <b>위약금 부과</b></li>
+        <li>위약금은 <b>신청자 본인 전액 부담</b></li>
+        <li>다수 No-Show 시 <b>회사 전체 구좌 예약 제한</b> 가능</li>
+      </ul>
+    </div>
+    <div class="warn-box" style="background:#fff0f0;border-color:#f5a0a0;border-left-color:#e04040;">
+      <div class="warn-title" style="color:#a00;">🚫 이용 제한 사항</div>
+      <ul class="warn-list">
+        <li style="color:#5c0000;">법인 회원권은 <b>회사 자산</b> — 임직원 외 <b>양도·대여 절대 불가</b></li>
+        <li style="color:#5c0000;">결재 완료 전 임의 이용 불가</li>
+        <li style="color:#5c0000;">시설 파손 등 명예 훼손 시 <b>전액 개인 배상 및 징계</b></li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title blue">✅ 올바른 이용 문화</div>
+      <div style="font-size:13px;color:#444;line-height:2.0;">
+        ✅ 일정이 확실할 때만 신청하여 취소 최소화<br>
+        ✅ 부득이한 취소 시 <b>최대한 조기에</b> 경영지원실 김원효 대리에게 연락<br>
+        ✅ 공용 계정 및 회원권 정보 외부 유출 금지<br>
+        ✅ 리조트 시설 이용 시 타 투숙객 배려
+      </div>
+    </div>
+  </div>
+
+  <!-- ⑦ 문의 -->
+  <div class="section" id="section-contact">
+    <div class="card">
+      <div class="card-title blue">📞 사내 담당자 문의</div>
+      <div class="contact-grid">
+        <div class="contact-item"><div class="contact-icon">👤</div><div class="contact-label">담당자</div><div class="contact-value">경영지원실 김원효 대리</div></div>
+        <div class="contact-item"><div class="contact-icon">📧</div><div class="contact-label">이메일</div><div class="contact-value" style="font-size:12px;">wh.kim@in-sys.co.kr</div></div>
+        <div class="contact-item"><div class="contact-icon">📱</div><div class="contact-label">휴대전화</div><div class="contact-value" style="font-size:12px;">010-4594-4226</div></div>
+        <div class="contact-item"><div class="contact-icon">☎️</div><div class="contact-label">회사전화 (내선)</div><div class="contact-value" style="font-size:12px;">070-7564-0689 (1021)</div></div>
+        <div class="contact-item"><div class="contact-icon">📋</div><div class="contact-label">신청 방법</div><div class="contact-value" style="font-size:12px;">품의서 탭에서 신청</div></div>
+        <div class="contact-item"><div class="contact-icon">🕐</div><div class="contact-label">업무 시간</div><div class="contact-value" style="font-size:12px;">평일 09:00~18:00</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title blue">🔗 리조트 공식 사이트</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <a href="https://www.hanwharesort.co.kr/" target="_blank" class="btn-link btn-hanwha" style="width:fit-content;">🌅 한화리조트 — hanwharesort.co.kr</a>
+        <a href="https://www.sonohotelsresorts.com" target="_blank" class="btn-link btn-sono" style="width:fit-content;">🌿 소노호텔앤리조트 — sonohotelsresorts.com</a>
+      </div>
+      <div class="hanwha-contact-bar" style="margin-top:12px;">
+        <span class="hcb-label">한화리조트 회원권 문의</span>
+        <span class="hcb-sep">|</span>
+        <span class="hcb-val">📞 T. 02.755.2419</span>
+        <span class="hcb-val">📱 H. 010.9285.6263</span>
+        <span class="hcb-val">👤 팀장 신미애</span>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main-wrap -->
+<div class="ver-badge">v3.0 · 인시스 AI혁신 R&D센터</div>
+
+<script>
+function setLayout(mode) {
+  document.body.classList.toggle('mobile-view', mode === 'mobile');
+  document.getElementById('btn-mobile').classList.toggle('active', mode === 'mobile');
+  document.getElementById('btn-pc').classList.toggle('active', mode === 'pc');
+}
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.top-btn').forEach(t => t.classList.remove('active'));
+  document.getElementById('section-' + id).classList.add('active');
+  event.target.classList.add('active');
+  if (id === 'mgmt') loadApplications();
+}
+function showBrand(section, brand) {
+  ['hanwha','sono'].forEach(b => {
+    var el = document.getElementById(section + '-' + b);
+    if (el) el.style.display = (b === brand) ? 'block' : 'none';
+  });
+  document.querySelectorAll('#' + section + '-brand-tabs .brand-tab').forEach(t => {
+    t.classList.remove('active');
+    if (t.classList.contains(brand)) t.classList.add('active');
+  });
+}
+setLayout('mobile');
+</script>
+</body>
+</html>
