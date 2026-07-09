@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>건조실 환경 시뮬레이터 v1.2</title>
+<title>건조실 환경 시뮬레이터 v1.3</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -274,7 +274,7 @@ body.mobile-view .grid-main{grid-template-columns:1fr!important;}
         <button class="vt-btn active" onclick="setView('pc')" id="btn-pc">💻 PC</button>
         <button class="vt-btn" onclick="setView('mobile')" id="btn-mobile">📱 모바일</button>
       </div>
-      <span class="badge-ver">v1.2</span>
+      <span class="badge-ver">v1.3</span>
     </div>
   </div>
 </div>
@@ -1120,19 +1120,190 @@ function runSim() {
   const sn=document.getElementById('saveName').value.trim();
   const sc=document.getElementById('saveCode').value.trim();
 
-  document.getElementById('resultBody').innerHTML=`
+  // 시간대별 건조 단계 타임라인
+  const ph1h = akOn ? Math.min(0.2, timeToDry*0.05) : 0;
+  const ph2h = dhOn ? Math.min(timeToDry*0.6, dhHoursToTarget||2) : 0;
+  const ph3h = Math.max(0, timeToDry - ph1h - ph2h);
+  const tlTotal = ph1h + ph2h + ph3h || 1;
+  const tlPh1Pct = Math.round(ph1h/tlTotal*100);
+  const tlPh2Pct = Math.round(ph2h/tlTotal*100);
+  const tlPh3Pct = 100 - tlPh1Pct - tlPh2Pct;
+
+  // 시간당 제거량
+  const removalPerHour = timeToDry > 0 ? (finalRemoval / timeToDry).toFixed(1) : '0';
+  // 에너지 효율 (제거%/kWh)
+  const energyEff = totalPower > 0 ? (finalRemoval / Math.max(totalPower, 0.1)).toFixed(1) : '-';
+  // 남은 수분량
+  const residualMoisture = (totalMoisture*(1-finalRemoval/100)/1000).toFixed(2);
+  const initMoistureKg = (totalMoisture/1000).toFixed(2);
+
+  // 기기 상세 기여 텍스트
+  const akContrib = akOn ? `에어나이프: 즉시 ${akRemoval.toFixed(0)}% 표면 수분 제거` : null;
+  const dhContrib = dhOn ? `제습기 ${dhCap*dhCnt}L/day: 공간 습도 ${initH}%→${finalHumid.toFixed(0)}% 조절` : null;
+  const fnContrib = fnOn ? `순환팬 ${(fnFlow*fnCnt).toLocaleString()}CMH: 증발 속도 ×${fanBoost.toFixed(2)}` : null;
+  const htContrib = htOn ? `열풍기 ${htHeat.toLocaleString()}kcal/h: 유효온도 ${temp}°C→${effectiveTemp.toFixed(1)}°C` : null;
+  const exContrib = exOn ? `배기팬 ${(exFlow*exCnt).toLocaleString()}CMH: 공기교환 ${((exFlow*exCnt)/vol).toFixed(1)}회/h` : null;
+  const contribs = [akContrib,dhContrib,fnContrib,htContrib,exContrib].filter(Boolean);
+
+  document.getElementById('resultBody').innerHTML = `
     ${sn&&sc?`<div class="result-saved-badge">📍 ${sc} — ${sn}</div>`:''}
+
+    <!-- 핵심 지표 4개 -->
     <div class="result-grid">
       <div class="stat-card blue"><div class="stat-val blue">${finalRemoval.toFixed(0)}<span style="font-size:15px">%</span></div><div class="stat-label">수분 제거율</div></div>
-      <div class="stat-card ${timeToDry<6?'green':timeToDry<12?'orange':''}"><div class="stat-val ${timeToDry<6?'green':timeToDry<12?'orange':''}">${tl}</div><div class="stat-label">완전 건조 예상</div></div>
-      <div class="stat-card orange"><div class="stat-val orange">${finalHumid.toFixed(0)}<span style="font-size:15px">%</span></div><div class="stat-label">도달 습도</div></div>
+      <div class="stat-card ${timeToDry<6?'green':timeToDry<12?'orange':''}">
+        <div class="stat-val ${timeToDry<6?'green':timeToDry<12?'orange':''}">${tl}</div><div class="stat-label">완전 건조 예상</div>
+      </div>
+      <div class="stat-card orange"><div class="stat-val orange">${finalHumid.toFixed(0)}<span style="font-size:15px">%</span></div><div class="stat-label">도달 가능 습도</div></div>
       <div class="stat-card purple"><div class="stat-val purple">${totalPower.toFixed(1)}<span style="font-size:13px">kW</span></div><div class="stat-label">총 소비 전력</div></div>
     </div>
+
+    <!-- LED 상태 모니터 -->
     <div class="led-panel">
-      <div class="led-title">● 건조 상태 모니터</div>
-      <div class="led-row"><div class="led-dot ${ledColor}"></div><div class="led-info"><div class="led-label">${ledLabel}</div><div class="led-desc">${ledDesc}</div></div><div class="led-pct">${finalRemoval.toFixed(0)}%</div></div>
-      <div class="led-row"><div class="led-dot ${finalRemoval>=90?'blue':finalRemoval>=70?'green':finalRemoval>=50?'lime':finalRemoval>=30?'yellow':'red'}"></div><div class="led-info"><div class="led-label">트레이 표면 수분</div><div class="led-desc">잔류: ${(totalMoisture*(1-finalRemoval/100)/1000).toFixed(2)} kg / 초기: ${(totalMoisture/1000).toFixed(2)} 
-        <tr><td>종합 건조 효율</td><td class="val">${score}점 / 100</td></tr>
+      <div class="led-title">● 건조 상태 실시간 모니터</div>
+      <div class="led-row">
+        <div class="led-dot ${ledColor}"></div>
+        <div class="led-info"><div class="led-label">${ledLabel}</div><div class="led-desc">${ledDesc}</div></div>
+        <div class="led-pct">${finalRemoval.toFixed(0)}%</div>
+      </div>
+      <div class="led-row">
+        <div class="led-dot ${finalRemoval>=90?'blue':finalRemoval>=70?'green':finalRemoval>=50?'lime':finalRemoval>=30?'yellow':'red'}"></div>
+        <div class="led-info">
+          <div class="led-label">트레이 표면 수분</div>
+          <div class="led-desc">잔류: ${residualMoisture} kg / 초기: ${initMoistureKg} kg (면적: ${totalArea.toFixed(2)} ㎡)</div>
+        </div>
+        <div class="led-pct">${(100-finalRemoval).toFixed(0)}% 잔류</div>
+      </div>
+      <div class="led-row">
+        <div class="led-dot ${finalHumid<=targH+5?'green':finalHumid<=targH+15?'lime':'yellow'}"></div>
+        <div class="led-info">
+          <div class="led-label">실내 습도 변화</div>
+          <div class="led-desc">${initH}% → ${finalHumid.toFixed(0)}% (목표: ${targH}%) | 감소폭: ${(initH-finalHumid).toFixed(0)}%p</div>
+        </div>
+        <div class="led-pct">${finalHumid.toFixed(0)}%</div>
+      </div>
+      <div class="led-row">
+        <div class="led-dot ${timeToDry<3?'blue':timeToDry<8?'green':timeToDry<16?'lime':timeToDry<24?'yellow':'red'}"></div>
+        <div class="led-info">
+          <div class="led-label">건조 완료 예상 시간</div>
+          <div class="led-desc">${timeToDry>=48?'48시간 초과 — 기기 보강 필요':'약 '+tl+' 후 완료 | 시간당 제거율: '+removalPerHour+'%/h'}</div>
+        </div>
+        <div class="led-pct">${tl}</div>
+      </div>
+      <div class="led-row">
+        <div class="led-dot ${score>=80?'blue':score>=60?'green':score>=40?'lime':score>=20?'yellow':'red'}"></div>
+        <div class="led-info">
+          <div class="led-label">에너지 효율</div>
+          <div class="led-desc">종합 효율 점수 ${score}점 | 전력 대비 제거효율: ${energyEff}%/kW | 활성 기기: ${activeCount}개</div>
+        </div>
+        <div class="led-pct">${score}점</div>
+      </div>
+    </div>
+
+    <!-- 진행률 바 3종 -->
+    <div style="margin-bottom:14px;">
+      <div class="pbar-wrap">
+        <div class="pbar-label"><span>수분 제거율</span><strong style="color:var(--accent)">${finalRemoval.toFixed(1)}%</strong></div>
+        <div class="pbar-track"><div class="pbar-fill" style="width:${finalRemoval}%;background:linear-gradient(90deg,#2176cc,#06b6d4)"></div></div>
+      </div>
+      <div class="pbar-wrap">
+        <div class="pbar-label"><span>습도 감소율</span><strong style="color:var(--purple)">${((initH-finalHumid)/Math.max(initH,1)*100).toFixed(1)}%</strong></div>
+        <div class="pbar-track"><div class="pbar-fill" style="width:${(initH-finalHumid)/Math.max(initH,1)*100}%;background:linear-gradient(90deg,#7c3aed,#a78bfa)"></div></div>
+      </div>
+      <div class="pbar-wrap">
+        <div class="pbar-label"><span>에너지 효율 점수</span><strong style="color:${score>70?'var(--success)':'var(--warn)'}">${score}점 / 100</strong></div>
+        <div class="pbar-track"><div class="pbar-fill" style="width:${score}%;background:linear-gradient(90deg,${score>70?'#16a34a':'#d97706'},${score>70?'#4ade80':'#fbbf24'})"></div></div>
+      </div>
+      <div class="pbar-wrap">
+        <div class="pbar-label"><span>건조 진행 속도</span><strong style="color:var(--text)">${removalPerHour}%/h</strong></div>
+        <div class="pbar-track"><div class="pbar-fill" style="width:${Math.min(100,parseFloat(removalPerHour)*5)}%;background:linear-gradient(90deg,#0f766e,#0d9488)"></div></div>
+      </div>
+    </div>
+
+    <!-- 건조 단계 타임라인 -->
+    <div class="chart-area" style="margin-bottom:14px;">
+      <div class="chart-title">⏱ 건조 단계 타임라인 (총 ${tl})</div>
+      <div style="display:flex;height:28px;border-radius:6px;overflow:hidden;margin-bottom:8px;">
+        ${ph1h>0?`<div style="flex:${tlPh1Pct};background:#3b82f6;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700;min-width:0;">에어나이프</div>`:''}
+        ${ph2h>0?`<div style="flex:${tlPh2Pct};background:#06b6d4;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700;min-width:0;">제습·건조</div>`:''}
+        ${ph3h>0?`<div style="flex:${Math.max(tlPh3Pct,1)};background:#8b5cf6;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700;min-width:0;">마무리 건조</div>`:''}
+        ${activeCount===0?`<div style="flex:1;background:#e2e8f0;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:10px;">자연 건조</div>`:''}
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        ${ph1h>0?`<span style="font-size:10px;color:#3b82f6;">■ 에어나이프 즉시제거 ~${(ph1h*60).toFixed(0)}분</span>`:''}
+        ${ph2h>0?`<span style="font-size:10px;color:#06b6d4;">■ 제습·건조 ~${ph2h.toFixed(1)}h</span>`:''}
+        ${ph3h>0?`<span style="font-size:10px;color:#8b5cf6;">■ 마무리 ~${ph3h.toFixed(1)}h</span>`:''}
+      </div>
+    </div>
+
+    <!-- 기기별 건조 기여도 막대그래프 -->
+    <div class="chart-area" style="margin-bottom:14px;">
+      <div class="chart-title">📊 기기별 건조 기여도</div>
+      <div class="bars">
+        ${bars.map(b=>`
+        <div class="bar-col">
+          <div class="bar-num">${b.val}%</div>
+          <div class="bar-wrap">
+            <div class="bar" style="height:${b.val>0?Math.max(4,b.val/maxBar*100):2}%;background:${b.val>0?b.color:'#e2e8f0'};" data-tip="${b.tip}"></div>
+          </div>
+          <div class="bar-name">${b.name}</div>
+        </div>`).join('')}
+      </div>
+      ${contribs.length>0?`
+      <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px;display:flex;flex-direction:column;gap:4px;">
+        ${contribs.map(c=>`<div style="font-size:11px;color:var(--text2);">▸ ${c}</div>`).join('')}
+      </div>`:''}
+    </div>
+
+    <!-- 상태 진단 -->
+    <div class="phase-box ${pc}" style="margin-bottom:14px;">
+      <div class="phase-title">${pt}</div>
+      <div class="phase-desc">${pd}</div>
+    </div>
+
+    <!-- 수분 제거 상세 분석 -->
+    <div class="chart-area" style="margin-bottom:14px;">
+      <div class="chart-title">💧 수분 제거 상세 분석</div>
+      <table class="env-table">
+        <tr><th>단계</th><th>처리량</th><th class="val">제거율</th></tr>
+        ${akOn?`<tr><td>① 에어나이프 즉시 제거</td><td>${(totalMoisture*akRemoval/100/1000).toFixed(2)} kg</td><td class="val">${akRemoval.toFixed(0)}%</td></tr>`:''}
+        ${dhOn?`<tr><td>② 제습기 건조</td><td>${(totalMoisture*Math.min(40,dhEffect*50*combinedBoost)/100/1000).toFixed(2)} kg</td><td class="val">${Math.min(40,dhEffect*50*combinedBoost).toFixed(0)}%</td></tr>`:''}
+        ${fnOn?`<tr><td>③ 순환팬 증발 가속</td><td>증발속도 ×${fanBoost.toFixed(2)}</td><td class="val">+${((fanBoost-1)*100).toFixed(0)}%</td></tr>`:''}
+        ${htOn?`<tr><td>④ 열풍 온도 효과</td><td>${temp}°C → ${effectiveTemp.toFixed(1)}°C</td><td class="val">+${((heatBoost-1)*100).toFixed(0)}%</td></tr>`:''}
+        ${exOn?`<tr><td>⑤ 배기팬 환기</td><td>${((exFlow*exCnt)/vol).toFixed(1)} 회/h</td><td class="val">+${((exBoost-1)*100).toFixed(0)}%</td></tr>`:''}
+        <tr style="background:#f0f7ff;font-weight:700;"><td>최종 제거량</td><td>${((totalMoisture-totalMoisture*(1-finalRemoval/100))/1000).toFixed(2)} kg</td><td class="val" style="color:var(--accent);font-size:14px;">${finalRemoval.toFixed(0)}%</td></tr>
+        <tr><td>잔류 수분량</td><td colspan="2" style="text-align:right;font-weight:700;color:var(--danger);">${residualMoisture} kg</td></tr>
+      </table>
+    </div>
+
+    <!-- 환경 분석 요약 표 -->
+    <div class="chart-area" style="margin-bottom:0;">
+      <div class="chart-title">📋 건조 환경 전체 분석 요약</div>
+      <table class="env-table">
+        <tr><th colspan="2">건조실 / 트레이</th></tr>
+        <tr><td>장소 / 조건번호</td><td class="val">${sn||'-'} / ${sc||'-'}</td></tr>
+        <tr><td>건조실 용적</td><td class="val">${w}×${d}×${h}m = ${vol.toFixed(0)} ㎥</td></tr>
+        <tr><td>초기 → 목표 습도</td><td class="val">${initH}% → ${targH}% (도달: ${finalHumid.toFixed(0)}%)</td></tr>
+        <tr><td>설정 온도 → 유효 온도</td><td class="val">${temp}°C → ${effectiveTemp.toFixed(1)}°C</td></tr>
+        <tr><td>트레이 표면적 (1개)</td><td class="val">${areaPerTray.toFixed(3)} ㎡</td></tr>
+        <tr><td>총 트레이 표면적</td><td class="val">${totalArea.toFixed(2)} ㎡ (${trayCount}개)</td></tr>
+        <tr><td>초기 총 수분량</td><td class="val">${initMoistureKg} kg (${moisture} g/㎡)</td></tr>
+        <tr><th colspan="2">건조 결과</th></tr>
+        <tr><td>수분 제거율</td><td class="val">${finalRemoval.toFixed(1)}%</td></tr>
+        <tr><td>잔류 수분량</td><td class="val">${residualMoisture} kg</td></tr>
+        <tr><td>에어나이프 즉시 제거</td><td class="val">${akRemoval.toFixed(0)}%</td></tr>
+        <tr><td>완전 건조 예상 시간</td><td class="val">${tl}</td></tr>
+        <tr><td>시간당 제거율</td><td class="val">${removalPerHour}%/h</td></tr>
+        <tr><th colspan="2">전력 분석</th></tr>
+        ${akOn?`<tr><td>에어나이프 (블로어×3)</td><td class="val">${(akPower*0.746*3).toFixed(1)} kW</td></tr>`:''}
+        ${dhOn?`<tr><td>제습기 ×${dhCnt}</td><td class="val">${(dhSpec.power*dhCnt).toFixed(1)} kW</td></tr>`:''}
+        ${fnOn?`<tr><td>순환팬 ×${fnCnt}</td><td class="val">${(fnSpec.power*fnCnt).toFixed(1)} kW</td></tr>`:''}
+        ${htOn?`<tr><td>열풍건조기 ×${htCnt}</td><td class="val">${(htSpec.power*htCnt).toFixed(1)} kW</td></tr>`:''}
+        ${exOn?`<tr><td>배기팬 ×${exCnt}</td><td class="val">${(exSpec.power*exCnt).toFixed(1)} kW</td></tr>`:''}
+        <tr style="background:#fff7ed;"><td><b>총 소비 전력</b></td><td class="val" style="font-size:14px;color:var(--danger);">${totalPower.toFixed(1)} kW</td></tr>
+        <tr><td>전력 대비 효율</td><td class="val">${energyEff}%/kW</td></tr>
+        <tr><td>활성 기기 수</td><td class="val">${activeCount}개</td></tr>
+        <tr><td>종합 건조 효율 점수</td><td class="val">${score}점 / 100</td></tr>
       </table>
     </div>`;
 }
