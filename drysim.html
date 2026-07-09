@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>건조실 환경 시뮬레이터 v1.6</title>
+<title>건조실 환경 시뮬레이터 v1.7</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -274,7 +274,7 @@ body.mobile-view .grid-main{grid-template-columns:1fr!important;}
         <button class="vt-btn active" onclick="setView('pc')" id="btn-pc">💻 PC</button>
         <button class="vt-btn" onclick="setView('mobile')" id="btn-mobile">📱 모바일</button>
       </div>
-      <span class="badge-ver">v1.6</span>
+      <span class="badge-ver">v1.7</span>
     </div>
   </div>
 </div>
@@ -746,8 +746,29 @@ const SPECS = {
   }
 };
 
-// ─── APPLY SPEC ──────────────────────────────────────────
-function applyDeviceSpec(dev) {
+// ─── AUTO SIMULATE (최상단 정의 — 모든 함수에서 호출 가능) ──
+const LS_KEY = 'drysim_last_state';
+let _simTimer = null;
+
+function saveLocal() {
+  try {
+    const s = window.collectState ? window.collectState() : {};
+    s.saveName = (document.getElementById('saveName')||{}).value||'';
+    s.saveCode = (document.getElementById('saveCode')||{}).value||'';
+    s.saveMemo = (document.getElementById('saveMemo')||{}).value||'';
+    localStorage.setItem(LS_KEY, JSON.stringify(s));
+  } catch(e) {}
+}
+
+function autoSim() {
+  clearTimeout(_simTimer);
+  _simTimer = setTimeout(() => {
+    saveLocal();
+    if (typeof runSim === 'function') runSim();
+  }, 300);
+}
+
+// ─── APPLY SPEC ──────────────────────────────────────────function applyDeviceSpec(dev) {
   const vol = parseFloat(document.getElementById('w').value||13) *
               parseFloat(document.getElementById('d').value||6) *
               parseFloat(document.getElementById('h').value||5);
@@ -801,6 +822,7 @@ function applyDeviceSpec(dev) {
     document.getElementById('ex-total-power').textContent = (s.power*cnt).toFixed(2)+' kW';
   }
   updateTotalPower();
+  autoSim(); // 사양 변경 시 즉시 시뮬레이션
 }
 
 function updateTotalPower() {
@@ -851,6 +873,7 @@ function updateAkSlider(id, val, slId) {
   document.getElementById('ak-unit-power').textContent = unitKw.toFixed(2)+' kW';
   document.getElementById('ak-total-power').textContent = (unitKw*3).toFixed(1)+' kW';
   updateTotalPower();
+  autoSim(); // 슬라이더 변경 시 즉시 시뮬레이션
 }
 
 function initSliders() {
@@ -871,7 +894,7 @@ function updateVol() {
   document.getElementById('volMain').textContent = vol.toFixed(0)+' ㎥';
   document.getElementById('volDetails').innerHTML =
     `면적: ${area.toFixed(1)} ㎡<br>환기량: ${Math.round(vol)}~${Math.round(vol*2)} ㎥/h<br>최소 제습: ${Math.ceil(vol*0.67)} L/day`;
-  applyDeviceSpec('exhaust'); // ACH 업데이트
+  applyDeviceSpec('exhaust'); // ACH 업데이트 (autoSim은 applyDeviceSpec에서 호출)
 }
 
 // ─── TRAY CALC ───────────────────────────────────────────
@@ -1311,20 +1334,6 @@ function runSim() {
     </div>`;
 }
 
-// ─── LOCAL STORAGE KEY ───────────────────────────────────
-const LS_KEY = 'drysim_last_state';
-
-// ─── SAVE TO LOCALSTORAGE ────────────────────────────────
-function saveLocal() {
-  try {
-    const s = window.collectState();
-    s.saveName = document.getElementById('saveName').value;
-    s.saveCode = document.getElementById('saveCode').value;
-    s.saveMemo = document.getElementById('saveMemo').value;
-    localStorage.setItem(LS_KEY, JSON.stringify(s));
-  } catch(e) {}
-}
-
 // ─── RESTORE FROM LOCALSTORAGE ───────────────────────────
 function restoreLocal() {
   try {
@@ -1339,18 +1348,11 @@ function restoreLocal() {
   } catch(e) { return false; }
 }
 
-// ─── AUTO SIMULATE ───────────────────────────────────────
-let _simTimer = null;
-function autoSim() {
-  clearTimeout(_simTimer);
-  _simTimer = setTimeout(() => { saveLocal(); runSim(); }, 350);
-}
-
 // ─── INIT ────────────────────────────────────────────────
 initSliders();
 if (window.innerWidth < 600) setView('mobile');
 
-// localStorage 복원 시도 → 없으면 기본값으로 초기화
+// localStorage 복원 시도 → 없으면 기본값
 const restored = restoreLocal();
 if (!restored) {
   updateVol();
@@ -1358,7 +1360,7 @@ if (!restored) {
   ['dehum','fan','heater','exhaust'].forEach(applyDeviceSpec);
 }
 
-// 모든 입력 요소에 자동 시뮬레이션 + 자동저장 연결
+// 모든 입력에 autoSim 연결
 const _simInputIds = [
   'w','d','h','initHumid','targetHumid','temp',
   'trayW','trayD','trayH','trayPockets','trayCount','moisture',
@@ -1369,11 +1371,10 @@ const _simInputIds = [
 _simInputIds.forEach(id => {
   const el = document.getElementById(id);
   if (!el) return;
-  const ev = el.tagName === 'SELECT' ? 'change' : 'input';
-  el.addEventListener(ev, autoSim);
+  el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', autoSim);
 });
 
-// 페이지 로드 시 즉시 실행
+// 페이지 로드 즉시 실행
 setTimeout(() => runSim(), 400);
 </script>
 </body>
