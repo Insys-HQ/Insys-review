@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>건조실 환경 시뮬레이터 v1.1</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#f0f4f8;--card:#ffffff;--border:#dde3ea;--text:#1e2a38;--text2:#4a5568;--text3:#718096;
+  --accent:#1a5fa8;--accent2:#2176cc;--success:#16a34a;--warn:#d97706;--danger:#dc2626;
+  --purple:#7c3aed;--teal:#0d9488;--shadow:0 2px 8px rgba(0,0,0,0.08);--radius:12px;--radius-sm:8px;
+}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh;}
+
+/* HEADER */
+.header{background:linear-gradient(135deg,#0f2447 0%,#1a5fa8 60%,#2176cc 100%);padding:14px 24px;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,0.25);}
+.header-inner{max-width:1400px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.header-title{color:#fff;font-size:16px;font-weight:700;}
+.header-sub{color:rgba(255,255,255,0.65);font-size:11px;margin-top:2px;}
+.badge-ver{background:rgba(255,255,255,0.15);color:#fff;font-size:10px;padding:3px 8px;border-radius:20px;border:1px solid rgba(255,255,255,0.25);}
+.view-toggle{display:flex;gap:6px;}
+.vt-btn{background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:background 0.2s;}
+.vt-btn.active{background:rgba(255,255,255,0.3);}
+
+/* LAYOUT */
+.container{max-width:1400px;margin:0 auto;padding:16px;}
+.grid-main{display:grid;grid-template-columns:360px 1fr;gap:16px;align-items:start;}
+
+/* PANEL */
+.panel{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow);overflow:hidden;margin-bottom:14px;}
+.panel:last-child{margin-bottom:0;}
+.panel-head{background:linear-gradient(90deg,#1a5fa8,#2176cc);color:#fff;padding:10px 16px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px;}
+.panel-head.green{background:linear-gradient(90deg,#15803d,#16a34a);}
+.panel-head.purple{background:linear-gradient(90deg,#6d28d9,#7c3aed);}
+.panel-body{padding:14px;}
+
+/* SECTION LABEL */
+.sec-label{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;margin-top:14px;}
+.sec-label:first-child{margin-top:0;}
+
+/* INPUTS */
+.input-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px;}
+.input-row.two{grid-template-columns:1fr 1fr;}
+.input-box{display:flex;flex-direction:column;gap:4px;}
+.input-box label{font-size:11px;color:var(--text2);font-weight:500;}
+.input-box input,.input-box select{border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;font-family:'Noto Sans KR',sans-serif;font-size:13px;color:var(--text);background:#fafbfc;transition:border 0.2s;}
+.input-box input:focus,.input-box select:focus{outline:none;border-color:var(--accent);background:#fff;}
+
+/* VOL DISPLAY */
+.vol-display{background:linear-gradient(135deg,#e8f0fc,#dbeafe);border:1px solid #93c5fd;border-radius:var(--radius-sm);padding:10px 14px;margin:8px 0;display:flex;align-items:center;justify-content:space-between;}
+.vol-main{font-size:22px;font-weight:900;color:var(--accent);}
+.vol-sub{font-size:11px;color:var(--accent);opacity:0.8;}
+.vol-details{font-size:11px;color:var(--text2);text-align:right;line-height:1.7;}
+
+/* SAVE PANEL */
+.save-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+.save-row.three{grid-template-columns:1fr 1fr 1fr;}
+.btn{border:none;border-radius:var(--radius-sm);padding:9px 14px;font-family:'Noto Sans KR',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.2s;display:inline-flex;align-items:center;justify-content:center;gap:5px;}
+.btn-save{background:linear-gradient(135deg,#15803d,#16a34a);color:#fff;width:100%;}
+.btn-save:hover{opacity:0.9;}
+.btn-load{background:linear-gradient(135deg,#6d28d9,#7c3aed);color:#fff;width:100%;}
+.btn-load:hover{opacity:0.9;}
+.btn-del{background:#fef2f2;color:#dc2626;border:1px solid #fca5a5;}
+.btn-del:hover{background:#fee2e2;}
+.btn-apply{background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd;}
+.btn-apply:hover{background:#dbeafe;}
+.btn-sim{width:100%;padding:13px;background:linear-gradient(135deg,#1a5fa8,#2176cc);color:#fff;border:none;border-radius:var(--radius-sm);font-family:'Noto Sans KR',sans-serif;font-size:14px;font-weight:700;cursor:pointer;margin-top:10px;transition:opacity 0.2s,transform 0.1s;display:flex;align-items:center;justify-content:center;gap:6px;}
+.btn-sim:hover{opacity:0.9;}
+.btn-sim:active{transform:scale(0.99);}
+.btn-sim .spin{display:none;width:16px;height:16px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:spin 0.6s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* FIREBASE STATUS */
+.fb-status{display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:var(--radius-sm);font-size:11px;font-weight:600;margin-bottom:10px;}
+.fb-status.ok{background:#f0fdf4;color:#15803d;border:1px solid #86efac;}
+.fb-status.err{background:#fef2f2;color:#dc2626;border:1px solid #fca5a5;}
+.fb-status.loading{background:#fffbeb;color:#b45309;border:1px solid #fcd34d;}
+.fb-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.fb-status.ok .fb-dot{background:#16a34a;}
+.fb-status.err .fb-dot{background:#dc2626;}
+.fb-status.loading .fb-dot{background:#d97706;animation:blink 1s infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0.3;}}
+
+/* SAVE LIST */
+.save-list{display:flex;flex-direction:column;gap:6px;max-height:260px;overflow-y:auto;}
+.save-item{display:flex;align-items:center;gap:8px;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:#fafbfc;transition:border-color 0.15s;}
+.save-item:hover{border-color:var(--accent2);background:#f0f7ff;}
+.save-item-info{flex:1;min-width:0;}
+.save-item-name{font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.save-item-meta{font-size:10px;color:var(--text3);margin-top:2px;}
+.save-item-badge{font-size:10px;padding:2px 7px;border-radius:10px;background:#e0e7ff;color:#3730a3;font-weight:600;flex-shrink:0;}
+.save-empty{text-align:center;padding:24px;color:var(--text3);font-size:12px;}
+
+/* DEVICE CARDS */
+.device-list{display:flex;flex-direction:column;gap:10px;}
+.device-card{border:1.5px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;transition:border-color 0.2s;}
+.device-card.active{border-color:var(--accent);}
+.device-head{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#f8fafc;cursor:pointer;user-select:none;}
+.device-toggle{width:36px;height:20px;background:#cbd5e1;border-radius:10px;position:relative;transition:background 0.2s;flex-shrink:0;}
+.device-toggle.on{background:var(--accent);}
+.device-toggle::after{content:'';position:absolute;width:16px;height:16px;background:#fff;border-radius:50%;top:2px;left:2px;transition:left 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);}
+.device-toggle.on::after{left:18px;}
+.device-icon{font-size:18px;}
+.device-name{font-size:12px;font-weight:700;color:var(--text);flex:1;}
+.device-cap-badge{font-size:10px;background:#e5e7eb;color:#6b7280;padding:2px 7px;border-radius:10px;font-weight:600;}
+.device-body{padding:12px;display:none;}
+.device-card.active .device-body{display:block;}
+
+/* SLIDERS */
+.slider-group{margin-bottom:10px;}
+.slider-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+.slider-label span:first-child{font-size:11px;color:var(--text2);font-weight:500;}
+.slider-val{font-size:12px;font-weight:700;color:var(--accent);}
+input[type=range]{width:100%;-webkit-appearance:none;height:6px;border-radius:3px;background:linear-gradient(90deg,var(--accent) var(--pct,50%),#e2e8f0 var(--pct,50%));outline:none;cursor:pointer;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--accent);box-shadow:0 1px 4px rgba(26,95,168,0.4);transition:transform 0.15s;}
+input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.2);}
+.slider-minmax{display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-top:2px;}
+
+/* RESULT */
+.result-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;text-align:center;position:relative;overflow:hidden;}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+.stat-card.blue::before{background:var(--accent);}
+.stat-card.green::before{background:var(--success);}
+.stat-card.orange::before{background:var(--warn);}
+.stat-card.purple::before{background:var(--purple);}
+.stat-val{font-size:28px;font-weight:900;line-height:1;}
+.stat-val.blue{color:var(--accent);}
+.stat-val.green{color:var(--success);}
+.stat-val.orange{color:var(--warn);}
+.stat-val.purple{color:var(--purple);}
+.stat-label{font-size:11px;color:var(--text3);margin-top:4px;}
+
+/* LED */
+.led-panel{background:#111827;border-radius:var(--radius);padding:14px;margin-bottom:14px;}
+.led-title{color:#94a3b8;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;}
+.led-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.led-dot{width:20px;height:20px;border-radius:50%;flex-shrink:0;transition:all 0.5s;}
+.led-dot.red{background:#ef4444;box-shadow:0 0 10px #ef4444,0 0 18px rgba(239,68,68,0.5);}
+.led-dot.yellow{background:#eab308;box-shadow:0 0 10px #eab308,0 0 18px rgba(234,179,8,0.5);}
+.led-dot.lime{background:#84cc16;box-shadow:0 0 10px #84cc16,0 0 18px rgba(132,204,22,0.5);}
+.led-dot.green{background:#22c55e;box-shadow:0 0 10px #22c55e,0 0 18px rgba(34,197,94,0.5);}
+.led-dot.blue{background:#3b82f6;box-shadow:0 0 10px #3b82f6,0 0 18px rgba(59,130,246,0.5);}
+.led-dot.off{background:#374151;box-shadow:none;}
+.led-info{flex:1;}
+.led-label{color:#e2e8f0;font-size:12px;font-weight:600;}
+.led-desc{color:#64748b;font-size:10px;}
+.led-pct{color:#f1f5f9;font-size:14px;font-weight:900;margin-left:auto;}
+
+/* PROGRESS */
+.pbar-wrap{margin-bottom:12px;}
+.pbar-label{display:flex;justify-content:space-between;margin-bottom:5px;}
+.pbar-label span{font-size:12px;color:var(--text2);}
+.pbar-label strong{font-size:12px;font-weight:700;}
+.pbar-track{height:12px;background:#e2e8f0;border-radius:6px;overflow:hidden;}
+.pbar-fill{height:100%;border-radius:6px;transition:width 0.8s cubic-bezier(0.4,0,0.2,1);}
+
+/* BAR CHART */
+.chart-area{background:#f8fafc;border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px;}
+.chart-title{font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px;}
+.bars{display:flex;align-items:flex-end;gap:8px;height:120px;}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;}
+.bar-wrap{flex:1;width:100%;display:flex;align-items:flex-end;}
+.bar{width:100%;border-radius:4px 4px 0 0;transition:height 0.6s cubic-bezier(0.4,0,0.2,1);min-height:2px;position:relative;}
+.bar:hover::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);background:#1e2a38;color:#fff;font-size:10px;padding:3px 7px;border-radius:4px;white-space:nowrap;z-index:10;}
+.bar-name{font-size:10px;color:var(--text3);text-align:center;line-height:1.3;}
+.bar-num{font-size:10px;font-weight:700;color:var(--text2);}
+
+/* PHASE */
+.phase-box{border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:12px;}
+.phase-box.ok{background:#f0fdf4;border:1px solid #86efac;}
+.phase-box.warn{background:#fffbeb;border:1px solid #fcd34d;}
+.phase-box.danger{background:#fef2f2;border:1px solid #fca5a5;}
+.phase-title{font-size:12px;font-weight:700;margin-bottom:3px;}
+.phase-box.ok .phase-title{color:#15803d;}
+.phase-box.warn .phase-title{color:#b45309;}
+.phase-box.danger .phase-title{color:#dc2626;}
+.phase-desc{font-size:11px;line-height:1.6;}
+.phase-box.ok .phase-desc{color:#166534;}
+.phase-box.warn .phase-desc{color:#92400e;}
+.phase-box.danger .phase-desc{color:#991b1b;}
+
+/* ENV TABLE */
+.env-table{width:100%;border-collapse:collapse;font-size:12px;}
+.env-table th{background:#f1f5f9;color:var(--text3);font-weight:600;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border);}
+.env-table td{padding:6px 10px;border-bottom:1px solid #f0f4f8;color:var(--text);}
+.env-table tr:last-child td{border-bottom:none;}
+.env-table .val{font-weight:700;color:var(--accent);text-align:right;}
+
+/* PLACEHOLDER */
+.placeholder{text-align:center;padding:40px 20px;color:var(--text3);}
+.placeholder .ico{font-size:40px;margin-bottom:10px;opacity:0.4;}
+.placeholder p{font-size:12px;line-height:1.7;}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;padding:12px 18px;border-radius:var(--radius-sm);font-size:13px;font-weight:600;color:#fff;z-index:9999;opacity:0;transition:all 0.3s;transform:translateY(10px);}
+.toast.show{opacity:1;transform:translateY(0);}
+.toast.ok{background:#15803d;}
+.toast.err{background:#dc2626;}
+.toast.info{background:#1a5fa8;}
+
+/* MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:500;display:none;align-items:center;justify-content:center;padding:20px;}
+.modal-bg.show{display:flex;}
+.modal{background:#fff;border-radius:var(--radius);box-shadow:0 20px 60px rgba(0,0,0,0.3);width:100%;max-width:520px;max-height:80vh;display:flex;flex-direction:column;}
+.modal-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.modal-head h3{font-size:14px;font-weight:700;}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text3);padding:2px 6px;}
+.modal-body{padding:14px 18px;overflow-y:auto;flex:1;}
+.modal-foot{padding:12px 18px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;}
+
+/* RESULT SAVED BADGE */
+.result-saved-badge{display:inline-flex;align-items:center;gap:5px;background:#f0fdf4;color:#15803d;border:1px solid #86efac;border-radius:10px;padding:3px 10px;font-size:11px;font-weight:600;margin-bottom:12px;}
+
+/* RESPONSIVE */
+@media(max-width:960px){.grid-main{grid-template-columns:1fr;}}
+@media(max-width:480px){.container{padding:10px;}.result-grid{grid-template-columns:1fr 1fr;}.stat-val{font-size:22px;}.bars{height:90px;}.save-row{grid-template-columns:1fr 1fr;}}
+body.mobile-view .grid-main{grid-template-columns:1fr!important;}
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- MODAL: 저장 목록 -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>📂 저장된 시뮬레이션 목록</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="fbStatus2" class="fb-status loading"><div class="fb-dot"></div><span>Firebase 연결 중...</span></div>
+      <div class="save-list" id="saveList"><div class="save-empty">불러오는 중...</div></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-del" onclick="closeModal()">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-inner">
+    <div>
+      <div class="header-title">🏭 건조실 환경 시뮬레이터</div>
+      <div class="header-sub">인시스 AI혁신 R&D센터 — 최적 건조 환경 분석 도구</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <div class="view-toggle">
+        <button class="vt-btn active" onclick="setView('pc')" id="btn-pc">💻 PC</button>
+        <button class="vt-btn" onclick="setView('mobile')" id="btn-mobile">📱 모바일</button>
+      </div>
+      <span class="badge-ver">v1.1</span>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+<div class="grid-main" id="mainGrid">
+
+<!-- ═══ LEFT COLUMN ═══ -->
+<div>
+
+  <!-- 건조실 규격 -->
+  <div class="panel">
+    <div class="panel-head"><span>📐</span> 건조실 규격 입력</div>
+    <div class="panel-body">
+      <div class="sec-label">공간 치수</div>
+      <div class="input-row">
+        <div class="input-box"><label>가로 (m)</label><input type="number" id="w" value="13" min="1" max="100" step="0.5" oninput="updateVol()"></div>
+        <div class="input-box"><label>세로 (m)</label><input type="number" id="d" value="6" min="1" max="100" step="0.5" oninput="updateVol()"></div>
+        <div class="input-box"><label>높이 (m)</label><input type="number" id="h" value="5" min="1" max="20" step="0.5" oninput="updateVol()"></div>
+      </div>
+      <div class="vol-display">
+        <div><div class="vol-main" id="volMain">390 ㎥</div><div class="vol-sub">건조실 공간 용적</div></div>
+        <div class="vol-details" id="volDetails">면적: 78 ㎡<br>환기 필요량: 390~780 ㎥/h<br>최소 제습용량: 260 L/day</div>
+      </div>
+      <div class="sec-label">환경 조건</div>
+      <div class="input-row">
+        <div class="input-box"><label>초기 습도 (%)</label><input type="number" id="initHumid" value="85" min="40" max="100" oninput="updateVol()"></div>
+        <div class="input-box"><label>목표 습도 (%)</label><input type="number" id="targetHumid" value="60" min="20" max="80" oninput="updateVol()"></div>
+        <div class="input-box"><label>실내 온도 (°C)</label><input type="number" id="temp" value="25" min="5" max="45" oninput="updateVol()"></div>
+      </div>
+      <div class="input-row">
+        <div class="input-box"><label>트레이 수량</label><input type="number" id="trayCount" value="100" min="1" max="5000"></div>
+        <div class="input-box"><label>트레이 면적 (㎡)</label><input type="number" id="trayArea" value="0.25" min="0.01" max="2" step="0.01"></div>
+        <div class="input-box"><label>잔류수분 (g/㎡)</label><input type="number" id="moisture" value="120" min="10" max="500"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 저장 / 불러오기 -->
+  <div class="panel">
+    <div class="panel-head green"><span>💾</span> 시뮬레이션 저장 / 불러오기</div>
+    <div class="panel-body">
+      <div id="fbStatusBar" class="fb-status loading"><div class="fb-dot"></div><span id="fbStatusText">Firebase 연결 중...</span></div>
+      <div class="sec-label">저장 정보</div>
+      <div class="save-row">
+        <div class="input-box">
+          <label>장소명</label>
+          <input type="text" id="saveName" placeholder="예: 전주공장 건조실 A" maxlength="30">
+        </div>
+        <div class="input-box">
+          <label>조건번호</label>
+          <input type="text" id="saveCode" placeholder="예: CASE-001" maxlength="20">
+        </div>
+      </div>
+      <div class="input-box" style="margin-bottom:8px;">
+        <label>메모 (선택)</label>
+        <input type="text" id="saveMemo" placeholder="간단한 설명 입력" maxlength="60">
+      </div>
+      <div class="save-row">
+        <button class="btn btn-save" onclick="saveSimulation()">💾 현재 설정 저장</button>
+        <button class="btn btn-load" onclick="openModal()">📂 저장 목록 열기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 기기 선택 -->
+  <div class="panel">
+    <div class="panel-head"><span>⚙️</span> 건조 기기 선택 및 설정</div>
+    <div class="panel-body">
+      <div class="sec-label">기기를 ON 하고 출력을 조정하세요</div>
+      <div class="device-list">
+
+        <!-- 에어나이프 -->
+        <div class="device-card" id="card-airknife">
+          <div class="device-head" onclick="toggleDevice('airknife')">
+            <div class="device-toggle" id="tog-airknife"></div>
+            <span class="device-icon">💨</span>
+            <span class="device-name">에어나이프 시스템</span>
+            <span class="device-cap-badge" id="badge-airknife">OFF</span>
+          </div>
+          <div class="device-body">
+            <div class="slider-group">
+              <div class="slider-label"><span>링블로어 출력 (HP)</span><span class="slider-val" id="val-ak-power">5 HP × 3대</span></div>
+              <input type="range" id="sl-ak-power" min="1" max="10" value="5" step="1" oninput="updateSlider('ak-power',this.value,'HP','sl-ak-power')">
+              <div class="slider-minmax"><span>1HP</span><span>10HP</span></div>
+            </div>
+            <div class="slider-group">
+              <div class="slider-label"><span>슬릿 폭 (mm)</span><span class="slider-val" id="val-ak-slit">1.0 mm</span></div>
+              <input type="range" id="sl-ak-slit" min="0.5" max="3.0" value="1.0" step="0.1" oninput="updateSlider('ak-slit',this.value,'mm','sl-ak-slit')">
+              <div class="slider-minmax"><span>0.5mm</span><span>3.0mm</span></div>
+            </div>
+            <div class="slider-group">
+              <div class="slider-label"><span>에어나이프 수량</span><span class="slider-val" id="val-ak-count">6 개</span></div>
+              <input type="range" id="sl-ak-count" min="1" max="12" value="6" step="1" oninput="updateSlider('ak-count',this.value,'개','sl-ak-count')">
+              <div class="slider-minmax"><span>1개</span><span>12개</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 제습기 -->
+        <div class="device-card" id="card-dehum">
+          <div class="device-head" onclick="toggleDevice('dehum')">
+            <div class="device-toggle" id="tog-dehum"></div>
+            <span class="device-icon">💧</span>
+            <span class="device-name">산업용 제습기</span>
+            <span class="device-cap-badge" id="badge-dehum">OFF</span>
+          </div>
+          <div class="device-body">
+            <div class="slider-group">
+              <div class="slider-label"><span>제습 용량 (L/day)</span><span class="slider-val" id="val-dh-cap">260 L/day</span></div>
+              <input type="range" id="sl-dh-cap" min="50" max="500" value="260" step="10" oninput="updateSlider('dh-cap',this.value,'L/day','sl-dh-cap')">
+              <div class="slider-minmax"><span>50L</span><span>500L</span></div>
+            </div>
+            <div class="slider-group">
+              <div class="slider-label"><span>소비 전력 (kW)</span><span class="slider-val" id="val-dh-power">4.5 kW</span></div>
+              <input type="range" id="sl-dh-power" min="1" max="15" value="4.5" step="0.5" oninput="updateSlider('dh-power',this.value,'kW','sl-dh-power')">
+              <div class="slider-minmax"><span>1kW</span><span>15kW</span></div>
+            </div>
+            <div class="slider-group">
+              <div class="slider-label"><span>대수</span><span class="slider-val" id="val-dh-count">1 대</span></div>
+              <input type="range" id="sl-dh-count" min="1" max="4" value="1" step="1" oninput="updateSlider('dh-count',this.value,'대','sl-dh-count')">
+              <div class="slider-minmax"><span>1대</span><span>4대</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 순환팬 -->
+        <div class="device-card" id="card-fan">
+          <div class="device-head" onclick="toggleDevice('fan')">
+            <div class="device-toggle" id="tog-fan"></div>
+            <span class="device-icon">🌀</span>
+            <span class="device-name">산업용 순환팬</span>
+            <span class="device-cap-badge" id="badge-fan">OFF</span>
+          </div>
+          <div class="device-body">
+            <div class="slider-group">
+              <div class="slider-label"><span>풍량 (CMH)</span><span class="slider-val" id="val-fn-flow">800 CMH</span></div>
+              <input type="range" id="sl-fn-flow" min="100" max="5000" value="800" step="100" oninput="updateSlider('fn-flow',this.value,'CMH','sl-fn-flow')">
+              <div class="slider-minmax"><span>100</span><span>5000</span></div>
+            </div>
+            <div class="slider-group">
+              <div class="slider-label"><span>풍속 (m/s)</span><span class="slider-val" id="val-fn-speed">3.0 m/s</span></div>
+              <input type="range" id="sl-fn-speed" min="0.5" max="15" value="3.0" step="0.5" oninput="updateSlider('fn-speed',this.value,'m/s','sl-fn-speed')">
+              <div class="slider-minmax"><span>0.5</span><span>15</span></div>
+            </div>
+            <div class="slider-group">
+              <div class="slider-label"><span>대수</span><span class="slider-val" id="val-fn-count">2 대</span></div>
+              <input type="range" id="sl-fn-count" min="1" max="8" value="2" step="1" oninput="updateSlider('fn-count',this.value,'대','sl-fn-count')">
+              <div class="slider-minmax"><span>1대</span><span>8대</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 열풍기 -->
+        <div class="device-card" id="card-heater">
+          <div class="device-head" onclick="toggleDevice('heater')">
+            <div class="device-toggle" id="tog-heater"></div>
+            <span class="device-icon">🔥</span>
+            <span class="device-name">열풍 건조기</span>
+            <span class="device-cap-badge" id="badge-heater">OFF</span>
+          </div>
+          <div class="device-body">
+            <div class="slider-group">
+              <div class="slider-label"><span>열량 (kcal/h)</span><span class="slider-val" id="val-ht-heat">5000 kcal/h</span></div>
+              <input type="range" id="sl-ht-heat" min="1000" max="30000" value="5000" step="500" oninput="updateSlider('ht-heat',this.value,'kcal/h','sl-ht-heat')">
+              <div class="slider-minmax"><span>1000</span><span>30000</span></div>
+            </div>
+            <div class="slider-group">
+              <div class="slider-label"><span>설정 온도 (°C)</span><span class="slider-val" id="val-ht-temp">40 °C</span></div>
+              <input type="range" id="sl-ht-temp" min="30" max="80" value="40" step="5" oninput="updateSlider('ht-temp',this.value,'°C','sl-ht-temp')">
+              <div class="slider-minmax"><span>30°C</span><span>80°C</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 배기팬 -->
+        <div class="device-card" id="card-exhaust">
+          <div class="device-head" onclick="toggleDevice('exhaust')">
+            <div class="device-toggle" id="tog-exhaust"></div>
+            <span class="device-icon">🔃</span>
+            <span class="device-name">배기 환기팬</span>
+            <span class="device-cap-badge" id="badge-exhaust">OFF</span>
+          </div>
+          <div class="device-body">
+            <div class="slider-group">
+              <div class="slider-label"><span>배기 용량 (CMH)</span><span class="slider-val" id="val-ex-flow">1200 CMH</span></div>
+              <input type="range" id="sl-ex-flow" min="200" max="10000" value="1200" step="100" oninput="updateSlider('ex-flow',this.value,'CMH','sl-ex-flow')">
+              <div class="slider-minmax"><span>200</span><span>10000</span></div>
+            </div>
+            <div class="slider-group">
+              <div class="slider-label"><span>대수</span><span class="slider-val" id="val-ex-count">1 대</span></div>
+              <input type="range" id="sl-ex-count" min="1" max="6" value="1" step="1" oninput="updateSlider('ex-count',this.value,'대','sl-ex-count')">
+              <div class="slider-minmax"><span>1대</span><span>6대</span></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+      <button class="btn-sim" onclick="simulate()">
+        <div class="spin" id="simSpin"></div>
+        <span id="simBtnText">▶ 시뮬레이션 실행</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ RIGHT COLUMN ═══ -->
+<div id="resultArea">
+  <div class="panel">
+    <div class="panel-head"><span>📊</span> 시뮬레이션 결과</div>
+    <div class="panel-body" id="resultBody">
+      <div class="placeholder">
+        <div class="ico">🧪</div>
+        <p>좌측에서 건조실 규격과 기기를 설정한 후<br>시뮬레이션 실행 버튼을 눌러주세요.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, serverTimestamp }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC4DWFGGJjJmVlqnfmZaVDdKJWCXK0Yr_g",
+  authDomain: "insys-work.firebaseapp.com",
+  projectId: "insys-work",
+  storageBucket: "insys-work.appspot.com",
+  messagingSenderId: "1008949346000",
+  appId: "1:1008949346000:web:insys_drysim"
+};
+
+const app = initializeApp(firebaseConfig, 'drysim');
+const db = getFirestore(app);
+const COL = 'drysim_sessions';
+
+// 연결 확인
+function setFbStatus(ok, msg) {
+  const bars = [document.getElementById('fbStatusBar'), document.getElementById('fbStatus2')];
+  bars.forEach(b => {
+    if (!b) return;
+    b.className = 'fb-status ' + (ok === null ? 'loading' : ok ? 'ok' : 'err');
+    b.querySelector('span').textContent = msg;
+  });
+  document.getElementById('fbStatusText').textContent = msg;
+}
+
+// ─── SAVE ────────────────────────────────────────────────
+window.saveSimulation = async function() {
+  const name = document.getElementById('saveName').value.trim();
+  const code = document.getElementById('saveCode').value.trim();
+  if (!name) { showToast('장소명을 입력해주세요.', 'err'); return; }
+  if (!code) { showToast('조건번호를 입력해주세요.', 'err'); return; }
+
+  const data = collectState();
+  data.saveName = name;
+  data.saveCode = code;
+  data.saveMemo = document.getElementById('saveMemo').value.trim();
+  data.savedAt = serverTimestamp();
+
+  try {
+    setFbStatus(null, '저장 중...');
+    const docRef = await addDoc(collection(db, COL), data);
+    setFbStatus(true, 'Firebase 연결됨');
+    showToast(`✅ [${code}] ${name} 저장 완료`, 'ok');
+    // 결과창에 저장 뱃지
+    const rb = document.getElementById('resultBody');
+    if (rb && !rb.querySelector('.result-saved-badge')) {
+      const badge = document.createElement('div');
+      badge.className = 'result-saved-badge';
+      badge.innerHTML = `✅ ${code} — ${name} 저장됨`;
+      rb.prepend(badge);
+    }
+  } catch (e) {
+    setFbStatus(false, 'Firebase 오류');
+    showToast('저장 실패: ' + e.message, 'err');
+    console.error(e);
+  }
+};
+
+// ─── LOAD LIST ───────────────────────────────────────────
+window.loadList = async function() {
+  const listEl = document.getElementById('saveList');
+  const st2 = document.getElementById('fbStatus2');
+  listEl.innerHTML = '<div class="save-empty">불러오는 중...</div>';
+  try {
+    const q = query(collection(db, COL), orderBy('savedAt', 'desc'));
+    const snap = await getDocs(q);
+    if (st2) { st2.className = 'fb-status ok'; st2.querySelector('span').textContent = `${snap.size}건 조회됨`; }
+    if (snap.empty) { listEl.innerHTML = '<div class="save-empty">저장된 시뮬레이션이 없습니다.</div>'; return; }
+    listEl.innerHTML = '';
+    snap.forEach(docSnap => {
+      const d = docSnap.data();
+      const dt = d.savedAt ? new Date(d.savedAt.seconds * 1000).toLocaleString('ko-KR') : '-';
+      const item = document.createElement('div');
+      item.className = 'save-item';
+      item.innerHTML = `
+        <div class="save-item-info">
+          <div class="save-item-name">📍 ${d.saveName || '-'}</div>
+          <div class="save-item-meta">조건: <b>${d.saveCode || '-'}</b> | ${d.saveMemo ? d.saveMemo + ' | ' : ''}${dt}</div>
+          <div class="save-item-meta" style="margin-top:2px;">
+            ${d.w}×${d.d}×${d.h}m | 습도 ${d.initHumid}→${d.targetHumid}% | ${d.temp}°C
+          </div>
+        </div>
+        <span class="save-item-badge">${d.saveCode}</span>
+        <button class="btn btn-apply" onclick="applySession('${docSnap.id}')">적용</button>
+        <button class="btn btn-del" onclick="deleteSession('${docSnap.id}','${d.saveName}')">삭제</button>
+      `;
+      listEl.appendChild(item);
+    });
+  } catch (e) {
+    if (st2) { st2.className = 'fb-status err'; st2.querySelector('span').textContent = '조회 실패'; }
+    listEl.innerHTML = `<div class="save-empty">오류: ${e.message}</div>`;
+  }
+};
+
+// ─── APPLY ───────────────────────────────────────────────
+window.applySession = async function(id) {
+  try {
+    const snap = await getDocs(collection(db, COL));
+    let found = null;
+    snap.forEach(d => { if (d.id === id) found = d.data(); });
+    if (!found) { showToast('데이터를 찾을 수 없습니다.', 'err'); return; }
+    applyState(found);
+    closeModal();
+    showToast(`✅ [${found.saveCode}] ${found.saveName} 불러오기 완료`, 'ok');
+    // 입력란 자동 채우기
+    document.getElementById('saveName').value = found.saveName || '';
+    document.getElementById('saveCode').value = found.saveCode || '';
+    document.getElementById('saveMemo').value = found.saveMemo || '';
+  } catch (e) {
+    showToast('불러오기 실패: ' + e.message, 'err');
+  }
+};
+
+// ─── DELETE ──────────────────────────────────────────────
+window.deleteSession = async function(id, name) {
+  if (!confirm(`"${name}" 을(를) 삭제하시겠습니까?`)) return;
+  try {
+    await deleteDoc(doc(db, COL, id));
+    showToast('🗑 삭제 완료', 'info');
+    loadList();
+  } catch (e) {
+    showToast('삭제 실패: ' + e.message, 'err');
+  }
+};
+
+// 초기 연결 테스트
+try {
+  const q = query(collection(db, COL), orderBy('savedAt', 'desc'));
+  getDocs(q).then(snap => {
+    setFbStatus(true, `Firebase 연결됨 (${snap.size}건 저장)`);
+  }).catch(e => setFbStatus(false, 'Firebase 연결 실패'));
+} catch(e) { setFbStatus(false, '초기화 오류'); }
+
+</script>
+
+<script>
+// ─── VIEW TOGGLE ─────────────────────────────────────────
+function setView(v) {
+  document.getElementById('btn-pc').classList.toggle('active', v==='pc');
+  document.getElementById('btn-mobile').classList.toggle('active', v==='mobile');
+  document.body.classList.toggle('mobile-view', v==='mobile');
+}
+
+// ─── TOAST ───────────────────────────────────────────────
+function showToast(msg, type='ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + type + ' show';
+  clearTimeout(t._tid);
+  t._tid = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ─── MODAL ───────────────────────────────────────────────
+function openModal() {
+  document.getElementById('modalBg').classList.add('show');
+  if (typeof loadList === 'function') loadList();
+}
+function closeModal() {
+  document.getElementById('modalBg').classList.remove('show');
+}
+document.getElementById('modalBg').addEventListener('click', e => {
+  if (e.target === document.getElementById('modalBg')) closeModal();
+});
+
+// ─── DEVICES STATE ───────────────────────────────────────
+const devices = { airknife:false, dehum:false, fan:false, heater:false, exhaust:false };
+
+function toggleDevice(id) {
+  devices[id] = !devices[id];
+  document.getElementById('card-'+id).classList.toggle('active', devices[id]);
+  document.getElementById('tog-'+id).classList.toggle('on', devices[id]);
+  const b = document.getElementById('badge-'+id);
+  b.textContent = devices[id]?'ON':'OFF';
+  b.style.background = devices[id]?'#dbeafe':'#e5e7eb';
+  b.style.color = devices[id]?'#1d4ed8':'#6b7280';
+}
+
+// ─── SLIDER ──────────────────────────────────────────────
+function updateSlider(id, val, unit, slId) {
+  const sl = document.getElementById(slId);
+  const el = document.getElementById('val-'+id);
+  const labels = {
+    'ak-power': v => `${v} HP × 3대`,
+    'ak-slit': v => `${parseFloat(v).toFixed(1)} mm`,
+    'ak-count': v => `${v} 개`,
+    'dh-cap': v => `${v} L/day`,
+    'dh-power': v => `${parseFloat(v).toFixed(1)} kW`,
+    'dh-count': v => `${v} 대`,
+    'fn-flow': v => `${v} CMH`,
+    'fn-speed': v => `${parseFloat(v).toFixed(1)} m/s`,
+    'fn-count': v => `${v} 대`,
+    'ht-heat': v => `${Number(v).toLocaleString()} kcal/h`,
+    'ht-temp': v => `${v} °C`,
+    'ex-flow': v => `${v} CMH`,
+    'ex-count': v => `${v} 대`,
+  };
+  el.textContent = labels[id] ? labels[id](val) : val+' '+unit;
+  const min=parseFloat(sl.min), max=parseFloat(sl.max);
+  const pct=((parseFloat(val)-min)/(max-min))*100;
+  sl.style.setProperty('--pct', pct+'%');
+}
+
+function initSliders() {
+  document.querySelectorAll('input[type=range]').forEach(sl => {
+    const min=parseFloat(sl.min), max=parseFloat(sl.max);
+    const pct=((parseFloat(sl.value)-min)/(max-min))*100;
+    sl.style.setProperty('--pct', pct+'%');
+  });
+}
+
+// ─── VOLUME ──────────────────────────────────────────────
+function updateVol() {
+  const w=parseFloat(document.getElementById('w').value)||0;
+  const d=parseFloat(document.getElementById('d').value)||0;
+  const h=parseFloat(document.getElementById('h').value)||0;
+  const area=w*d, vol=area*h;
+  document.getElementById('volMain').textContent = vol.toFixed(0)+' ㎥';
+  document.getElementById('volDetails').innerHTML =
+    `면적: ${area.toFixed(1)} ㎡<br>환기 필요량: ${Math.round(vol)}~${Math.round(vol*2)} ㎥/h<br>최소 제습용량: ${Math.ceil(vol*0.67)} L/day`;
+}
+
+// ─── COLLECT / APPLY STATE ───────────────────────────────
+function collectState() {
+  return {
+    w: parseFloat(document.getElementById('w').value)||13,
+    d: parseFloat(document.getElementById('d').value)||6,
+    h: parseFloat(document.getElementById('h').value)||5,
+    initHumid: parseFloat(document.getElementById('initHumid').value)||85,
+    targetHumid: parseFloat(document.getElementById('targetHumid').value)||60,
+    temp: parseFloat(document.getElementById('temp').value)||25,
+    trayCount: parseFloat(document.getElementById('trayCount').value)||100,
+    trayArea: parseFloat(document.getElementById('trayArea').value)||0.25,
+    moisture: parseFloat(document.getElementById('moisture').value)||120,
+    devices: { ...devices },
+    sliders: {
+      'ak-power': document.getElementById('sl-ak-power').value,
+      'ak-slit': document.getElementById('sl-ak-slit').value,
+      'ak-count': document.getElementById('sl-ak-count').value,
+      'dh-cap': document.getElementById('sl-dh-cap').value,
+      'dh-power': document.getElementById('sl-dh-power').value,
+      'dh-count': document.getElementById('sl-dh-count').value,
+      'fn-flow': document.getElementById('sl-fn-flow').value,
+      'fn-speed': document.getElementById('sl-fn-speed').value,
+      'fn-count': document.getElementById('sl-fn-count').value,
+      'ht-heat': document.getElementById('sl-ht-heat').value,
+      'ht-temp': document.getElementById('sl-ht-temp').value,
+      'ex-flow': document.getElementById('sl-ex-flow').value,
+      'ex-count': document.getElementById('sl-ex-count').value,
+    }
+  };
+}
+
+function applyState(s) {
+  const setV = (id, v) => { const el=document.getElementById(id); if(el) el.value=v; };
+  setV('w', s.w); setV('d', s.d); setV('h', s.h);
+  setV('initHumid', s.initHumid); setV('targetHumid', s.targetHumid); setV('temp', s.temp);
+  setV('trayCount', s.trayCount); setV('trayArea', s.trayArea); setV('moisture', s.moisture);
+  updateVol();
+  // devices
+  if (s.devices) {
+    Object.keys(s.devices).forEach(id => {
+      if (s.devices[id] !== devices[id]) toggleDevice(id);
+    });
+  }
+  // sliders
+  if (s.sliders) {
+    const slMap = {
+      'ak-power':'sl-ak-power','ak-slit':'sl-ak-slit','ak-count':'sl-ak-count',
+      'dh-cap':'sl-dh-cap','dh-power':'sl-dh-power','dh-count':'sl-dh-count',
+      'fn-flow':'sl-fn-flow','fn-speed':'sl-fn-speed','fn-count':'sl-fn-count',
+      'ht-heat':'sl-ht-heat','ht-temp':'sl-ht-temp',
+      'ex-flow':'sl-ex-flow','ex-count':'sl-ex-count',
+    };
+    Object.keys(s.sliders).forEach(k => {
+      const slId = slMap[k];
+      if (slId) {
+        document.getElementById(slId).value = s.sliders[k];
+        updateSlider(k, s.sliders[k], '', slId);
+      }
+    });
+  }
+}
+
+// ─── SIMULATE ────────────────────────────────────────────
+function simulate() {
+  const btn=document.getElementById('simBtnText');
+  const spin=document.getElementById('simSpin');
+  btn.textContent='분석 중...'; spin.style.display='inline-block';
+  setTimeout(()=>{ btn.textContent='▶ 시뮬레이션 실행'; spin.style.display='none'; runSim(); }, 700);
+}
+
+function runSim() {
+  const w=parseFloat(document.getElementById('w').value)||13;
+  const d=parseFloat(document.getElementById('d').value)||6;
+  const h=parseFloat(document.getElementById('h').value)||5;
+  const initH=parseFloat(document.getElementById('initHumid').value)||85;
+  const targH=parseFloat(document.getElementById('targetHumid').value)||60;
+  const temp=parseFloat(document.getElementById('temp').value)||25;
+  const trayCount=parseFloat(document.getElementById('trayCount').value)||100;
+  const trayArea=parseFloat(document.getElementById('trayArea').value)||0.25;
+  const moisture=parseFloat(document.getElementById('moisture').value)||120;
+  const vol=w*d*h;
+  const totalMoisture=trayCount*trayArea*moisture;
+
+  const akOn=devices.airknife, dhOn=devices.dehum, fnOn=devices.fan, htOn=devices.heater, exOn=devices.exhaust;
+  const akPower=parseFloat(document.getElementById('sl-ak-power').value)||5;
+  const akSlit=parseFloat(document.getElementById('sl-ak-slit').value)||1.0;
+  const akCount=parseFloat(document.getElementById('sl-ak-count').value)||6;
+  const dhCap=parseFloat(document.getElementById('sl-dh-cap').value)||260;
+  const dhPower=parseFloat(document.getElementById('sl-dh-power').value)||4.5;
+  const dhCount=parseFloat(document.getElementById('sl-dh-count').value)||1;
+  const fnFlow=parseFloat(document.getElementById('sl-fn-flow').value)||800;
+  const fnSpeed=parseFloat(document.getElementById('sl-fn-speed').value)||3.0;
+  const fnCount=parseFloat(document.getElementById('sl-fn-count').value)||2;
+  const htHeat=parseFloat(document.getElementById('sl-ht-heat').value)||5000;
+  const htTemp=parseFloat(document.getElementById('sl-ht-temp').value)||40;
+  const exFlow=parseFloat(document.getElementById('sl-ex-flow').value)||1200;
+  const exCount=parseFloat(document.getElementById('sl-ex-count').value)||1;
+
+  // Physics
+  let akRemoval=0;
+  if(akOn){ const sf=Math.min(1.0,1.0/(akSlit*0.8)); const pf=Math.min(1.0,akPower/7.5); const cf=Math.min(1.2,akCount/5); akRemoval=Math.min(85,45*sf*pf*cf); }
+  let dhEffect=0, dhHoursToTarget=999;
+  if(dhOn){ const totalDhCap=dhCap*dhCount; const humiDiff=(initH-targH)/100; const satVap=0.02*(temp-5); const waterToRemove=vol*1.2*satVap*humiDiff*1000; const dhCapH=totalDhCap*1000/24; dhEffect=Math.min(0.95,totalDhCap/(vol*0.6)); dhHoursToTarget=Math.min(12,Math.max(0.3,waterToRemove/Math.max(1,dhCapH))); }
+  let fanBoost=1.0;
+  if(fnOn){ const ach=(fnFlow*fnCount)/vol; fanBoost=1.0+Math.min(0.8,ach/5*0.3+(fnSpeed/3.0)*0.2); }
+  let heatBoost=1.0, effectiveTemp=temp;
+  if(htOn){ effectiveTemp=Math.min(htTemp,temp+((htTemp-temp)*Math.min(1,htHeat/8000))); heatBoost=1.0+Math.min(1.5,(effectiveTemp-temp)/10*0.3); }
+  let exBoost=1.0;
+  if(exOn){ exBoost=1.0+Math.min(0.5,(exFlow*exCount)/vol*0.08); }
+
+  const combinedBoost=fanBoost*heatBoost*exBoost;
+  const phase1Removal=akRemoval;
+  const remaining1=totalMoisture*(1-phase1Removal/100);
+  const dhCapEff=dhOn?(dhCap*dhCount*combinedBoost)/24*1000:0;
+  const evapRate=dhOn?dhCapEff:(fnOn?fnFlow*fnCount*0.002*combinedBoost:10);
+  const activeCount=[akOn,dhOn,fnOn,htOn,exOn].filter(Boolean).length;
+
+  let timeToDry=999, finalRemoval=0;
+  if(activeCount===0){ const natRate=vol*0.05*(temp/25); timeToDry=Math.min(72,remaining1/Math.max(1,natRate)); finalRemoval=5; }
+  else {
+    if(evapRate>0) timeToDry=Math.max(0.1,Math.min(48,remaining1/evapRate/combinedBoost));
+    finalRemoval=Math.min(99,phase1Removal+(dhOn?Math.min(40,dhEffect*50*combinedBoost):0)+(fnOn&&!dhOn?Math.min(20,(fanBoost-1)*40):0)+(htOn&&!dhOn?Math.min(15,(heatBoost-1)*30):0)+(exOn&&!dhOn?Math.min(10,(exBoost-1)*25):0));
+    if(!dhOn&&!akOn){ finalRemoval=Math.min(70,(fnOn?25:0)+(htOn?20:0)+(exOn?15:0)); timeToDry=Math.max(1,24/combinedBoost); }
+    if(!dhOn&&akOn&&!fnOn&&!htOn&&!exOn){ finalRemoval=phase1Removal; timeToDry=Math.max(0.5,remaining1/(vol*0.05)); }
+  }
+
+  const humiReduction=dhOn?Math.min(initH-targH,(initH-targH)*Math.min(1,dhEffect*1.2)):5;
+  const finalHumid=Math.max(targH,initH-humiReduction);
+  const totalPower=(akOn?akPower*0.746*3:0)+(dhOn?dhPower*dhCount:0)+(fnOn?fnFlow*fnCount*0.001*1.2:0)+(htOn?htHeat/860:0)+(exOn?0.75*exCount:0);
+  const score=Math.min(100,Math.round((finalRemoval*0.5)+(Math.max(0,1-timeToDry/24)*50*0.3)+(activeCount*4)-(totalPower*0.5>20?10:0)));
+
+  let ledColor,ledLabel,ledDesc;
+  if(finalRemoval>=90){ledColor='blue';ledLabel='완전 건조';ledDesc='표면 수분이 거의 완전 제거된 최적 상태';}
+  else if(finalRemoval>=75){ledColor='green';ledLabel='양호';ledDesc='대부분 수분 제거, 실용적 건조 완료 수준';}
+  else if(finalRemoval>=55){ledColor='lime';ledLabel='보통';ledDesc='절반 이상 제거, 추가 건조 시간 필요';}
+  else if(finalRemoval>=30){ledColor='yellow';ledLabel='불충분';ledDesc='수분 제거 부족, 기기 추가 또는 출력 증가 필요';}
+  else{ledColor='red';ledLabel='건조 불가';ledDesc='현재 설정으로는 건조 효과 미미';}
+
+  const bars=[
+    {name:'에어나이프',val:akOn?Math.round(akRemoval):0,color:'#3b82f6',tip:`표면제거 ${Math.round(akRemoval)}%`},
+    {name:'제습기',val:dhOn?Math.round(dhEffect*100):0,color:'#06b6d4',tip:`습도제거 ${Math.round(dhEffect*100)}%`},
+    {name:'순환팬',val:fnOn?Math.round((fanBoost-1)*100):0,color:'#8b5cf6',tip:`증발가속 +${Math.round((fanBoost-1)*100)}%`},
+    {name:'열풍기',val:htOn?Math.round((heatBoost-1)*100):0,color:'#f59e0b',tip:`온도효과 +${Math.round((heatBoost-1)*100)}%`},
+    {name:'배기팬',val:exOn?Math.round((exBoost-1)*100):0,color:'#10b981',tip:`배기가속 +${Math.round((exBoost-1)*100)}%`},
+  ];
+  const maxBar=Math.max(...bars.map(b=>b.val),1);
+
+  let phaseClass='ok',phaseTitle='',phaseDesc='';
+  if(activeCount===0){phaseClass='danger';phaseTitle='⚠️ 기기 미선택';phaseDesc='건조 기기가 선택되지 않았습니다.';}
+  else if(finalRemoval>=85){phaseClass='ok';phaseTitle='✅ 최적 건조 환경';phaseDesc=`현재 설정으로 ${timeToDry.toFixed(1)}시간 내 완전 건조 가능합니다.`;}
+  else if(finalRemoval>=60){phaseClass='warn';phaseTitle='⚡ 양호 — 개선 여지 있음';phaseDesc=`기본 건조는 가능하나 ${finalRemoval<75?'제습기 추가/용량 증가':'순환팬 풍속 증가'}를 권장합니다.`;}
+  else{phaseClass='danger';phaseTitle='🔴 건조 효율 부족';phaseDesc='에어나이프 + 제습기 조합을 권장합니다.';}
+
+  const timeLabel = timeToDry>=48?'48h+': timeToDry<1?(timeToDry*60).toFixed(0)+'분': timeToDry.toFixed(1)+'h';
+  const saveName = document.getElementById('saveName').value.trim();
+  const saveCode = document.getElementById('saveCode').value.trim();
+
+  document.getElementById('resultBody').innerHTML = `
+    ${saveName&&saveCode?`<div class="result-saved-badge">📍 ${saveCode} — ${saveName}</div>`:''}
+    <div class="result-grid">
+      <div class="stat-card blue"><div class="stat-val blue">${finalRemoval.toFixed(0)}<span style="font-size:16px">%</span></div><div class="stat-label">수분 제거율</div></div>
+      <div class="stat-card ${timeToDry<6?'green':timeToDry<12?'orange':''}"><div class="stat-val ${timeToDry<6?'green':timeToDry<12?'orange':''}">${timeLabel}</div><div class="stat-label">완전 건조 예상</div></div>
+      <div class="stat-card orange"><div class="stat-val orange">${finalHumid.toFixed(0)}<span style="font-size:16px">%</span></div><div class="stat-label">도달 습도</div></div>
+      <div class="stat-card purple"><div class="stat-val purple">${totalPower.toFixed(1)}<span style="font-size:14px">kW</span></div><div class="stat-label">총 소비 전력</div></div>
+    </div>
+    <div class="led-panel">
+      <div class="led-title">● 건조 상태 모니터</div>
+      <div class="led-row"><div class="led-dot ${ledColor}"></div><div class="led-info"><div class="led-label">${ledLabel}</div><div class="led-desc">${ledDesc}</div></div><div class="led-pct">${finalRemoval.toFixed(0)}%</div></div>
+      <div class="led-row"><div class="led-dot ${finalRemoval>=90?'blue':finalRemoval>=70?'green':finalRemoval>=50?'lime':finalRemoval>=30?'yellow':'red'}"></div><div class="led-info"><div class="led-label">트레이 표면 수분</div><div class="led-desc">잔류: ${(totalMoisture*(1-finalRemoval/100)/1000).toFixed(1)} kg / 초기: ${(totalMoisture/1000).toFixed(1)} kg</div></div><div class="led-pct">${(100-finalRemoval).toFixed(0)}% 잔류</div></div>
+      <div class="led-row"><div class="led-dot ${finalHumid<=targH+5?'green':finalHumid<=targH+15?'lime':'yellow'}"></div><div class="led-info"><div class="led-label">실내 습도</div><div class="led-desc">${initH}% → ${finalHumid.toFixed(0)}% (목표: ${targH}%)</div></div><div class="led-pct">${finalHumid.toFixed(0)}%</div></div>
+      <div class="led-row"><div class="led-dot ${timeToDry<3?'blue':timeToDry<8?'green':timeToDry<16?'lime':timeToDry<24?'yellow':'red'}"></div><div class="led-info"><div class="led-label">건조 완료 예상</div><div class="led-desc">${timeToDry>=48?'48시간 초과 — 기기 보강 필요':'약 '+timeLabel+' 후 완료 예상'}</div></div><div class="led-pct">${timeLabel}</div></div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <div class="pbar-wrap"><div class="pbar-label"><span>수분 제거율</span><strong>${finalRemoval.toFixed(1)}%</strong></div><div class="pbar-track"><div class="pbar-fill" style="width:${finalRemoval}%;background:linear-gradient(90deg,#2176cc,#06b6d4)"></div></div></div>
+      <div class="pbar-wrap"><div class="pbar-label"><span>습도 감소율</span><strong>${((initH-finalHumid)/initH*100).toFixed(1)}%</strong></div><div class="pbar-track"><div class="pbar-fill" style="width:${(initH-finalHumid)/initH*100}%;background:linear-gradient(90deg,#7c3aed,#a78bfa)"></div></div></div>
+      <div class="pbar-wrap"><div class="pbar-label"><span>에너지 효율 점수</span><strong>${score}점</strong></div><div class="pbar-track"><div class="pbar-fill" style="width:${score}%;background:linear-gradient(90deg,${score>70?'#16a34a':'#d97706'},${score>70?'#4ade80':'#fbbf24'})"></div></div></div>
+    </div>
+    <div class="chart-area">
+      <div class="chart-title">📊 기기별 건조 기여도</div>
+      <div class="bars">${bars.map(b=>`<div class="bar-col"><div class="bar-num">${b.val}%</div><div class="bar-wrap"><div class="bar" style="height:${b.val>0?Math.max(4,b.val/maxBar*100):2}%;background:${b.val>0?b.color:'#e2e8f0'};" data-tip="${b.tip}"></div></div><div class="bar-name">${b.name}</div></div>`).join('')}</div>
+    </div>
+    <div class="phase-box ${phaseClass}"><div class="phase-title">${phaseTitle}</div><div class="phase-desc">${phaseDesc}</div></div>
+    <div class="chart-area" style="margin-bottom:0;">
+      <div class="chart-title">📋 건조 환경 분석 요약</div>
+      <table class="env-table">
+        <tr><th>항목</th><th class="val">값</th></tr>
+        <tr><td>장소 / 조건번호</td><td class="val">${saveName||'-'} / ${saveCode||'-'}</td></tr>
+        <tr><td>건조실 용적</td><td class="val">${vol.toFixed(0)} ㎥</td></tr>
+        <tr><td>총 트레이 수분량</td><td class="val">${(totalMoisture/1000).toFixed(2)} kg</td></tr>
+        <tr><td>에어나이프 즉시 제거</td><td class="val">${phase1Removal.toFixed(0)}%</td></tr>
+        <tr><td>건조 후 잔류 수분</td><td class="val">${(totalMoisture*(1-finalRemoval/100)/1000).toFixed(2)} kg</td></tr>
+        <tr><td>실내 유효 온도</td><td class="val">${effectiveTemp.toFixed(1)} °C</td></tr>
+        <tr><td>총 소비 전력</td><td class="val">${totalPower.toFixed(1)} kW</td></tr>
+        <tr><td>활성 기기 수</td><td class="val">${activeCount}개</td></tr>
+        <tr><td>종합 건조 효율</td><td class="val">${score}점 / 100</td></tr>
+      </table>
+    </div>
+  `;
+}
+
+// ─── INIT ────────────────────────────────────────────────
+initSliders();
+updateVol();
+if (window.innerWidth < 600) setView('mobile');
+</script>
+</body>
+</html>
