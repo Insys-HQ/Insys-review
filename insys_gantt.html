@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>인시스 전주공장 이전 일정표 v5.18</title>
+<title>인시스 전주공장 이전 일정표 v5.19</title>
 <!-- Firebase SDK -->
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -296,7 +296,7 @@ tr.drag-over-bot td{border-bottom:2px solid #3b82f6 !important;}
 <!-- 툴바 -->
 <div class="toolbar">
   <div class="tb-group">
-    <span class="tb-title">인시스 전주공장 이전 마스터 일정표 <span style="font-size:12px;font-weight:500;color:#93c5fd;margin-left:6px;" id="verBadge">v5.18</span></span>
+    <span class="tb-title">인시스 전주공장 이전 마스터 일정표 <span style="font-size:12px;font-weight:500;color:#93c5fd;margin-left:6px;" id="verBadge">v5.19</span></span>
   </div>
   <div class="tb-group">
     <span id="fbStatus" style="font-size:11px;font-weight:600;color:#94a3b8;">⚪ Firebase 연결 중...</span>
@@ -309,7 +309,16 @@ tr.drag-over-bot td{border-bottom:2px solid #3b82f6 !important;}
     <button class="tb-btn danger" id="btnReset">↺ 초기화</button>
   </div>
   <div class="tb-group">
-    <span style="font-size:11px;color:#94a3b8;margin-right:2px;">필터</span>
+    <span style="font-size:11px;color:#94a3b8;">기간</span>
+    <input type="date" id="inputStart" value="2026-06-01"
+      style="background:#1e2a45;color:#c8d0e8;border:1px solid #3a4565;border-radius:5px;
+             padding:3px 6px;font-size:11px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;">
+    <span style="font-size:11px;color:#94a3b8;">~</span>
+    <input type="date" id="inputEnd" value="2026-08-31"
+      style="background:#1e2a45;color:#c8d0e8;border:1px solid #3a4565;border-radius:5px;
+             padding:3px 6px;font-size:11px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;">
+    <button class="tb-btn" id="btnApplyRange" style="font-size:10px;padding:3px 8px;">적용</button>
+  </div>
     <button class="tb-btn filter-btn active" data-filter="all"        style="font-size:10px;padding:3px 7px;">전체</button>
     <button class="tb-btn filter-btn"        data-filter="todo"       style="font-size:10px;padding:3px 7px;">시작전</button>
     <button class="tb-btn filter-btn"        data-filter="inprogress" style="font-size:10px;padding:3px 7px;">진행중</button>
@@ -411,7 +420,7 @@ function updateEnd(){
 }
 var CW = 26;
 var RH = 26;
-var VERSION = 'v5.18';
+var VERSION = 'v5.19';
 var ACTIVE_FILTER = new Set(['all']); // 복수 선택: all|todo|inprogress|done|overdue
 
 function hexToRgba(hex,a){
@@ -1378,6 +1387,20 @@ function syncScroll(){
 var _btnSave = document.getElementById('btnSave');
 var _btnReset = document.getElementById('btnReset');
 var _btnXlsx  = document.getElementById('btnExportXlsx');
+
+// 시작일/종료일 적용
+document.getElementById('btnApplyRange').addEventListener('click', function(){
+  var s = document.getElementById('inputStart').value;
+  var e = document.getElementById('inputEnd').value;
+  if(!s || !e){ showToast('⚠️ 날짜를 입력해주세요.'); return; }
+  var ns = new Date(s), ne = new Date(e);
+  if(ns >= ne){ showToast('⚠️ 종료일이 시작일보다 늦어야 합니다.'); return; }
+  START = ns;
+  END   = ne;
+  COLS  = buildCols();
+  render();
+  showToast('📅 ' + s + ' ~ ' + e + ' 로 변경됨');
+});
 
 // 상태 필터 버튼 (복수 선택)
 document.querySelectorAll('.filter-btn').forEach(function(btn){
