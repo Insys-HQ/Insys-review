@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>건조실 환경 시뮬레이터 v1.8</title>
+<title>건조실 환경 시뮬레이터 v1.9</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -213,7 +213,7 @@ body.mobile .grid-main{grid-template-columns:1fr!important;}
         <button class="vt-btn active" id="btnPC" onclick="setView('pc')">💻 PC</button>
         <button class="vt-btn" id="btnMobile" onclick="setView('mobile')">📱 모바일</button>
       </div>
-      <span class="badge-ver">v1.8</span>
+      <span class="badge-ver">v1.9</span>
     </div>
   </div>
 </div>
@@ -906,20 +906,26 @@ function runSim(){
 // EVENT BINDING — 모든 입력에 이벤트 연결
 // ══════════════════════════════════════════════════════
 function bindEvents(){
-  // 숫자/텍스트 입력
+  // 건조실 규격 / 환경 / 트레이
   ['w','d','h','initHumid','targetHumid','temp',
    'trayW','trayD','trayH','trayPockets','trayCount','moisture'].forEach(id=>{
     $(id).addEventListener('input', ()=>{ refreshVol(); refreshTray(); schedSim(); });
+    $(id).addEventListener('change', ()=>{ refreshVol(); refreshTray(); schedSim(); });
   });
-  // 슬라이더
+  // 에어나이프 슬라이더
   ['sl-ak-power','sl-ak-slit','sl-ak-count'].forEach(id=>{
     $(id).addEventListener('input', ()=>{ refreshSliders(); refreshSpec('airknife'); refreshTotalPwr(); schedSim(); });
   });
-  // SELECT
-  ['sel-dehum','cnt-dehum'].forEach(id=>$(id).addEventListener('change',()=>{refreshSpec('dehum');refreshTotalPwr();schedSim();}));
-  ['sel-fan','cnt-fan'].forEach(id=>$(id).addEventListener('change',()=>{refreshSpec('fan');refreshTotalPwr();schedSim();}));
-  ['sel-heater','cnt-heater'].forEach(id=>$(id).addEventListener('change',()=>{refreshSpec('heater');refreshTotalPwr();schedSim();}));
-  ['sel-exhaust','cnt-exhaust'].forEach(id=>$(id).addEventListener('change',()=>{refreshSpec('exhaust');refreshTotalPwr();schedSim();}));
+  // 기기 사양 SELECT + 대수 INPUT — input/change 모두 등록
+  const devBind = (ids, dev) => ids.forEach(id=>{
+    ['input','change'].forEach(ev=>
+      $(id).addEventListener(ev, ()=>{ refreshSpec(dev); refreshTotalPwr(); schedSim(); })
+    );
+  });
+  devBind(['sel-dehum','cnt-dehum'], 'dehum');
+  devBind(['sel-fan','cnt-fan'], 'fan');
+  devBind(['sel-heater','cnt-heater'], 'heater');
+  devBind(['sel-exhaust','cnt-exhaust'], 'exhaust');
   // 기기 토글
   ['airknife','dehum','fan','heater','exhaust'].forEach(id=>{
     $('tog-'+id+'-head').addEventListener('click',()=>toggleDev(id));
