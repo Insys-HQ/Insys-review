@@ -3,61 +3,74 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>세척기 설계 시뮬레이터 v3.1 | 인시스 AI혁신 R&D센터</title>
+<title>세척기 설계 시뮬레이터 v3.2 | 인시스 AI혁신 R&D센터</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Noto Sans KR',sans-serif;background:#e9edf2;color:#1a2535;font-size:13px;min-height:100vh;}
 
 /* ── 헤더 ── */
-.hdr{background:linear-gradient(135deg,#0b2640 0%,#0d7fa8 100%);color:#fff;padding:9px 20px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 3px 12px rgba(0,0,0,.3);}
-.hdr-t{font-size:16px;font-weight:700;letter-spacing:-.2px;}
+.hdr{background:linear-gradient(135deg,#0b2640 0%,#0d7fa8 100%);color:#fff;padding:9px 20px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 3px 12px rgba(0,0,0,.3);position:sticky;top:0;z-index:100;}
+.hdr-t{font-size:16px;font-weight:700;}
 .hdr-s{font-size:10px;opacity:.72;margin-top:2px;}
 .hdr-r{display:flex;align-items:center;gap:8px;}
 .vb{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.32);border-radius:10px;padding:2px 10px;font-size:11px;font-weight:700;}
 .vt{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);color:#fff;padding:3px 10px;border-radius:7px;cursor:pointer;font-size:11px;font-family:inherit;}
 .vt.on{background:rgba(255,255,255,.32);}
+#autoSaveIndicator{font-size:10px;padding:2px 9px;border-radius:8px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);transition:all .3s;}
+#autoSaveIndicator.saving{background:rgba(255,200,0,.3);border-color:rgba(255,200,0,.5);}
+#autoSaveIndicator.saved{background:rgba(80,200,80,.3);border-color:rgba(80,200,80,.5);}
 
 /* ── 메인 레이아웃 ── */
-.wrap{display:grid;grid-template-columns:420px 1fr;gap:10px;padding:10px;max-width:1520px;margin:0 auto;}
+.wrap{display:grid;grid-template-columns:430px 1fr;gap:10px;padding:10px;max-width:1540px;margin:0 auto;}
 .wrap.mob{grid-template-columns:1fr;}
 .lp,.rp{display:flex;flex-direction:column;gap:8px;}
 
 /* ── 카드 ── */
-.card{background:#fff;border-radius:10px;box-shadow:0 1px 6px rgba(0,0,0,.09);overflow:hidden;}
-.ch{padding:7px 14px;display:flex;align-items:center;gap:7px;border-bottom:1px solid #e2eaf2;}
+.card{background:#fff;border-radius:10px;box-shadow:0 1px 6px rgba(0,0,0,.09);}
+.ch{padding:7px 13px;display:flex;align-items:center;gap:7px;border-bottom:1px solid #e2eaf2;}
 .ci{font-size:14px;}
 .cl{font-size:13px;font-weight:700;color:#0b2640;}
 .cq{margin-left:auto;font-size:10px;font-weight:700;padding:2px 9px;border-radius:7px;white-space:nowrap;}
-.cq-blue{background:#daeefa;color:#0b5a80;}
-.cq-grn{background:#d4edda;color:#155724;}
-.cq-org{background:#ffeeba;color:#856404;}
-.cb{padding:10px 14px;}
+.cq-b{background:#daeefa;color:#0b5a80;}
+.cq-g{background:#d4edda;color:#155724;}
+.cq-o{background:#ffeeba;color:#856404;}
+.cq-r{background:#f8d7da;color:#721c24;}
+.cb{padding:10px 13px;}
 
 /* ── 그리드 ── */
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
 .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;}
 .g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:7px;}
-.fl{display:flex;flex-direction:column;gap:3px;}
-.fl label{font-size:11px;color:#50637a;font-weight:500;}
-.fl input,.fl select{border:1px solid #cad3dd;border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit;color:#1a2535;background:#f8fafc;width:100%;transition:border .15s;}
+.fl{display:flex;flex-direction:column;gap:2px;}
+.fl label{font-size:11px;color:#50637a;font-weight:500;display:flex;align-items:center;gap:4px;}
+.fl label .lbadge{font-size:9px;padding:1px 5px;border-radius:4px;font-weight:700;}
+.lbadge-a{background:#daeefa;color:#0b5a80;}   /* 자동계산 */
+.lbadge-r{background:#d4edda;color:#155724;}   /* 추천값 */
+.lbadge-u{background:#ffeeba;color:#856404;}   /* 사용자입력 */
+.fl input,.fl select{border:1.5px solid #cad3dd;border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit;color:#1a2535;background:#f8fafc;width:100%;transition:border .15s,background .15s;}
 .fl input:focus,.fl select:focus{outline:none;border-color:#0d7fa8;background:#fff;}
-.fl input.opt{background:#e4f5fd;border-color:#0d7fa8;font-weight:700;color:#083d55;}
-.fl input.adj{background:#fff9e6;border-color:#d4a017;}
+/* 입력 상태별 색상 */
+.fl input.s-rec{background:#e3f4fd;border-color:#0d7fa8;font-weight:700;color:#083d55;}
+.fl input.s-auto{background:#e8f5e9;border-color:#43a047;font-weight:700;color:#1b5e20;}
+.fl input.s-user{background:#fff9e6;border-color:#d4a017;font-weight:600;}
+.fl input.s-ro{background:#f0f4f8;border-color:#b0bec8;color:#546e7a;cursor:default;}
 .un{font-size:10px;color:#7a90a4;margin-top:1px;}
-.rec-lbl{font-size:9px;color:#0d7fa8;font-weight:700;margin-top:1px;}
-.adj-lbl{font-size:9px;color:#b37400;font-weight:700;margin-top:1px;}
 
-/* ── 섹션 구분 ── */
-.st{font-size:11px;font-weight:700;color:#1a4060;border-left:3px solid #0d7fa8;padding-left:7px;margin:10px 0 7px;}
+/* ── 연동 표시 화살표 ── */
+.dep-row{display:flex;align-items:center;gap:6px;margin:4px 0;}
+.dep-arrow{color:#0d7fa8;font-size:11px;font-weight:700;}
+.dep-chip{font-size:10px;background:#e3f4fd;color:#0b5a80;border-radius:5px;padding:1px 7px;font-weight:600;}
+
+/* ── 섹션 타이틀 ── */
+.st{font-size:11px;font-weight:700;color:#1a4060;border-left:3px solid #0d7fa8;padding-left:7px;margin:10px 0 6px;}
 .st:first-child{margin-top:0;}
 
-/* ── 펌프 표시 (마력+kW) ── */
-.pump-box{background:linear-gradient(135deg,#e8f5fe,#d4edf9);border:1px solid #9bcfe8;border-radius:8px;padding:8px 10px;display:flex;align-items:center;gap:12px;}
-.pump-val{text-align:center;}
-.pump-num{font-size:20px;font-weight:900;color:#0b5a80;line-height:1;}
-.pump-unit{font-size:10px;color:#3a6a80;margin-top:1px;}
-.pump-sep{width:1px;height:36px;background:#9bcfe8;}
+/* ── 펌프 박스 ── */
+.pump-box{background:linear-gradient(135deg,#e3f3fd,#cde8f5);border:1px solid #9bcfe8;border-radius:9px;padding:9px 12px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:9px;}
+.pv{text-align:center;}
+.pnum{font-size:18px;font-weight:900;color:#0b5a80;line-height:1;}
+.punit{font-size:9px;color:#3a6a80;margin-top:2px;}
 
 /* ── 세척조 탭 ── */
 .ztabs{display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap;}
@@ -67,7 +80,8 @@ body{font-family:'Noto Sans KR',sans-serif;background:#e9edf2;color:#1a2535;font
 
 /* ── KPI 카드 ── */
 .kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:10px;}
-.kcard{border-radius:9px;padding:10px 8px;text-align:center;border:1px solid;}
+.kcard{border-radius:9px;padding:10px 8px;text-align:center;border:1px solid;transition:transform .2s;}
+.kcard:hover{transform:translateY(-2px);}
 .kv{font-size:20px;font-weight:900;line-height:1.05;}
 .kl{font-size:10px;margin-top:3px;font-weight:500;}
 .kc1{background:linear-gradient(145deg,#e3f3fd,#cde8f7);border-color:#9bccec;}.kc1 .kv{color:#0b5a80;}
@@ -77,69 +91,21 @@ body{font-family:'Noto Sans KR',sans-serif;background:#e9edf2;color:#1a2535;font
 .kc5{background:linear-gradient(145deg,#fce4ec,#f8bbd0);border-color:#f48fb1;}.kc5 .kv{color:#880e4f;}
 .kc6{background:linear-gradient(145deg,#e0f2f1,#b2dfdb);border-color:#80cbc4;}.kc6 .kv{color:#004d40;}
 
-/* ── 막대 그래프 공통 ── */
-.chart-card{background:#fff;border-radius:10px;box-shadow:0 1px 6px rgba(0,0,0,.09);}
-.chart-head{padding:8px 14px;border-bottom:1px solid #e2eaf2;display:flex;align-items:center;gap:7px;}
-.chart-title{font-size:12px;font-weight:700;color:#0b2640;flex:1;}
-.chart-body{padding:12px 14px;}
-
-/* ── 가로 막대 ── */
-.hbar-wrap{margin-bottom:7px;}
-.hbar-row{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
-.hbar-lbl{font-size:11px;color:#2a3a4a;font-weight:500;min-width:90px;text-align:right;flex-shrink:0;}
-.hbar-bg{flex:1;background:#eaf0f5;border-radius:5px;height:20px;overflow:hidden;position:relative;}
-.hbar-fill{height:100%;border-radius:5px;transition:width .6s ease;display:flex;align-items:center;position:relative;}
-.hbar-val{position:absolute;right:6px;font-size:10px;font-weight:700;color:#fff;white-space:nowrap;}
-.hbar-val.dark{color:#1a2535;}
-.hbar-sub{font-size:10px;color:#7a90a4;margin-left:98px;}
+/* ── 막대 그래프 ── */
+.hbar-wrap{margin-bottom:6px;}
+.hbar-row{display:flex;align-items:center;gap:8px;}
+.hbar-lbl{font-size:11px;color:#2a3a4a;font-weight:500;min-width:88px;text-align:right;flex-shrink:0;line-height:1.3;}
+.hbar-bg{flex:1;background:#eaf0f5;border-radius:5px;height:20px;overflow:hidden;}
+.hbar-fill{height:100%;border-radius:5px;transition:width .5s ease;display:flex;align-items:center;}
+.hbar-val{margin-left:auto;padding-right:7px;font-size:10px;font-weight:700;color:#fff;white-space:nowrap;}
+.hbar-val.dk{color:#1a2535;}
+.hbar-sub{font-size:10px;margin-left:96px;margin-top:1px;margin-bottom:3px;}
 
 /* ── 세로 막대 그래프 (효율) ── */
-.vbar-wrap{display:flex;align-items:flex-end;gap:8px;height:200px;padding:0 4px;}
-.vbar-col{display:flex;flex-direction:column;align-items:center;flex:1;}
-.vbar-fill{width:100%;border-radius:5px 5px 0 0;transition:height .6s ease,background .4s;position:relative;min-height:4px;cursor:pointer;}
-.vbar-fill:hover{filter:brightness(1.1);}
-.vbar-num{font-size:10px;font-weight:700;color:#1a2535;margin-bottom:3px;}
-.vbar-lbl{font-size:10px;color:#50637a;margin-top:4px;text-align:center;line-height:1.3;}
-.vbar-axis{position:relative;}
-.vbar-axis-line{border-top:2px solid #cad3dd;margin:0 0 4px;}
-
-/* ── 세척 효율 종합 그래프 ── */
-.eff-chart{background:#f5f8fb;border-radius:8px;padding:12px;margin-top:4px;}
-.eff-bars{display:flex;align-items:flex-end;gap:6px;height:180px;padding:0 4px 0 32px;position:relative;}
-.eff-yaxis{position:absolute;left:0;top:0;height:100%;display:flex;flex-direction:column;justify-content:space-between;padding:4px 0;}
-.eff-ylbl{font-size:9px;color:#7a90a4;width:28px;text-align:right;}
-.eff-grid{position:absolute;left:32px;right:0;top:0;bottom:0;pointer-events:none;}
-.eff-gridline{position:absolute;left:0;right:0;border-top:1px dashed #d8e4ee;}
-
-/* ── 분사관 시각화 ── */
-.vis-bg{background:#f0f5f9;border-radius:8px;padding:8px;}
-#pvCv{width:100%;display:block;border-radius:6px;border:1px solid #cad8e2;}
-
-/* ── 태그 ── */
-.tg{padding:1px 7px;border-radius:6px;font-size:10px;font-weight:700;display:inline-block;}
-.tg-g{background:#d4edda;color:#155724;}
-.tg-w{background:#fff3cd;color:#856404;}
-.tg-r{background:#f8d7da;color:#721c24;}
-.tg-b{background:#d1ecf1;color:#0c5460;}
-
-/* ── 권장 박스 ── */
-.rec-box{background:linear-gradient(135deg,#e3f3fd,#cce7f7);border:1px solid #9bcfe8;border-radius:9px;padding:11px 13px;margin-top:8px;}
-.rec-box-t{font-size:12px;font-weight:700;color:#0b2640;margin-bottom:7px;}
-.ri{display:flex;align-items:flex-start;gap:6px;margin-bottom:5px;}
-.rd{width:5px;height:5px;border-radius:50%;background:#0d7fa8;margin-top:5px;flex-shrink:0;}
-.rx{font-size:12px;color:#1a3a5a;line-height:1.55;}
-
-/* ── 알림 ── */
-.alert{padding:6px 10px;border-radius:7px;font-size:11px;margin-bottom:5px;display:flex;gap:6px;align-items:flex-start;}
-.al-e{background:#f8d7da;color:#721c24;border:1px solid #f5c6cb;}
-.al-w{background:#fff3cd;color:#856404;border:1px solid #ffeeba;}
-.al-i{background:#d1ecf1;color:#0c5460;border:1px solid #bee5eb;}
-
-/* ── 버튼 ── */
-.btn-p{width:100%;padding:9px;background:linear-gradient(135deg,#0b2640,#0d7fa8);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .2s;}
-.btn-p:hover{opacity:.87;}
-.btn-s{padding:5px 13px;background:#fff;border:1px solid #0d7fa8;color:#0d7fa8;border-radius:7px;cursor:pointer;font-size:11px;font-weight:600;font-family:inherit;}
-.btn-s:hover{background:#e8f4fd;}
+.eff-wrap{background:#f5f8fb;border-radius:8px;padding:10px 8px 4px;position:relative;}
+.eff-canvas-wrap{display:flex;gap:0;}
+#yAxisCv{flex-shrink:0;}
+#effCv{flex:1;}
 
 /* ── 공정 흐름 ── */
 .flow{display:flex;align-items:center;gap:4px;flex-wrap:wrap;padding:4px 0;}
@@ -156,41 +122,70 @@ body{font-family:'Noto Sans KR',sans-serif;background:#e9edf2;color:#1a2535;font
 .hi{color:#0d7fa8;font-weight:700;}
 .hi2{color:#2e7d32;font-weight:700;}
 
-/* ── 범례 ── */
-.legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;}
-.leg{display:flex;align-items:center;gap:4px;font-size:10px;color:#3a4a5a;}
-.ldot{width:12px;height:12px;border-radius:3px;flex-shrink:0;}
+/* ── 태그 ── */
+.tg{padding:1px 7px;border-radius:6px;font-size:10px;font-weight:700;display:inline-block;}
+.tg-g{background:#d4edda;color:#155724;}
+.tg-w{background:#fff3cd;color:#856404;}
+.tg-r{background:#f8d7da;color:#721c24;}
+.tg-b{background:#d1ecf1;color:#0c5460;}
 
-footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
+/* ── 알림 ── */
+.alert{padding:6px 10px;border-radius:7px;font-size:11px;margin-bottom:5px;display:flex;gap:6px;align-items:flex-start;}
+.al-e{background:#f8d7da;color:#721c24;border:1px solid #f5c6cb;}
+.al-w{background:#fff3cd;color:#856404;border:1px solid #ffeeba;}
+.al-i{background:#d1ecf1;color:#0c5460;border:1px solid #bee5eb;}
 
-/* ── Firebase 저장/검색 ── */
-.fb-card{background:#fff;border-radius:10px;box-shadow:0 1px 6px rgba(0,0,0,.09);overflow:hidden;margin-bottom:8px;}
-.fb-head{padding:7px 14px;display:flex;align-items:center;gap:7px;border-bottom:1px solid #e2eaf2;background:linear-gradient(135deg,#f0f7ff,#e8f3fd);}
-.fb-head .ci{font-size:14px;}
+/* ── Firebase UI ── */
+.fb-card{background:#fff;border-radius:10px;box-shadow:0 1px 6px rgba(0,0,0,.09);}
+.fb-head{padding:7px 13px;display:flex;align-items:center;gap:7px;border-bottom:1px solid #e2eaf2;background:linear-gradient(90deg,#f0f7ff,#fff);}
 .fb-head .cl{font-size:13px;font-weight:700;color:#0b2640;flex:1;}
-.fb-body{padding:10px 14px;}
+.fb-body{padding:10px 13px;}
 .fb-row{display:flex;gap:7px;margin-bottom:7px;align-items:flex-end;}
 .fb-row .fl{flex:1;}
-.fb-status{font-size:11px;padding:5px 9px;border-radius:7px;margin-top:5px;display:none;}
-.fb-status.ok{background:#d4edda;color:#155724;display:block;}
-.fb-status.err{background:#f8d7da;color:#721c24;display:block;}
-.fb-status.ing{background:#d1ecf1;color:#0c5460;display:block;}
-.fb-list{margin-top:8px;max-height:260px;overflow-y:auto;border:1px solid #dde5ee;border-radius:7px;}
+.fb-st{font-size:11px;padding:5px 9px;border-radius:7px;margin-top:5px;display:none;}
+.fb-st.ok{background:#d4edda;color:#155724;display:block;}
+.fb-st.err{background:#f8d7da;color:#721c24;display:block;}
+.fb-st.ing{background:#d1ecf1;color:#0c5460;display:block;}
+.fb-list{max-height:240px;overflow-y:auto;border:1px solid #dde5ee;border-radius:7px;margin-top:8px;}
 .fb-item{padding:8px 11px;border-bottom:1px solid #eef2f7;cursor:pointer;transition:background .15s;display:flex;align-items:center;gap:8px;}
 .fb-item:last-child{border-bottom:none;}
 .fb-item:hover{background:#f0f6fd;}
-.fb-item.selected{background:#daeefa;}
-.fb-item-info{flex:1;}
-.fb-item-name{font-size:12px;font-weight:700;color:#0b2640;}
-.fb-item-meta{font-size:10px;color:#7a90a4;margin-top:2px;}
-.fb-item-cr{font-size:13px;font-weight:900;color:#0d7fa8;min-width:44px;text-align:right;}
-.fb-item-del{font-size:11px;color:#c62828;cursor:pointer;padding:2px 6px;border-radius:5px;border:1px solid #f5c6cb;background:#fdf0f0;flex-shrink:0;}
-.fb-item-del:hover{background:#f8d7da;}
-.fb-empty{padding:16px;text-align:center;color:#aab;font-size:12px;}
-.fb-search-row{display:flex;gap:6px;margin-bottom:7px;}
-.fb-search-row input{flex:1;border:1px solid #cad3dd;border-radius:6px;padding:5px 9px;font-size:12px;font-family:inherit;}
-.fb-search-row input:focus{outline:none;border-color:#0d7fa8;}
-.fb-tag{display:inline-block;padding:1px 7px;border-radius:6px;font-size:10px;font-weight:700;background:#daeefa;color:#0b5a80;margin-left:4px;}
+.fb-item.sel{background:#daeefa;}
+.fb-iname{font-size:12px;font-weight:700;color:#0b2640;}
+.fb-imeta{font-size:10px;color:#7a90a4;margin-top:2px;}
+.fb-icr{font-size:13px;font-weight:900;color:#0d7fa8;min-width:44px;text-align:right;flex-shrink:0;}
+.fb-idel{font-size:11px;color:#c62828;cursor:pointer;padding:2px 7px;border-radius:5px;border:1px solid #f5c6cb;background:#fdf0f0;flex-shrink:0;}
+.fb-idel:hover{background:#f8d7da;}
+.fb-empty{padding:14px;text-align:center;color:#aab;font-size:12px;}
+.fb-sr{display:flex;gap:6px;margin-bottom:7px;}
+.fb-sr input{flex:1;border:1px solid #cad3dd;border-radius:6px;padding:5px 9px;font-size:12px;font-family:inherit;}
+.fb-sr input:focus{outline:none;border-color:#0d7fa8;}
+.fb-tag{display:inline-block;padding:1px 6px;border-radius:5px;font-size:10px;font-weight:700;background:#daeefa;color:#0b5a80;margin-left:4px;}
+
+/* ── 범례 ── */
+.legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;}
+.leg{display:flex;align-items:center;gap:4px;font-size:10px;color:#3a4a5a;}
+.ldot{width:12px;height:12px;border-radius:3px;}
+
+/* ── 추천 박스 ── */
+.rec-box{background:linear-gradient(135deg,#e3f3fd,#cce7f7);border:1px solid #9bcfe8;border-radius:9px;padding:11px 13px;margin-top:8px;}
+.rec-box-t{font-size:12px;font-weight:700;color:#0b2640;margin-bottom:7px;}
+.ri{display:flex;align-items:flex-start;gap:6px;margin-bottom:5px;}
+.rd{width:5px;height:5px;border-radius:50%;background:#0d7fa8;margin-top:5px;flex-shrink:0;}
+.rx{font-size:12px;color:#1a3a5a;line-height:1.55;}
+
+/* ── 버튼 ── */
+.btn-p{width:100%;padding:9px;background:linear-gradient(135deg,#0b2640,#0d7fa8);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .2s;}
+.btn-p:hover{opacity:.87;}
+.btn-s{padding:5px 13px;background:#fff;border:1px solid #0d7fa8;color:#0d7fa8;border-radius:7px;cursor:pointer;font-size:11px;font-weight:600;font-family:inherit;}
+.btn-s:hover{background:#e8f4fd;}
+.btn-w{padding:5px 13px;background:#fff8e1;border:1px solid #d4a017;color:#b37400;border-radius:7px;cursor:pointer;font-size:11px;font-weight:600;font-family:inherit;}
+
+/* ── 노즐 시각화 ── */
+.vis-bg{background:#f0f5f9;border-radius:8px;padding:8px;}
+#pvCv{width:100%;display:block;border-radius:6px;border:1px solid #cad8e2;}
+
+footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
 </style>
 </head>
 <body>
@@ -198,66 +193,62 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
 <div class="hdr">
   <div>
     <div class="hdr-t">🧼 세척기 설계 시뮬레이터</div>
-    <div class="hdr-s">인시스 AI혁신 R&D센터 | 기본 조건 입력 → 최적값 자동 추천 → 실시간 연동 설계</div>
+    <div class="hdr-s">인시스 AI혁신 R&D센터 | 기본 조건 → 최적 추천 → 실시간 연동 설계</div>
   </div>
   <div class="hdr-r">
+    <span id="autoSaveIndicator">● 대기중</span>
     <button class="vt on" id="bPC">PC</button>
     <button class="vt" id="bMB">Mobile</button>
-    <span class="vb">v3.1</span>
+    <span class="vb">v3.2</span>
   </div>
 </div>
 
 <div class="wrap" id="WRAP">
 
-<!-- ════════════ 좌측 패널 ════════════ -->
+<!-- ══════════ 좌측 패널 ══════════ -->
 <div class="lp">
 
-  <!-- Firebase 저장/검색/불러오기 -->
+  <!-- Firebase 저장/검색 -->
   <div class="fb-card">
-    <div class="fb-head"><span class="ci">🗄️</span><span class="cl">조건 저장 / 검색 / 불러오기</span><span class="cq cq-blue" id="fbConnStatus">연결 중...</span></div>
+    <div class="fb-head">
+      <span class="ci">🗄️</span>
+      <span class="cl">조건 저장 / 검색 / 불러오기</span>
+      <span class="cq cq-b" id="fbConnSt">연결 중...</span>
+    </div>
     <div class="fb-body">
-      <!-- 저장 -->
       <div class="st" style="margin-top:0;">💾 현재 조건 저장</div>
       <div class="fb-row">
-        <div class="fl"><label>저장 이름</label><input type="text" id="fbSaveName" placeholder="예: 파인창원 600박스 오염3단계" maxlength="50"></div>
-        <div class="fl" style="max-width:130px;"><label>프로젝트/현장</label><input type="text" id="fbSaveProject" placeholder="예: 전주공장" maxlength="30"></div>
+        <div class="fl"><label>저장 이름</label><input type="text" id="fbName" placeholder="예: 전주 600박스 오염3단계" maxlength="50"></div>
+        <div class="fl" style="max-width:120px;"><label>현장</label><input type="text" id="fbProj" placeholder="전주공장" maxlength="30"></div>
       </div>
       <div class="fb-row">
-        <div class="fl"><label>메모 (선택)</label><input type="text" id="fbSaveMemo" placeholder="참고사항 입력" maxlength="100"></div>
-        <button class="btn-p" id="fbBtnSave" style="flex-shrink:0;width:90px;padding:7px 0;font-size:12px;">💾 저장</button>
+        <div class="fl"><label>메모</label><input type="text" id="fbMemo" placeholder="참고사항" maxlength="100"></div>
+        <button class="btn-p" id="fbBtnSave" style="flex-shrink:0;width:80px;padding:7px 0;font-size:12px;">💾 저장</button>
       </div>
-      <div class="fb-status" id="fbSaveStatus"></div>
-
-      <!-- 검색/불러오기 -->
-      <div class="st">🔍 저장된 조건 검색</div>
-      <div class="fb-search-row">
-        <input type="text" id="fbSearchInput" placeholder="이름·현장·오염도·세척율로 검색...">
-        <button class="btn-s" id="fbBtnSearch">검색</button>
+      <div class="fb-st" id="fbSaveSt"></div>
+      <div class="st">🔍 저장 목록 검색</div>
+      <div class="fb-sr">
+        <input type="text" id="fbQ" placeholder="이름·현장·오염도로 검색... (Enter)">
+        <button class="btn-s" id="fbBtnSrch">검색</button>
         <button class="btn-s" id="fbBtnAll">전체</button>
       </div>
-      <div class="fb-status" id="fbSearchStatus"></div>
-      <div class="fb-list" id="fbList">
-        <div class="fb-empty">저장된 조건이 없습니다.<br>현재 설계값을 저장해 보세요.</div>
-      </div>
+      <div class="fb-st" id="fbSrchSt"></div>
+      <div class="fb-list" id="fbList"><div class="fb-empty">로딩 중...</div></div>
     </div>
   </div>
 
   <!-- STEP 1: 기본 조건 -->
   <div class="card">
-    <div class="ch"><span class="ci">📋</span><span class="cl">STEP 1 — 기본 조건 입력</span><span class="cq cq-org">필수</span></div>
+    <div class="ch"><span class="ci">📋</span><span class="cl">STEP 1 — 기본 조건</span><span class="cq cq-o">입력 후 최적값 산출</span></div>
     <div class="cb">
       <div class="g2">
-        <div class="fl"><label>피세척물 종류</label>
-          <select id="itype">
-            <option value="box">박스 (상·하·좌·우 4면)</option>
-            <option value="tray">트레이 (좌·우 2면)</option>
-          </select>
+        <div class="fl">
+          <label>피세척물 종류 <span class="lbadge lbadge-u">사용자</span></label>
+          <select id="itype"><option value="box">박스 (상·하·좌·우 4면)</option><option value="tray">트레이 (좌·우 2면)</option></select>
         </div>
-        <div class="fl"><label>투입 방식</label>
-          <select id="fmode">
-            <option value="1ch">1열 투입</option>
-            <option value="2ch" selected>2열 투입 (세워서)</option>
-          </select>
+        <div class="fl">
+          <label>투입 방식 <span class="lbadge lbadge-u">사용자</span></label>
+          <select id="fmode"><option value="1ch">1열 투입</option><option value="2ch" selected>2열 투입 (세워서)</option></select>
         </div>
       </div>
       <div class="st">피세척물 크기 (mm)</div>
@@ -268,16 +259,18 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
       </div>
       <div class="st">세척 요구 조건</div>
       <div class="g2">
-        <div class="fl"><label>오염도</label>
+        <div class="fl">
+          <label>오염도</label>
           <select id="dlv">
             <option value="1">① 경미 (먼지·이물)</option>
-            <option value="2">② 보통 (기름기·잔류물)</option>
+            <option value="2">② 보통 (기름기·잔류)</option>
             <option value="3" selected>③ 중간 (유지·슬러지)</option>
             <option value="4">④ 심함 (경화·스케일)</option>
             <option value="5">⑤ 극심 (고착·탄화물)</option>
           </select>
         </div>
-        <div class="fl"><label>목표 세척율</label>
+        <div class="fl">
+          <label>목표 세척율</label>
           <select id="tgtClean">
             <option value="85">85% (표준)</option>
             <option value="90" selected>90% (우수)</option>
@@ -288,123 +281,134 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
       </div>
       <div class="g2" style="margin-top:7px;">
         <div class="fl"><label>시간당 처리 목표</label><input type="number" id="iqty" value="200" min="1" max="5000"><span class="un">개/h</span></div>
-        <div class="fl"><label>세척조 단수</label>
-          <select id="zcnt">
-            <option value="1">1단</option>
-            <option value="2">2단</option>
-            <option value="3" selected>3단</option>
-            <option value="4">4단</option>
-          </select>
+        <div class="fl">
+          <label>세척조 단수</label>
+          <select id="zcnt"><option value="1">1단</option><option value="2">2단</option><option value="3" selected>3단</option><option value="4">4단</option></select>
         </div>
       </div>
       <button class="btn-p" id="btnOpt" style="margin-top:10px;">🔍 최적값 자동 산출</button>
     </div>
   </div>
 
-  <!-- STEP 2: 최적 추천값 + 조정 -->
+  <!-- STEP 2: 노즐 설계 -->
   <div class="card">
-    <div class="ch"><span class="ci">⚙️</span><span class="cl">STEP 2 — 설계값 조정</span><span class="cq cq-blue">🔵추천값 · 🟡조정값</span></div>
+    <div class="ch"><span class="ci">💧</span><span class="cl">STEP 2 — 분사 노즐 설계</span><span class="cq cq-b">변경 시 연동값 자동계산</span></div>
     <div class="cb">
-      <div style="font-size:11px;color:#50637a;margin-bottom:9px;line-height:1.6;">
-        🔵 파란 배경 = 자동 추천값 &nbsp;|&nbsp; 🟡 노란 배경 = 사용자 조정값<br>
-        값 변경 시 우측 그래프·KPI가 실시간 연동됩니다.
+      <!-- 범례 -->
+      <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+        <span style="font-size:10px;background:#e3f4fd;color:#0b5a80;padding:1px 7px;border-radius:4px;font-weight:700;">🔵 추천값</span>
+        <span style="font-size:10px;background:#e8f5e9;color:#1b5e20;padding:1px 7px;border-radius:4px;font-weight:700;">🟢 자동계산</span>
+        <span style="font-size:10px;background:#fff9e6;color:#b37400;padding:1px 7px;border-radius:4px;font-weight:700;">🟡 사용자입력</span>
       </div>
 
-      <!-- 노즐 설계 -->
-      <div class="st">💧 분사 노즐 설계</div>
+      <div class="st">노즐 기본 사양 <small style="font-weight:400;color:#7a90a4;">↓ 변경 시 유량·펌프·커버리지 자동계산</small></div>
       <div class="g3">
         <div class="fl">
-          <label>홀 직경</label>
-          <input type="number" id="nHole" class="opt" value="2.5" step="0.1" min="0.5" max="10">
-          <span class="un">mm</span><span class="rec-lbl">▲ 오염도 기반 추천</span>
+          <label>홀 직경 <span class="lbadge lbadge-r">추천</span></label>
+          <input type="number" id="nHole" class="s-rec" value="2.5" step="0.1" min="0.5" max="15">
+          <span class="un" id="dep-hole">→ 단위유량: <b id="dv-qEach">—</b> L/min</span>
         </div>
         <div class="fl">
-          <label>분사 압력</label>
-          <input type="number" id="nPress" class="opt" value="200" min="50" max="500">
-          <span class="un">kPa</span><span class="rec-lbl">▲ 자동 산출</span>
+          <label>분사 압력 <span class="lbadge lbadge-r">추천</span></label>
+          <input type="number" id="nPress" class="s-rec" value="200" min="50" max="600">
+          <span class="un" id="dep-press">→ 유량·펌프HP 연동</span>
         </div>
         <div class="fl">
-          <label>분사 각도</label>
-          <input type="number" id="nAng" class="opt" value="15" min="5" max="60">
-          <span class="un">°</span><span class="rec-lbl">▲ 추천</span>
-        </div>
-      </div>
-      <div class="g4" style="margin-top:7px;">
-        <div class="fl">
-          <label>노즐 가로수</label>
-          <input type="number" id="nCol" class="opt" value="4" min="1" max="20">
-          <span class="un">개</span><span class="rec-lbl">▲ 자동</span>
-        </div>
-        <div class="fl">
-          <label>노즐 세로수</label>
-          <input type="number" id="nRow" class="opt" value="3" min="1" max="20">
-          <span class="un">개</span><span class="rec-lbl">▲ 자동</span>
-        </div>
-        <div class="fl">
-          <label>가로 간격</label>
-          <input type="number" id="nGapX" class="opt" value="150" min="20" max="600">
-          <span class="un">mm</span><span class="rec-lbl">▲ 자동</span>
-        </div>
-        <div class="fl">
-          <label>세로 간격</label>
-          <input type="number" id="nGapY" class="opt" value="100" min="20" max="400">
-          <span class="un">mm</span><span class="rec-lbl">▲ 자동</span>
+          <label>분사 각도 <span class="lbadge lbadge-r">추천</span></label>
+          <input type="number" id="nAng" class="s-rec" value="15" min="5" max="60">
+          <span class="un" id="dep-ang">→ 커버리지 연동</span>
         </div>
       </div>
-      <div class="g3" style="margin-top:7px;">
+
+      <div class="st">노즐 배열 <small style="font-weight:400;color:#7a90a4;">↓ 변경 시 간격·커버리지 자동계산</small></div>
+      <div class="g4">
         <div class="fl">
-          <label>분사관 폭</label>
-          <input type="number" id="nManW" class="opt" value="600" min="100" max="3000">
-          <span class="un">mm</span><span class="rec-lbl">▲ 면폭 기반</span>
+          <label>가로 수 <span class="lbadge lbadge-r">추천</span></label>
+          <input type="number" id="nCol" class="s-rec" value="4" min="1" max="30">
+          <span class="un" id="dep-col">→ 가로간격 연동</span>
         </div>
         <div class="fl">
-          <label>분사관 Ø</label>
-          <input type="number" id="nManD" class="opt" value="32" min="10" max="150">
-          <span class="un">mm</span><span class="rec-lbl">▲ v=2m/s 기준</span>
+          <label>세로 수 <span class="lbadge lbadge-r">추천</span></label>
+          <input type="number" id="nRow" class="s-rec" value="3" min="1" max="20">
+          <span class="un" id="dep-row">→ 세로간격 연동</span>
         </div>
         <div class="fl">
-          <label>분사 거리</label>
+          <label>가로 간격 <span class="lbadge lbadge-a">자동</span></label>
+          <input type="number" id="nGapX" class="s-auto" value="150" min="20" max="600" readonly>
+          <span class="un">mm (노즐수·면폭 기반)</span>
+        </div>
+        <div class="fl">
+          <label>세로 간격 <span class="lbadge lbadge-a">자동</span></label>
+          <input type="number" id="nGapY" class="s-auto" value="100" min="20" max="400" readonly>
+          <span class="un">mm (노즐수·면고 기반)</span>
+        </div>
+      </div>
+      <!-- 가로/세로 간격 수동 오버라이드 -->
+      <div style="margin-top:4px;margin-bottom:6px;">
+        <button class="btn-w" id="btnUnlockGap" style="font-size:11px;padding:3px 10px;">🔓 간격 수동 입력 모드</button>
+        <span style="font-size:10px;color:#7a90a4;margin-left:6px;">자동계산 해제 후 직접 입력 가능</span>
+      </div>
+
+      <div class="st">분사관 / 거리</div>
+      <div class="g3">
+        <div class="fl">
+          <label>분사관 폭 <span class="lbadge lbadge-a">자동</span></label>
+          <input type="number" id="nManW" class="s-auto" value="600" min="100" max="3000">
+          <span class="un">mm (피세척물 폭 기준)</span>
+        </div>
+        <div class="fl">
+          <label>분사관 Ø <span class="lbadge lbadge-a">자동</span></label>
+          <input type="number" id="nManD" class="s-auto" value="32" min="10" max="150">
+          <span class="un" id="dep-manD">mm (v=2m/s 기준)</span>
+        </div>
+        <div class="fl">
+          <label>분사 거리 <span class="lbadge lbadge-u">사용자</span></label>
           <input type="number" id="nDist" value="150" min="30" max="500">
-          <span class="un">mm</span>
+          <span class="un" id="dep-dist">→ 커버리지·스프레드 연동</span>
         </div>
       </div>
+    </div>
+  </div>
 
-      <!-- 펌프 -->
-      <div class="st">⚡ 펌프 사양</div>
-      <div id="pumpDisplay" class="pump-box" style="margin-bottom:9px;">
-        <div class="pump-val"><div class="pump-num" id="pHP">—</div><div class="pump-unit">HP (마력)</div></div>
-        <div class="pump-sep"></div>
-        <div class="pump-val"><div class="pump-num" id="pKW">—</div><div class="pump-unit">kW (출력)</div></div>
-        <div class="pump-sep"></div>
-        <div class="pump-val"><div class="pump-num" id="pLPM">—</div><div class="pump-unit">LPM (유량)</div></div>
-        <div class="pump-sep"></div>
-        <div class="pump-val"><div class="pump-num" id="pPRESS">—</div><div class="pump-unit">kPa (압력)</div></div>
+  <!-- STEP 3: 펌프 / 배관 -->
+  <div class="card">
+    <div class="ch"><span class="ci">⚡</span><span class="cl">STEP 3 — 펌프 / 배관</span><span class="cq cq-g">자동계산</span></div>
+    <div class="cb">
+      <div class="pump-box">
+        <div class="pv"><div class="pnum" id="pHP">—</div><div class="punit">HP (마력)</div></div>
+        <div class="pv"><div class="pnum" id="pKW">—</div><div class="punit">kW (출력)</div></div>
+        <div class="pv"><div class="pnum" id="pLPM">—</div><div class="punit">LPM (유량)</div></div>
+        <div class="pv"><div class="pnum" id="pPRESS">—</div><div class="punit">kPa (압력)</div></div>
       </div>
       <div class="g3">
         <div class="fl">
-          <label>펌프 유량 (조정)</label>
-          <input type="number" id="pFlow" class="opt" value="120" min="10" max="3000">
-          <span class="un">LPM</span><span class="rec-lbl">▲ 노즐유량 기반</span>
+          <label>펌프 유량 <span class="lbadge lbadge-a">자동</span></label>
+          <input type="number" id="pFlow" class="s-auto" value="120" min="10" max="3000">
+          <span class="un">LPM (노즐합×1.15)</span>
         </div>
         <div class="fl">
-          <label>공급배관 Ø</label>
-          <input type="number" id="pPipe" class="opt" value="50" min="10" max="200">
-          <span class="un">mm</span><span class="rec-lbl">▲ v=1.5m/s</span>
+          <label>공급배관 Ø <span class="lbadge lbadge-a">자동</span></label>
+          <input type="number" id="pPipe" class="s-auto" value="50" min="10" max="200">
+          <span class="un" id="dep-pipe">mm (v=1.5m/s 기준)</span>
         </div>
         <div class="fl">
           <label>펌프 효율</label>
-          <input type="number" id="pEff" value="75" min="40" max="90">
-          <span class="un">%</span>
+          <input type="number" id="pEff" value="75" min="40" max="95">
+          <span class="un">% → HP·kW 연동</span>
         </div>
       </div>
+    </div>
+  </div>
 
-      <!-- 컨베이어 -->
-      <div class="st">🏭 컨베이어</div>
+  <!-- STEP 4: 컨베이어 -->
+  <div class="card">
+    <div class="ch"><span class="ci">🏭</span><span class="cl">STEP 4 — 컨베이어 / 세척제</span></div>
+    <div class="cb">
       <div class="g3">
         <div class="fl">
-          <label>속도</label>
-          <input type="number" id="cSpd" class="opt" value="2.5" step="0.1" min="0.5" max="15">
-          <span class="un">m/min</span><span class="rec-lbl">▲ 처리량 역산</span>
+          <label>컨베이어 속도 <span class="lbadge lbadge-r">추천</span></label>
+          <input type="number" id="cSpd" class="s-rec" value="2.5" step="0.1" min="0.5" max="15">
+          <span class="un" id="dep-spd">m/min → 처리량·체류시간 연동</span>
         </div>
         <div class="fl">
           <label>아이템 피치 여유</label>
@@ -412,9 +416,9 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
           <span class="un">mm</span>
         </div>
         <div class="fl">
-          <label>세척제 농도 (평균)</label>
-          <input type="number" id="det" class="opt" value="3.0" step="0.5" min="0" max="15">
-          <span class="un">%</span><span class="rec-lbl">▲ 오염도 기반</span>
+          <label>세척제 농도 <span class="lbadge lbadge-r">추천</span></label>
+          <input type="number" id="det" class="s-rec" value="3.0" step="0.5" min="0" max="15">
+          <span class="un">% → 세척율 연동</span>
         </div>
       </div>
     </div>
@@ -422,7 +426,7 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
 
   <!-- 세척조별 상세 -->
   <div class="card">
-    <div class="ch"><span class="ci">🚿</span><span class="cl">세척조별 상세</span><span class="cq cq-blue" id="zcntbq">3단</span></div>
+    <div class="ch"><span class="ci">🚿</span><span class="cl">세척조별 상세</span><span class="cq cq-b" id="zcntbq">3단</span></div>
     <div class="cb">
       <div class="ztabs" id="ztabs"></div>
       <div id="zpanels"></div>
@@ -431,7 +435,7 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
 
 </div><!-- /lp -->
 
-<!-- ════════════ 우측 패널 ════════════ -->
+<!-- ══════════ 우측 패널 ══════════ -->
 <div class="rp">
 
   <!-- 공정 흐름 -->
@@ -442,7 +446,7 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
 
   <!-- KPI -->
   <div class="card">
-    <div class="ch"><span class="ci">📊</span><span class="cl">핵심 지표</span></div>
+    <div class="ch"><span class="ci">📊</span><span class="cl">핵심 지표</span><span class="cq cq-g" id="simTime">—</span></div>
     <div class="cb">
       <div class="kpi-row">
         <div class="kcard kc1"><div class="kv" id="kC">—</div><div class="kl">세척율 (%)</div></div>
@@ -456,271 +460,328 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
     </div>
   </div>
 
-  <!-- 세척기여도 막대 그래프 -->
-  <div class="chart-card">
-    <div class="chart-head">
-      <span class="ci">📊</span>
-      <span class="chart-title">세척 기여 요소별 기여도 (막대그래프)</span>
-      <span class="cq cq-blue" style="font-size:10px;">실시간 연동</span>
-    </div>
-    <div class="chart-body">
-      <div id="factorBars"></div>
-      <div class="legend" id="factorLegend"></div>
-    </div>
+  <!-- 세척 기여 요소 막대 -->
+  <div class="card">
+    <div class="ch"><span class="ci">📊</span><span class="cl">세척 기여 요소별 기여도</span></div>
+    <div class="cb" id="factorBars"></div>
   </div>
 
-  <!-- 세척조별 성능 막대 -->
-  <div class="chart-card">
-    <div class="chart-head">
-      <span class="ci">🚿</span>
-      <span class="chart-title">세척조별 성능 비교</span>
+  <!-- ★ 세척 효율 종합 세로 막대 ★ -->
+  <div class="card">
+    <div class="ch">
+      <span class="ci">📈</span>
+      <span class="cl">세척 효율 종합 분석</span>
+      <span class="cq cq-b">파라미터별 기여도</span>
+      <button class="btn-s" id="btnReset" style="margin-left:8px;font-size:10px;padding:2px 9px;">초기화</button>
     </div>
-    <div class="chart-body">
-      <div id="zoneBars"></div>
+    <div class="cb">
+      <div class="eff-wrap">
+        <div class="eff-canvas-wrap">
+          <canvas id="yAxisCv" width="36" height="200"></canvas>
+          <canvas id="effCv" width="580" height="200"></canvas>
+        </div>
+      </div>
+      <div class="legend" id="effLegend" style="margin-top:8px;"></div>
+
+      <!-- 히스토리 -->
+      <div style="margin-top:12px;">
+        <div style="font-size:11px;font-weight:700;color:#1a4060;margin-bottom:5px;">⏱ 파라미터 변화 히스토리 (최근 10회)</div>
+        <div id="histBars"></div>
+      </div>
     </div>
   </div>
 
   <!-- 분사면별 막대 -->
-  <div class="chart-card">
-    <div class="chart-head">
-      <span class="ci">💧</span>
-      <span class="chart-title">분사면별 노즐 성능</span>
-    </div>
-    <div class="chart-body">
-      <div id="faceBars"></div>
-    </div>
+  <div class="card">
+    <div class="ch"><span class="ci">💧</span><span class="cl">분사면별 노즐 성능</span></div>
+    <div class="cb" id="faceBars"></div>
   </div>
 
-  <!-- ★ 세척 효율 종합 세로 막대 그래프 ★ -->
-  <div class="chart-card">
-    <div class="chart-head">
-      <span class="ci">📈</span>
-      <span class="chart-title">세척 효율 종합 분석 — 파라미터별 기여</span>
-      <button class="btn-s" id="btnReset">초기화</button>
-    </div>
-    <div class="chart-body">
-      <div style="font-size:11px;color:#50637a;margin-bottom:8px;">각 막대는 해당 요소가 최종 세척율에 기여하는 비율을 나타냅니다.</div>
-      <div class="eff-chart">
-        <div style="display:flex;">
-          <div style="width:36px;position:relative;height:180px;flex-shrink:0;">
-            <canvas id="yAxisCv" width="36" height="180"></canvas>
-          </div>
-          <div style="flex:1;position:relative;">
-            <canvas id="effCv" width="600" height="180"></canvas>
-          </div>
-        </div>
-        <div class="vbar-axis-line" style="margin-top:0;"></div>
-      </div>
-      <div class="legend" id="effLegend" style="margin-top:8px;"></div>
-
-      <!-- 파라미터 변화 히스토리 -->
-      <div style="margin-top:12px;">
-        <div style="font-size:11px;font-weight:700;color:#1a4060;margin-bottom:6px;">⏱ 파라미터 조정 히스토리 (최근 10회)</div>
-        <div id="historyBars"></div>
-      </div>
-    </div>
+  <!-- 세척조별 성능 -->
+  <div class="card">
+    <div class="ch"><span class="ci">🚿</span><span class="cl">세척조별 성능</span></div>
+    <div class="cb" id="zoneBars"></div>
   </div>
 
-  <!-- 노즐 배열 시각화 -->
-  <div class="chart-card">
-    <div class="chart-head"><span class="ci">🔵</span><span class="chart-title">분사 노즐 배열 시각화</span><span class="cq cq-blue" id="pvTitle">1차 세척조</span></div>
-    <div class="chart-body">
-      <div class="vis-bg"><canvas id="pvCv" width="600" height="220"></canvas></div>
-    </div>
+  <!-- 노즐 시각화 -->
+  <div class="card">
+    <div class="ch"><span class="ci">🔵</span><span class="cl">노즐 배열 시각화</span><span class="cq cq-b" id="pvTitle">—</span></div>
+    <div class="cb"><div class="vis-bg"><canvas id="pvCv" width="580" height="220"></canvas></div></div>
   </div>
 
-  <!-- 설계 사양 종합표 -->
-  <div class="chart-card">
-    <div class="chart-head"><span class="ci">📐</span><span class="chart-title">자동 산출 설계 사양표</span></div>
-    <div class="chart-body" style="overflow-x:auto;">
+  <!-- 설계 사양표 -->
+  <div class="card">
+    <div class="ch"><span class="ci">📐</span><span class="cl">자동 산출 설계 사양표</span></div>
+    <div class="cb" style="overflow-x:auto;">
       <table class="dt">
-        <thead><tr><th>설계 항목</th><th>추천값</th><th>현재 설정값</th><th>적정 범위</th><th>근거</th><th>상태</th></tr></thead>
+        <thead><tr><th>항목</th><th>현재값</th><th>추천값</th><th>적정 범위</th><th>근거 공식</th><th>상태</th></tr></thead>
         <tbody id="specBody"></tbody>
       </table>
     </div>
   </div>
 
   <!-- 세척조별 상세표 -->
-  <div class="chart-card">
-    <div class="chart-head"><span class="ci">🪣</span><span class="chart-title">세척조별 설계 사양</span></div>
-    <div class="chart-body" style="overflow-x:auto;">
+  <div class="card">
+    <div class="ch"><span class="ci">🪣</span><span class="cl">세척조별 사양</span></div>
+    <div class="cb" style="overflow-x:auto;">
       <table class="dt">
-        <thead><tr><th>단</th><th>역할</th><th>탱크(L)</th><th>온도(°C)</th><th>히터(kW)</th><th>펌프(HP)</th><th>펌프(LPM)</th><th>배관Ø(mm)</th><th>유속(m/s)</th><th>물사용(L/h)</th><th>상태</th></tr></thead>
+        <thead><tr><th>단</th><th>역할</th><th>탱크(L)</th><th>온도(°C)</th><th>히터(kW)</th><th>HP</th><th>LPM</th><th>배관Ø</th><th>유속</th><th>물/h(L)</th><th>상태</th></tr></thead>
         <tbody id="zoneTbody"></tbody>
       </table>
     </div>
   </div>
 
-  <!-- 추천 -->
-  <div class="chart-card">
-    <div class="chart-head"><span class="ci">⭐</span><span class="chart-title">설계 권장 사항</span></div>
-    <div class="chart-body" id="recBody">
-      <div style="color:#7a90a4;font-size:12px;">STEP 1 조건 입력 후 최적값 산출을 실행하세요.</div>
-    </div>
+  <!-- 권장 사항 -->
+  <div class="card">
+    <div class="ch"><span class="ci">⭐</span><span class="cl">설계 권장 사항</span></div>
+    <div class="cb" id="recBody"><div style="color:#7a90a4;font-size:12px;">STEP 1 조건 입력 후 최적값 산출을 실행하세요.</div></div>
   </div>
 
 </div><!-- /rp -->
 </div><!-- /wrap -->
-
-<footer>인시스 AI혁신 R&D센터 | 세척기 설계 시뮬레이터 v3.1 | ys.kim@in-sys.co.kr</footer>
+<footer>인시스 AI혁신 R&D센터 | 세척기 설계 시뮬레이터 v3.2 | ys.kim@in-sys.co.kr</footer>
 
 <script>
 'use strict';
 
-// ═══════════════════════════ 공학 상수 ═══════════════════════════
-const ZN = ['예세척','본세척','헹굼','최종헹굼'];
-const DIRT = {
-  flux:  [0, 4.0,  7.0, 12.0, 18.0, 25.0],
-  press: [0,  100,  150,  200,  280,  350],
-  temp:  [0,   40,   50,   60,   70,   80],
-  det:   [0,  0.5,  1.5,  3.0,  5.0,  8.0],
-  hole:  [0,  3.0,  2.5,  2.5,  2.0,  1.8],
+// ══════════════════════════════════════════════
+// 공학 상수
+// ══════════════════════════════════════════════
+const ZN=['예세척','본세척','헹굼','최종헹굼'];
+const DIRT={
+  flux: [0, 4.0,  7.0, 12.0, 18.0, 25.0],
+  press:[0,  100,  150,  200,  280,  350],
+  temp: [0,   40,   50,   60,   70,   80],
+  det:  [0,  0.5,  1.5,  3.0,  5.0,  8.0],
+  hole: [0,  3.0,  2.5,  2.5,  2.0,  1.8],
 };
-const HP_PER_KW = 1.341;
-const KW_PER_HP = 0.7457;
+const HP_PER_KW=1.341;
+const LS_KEY='washer_v32_last'; // localStorage 키
 
-// ═══════════════════════════ 공학 공식 ═══════════════════════════
-function nozzleQ(holeMm, presKPa) {
-  // 오리피스 방정식 Cd=0.62
+// ══════════════════════════════════════════════
+// 공학 공식
+// ══════════════════════════════════════════════
+function nozzleQ(holeMm, presKPa){
   const Cd=0.62, r=holeMm/1000/2, A=Math.PI*r*r;
-  return Cd * Math.sqrt(2*presKPa*1000/1000) * A * 1000 * 60;
+  return Cd*Math.sqrt(2*presKPa*1000/1000)*A*1000*60;
 }
-function pipeVel(lpm, diaMm) {
+function pipeVel(lpm, diaMm){
   const A=Math.PI*Math.pow(diaMm/1000/2,2);
   return (lpm/60000)/A;
 }
-function optPipeDia(lpm, v=1.5) {
+function optPipeDia(lpm, v=1.5){
   return Math.sqrt(4*(lpm/60000)/(Math.PI*v))*1000;
 }
-function lpmToKW(lpm, presKPa, eff=0.75) {
-  // P = Q×ΔP / η  (Q m³/s, ΔP Pa)
-  return (lpm/60000 * presKPa*1000) / eff / 1000;
+function lpmToKW(lpm, presKPa, eff=0.75){
+  return (lpm/60000*presKPa*1000)/eff/1000;
 }
-function lpmToHP(lpm, presKPa, eff=0.75) {
-  return lpmToKW(lpm, presKPa, eff) * HP_PER_KW;
+function lpmToHP(lpm, presKPa, eff=0.75){
+  return lpmToKW(lpm,presKPa,eff)*HP_PER_KW;
 }
-function calcNozzleLayout(fW, fH, holeMm, presKPa, flux) {
-  const qEach = nozzleQ(holeMm, presKPa);
-  const areaMm2 = fW*fH;
-  const qNeed = areaMm2/1e6 * flux;
-  const nMin = Math.max(4, Math.ceil(qNeed/qEach));
-  const ratio = fW/fH;
-  let nc = Math.max(2, Math.round(Math.sqrt(nMin*ratio)));
-  let nr = Math.max(2, Math.ceil(nMin/nc));
-  if(nc%2!==0) nc++;
-  const nTotal = nc*nr;
-  const gapX = Math.round(fW/(nc+1));
-  const gapY = Math.round(fH/(nr+1));
-  const qTotal = qEach*nTotal;
-  const actFlux = qTotal/(areaMm2/1e6);
-  const ang = 15; // default
-  const spreadX = 2*Math.tan(ang*Math.PI/180)*150/2;
-  const coverX = Math.min(1,(nc*gapX+spreadX*(nc-1))/fW*1.1);
-  const coverY = Math.min(1,(nr*gapY+spreadY(ang)*nr)/fH*1.1);
-  function spreadY(a){return 2*Math.tan(a*Math.PI/180)*150/2;}
-  return {nc,nr,nTotal,gapX,gapY,qEach,qTotal,actFlux,coverage:Math.min(100,coverX*coverY*110)};
+function faceSpread(ang, dist){
+  return Math.tan(ang*Math.PI/180)*dist; // 분사반경 (mm)
 }
-function calcCleanRate({dlv,zcnt,temp,presKPa,det,cspd,pitchMm,iH,coverage,fmode,tgt}) {
+function calcCoverage(nc, nr, gapX, gapY, fw, fh, ang, dist){
+  const sr=faceSpread(ang,dist);
+  const totalX=nc*gapX+sr*2*(nc+1);
+  const totalY=nr*gapY+sr*2*(nr+1);
+  return Math.min(100, (totalX/fw)*(totalY/fh)*105);
+}
+function calcCleanRate({dlv,zcnt,temp,presKPa,det,cspd,pitchMm,iH,coverage,tgt}){
   const base=[52,68,80,90][Math.min(zcnt,4)-1];
   const dirtP=[0,0,-3,-9,-18,-32][dlv];
   const tempB=Math.min(18,(temp-25)*0.36);
   const detB=Math.min(12,det*1.1);
   const pressB=Math.min(10,(presKPa-100)*0.028);
-  const covF=0.6+0.4*(coverage/100);
-  const pitchM=(iH+pitchMm)/1000;
-  const secPerItem=pitchM/(cspd/60);
-  const totalDwell=secPerItem*zcnt;
+  const covF=0.6+0.4*(Math.min(100,coverage)/100);
+  const sec=(iH+pitchMm)/1000/(cspd/60);
+  const totalDwell=sec*zcnt;
   const dwellB=Math.min(6,(totalDwell-60)*0.04);
   const spdP=Math.max(-14,-(cspd-2)*2.5);
   const cr=(base+dirtP+tempB+detB+pressB+dwellB+spdP)*covF;
   return {
     cr:Math.min(99.9,Math.max(10,cr)),
-    secPerItem,totalDwell,
-    contrib:{base:Math.max(0,base+dirtP),temp:Math.max(0,tempB),det:Math.max(0,detB),press:Math.max(0,pressB),cov:covF*100-60,dwell:Math.max(0,dwellB)}
+    secPerItem:sec, totalDwell,
+    contrib:{base:Math.max(0,base+dirtP),temp:Math.max(0,tempB),det:Math.max(0,detB),press:Math.max(0,pressB),cov:Math.max(0,covF*100-60),dwell:Math.max(0,dwellB)}
   };
 }
 
-// ═══════════════════════════ 상태 ═══════════════════════════
-let OPT={}, HIST=[];
+// ══════════════════════════════════════════════
+// 상태
+// ══════════════════════════════════════════════
+let OPT={};
+let HIST=[];
+let gapLocked=true; // 간격 자동계산 여부
+let simTimer=null, saveTimer=null;
 
-function gi(id){return document.getElementById(id);}
-function gv(id){return gi(id)?.value||'';}
-function sv(id,v){const e=gi(id);if(e)e.value=v;}
+const gi=id=>document.getElementById(id);
+const gv=id=>gi(id)?.value||'';
+const sv=(id,v)=>{ const e=gi(id); if(e) e.value=v; };
 
-// ═══════════════════════════ 최적값 산출 ═══════════════════════════
-function calcOptimal() {
+// ══════════════════════════════════════════════
+// STEP1 → 최적값 자동 산출
+// ══════════════════════════════════════════════
+function calcOptimal(){
   const dlv=+gv('dlv'), zcnt=+gv('zcnt');
   const iW=+gv('iW')||600, iD=+gv('iD')||400, iH=+gv('iH')||300;
   const iqty=+gv('iqty')||200, tgt=+gv('tgtClean')||90;
   const itype=gv('itype'), fmode=gv('fmode');
 
-  const recHole=DIRT.hole[dlv];
-  const recPress=DIRT.press[dlv];
-  const recTemp=DIRT.temp[dlv];
-  const recDet=DIRT.det[dlv];
-  const recFlux=DIRT.flux[dlv];
+  const rHole=DIRT.hole[dlv], rPress=DIRT.press[dlv];
+  const rTemp=DIRT.temp[dlv], rDet=DIRT.det[dlv], rFlux=DIRT.flux[dlv];
 
-  const faces=itype==='box'
-    ?[{n:'상면',fw:iW,fh:iD},{n:'하면',fw:iW,fh:iD},{n:'좌면',fw:iD,fh:iH},{n:'우면',fw:iD,fh:iH}]
-    :[{n:'좌면',fw:iD,fh:iH},{n:'우면',fw:iD,fh:iH}];
+  const faces=getFaces(itype,iW,iD,iH);
+  const lay0=calcLayout(faces[0].fw,faces[0].fh,rHole,rPress,rFlux);
 
-  const layouts=faces.map(f=>({...f,...calcNozzleLayout(f.fw,f.fh,recHole,recPress,recFlux)}));
-  const lay0=layouts[0];
-  const totalQ=layouts.reduce((s,l)=>s+l.qTotal,0)*1.15;
+  const totalQ=faces.reduce((s,f)=>{
+    const l=calcLayout(f.fw,f.fh,rHole,rPress,rFlux);
+    return s+l.qTotal;
+  },0)*1.15;
 
   const supPipe=optPipeDia(totalQ,1.5);
   const sprayPipe=optPipeDia(totalQ/faces.length,2.0);
   const tankBase=Math.ceil(totalQ*15/100)*100;
-  const heaterKW=(tankBase*4.18*(recTemp-20))/3600*1.2;
+  const heaterKW=(tankBase*4.18*(rTemp-20))/3600*1.2;
   const chF=fmode==='2ch'?2:1;
   const pitchMm=iH+50;
-  const recSpd=Math.min(12,(iqty/chF)*((pitchMm/1000)/60));
-  const pumpKW=lpmToKW(totalQ,recPress,0.75);
-  const pumpHP=pumpKW*HP_PER_KW;
+  const rSpd=Math.min(12,(iqty/chF)*((pitchMm/1000)/60));
 
   OPT={dlv,zcnt,iW,iD,iH,iqty,tgt,itype,fmode,
-    hole:recHole,press:recPress,temp:recTemp,det:recDet,flux:recFlux,
-    spd:+recSpd.toFixed(2),tank:tankBase,totalQ,supPipe,sprayPipe,
-    heaterKW,layouts,faces,pitchMm,pumpKW,pumpHP};
+    hole:rHole,press:rPress,temp:rTemp,det:rDet,flux:rFlux,
+    spd:+rSpd.toFixed(2),tank:tankBase,totalQ,supPipe,sprayPipe,
+    heaterKW,faces,pitchMm};
 
-  // 입력 필드 업데이트 (추천값)
-  setOpt('nHole',  recHole.toFixed(1));
-  setOpt('nPress', recPress);
-  setOpt('nAng',   15);
-  setOpt('nCol',   lay0.nc);
-  setOpt('nRow',   lay0.nr);
-  setOpt('nGapX',  lay0.gapX);
-  setOpt('nGapY',  lay0.gapY);
-  setOpt('nManW',  Math.max(iW,iD));
-  setOpt('nManD',  Math.round(sprayPipe));
-  setOpt('pFlow',  Math.round(totalQ));
-  setOpt('pPipe',  Math.round(supPipe));
-  setOpt('cSpd',   recSpd.toFixed(2));
-  setOpt('det',    recDet.toFixed(1));
+  // 추천값 세팅
+  setRec('nHole',  rHole.toFixed(1));
+  setRec('nPress', rPress);
+  setRec('nAng',   15);
+  setRec('nCol',   lay0.nc);
+  setRec('nRow',   lay0.nr);
+  setRec('nManW',  Math.max(iW,iD));
+  setRec('cSpd',   rSpd.toFixed(2));
+  setRec('det',    rDet.toFixed(1));
 
+  // 자동계산값
+  updateAutoCalc();
   buildZonePanels();
   runSim();
 }
 
-function setOpt(id, val) {
+function setRec(id,val){
   const e=gi(id); if(!e) return;
   e.value=val;
-  e.classList.add('opt'); e.classList.remove('adj');
+  e.className=e.tagName==='SELECT'?'':'s-rec';
+}
+function setAuto(id,val){
+  const e=gi(id); if(!e) return;
+  e.value=val;
+  e.className='s-auto';
 }
 
-// ═══════════════════════════ 세척조 패널 ═══════════════════════════
-function buildZonePanels() {
+// ══════════════════════════════════════════════
+// 연동 자동계산 (핵심: 어떤 값이 바뀌어도 호출)
+// ══════════════════════════════════════════════
+function updateAutoCalc(){
+  const iW=+gv('iW')||600, iD=+gv('iD')||400, iH=+gv('iH')||300;
+  const itype=gv('itype');
+  const holeMm=+gv('nHole')||2.5;
+  const presKPa=+gv('nPress')||200;
+  const nAng=+gv('nAng')||15;
+  const nCol=+gv('nCol')||4, nRow=+gv('nRow')||3;
+  const nDist=+gv('nDist')||150;
+  const pEff=(+gv('pEff')||75)/100;
+
+  // 1. 노즐 단위 유량 (홀직경, 압력 연동)
+  const qEach=nozzleQ(holeMm, presKPa);
+  gi('dv-qEach').textContent=qEach.toFixed(3);
+
+  // 2. 분사면 크기 → 첫 면 기준
+  const faces=getFaces(itype,iW,iD,iH);
+  const f0=faces[0];
+
+  // 3. 노즐 간격 자동계산 (gapLocked=true 일 때만)
+  if(gapLocked){
+    const gapX=Math.round(f0.fw/(nCol+1));
+    const gapY=Math.round(f0.fh/(nRow+1));
+    setAuto('nGapX', gapX);
+    setAuto('nGapY', gapY);
+  }
+
+  // 현재 간격 (자동 or 수동)
+  const nGapX=+gv('nGapX')||150;
+  const nGapY=+gv('nGapY')||100;
+
+  // 4. 분사관 폭 = 피세척물 최대 폭
+  setAuto('nManW', Math.max(iW,iD));
+
+  // 5. 총 노즐 유량 → 펌프 유량
+  const nTotal=nCol*nRow;
+  const faceCount=faces.length;
+  const totalQ=qEach*nTotal*faceCount*1.15;
+  setAuto('pFlow', Math.round(totalQ));
+
+  // 6. 배관 직경 자동계산
+  const supPipe=optPipeDia(totalQ,1.5);
+  const sprayPipe=optPipeDia(totalQ/faceCount,2.0);
+  setAuto('pPipe', Math.round(supPipe));
+  setAuto('nManD', Math.round(sprayPipe));
+
+  // 7. 펌프 HP / kW
+  const pumpKW=lpmToKW(totalQ,presKPa,pEff);
+  const pumpHP=pumpKW*HP_PER_KW;
+  gi('pHP').textContent=pumpHP.toFixed(2);
+  gi('pKW').textContent=pumpKW.toFixed(2);
+  gi('pLPM').textContent=Math.round(totalQ);
+  gi('pPRESS').textContent=presKPa;
+
+  // 8. 커버리지 미리보기
+  const cov=calcCoverage(nCol,nRow,nGapX,nGapY,f0.fw,f0.fh,nAng,nDist);
+  gi('dep-ang').textContent=`→ 커버리지 예상: ${cov.toFixed(1)}%`;
+  gi('dep-col').textContent=`→ 가로간격: ${nGapX}mm`;
+  gi('dep-row').textContent=`→ 세로간격: ${nGapY}mm`;
+  gi('dep-manD').textContent=`mm (분사관 v=${(pipeVel(totalQ/faceCount,+gv('nManD')||32)).toFixed(1)}m/s)`;
+  gi('dep-pipe').textContent=`mm (공급 v=${(pipeVel(totalQ,supPipe)).toFixed(1)}m/s)`;
+
+  // 세척조 HP 업데이트
+  const zcnt=+gv('zcnt');
+  for(let i=0;i<zcnt;i++){
+    const pump=+(gi('zpump'+i)?.value||totalQ);
+    const hp=lpmToHP(pump,presKPa,pEff);
+    const hpEl=gi('zhp'+i);
+    if(hpEl) hpEl.value=hp.toFixed(1);
+  }
+}
+
+// ══════════════════════════════════════════════
+// 세척조 패널 생성
+// ══════════════════════════════════════════════
+function getFaces(itype,iW,iD,iH){
+  return itype==='box'
+    ?[{n:'상면',fw:iW,fh:iD},{n:'하면',fw:iW,fh:iD},{n:'좌면',fw:iD,fh:iH},{n:'우면',fw:iD,fh:iH}]
+    :[{n:'좌면',fw:iD,fh:iH},{n:'우면',fw:iD,fh:iH}];
+}
+function calcLayout(fw,fh,hole,press,flux){
+  const qE=nozzleQ(hole,press);
+  const qN=fw*fh/1e6*flux;
+  const nMin=Math.max(4,Math.ceil(qN/qE));
+  const ratio=fw/fh;
+  let nc=Math.max(2,Math.round(Math.sqrt(nMin*ratio)));
+  let nr=Math.max(2,Math.ceil(nMin/nc));
+  if(nc%2!==0)nc++;
+  return {nc,nr,nTotal:nc*nr,qEach:qE,qTotal:qE*nc*nr};
+}
+
+function buildZonePanels(){
   const zcnt=+gv('zcnt');
   gi('zcntbq').textContent=zcnt+'단';
   gi('ztabs').innerHTML=''; gi('zpanels').innerHTML='';
 
-  const temp0=OPT.temp||60, pump0=OPT.totalQ||100, tank0=OPT.tank||500, heat0=OPT.heaterKW||5;
-  const tArr=[temp0,Math.max(40,temp0-10),Math.max(30,temp0-20),25];
-  const pArr=[pump0,pump0*0.9,pump0*0.75,pump0*0.5];
-  const tkArr=[tank0,tank0*0.8,tank0*0.65,tank0*0.5];
-  const hArr=[heat0,heat0*0.7,heat0*0.5,0];
-  const detR=OPT.det||3;
-  const dArr=[detR,detR*0.5,0.5,0];
+  const t0=OPT.temp||60, q0=OPT.totalQ||100, tk0=OPT.tank||500, h0=OPT.heaterKW||5;
+  const tA=[t0,Math.max(40,t0-10),Math.max(30,t0-20),25];
+  const pA=[q0,q0*.9,q0*.75,q0*.5];
+  const tkA=[tk0,tk0*.8,tk0*.65,tk0*.5];
+  const hA=[h0,h0*.7,h0*.5,0];
+  const dA=[OPT.det||3,(OPT.det||3)*.5,.5,0];
 
   for(let i=0;i<4;i++){
     const tab=document.createElement('button');
@@ -731,48 +792,44 @@ function buildZonePanels() {
     gi('ztabs').appendChild(tab);
     tab.addEventListener('click',()=>switchZ(i));
 
-    const sd=optPipeDia(pArr[i],1.5);
+    const sd=optPipeDia(pA[i],1.5);
+    const php=lpmToHP(pA[i],OPT.press||200,.75);
     const p=document.createElement('div');
     p.className='zpanel'+(i===0?' on':'');
     p.id='zp'+i;
-    const hp=lpmToHP(pArr[i],OPT.press||200,0.75);
-    const kw=lpmToKW(pArr[i],OPT.press||200,0.75);
     p.innerHTML=`
       <div class="st">${i+1}단 — ${ZN[i]}</div>
       <div class="g4" style="margin-bottom:7px;">
-        <div class="fl"><label>탱크(L)</label><input type="number" class="opt" id="ztank${i}" value="${Math.round(tkArr[i])}"><span class="rec-lbl">▲추천</span></div>
-        <div class="fl"><label>온도(°C)</label><input type="number" class="opt" id="ztemp${i}" value="${Math.round(tArr[i])}"><span class="rec-lbl">▲추천</span></div>
-        <div class="fl"><label>히터(kW)</label><input type="number" class="opt" id="zheat${i}" value="${hArr[i].toFixed(1)}" step="0.5"><span class="rec-lbl">▲추천</span></div>
-        <div class="fl"><label>세척제(%)</label><input type="number" id="zdet${i}" value="${dArr[i].toFixed(1)}" step="0.5"></div>
+        <div class="fl"><label>탱크(L)<span class="lbadge lbadge-r" style="margin-left:4px;">추천</span></label>
+          <input type="number" class="s-rec" id="ztank${i}" value="${Math.round(tkA[i])}"></div>
+        <div class="fl"><label>온도(°C)<span class="lbadge lbadge-r" style="margin-left:4px;">추천</span></label>
+          <input type="number" class="s-rec" id="ztemp${i}" value="${Math.round(tA[i])}"></div>
+        <div class="fl"><label>히터(kW)<span class="lbadge lbadge-r" style="margin-left:4px;">추천</span></label>
+          <input type="number" class="s-rec" id="zheat${i}" value="${hA[i].toFixed(1)}" step=".5"></div>
+        <div class="fl"><label>세척제(%)</label>
+          <input type="number" id="zdet${i}" value="${dA[i].toFixed(1)}" step=".5"></div>
       </div>
       <div class="g3">
-        <div class="fl">
-          <label>펌프 유량(LPM)</label>
-          <input type="number" class="opt" id="zpump${i}" value="${Math.round(pArr[i])}">
-          <span class="rec-lbl">▲자동추천</span>
-        </div>
-        <div class="fl">
-          <label>펌프 마력(HP)</label>
-          <input type="number" class="opt" id="zhp${i}" value="${hp.toFixed(1)}" step="0.5" readonly style="cursor:default;">
-          <span class="rec-lbl">⚡자동계산</span>
-        </div>
-        <div class="fl">
-          <label>배관Ø(mm)</label>
-          <input type="number" class="opt" id="zpipe${i}" value="${Math.round(sd)}">
-          <span class="rec-lbl">▲v=1.5m/s</span>
-        </div>
+        <div class="fl"><label>펌프(LPM)<span class="lbadge lbadge-r" style="margin-left:4px;">추천</span></label>
+          <input type="number" class="s-rec" id="zpump${i}" value="${Math.round(pA[i])}"></div>
+        <div class="fl"><label>마력(HP)<span class="lbadge lbadge-a" style="margin-left:4px;">자동</span></label>
+          <input type="number" class="s-ro" id="zhp${i}" value="${php.toFixed(1)}" readonly></div>
+        <div class="fl"><label>배관Ø(mm)<span class="lbadge lbadge-a" style="margin-left:4px;">자동</span></label>
+          <input type="number" class="s-auto" id="zpipe${i}" value="${Math.round(sd)}"></div>
       </div>`;
     gi('zpanels').appendChild(p);
+
+    // 입력 시 상태 변경 + autoSim
     p.querySelectorAll('input:not([readonly])').forEach(el=>{
-      el.addEventListener('input',()=>{ el.classList.add('adj'); el.classList.remove('opt'); autoSim(); });
-    });
-    // LPM 변경 시 HP 자동 계산
-    gi('zpump'+i)?.addEventListener('input',()=>{
-      const lpm=+gi('zpump'+i).value||0;
-      const kpa=+gv('nPress')||200;
-      const eff=+gv('pEff')/100||0.75;
-      const h=lpmToHP(lpm,kpa,eff);
-      if(gi('zhp'+i)) gi('zhp'+i).value=h.toFixed(1);
+      el.addEventListener('input',()=>{
+        el.classList.remove('s-rec'); el.classList.add('s-user');
+        // zpump 변경 시 hp 자동계산
+        if(el.id==='zpump'+i){
+          const hp2=lpmToHP(+el.value,+gv('nPress')||200,(+gv('pEff')||75)/100);
+          if(gi('zhp'+i)) gi('zhp'+i).value=hp2.toFixed(1);
+        }
+        triggerSim();
+      });
     });
   }
 }
@@ -782,63 +839,43 @@ function switchZ(i){
   gi('zt'+i)?.classList.add('on'); gi('zp'+i)?.classList.add('on');
 }
 
-// ═══════════════════════════ 메인 시뮬레이션 ═══════════════════════════
-function runSim() {
+// ══════════════════════════════════════════════
+// 메인 시뮬레이션
+// ══════════════════════════════════════════════
+function runSim(){
   if(!OPT.hole) return;
+  const t0=performance.now();
 
   const itype=gv('itype'), fmode=gv('fmode');
   const iW=+gv('iW')||600, iD=+gv('iD')||400, iH=+gv('iH')||300;
   const dlv=+gv('dlv'), zcnt=+gv('zcnt'), tgt=+gv('tgtClean')||90;
-
-  const holeMm=+gv('nHole')||2.5;
-  const presKPa=+gv('nPress')||200;
+  const holeMm=+gv('nHole')||2.5, presKPa=+gv('nPress')||200;
   const nAng=+gv('nAng')||15;
   const nCol=+gv('nCol')||4, nRow=+gv('nRow')||3;
   const nGapX=+gv('nGapX')||150, nGapY=+gv('nGapY')||100;
   const nManW=+gv('nManW')||600, nManD=+gv('nManD')||32;
   const nDist=+gv('nDist')||150;
-
   const pFlow=+gv('pFlow')||120;
   const pPipe=+gv('pPipe')||50;
   const pEff=(+gv('pEff')||75)/100;
-  const cSpd=+gv('cSpd')||2.5;
-  const cPitch=+gv('cPitch')||50;
+  const cSpd=+gv('cSpd')||2.5, cPitch=+gv('cPitch')||50;
   const detVal=+gv('det')||3;
 
-  // 펌프 계산
-  const pumpKW=lpmToKW(pFlow,presKPa,pEff);
-  const pumpHP=pumpKW*HP_PER_KW;
-  gi('pHP').textContent=pumpHP.toFixed(2);
-  gi('pKW').textContent=pumpKW.toFixed(2);
-  gi('pLPM').textContent=Math.round(pFlow);
-  gi('pPRESS').textContent=presKPa;
-
-  // 분사면 정의
-  const faces=itype==='box'
-    ?[{n:'상면',fw:iW,fh:iD},{n:'하면',fw:iW,fh:iD},{n:'좌면',fw:iD,fh:iH},{n:'우면',fw:iD,fh:iH}]
-    :[{n:'좌면',fw:iD,fh:iH},{n:'우면',fw:iD,fh:iH}];
-
-  // 노즐 커버리지 (입력값 기반)
+  const faces=getFaces(itype,iW,iD,iH);
   const qEach=nozzleQ(holeMm,presKPa);
-  const spreadR=Math.tan(nAng*Math.PI/180)*nDist;
-  function faceCoverage(fw,fh){
-    const totalXspan=nCol*nGapX+spreadR*2*(nCol-1);
-    const totalYspan=nRow*nGapY+spreadR*2*(nRow-1);
-    const cx=Math.min(1.05,totalXspan/fw);
-    const cy=Math.min(1.05,totalYspan/fh);
-    return Math.min(100,cx*cy*105);
-  }
-  const coverages=faces.map(f=>faceCoverage(f.fw,f.fh));
-  const avgCov=coverages.reduce((a,b)=>a+b,0)/faces.length;
   const nTotal=nCol*nRow;
-  const qTotalFace=qEach*nTotal;
 
-  // 세척율
+  const coverages=faces.map(f=>calcCoverage(nCol,nRow,nGapX,nGapY,f.fw,f.fh,nAng,nDist));
+  const avgCov=coverages.reduce((a,b)=>a+b,0)/faces.length;
+
   const pitchMm=iH+cPitch;
-  const res=calcCleanRate({dlv,zcnt,temp:+gi('ztemp0')?.value||OPT.temp||60,presKPa,det:detVal,cspd:cSpd,pitchMm,iH,coverage:avgCov,fmode,tgt});
+  const temp0=+(gi('ztemp0')?.value||OPT.temp||60);
+  const res=calcCleanRate({dlv,zcnt,temp:temp0,presKPa,det:detVal,cspd:cSpd,pitchMm,iH,coverage:avgCov,tgt});
   const {cr,secPerItem,totalDwell,contrib}=res;
 
-  // 세척조 집계
+  const chF=fmode==='2ch'?2:1;
+  const actualQty=Math.min(+gv('iqty')||200,Math.round(3600/secPerItem*chF));
+
   let totalPow=0, totalWater=0, avgTemp=0;
   const zRows=[];
   for(let i=0;i<zcnt;i++){
@@ -847,7 +884,6 @@ function runSim() {
     const pump=+(gi('zpump'+i)?.value||pFlow);
     const pipe=+(gi('zpipe'+i)?.value||pPipe);
     const heat=+(gi('zheat'+i)?.value||0);
-    const det2=+(gi('zdet'+i)?.value||0);
     const vel=pipeVel(pump,pipe);
     const wH=pump*60*(1/8)*0.8;
     totalWater+=wH;
@@ -855,26 +891,25 @@ function runSim() {
     const php=pkw*HP_PER_KW;
     totalPow+=heat+pkw;
     avgTemp+=temp;
-    // HP 자동 업데이트
     if(gi('zhp'+i)) gi('zhp'+i).value=php.toFixed(1);
-    let st='tg-g',stx='적정';
-    if(vel>3.5){st='tg-r';stx='유속 과다';}else if(vel<0.5){st='tg-w';stx='유속 부족';}
-    zRows.push(`<tr>
-      <td>${i+1}</td><td>${ZN[i]}</td>
-      <td class="hi">${tank.toLocaleString()}</td><td>${temp}</td>
-      <td>${heat}</td><td class="hi">${php.toFixed(2)}</td>
-      <td class="hi">${Math.round(pump)}</td><td>${Math.round(pipe)}</td>
-      <td>${vel.toFixed(2)}</td>
+    let st='tg-g',sx='적정';
+    if(vel>3.5){st='tg-r';sx='유속과다';}else if(vel<0.5){st='tg-w';sx='유속부족';}
+    zRows.push(`<tr><td>${i+1}</td><td>${ZN[i]}</td>
+      <td class="hi">${tank.toLocaleString()}</td><td>${temp}</td><td>${heat}</td>
+      <td class="hi">${php.toFixed(2)}</td><td class="hi">${Math.round(pump)}</td>
+      <td>${Math.round(pipe)}</td><td>${vel.toFixed(2)}</td>
       <td class="hi">${Math.round(wH).toLocaleString()}</td>
-      <td><span class="tg ${st}">${stx}</span></td>
-    </tr>`);
+      <td><span class="tg ${st}">${sx}</span></td></tr>`);
   }
   avgTemp/=zcnt;
   gi('zoneTbody').innerHTML=zRows.join('');
 
-  // 처리량
-  const chF=fmode==='2ch'?2:1;
-  const actualQty=Math.min(+gv('iqty')||200,Math.round(3600/secPerItem*chF));
+  const pumpKW=lpmToKW(pFlow,presKPa,pEff);
+  const pumpHP=pumpKW*HP_PER_KW;
+  gi('pHP').textContent=pumpHP.toFixed(2);
+  gi('pKW').textContent=pumpKW.toFixed(2);
+  gi('pLPM').textContent=Math.round(pFlow);
+  gi('pPRESS').textContent=presKPa;
 
   // KPI
   gi('kC').textContent=cr.toFixed(1)+'%';
@@ -884,331 +919,265 @@ function runSim() {
   gi('kD').textContent=totalDwell.toFixed(1);
   gi('kCov').textContent=avgCov.toFixed(1)+'%';
 
+  const elapsed=(performance.now()-t0).toFixed(0);
+  gi('simTime').textContent=`${new Date().toLocaleTimeString()} | ${elapsed}ms`;
+
   // 경고
   const alerts=[];
   if(cr<tgt-3) alerts.push({t:'e',m:`세척율 ${cr.toFixed(1)}% — 목표 ${tgt}% 미달`});
-  if(holeMm<1.8) alerts.push({t:'w',m:`홀 직경 ${holeMm}mm — 막힘 위험. 2.0mm 이상 권장`});
-  if(presKPa>450) alerts.push({t:'e',m:`분사압 ${presKPa}kPa — 과압 주의`});
+  if(holeMm<1.8) alerts.push({t:'w',m:`홀 Ø${holeMm}mm — 막힘 위험. 2.0mm↑ 권장`});
+  if(presKPa>450) alerts.push({t:'e',m:`분사압 ${presKPa}kPa 과압`});
+  if(avgCov<65)   alerts.push({t:'w',m:`커버리지 ${avgCov.toFixed(0)}% — 노즐 수량 증가 권장`});
   gi('alertBox').innerHTML=alerts.map(a=>`<div class="alert al-${a.t}"><span>${a.t==='e'?'🔴':'⚠️'}</span>${a.m}</div>`).join('');
 
-  // ── 막대 그래프 렌더링 ──
-  renderFactorBars(contrib, cr, avgCov, presKPa, avgTemp, detVal);
-  renderZoneBars(zcnt, faces, coverages, qTotalFace, avgTemp);
-  renderFaceBars(faces, coverages, qEach, nTotal, qTotalFace);
-  renderEffChart(cr, contrib, tgt);
-  renderHistoryBars(cr, cSpd, holeMm, presKPa, detVal);
+  // 그래프
+  renderFactorBars(contrib,cr,avgCov,presKPa,avgTemp,detVal);
+  renderEffChart(cr,contrib,tgt);
+  renderFaceBars(faces,coverages,qEach,nTotal);
+  renderZoneBars(zcnt,avgTemp);
+  drawNozzleVis(nCol,nRow,nGapX,nGapY,holeMm,presKPa,nAng,nDist,nManW,faces[0]);
+  buildSpecTable(holeMm,presKPa,nCol,nRow,nGapX,nGapY,nManW,nManD,pFlow,pumpHP,pumpKW,Math.round(optPipeDia(pFlow,1.5)),cSpd,cr,tgt,avgCov,actualQty,+gv('iqty')||200);
+  updateFlow(zcnt,fmode,avgTemp);
+  buildRec(cr,tgt,dlv,zcnt,holeMm,presKPa,avgTemp,detVal,avgCov,cSpd,OPT.spd||cSpd,actualQty,+gv('iqty')||200);
 
-  // 노즐 시각화
-  drawNozzleVis(nCol, nRow, nGapX, nGapY, holeMm, presKPa, nAng, nDist, nManW, faces[0]||{n:'면',fw:600,fh:300});
-
-  // 설계 사양표
-  const supPipe=optPipeDia(pFlow,1.5);
-  buildSpecTable(holeMm,presKPa,nCol,nRow,nGapX,nGapY,nManW,nManD,pFlow,pumpHP,pumpKW,Math.round(supPipe),cSpd,cr,tgt,avgCov,actualQty,+gv('iqty'));
-
-  // 공정 흐름
-  updateFlow(zcnt, fmode);
-
-  // 추천
-  buildRec(cr,tgt,dlv,zcnt,holeMm,presKPa,avgTemp,detVal,avgCov,cSpd,OPT.spd||2.5,actualQty,+gv('iqty')||200);
-
-  // 히스토리 저장
+  // 히스토리
   HIST.push({cr,cSpd,hole:holeMm,press:presKPa,det:detVal,pow:totalPow,water:totalWater,qty:actualQty});
   if(HIST.length>10) HIST.shift();
+  renderHistBars();
+
+  // localStorage 즉시 저장
+  lsSave();
+  // Firebase 자동저장 (디바운스 2초)
+  scheduleAutoFbSave();
 }
 
-// ═══════════════════════════ 막대 그래프 렌더러 ═══════════════════════════
-
-// ① 세척 기여 요소별 가로 막대
-function renderFactorBars(contrib, cr, cov, press, temp, det) {
-  const items=[
-    {lbl:'기본 세척력',   val:contrib.base||0,  max:55, color:'#0d7fa8', sub:'단수 기반'},
-    {lbl:'온도 기여',     val:contrib.temp||0,  max:18, color:'#e65100', sub:`${temp.toFixed(0)}°C`},
-    {lbl:'세척제 기여',   val:contrib.det||0,   max:12, color:'#2e7d32', sub:`${det}%`},
-    {lbl:'분사압 기여',   val:contrib.press||0, max:10, color:'#7b1fa2', sub:`${press}kPa`},
-    {lbl:'커버리지 보정', val:Math.max(0,(cov/100-0.6)*40), max:16, color:'#c62828', sub:`${cov.toFixed(0)}%`},
-    {lbl:'체류시간 기여', val:contrib.dwell||0, max:6,  color:'#00695c', sub:'전체 체류'},
-  ];
-  const html=items.map(it=>{
-    const pct=Math.min(100,Math.max(0,it.val/it.max*100));
-    const textDark=pct<20;
-    return `<div class="hbar-wrap">
-      <div class="hbar-row">
-        <div class="hbar-lbl">${it.lbl}</div>
-        <div class="hbar-bg">
-          <div class="hbar-fill" style="width:${pct}%;background:${it.color};">
-            <span class="hbar-val${textDark?' dark':''}">${it.val.toFixed(1)}pt</span>
-          </div>
-        </div>
-      </div>
-      <div class="hbar-sub" style="color:${it.color};font-weight:600;">${it.sub} | 기여도 ${pct.toFixed(0)}%</div>
-    </div>`;
-  }).join('');
-  gi('factorBars').innerHTML=html;
-  gi('factorLegend').innerHTML=items.map(it=>`<div class="leg"><div class="ldot" style="background:${it.color};"></div>${it.lbl}</div>`).join('');
-}
-
-// ② 세척조별 성능 가로 막대
-function renderZoneBars(zcnt, faces, coverages, qFace, avgTemp) {
-  const avgCov=coverages.reduce((a,b)=>a+b,0)/coverages.length;
-  const items=[];
-  for(let i=0;i<zcnt;i++){
-    const temp=+(gi('ztemp'+i)?.value||60);
-    const pump=+(gi('zpump'+i)?.value||100);
-    const det2=+(gi('zdet'+i)?.value||0);
-    const contrib=(temp-20)/70*40+(det2)*3+(i===0?15:i===1?10:5);
-    items.push({lbl:ZN[i],val:Math.min(100,contrib),col:['#0d7fa8','#2e7d32','#7b1fa2','#e65100'][i],sub:`${temp}°C | ${pump}LPM`});
-  }
-  gi('zoneBars').innerHTML=items.map(it=>`<div class="hbar-wrap">
+// ══════════════════════════════════════════════
+// 그래프 렌더러
+// ══════════════════════════════════════════════
+function hbar(lbl,val,max,color,sub){
+  const pct=Math.min(100,Math.max(0,val/max*100));
+  const dk=pct<18;
+  return `<div class="hbar-wrap">
     <div class="hbar-row">
-      <div class="hbar-lbl">${it.lbl}</div>
-      <div class="hbar-bg"><div class="hbar-fill" style="width:${it.val.toFixed(0)}%;background:${it.col};">
-        <span class="hbar-val">${it.val.toFixed(0)}점</span></div></div>
+      <div class="hbar-lbl">${lbl}</div>
+      <div class="hbar-bg"><div class="hbar-fill" style="width:${pct}%;background:${color};">
+        <span class="hbar-val${dk?' dk':''}">${val.toFixed(1)}pt</span></div></div>
     </div>
-    <div class="hbar-sub" style="color:${it.col};">${it.sub}</div>
-  </div>`).join('');
+    <div class="hbar-sub" style="color:${color};font-weight:600;">${sub} | ${pct.toFixed(0)}%</div>
+  </div>`;
 }
 
-// ③ 분사면별 가로 막대
-function renderFaceBars(faces, coverages, qEach, nTotal, qFace) {
+function renderFactorBars(contrib,cr,cov,press,temp,det){
+  const items=[
+    {l:'기본 세척력', v:contrib.base||0,  max:55, c:'#0d7fa8', s:`단수 기반`},
+    {l:'온도 기여',   v:contrib.temp||0,  max:18, c:'#e65100', s:`${temp.toFixed(0)}°C`},
+    {l:'세척제',      v:contrib.det||0,   max:12, c:'#2e7d32', s:`${det}%`},
+    {l:'분사압 기여', v:contrib.press||0, max:10, c:'#7b1fa2', s:`${press}kPa`},
+    {l:'커버리지 보정',v:Math.max(0,(cov/100-.6)*40), max:16, c:'#c62828', s:`${cov.toFixed(0)}%`},
+    {l:'체류시간',    v:contrib.dwell||0, max:6,  c:'#00695c', s:'총 체류'},
+  ];
+  gi('factorBars').innerHTML=items.map(it=>hbar(it.l,it.v,it.max,it.c,it.s)).join('');
+}
+
+function renderZoneBars(zcnt,avgTemp){
+  const rows=[];
+  for(let i=0;i<zcnt;i++){
+    const t=+(gi('ztemp'+i)?.value||60);
+    const p=+(gi('zpump'+i)?.value||100);
+    const d=+(gi('zdet'+i)?.value||0);
+    const sc=(t-20)/70*40+d*3+(i===0?15:i===1?10:5);
+    const cols=['#0d7fa8','#2e7d32','#7b1fa2','#e65100'];
+    rows.push(hbar(ZN[i],Math.min(100,sc),100,cols[i],`${t}°C | ${Math.round(p)}LPM`));
+  }
+  gi('zoneBars').innerHTML=rows.join('');
+}
+
+function renderFaceBars(faces,coverages,qEach,nTotal){
   gi('faceBars').innerHTML=faces.map((f,i)=>{
-    const cov=Math.min(100,coverages[i]||0);
-    const sc=cov>=80?'#2e7d32':cov>=60?'#e65100':'#c62828';
-    const fq=qEach*nTotal;
-    return `<div class="hbar-wrap">
-      <div class="hbar-row">
-        <div class="hbar-lbl">${f.n} (${f.fw}×${f.fh})</div>
-        <div class="hbar-bg"><div class="hbar-fill" style="width:${cov.toFixed(0)}%;background:${sc};">
-          <span class="hbar-val">${cov.toFixed(1)}%</span></div></div>
-      </div>
-      <div class="hbar-sub" style="color:${sc};">노즐 ${nTotal}개 | ${fq.toFixed(1)}L/min | 커버리지 ${cov.toFixed(1)}%</div>
-    </div>`;
+    const c=Math.min(100,coverages[i]||0);
+    const col=c>=80?'#2e7d32':c>=60?'#e65100':'#c62828';
+    return hbar(f.n+` ${f.fw}×${f.fh}`,c,100,col,`노즐${nTotal}개 | ${(qEach*nTotal).toFixed(1)}L/min`);
   }).join('');
 }
 
-// ④ 세척 효율 종합 세로 막대 그래프 (Canvas)
-function renderEffChart(cr, contrib, tgt) {
-  const cv=gi('effCv'); if(!cv) return;
-  const yAxisCv=gi('yAxisCv');
+function renderEffChart(cr,contrib,tgt){
+  const cv=gi('effCv'), yc=gi('yAxisCv');
+  if(!cv||!yc) return;
   const W=cv.width, H=cv.height;
-  const ctx=cv.getContext('2d');
-  const yCtx=yAxisCv?.getContext('2d');
+  const ctx=cv.getContext('2d'), yCtx=yc.getContext('2d');
+  ctx.clearRect(0,0,W,H); yCtx.clearRect(0,0,36,H);
 
-  ctx.clearRect(0,0,W,H);
-  if(yCtx) yCtx.clearRect(0,0,36,H);
-
-  const categories=[
-    {lbl:'기본\n세척력', val:Math.min(100,contrib.base*1.8||0),  full:100, color:'#0d7fa8'},
-    {lbl:'온도\n기여',   val:Math.min(100,(contrib.temp||0)*5.5),  full:100, color:'#e65100'},
-    {lbl:'세척제\n기여', val:Math.min(100,(contrib.det||0)*8),     full:100, color:'#2e7d32'},
-    {lbl:'압력\n기여',   val:Math.min(100,(contrib.press||0)*10),  full:100, color:'#7b1fa2'},
-    {lbl:'커버리지',     val:Math.min(100,Math.max(0,(contrib.cov||0)*6.25)),full:100,color:'#c62828'},
-    {lbl:'체류\n시간',   val:Math.min(100,(contrib.dwell||0)*16),  full:100, color:'#00695c'},
-    {lbl:'종합\n세척율', val:cr,                                   full:100, color:cr>=tgt?'#1b5e20':cr>=tgt-5?'#e65100':'#b71c1c', isFinal:true},
+  const cats=[
+    {l:'기본\n세척력', v:Math.min(100,(contrib.base||0)*1.8), c:'#0d7fa8'},
+    {l:'온도\n기여',   v:Math.min(100,(contrib.temp||0)*5.5), c:'#e65100'},
+    {l:'세척제\n기여', v:Math.min(100,(contrib.det||0)*8),    c:'#2e7d32'},
+    {l:'압력\n기여',   v:Math.min(100,(contrib.press||0)*10), c:'#7b1fa2'},
+    {l:'커버리지',     v:Math.min(100,Math.max(0,(contrib.cov||0)*6.25)), c:'#c62828'},
+    {l:'체류\n시간',   v:Math.min(100,(contrib.dwell||0)*16), c:'#00695c'},
+    {l:'종합\n세척율', v:cr,  c:cr>=tgt?'#1b5e20':cr>=tgt-5?'#e65100':'#b71c1c', final:true},
   ];
+  const n=cats.length, pL=6, pT=10, pB=30;
+  const cH=H-pT-pB, bW=Math.floor((W-pL*2)/n)-6;
 
-  const barCount=categories.length;
-  const barW=Math.floor((W-20)/barCount)-8;
-  const padL=10, padTop=10, padBot=28;
-  const chartH=H-padTop-padBot;
-
-  // 그리드 라인
-  ctx.strokeStyle='#dde5ee'; ctx.lineWidth=0.5;
+  // 그리드
+  ctx.strokeStyle='#dde5ee'; ctx.lineWidth=.5;
   for(let i=0;i<=4;i++){
-    const y=padTop+chartH*(1-i/4);
+    const y=pT+cH*(1-i/4);
     ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
-    if(yCtx){
-      yCtx.fillStyle='#7a90a4'; yCtx.font='9px Noto Sans KR'; yCtx.textAlign='right';
-      yCtx.fillText((i*25)+'%',34,y+3);
-    }
+    yCtx.fillStyle='#7a90a4'; yCtx.font='9px Noto Sans KR'; yCtx.textAlign='right';
+    yCtx.fillText(i*25+'%',34,y+3);
   }
-
   // 목표선
-  const tgtY=padTop+chartH*(1-tgt/100);
+  const tY=pT+cH*(1-tgt/100);
   ctx.strokeStyle='#e53935'; ctx.lineWidth=1.5; ctx.setLineDash([5,3]);
-  ctx.beginPath(); ctx.moveTo(0,tgtY); ctx.lineTo(W,tgtY); ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.fillStyle='#e53935'; ctx.font='bold 10px Noto Sans KR'; ctx.textAlign='left';
-  ctx.fillText(`목표 ${tgt}%`,4,tgtY-3);
+  ctx.beginPath(); ctx.moveTo(0,tY); ctx.lineTo(W,tY); ctx.stroke();
+  ctx.setLineDash([]); ctx.fillStyle='#e53935'; ctx.font='bold 10px Noto Sans KR'; ctx.textAlign='left';
+  ctx.fillText('목표 '+tgt+'%',4,tY-3);
 
-  // 막대
-  categories.forEach((cat,i)=>{
-    const x=padL+i*(barW+8);
-    const barH=Math.max(2,chartH*cat.val/100);
-    const y=padTop+chartH-barH;
-
-    // 배경 (최대치)
+  cats.forEach((cat,i)=>{
+    const x=pL+i*(bW+6), bH=Math.max(2,cH*cat.v/100), y=pT+cH-bH;
+    // 배경
     ctx.fillStyle='#eef2f6';
-    ctx.beginPath();
-    ctx.roundRect(x,padTop,barW,chartH,4);
-    ctx.fill();
-
-    // 실제 막대
-    const grad=ctx.createLinearGradient(0,y+barH,0,y);
-    grad.addColorStop(0,cat.color);
-    grad.addColorStop(1,cat.color+'cc');
-    ctx.fillStyle=grad;
-    ctx.beginPath();
-    ctx.roundRect(x,y,barW,barH,4);
-    ctx.fill();
-
-    if(cat.isFinal){
-      ctx.strokeStyle=cr>=tgt?'#1b5e20':'#b71c1c';
-      ctx.lineWidth=2;
-      ctx.beginPath();
-      ctx.roundRect(x-1,y-1,barW+2,barH+2,4);
-      ctx.stroke();
+    ctx.beginPath(); ctx.roundRect(x,pT,bW,cH,4); ctx.fill();
+    // 막대
+    const g=ctx.createLinearGradient(0,y+bH,0,y);
+    g.addColorStop(0,cat.c); g.addColorStop(1,cat.c+'bb');
+    ctx.fillStyle=g; ctx.beginPath(); ctx.roundRect(x,y,bW,bH,4); ctx.fill();
+    if(cat.final){
+      ctx.strokeStyle=cat.c; ctx.lineWidth=2.5;
+      ctx.beginPath(); ctx.roundRect(x-1,y-1,bW+2,bH+2,4); ctx.stroke();
     }
-
     // 수치
-    ctx.fillStyle=cat.val>15?'#fff':cat.color;
-    ctx.font=`bold ${cat.isFinal?11:10}px Noto Sans KR`;
-    ctx.textAlign='center';
-    const valTxt=cat.val.toFixed(1)+'%';
-    if(barH>16) ctx.fillText(valTxt,x+barW/2,y+barH-5);
-    else{ ctx.fillStyle=cat.color; ctx.fillText(valTxt,x+barW/2,y-3); }
-
-    // 라벨 (멀티라인)
-    const lines=cat.lbl.split('\n');
+    ctx.fillStyle=bH>16?'#fff':cat.c; ctx.font=`bold ${cat.final?11:10}px Noto Sans KR`; ctx.textAlign='center';
+    if(bH>16) ctx.fillText(cat.v.toFixed(1)+'%',x+bW/2,y+bH-5);
+    else{ ctx.fillStyle=cat.c; ctx.fillText(cat.v.toFixed(1)+'%',x+bW/2,y-3); }
+    // 라벨
     ctx.fillStyle='#3a4a5a'; ctx.font='9px Noto Sans KR';
-    lines.forEach((ln,li)=>{
-      ctx.fillText(ln,x+barW/2,H-padBot+10+li*11);
+    cat.l.split('\n').forEach((ln,li)=>{
+      ctx.fillText(ln,x+bW/2,H-pB+10+li*11);
     });
   });
-
-  // 범례
-  gi('effLegend').innerHTML=categories.map(c=>`<div class="leg"><div class="ldot" style="background:${c.color};"></div>${c.lbl.replace('\n',' ')}</div>`).join('');
+  gi('effLegend').innerHTML=cats.map(c=>`<div class="leg"><div class="ldot" style="background:${c.c};"></div>${c.l.replace('\n',' ')}</div>`).join('');
 }
 
-// ⑤ 히스토리 가로 막대 (최근 조정 변화)
-function renderHistoryBars(cr, cSpd, hole, press, det) {
-  if(HIST.length<2){ gi('historyBars').innerHTML='<div style="color:#7a90a4;font-size:11px;">파라미터를 조정하면 변화 히스토리가 표시됩니다.</div>'; return; }
-  const items=HIST.map((h,i)=>{
+function renderHistBars(){
+  if(HIST.length<2){ gi('histBars').innerHTML='<div style="color:#7a90a4;font-size:11px;padding:4px 0;">파라미터를 조정하면 변화 히스토리가 표시됩니다.</div>'; return; }
+  gi('histBars').innerHTML=HIST.map((h,i)=>{
     const isLast=i===HIST.length-1;
+    const col=h.cr>=90?'#2e7d32':h.cr>=80?'#0d7fa8':h.cr>=70?'#e65100':'#c62828';
     return `<div class="hbar-wrap">
       <div class="hbar-row">
-        <div class="hbar-lbl" style="font-size:10px;${isLast?'font-weight:700;color:#0b2640;':''}">조정 #${i+1}${isLast?' ◀현재':''}</div>
-        <div class="hbar-bg"><div class="hbar-fill" style="width:${h.cr.toFixed(0)}%;background:${h.cr>=90?'#2e7d32':h.cr>=80?'#0d7fa8':h.cr>=70?'#e65100':'#c62828'};">
+        <div class="hbar-lbl" style="${isLast?'font-weight:700;color:#0b2640;':''}font-size:10px;">#${i+1}${isLast?' ◀':''}</div>
+        <div class="hbar-bg"><div class="hbar-fill" style="width:${h.cr.toFixed(0)}%;background:${col};">
           <span class="hbar-val">${h.cr.toFixed(1)}%</span></div></div>
       </div>
-      <div class="hbar-sub">속도 ${h.cSpd}m/min | 홀Ø${h.hole}mm | ${h.press}kPa | 세척제${h.det}% | 전력${h.pow.toFixed(1)}kW</div>
+      <div class="hbar-sub" style="color:${col};">속도${h.cSpd}m/min | Ø${h.hole}mm | ${h.press}kPa | 세척제${h.det}% | ${h.pow.toFixed(1)}kW</div>
     </div>`;
   }).join('');
-  gi('historyBars').innerHTML=items;
 }
 
-// ═══════════════════════════ 노즐 시각화 ═══════════════════════════
+// ══════════════════════════════════════════════
+// 노즐 시각화
+// ══════════════════════════════════════════════
 function drawNozzleVis(nc,nr,gapX,gapY,holeMm,presKPa,ang,dist,manW,face){
-  const cv=gi('pvCv'); if(!cv) return;
-  const ctx=cv.getContext('2d');
-  const W=cv.width,H=cv.height;
+  const cv=gi('pvCv'); if(!cv||!face) return;
+  const ctx=cv.getContext('2d'), W=cv.width, H=cv.height;
   ctx.clearRect(0,0,W,H);
-
   const fw=face.fw||600, fh=face.fh||300;
   const scale=Math.min((W-60)/fw,(H-50)/fh);
-  const dW=fw*scale,dH=fh*scale;
-  const ox=(W-dW)/2,oy=(H-dH)/2;
-
-  // 면 배경
+  const dW=fw*scale, dH=fh*scale, ox=(W-dW)/2, oy=(H-dH)/2;
   ctx.fillStyle='#e2eff8'; ctx.fillRect(ox,oy,dW,dH);
   ctx.strokeStyle='#8ab8d8'; ctx.lineWidth=2; ctx.strokeRect(ox,oy,dW,dH);
 
-  // 분사관 (가로)
-  const manWpx=Math.min(dW,manW*scale);
-  const manDpx=Math.max(4,10);
+  const nR=Math.max(4,Math.min(12,holeMm*2.2));
+  const qEach=nozzleQ(holeMm,presKPa);
+  const sr=faceSpread(ang,dist)*scale*0.5;
+
+  // 분사관
   for(let r=0;r<nr;r++){
     const y=oy+(r+1)*gapY*scale;
-    ctx.fillStyle='rgba(13,127,168,0.25)';
-    ctx.fillRect(ox+(dW-manWpx)/2, y-manDpx/2, manWpx, manDpx);
+    const mw=Math.min(dW,manW*scale);
+    ctx.fillStyle='rgba(13,127,168,.2)';
+    ctx.fillRect(ox+(dW-mw)/2,y-5,mw,10);
     ctx.strokeStyle='#0d7fa8'; ctx.lineWidth=1;
-    ctx.strokeRect(ox+(dW-manWpx)/2, y-manDpx/2, manWpx, manDpx);
+    ctx.strokeRect(ox+(dW-mw)/2,y-5,mw,10);
   }
-
-  // 노즐
-  const nR=Math.max(4,Math.min(11,holeMm*2.2));
-  const qEach=nozzleQ(holeMm,presKPa);
-  const sprayR=Math.tan(ang*Math.PI/180)*dist*scale*0.4;
 
   for(let r=0;r<nr;r++){
     for(let c=0;c<nc;c++){
-      const px=ox+(c+1)*gapX*scale;
-      const py=oy+(r+1)*gapY*scale;
-      if(px<ox||px>ox+dW||py<oy||py>oy+dH) continue;
-
-      // 분사 영역
-      const grad=ctx.createRadialGradient(px,py,0,px,py,sprayR);
-      grad.addColorStop(0,'rgba(14,126,166,.25)');
-      grad.addColorStop(1,'rgba(14,126,166,0)');
-      ctx.fillStyle=grad; ctx.beginPath(); ctx.arc(px,py,sprayR,0,Math.PI*2); ctx.fill();
-
-      // 노즐
+      const px=ox+(c+1)*gapX*scale, py=oy+(r+1)*gapY*scale;
+      if(px<ox-2||px>ox+dW+2||py<oy-2||py>oy+dH+2) continue;
+      const g=ctx.createRadialGradient(px,py,0,px,py,sr);
+      g.addColorStop(0,'rgba(14,126,166,.22)'); g.addColorStop(1,'rgba(14,126,166,0)');
+      ctx.fillStyle=g; ctx.beginPath(); ctx.arc(px,py,sr,0,Math.PI*2); ctx.fill();
       ctx.beginPath(); ctx.arc(px,py,nR,0,Math.PI*2);
       ctx.fillStyle='#0d7fa8'; ctx.fill();
       ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.stroke();
-      ctx.beginPath(); ctx.arc(px,py,nR*0.38,0,Math.PI*2);
-      ctx.fillStyle='rgba(0,0,0,.45)'; ctx.fill();
+      ctx.beginPath(); ctx.arc(px,py,nR*.38,0,Math.PI*2);
+      ctx.fillStyle='rgba(0,0,0,.4)'; ctx.fill();
     }
   }
-
-  // 치수 표시
   ctx.fillStyle='#0b2640'; ctx.font='bold 10px Noto Sans KR'; ctx.textAlign='center';
-  ctx.fillText(`${face.n} ${fw}×${fh}mm | 노즐 ${nc}×${nr}=${nc*nr}개 | Ø${holeMm}mm | ${presKPa}kPa | ${qEach.toFixed(2)}L/min/개`, W/2, oy+dH+15);
+  ctx.fillText(`${face.n} ${fw}×${fh}mm | ${nc}×${nr}=${nc*nr}개 | Ø${holeMm}mm | ${presKPa}kPa | ${qEach.toFixed(3)}L/min/개`, W/2, oy+dH+14);
   ctx.fillStyle='#4a7a9a'; ctx.font='9px Noto Sans KR';
-  ctx.fillText(`간격 ${gapX}×${gapY}mm | 분사관 폭 ${manW}mm | 분사거리 ${dist}mm`, W/2, oy+dH+27);
-  gi('pvTitle').textContent=`${face.n} — ${nc}열×${nr}행=${nc*nr}개`;
+  ctx.fillText(`간격 ${gapX}×${gapY}mm | 분사관폭 ${manW}mm | 분사거리 ${dist}mm | 분사각 ${ang}° | 스프레드 ±${faceSpread(ang,dist).toFixed(0)}mm`, W/2, oy+dH+27);
+  gi('pvTitle').textContent=`${face.n} — ${nc}열×${nr}행`;
 }
 
-// ═══════════════════════════ 설계 사양표 ═══════════════════════════
+// ══════════════════════════════════════════════
+// 사양표 / 공정 / 추천
+// ══════════════════════════════════════════════
 function buildSpecTable(hole,press,nc,nr,gapX,gapY,manW,manD,pFlow,pHP,pKW,supPipe,cSpd,cr,tgt,cov,qty,iqty){
+  const dlv=+gv('dlv');
   const rows=[
-    ['노즐 홀 직경',hole+'mm',DIRT.hole[+gv('dlv')]+'mm','1.5~4.0mm','오리피스 Cd=0.62',hole<1.5?'tg-r':hole>5?'tg-w':'tg-g'],
-    ['분사 압력',press+'kPa',DIRT.press[+gv('dlv')]+'kPa','100~350kPa','오염도 기반 Bernoulli',press>450?'tg-r':press<80?'tg-w':'tg-g'],
-    ['노즐 배열',nc+'×'+nr+'='+nc*nr+'개',nc+'×'+nr,'면적·플럭스 기준','Q=A·Cd·√(2ΔP/ρ)','tg-g'],
-    ['노즐 가로 간격',gapX+'mm','균등 배분','20~300mm','면폭/(nc+1)','tg-g'],
-    ['노즐 세로 간격',gapY+'mm','균등 배분','20~200mm','면고/(nr+1)','tg-g'],
-    ['분사관 폭',manW+'mm','—','피세척물 폭 이상','면 폭 기준','tg-g'],
-    ['분사관 직경',manD+'mm',Math.round(optPipeDia(pFlow/Math.max(1,(gv('itype')==='box'?4:2)),2.0))+'mm','v=2m/s 기준','Q=A·v 연속방정식',Math.abs(manD-Math.round(optPipeDia(pFlow/2,2.0)))>10?'tg-w':'tg-g'],
-    ['펌프 유량',Math.round(pFlow)+'LPM',Math.round(OPT.totalQ||pFlow)+'LPM','노즐합×1.15','Σ노즐유량','tg-g'],
-    ['펌프 마력',pHP.toFixed(2)+' HP','—','—','P=QΔP/η·1.341','tg-g'],
-    ['펌프 출력',pKW.toFixed(2)+' kW','—','—','P=QΔP/η','tg-g'],
-    ['공급배관 직경',supPipe+'mm',Math.round(OPT.supPipe||supPipe)+'mm','v=1.5m/s 기준','Q=A·v','Math.abs(supPipe-Math.round(OPT.supPipe||supPipe))<5?tg-g:tg-w'],
-    ['컨베이어 속도',cSpd+'m/min',(OPT.spd||cSpd)+'m/min','처리량 역산','피치/속도=체류시간',Math.abs(cSpd-(OPT.spd||cSpd))>1.5?'tg-w':'tg-g'],
-    ['예상 세척율',cr.toFixed(1)+'%',tgt+'% 목표','—','복합 세척 모델',cr>=tgt?'tg-g':cr>=tgt-5?'tg-w':'tg-r'],
-    ['커버리지',cov.toFixed(1)+'%','80%+ 권장','—','분사 반경 기하계산',cov>=80?'tg-g':cov>=60?'tg-w':'tg-r'],
-    ['처리량',qty+'개/h',iqty+'개 목표','—','3600/(피치/속도)×열수',qty>=iqty*0.9?'tg-g':qty>=iqty*0.75?'tg-w':'tg-r'],
+    ['노즐 홀 직경',hole+'mm',DIRT.hole[dlv]+'mm','1.5~4.0mm','오리피스 Cd=0.62',hole<1.5?'tg-r':hole>5?'tg-w':'tg-g'],
+    ['분사 압력',press+'kPa',DIRT.press[dlv]+'kPa','100~350kPa','오염도 Bernoulli',press>450?'tg-r':'tg-g'],
+    ['노즐 배열',`${nc}×${nr}=${nc*nr}개`,'-','면적·플럭스','유량/단위유량','tg-g'],
+    ['가로 간격',gapX+'mm',`면폭/(${nc}+1)`,'균등배분','기하 계산','tg-g'],
+    ['세로 간격',gapY+'mm',`면고/(${nr}+1)`,'균등배분','기하 계산','tg-g'],
+    ['분사관 폭',manW+'mm','피세척물 폭↑','—','—','tg-g'],
+    ['분사관 Ø',manD+'mm',`${Math.round(optPipeDia(pFlow/2,2.0))}mm`,'v=2m/s','Q=Av','tg-g'],
+    ['펌프 유량',`${Math.round(pFlow)}LPM`,`${Math.round(OPT.totalQ||pFlow)}LPM`,'노즐합×1.15','Σ노즐유량','tg-g'],
+    ['펌프 마력',`${pHP.toFixed(2)}HP`,'—','—','P=QΔP/η·1.341','tg-g'],
+    ['펌프 출력',`${pKW.toFixed(2)}kW`,'—','—','P=QΔP/η','tg-g'],
+    ['공급배관 Ø',`${supPipe}mm`,`${Math.round(OPT.supPipe||supPipe)}mm`,'v=1.5m/s','Q=Av',Math.abs(supPipe-(OPT.supPipe||supPipe))>5?'tg-w':'tg-g'],
+    ['컨베이어',`${cSpd}m/min`,`${OPT.spd||cSpd}m/min`,'처리량 역산','피치/속도',Math.abs(cSpd-(OPT.spd||cSpd))>1.5?'tg-w':'tg-g'],
+    ['세척율',`${cr.toFixed(1)}%`,`${tgt}%`,'—','복합 모델',cr>=tgt?'tg-g':cr>=tgt-5?'tg-w':'tg-r'],
+    ['커버리지',`${cov.toFixed(1)}%`,'80%+','—','기하 계산',cov>=80?'tg-g':cov>=60?'tg-w':'tg-r'],
+    ['처리량',`${qty}개/h`,`${iqty}개`,'—','피치/속도',qty>=iqty*.9?'tg-g':qty>=iqty*.75?'tg-w':'tg-r'],
   ];
   gi('specBody').innerHTML=rows.map(([item,cur,rec,range,basis,sc])=>
-    `<tr><td>${item}</td><td class="hi2">${cur}</td><td class="hi">${rec}</td><td>${range}</td><td style="font-size:11px;color:#50637a;">${basis}</td><td><span class="tg ${sc}">${sc==='tg-g'?'최적':sc==='tg-w'?'확인':' 주의'}</span></td></tr>`
+    `<tr><td>${item}</td><td class="hi2">${cur}</td><td class="hi">${rec}</td><td>${range}</td>
+     <td style="font-size:10px;color:#50637a;">${basis}</td>
+     <td><span class="tg ${sc}">${sc==='tg-g'?'최적':sc==='tg-w'?'확인':'주의'}</span></td></tr>`
   ).join('');
 }
 
-// ═══════════════════════════ 공정 흐름 ═══════════════════════════
-function updateFlow(zcnt,fmode){
+function updateFlow(zcnt,fmode,avgTemp){
   const fr=gi('flowrow'); if(!fr) return;
   fr.innerHTML='';
-  const add=(cls,html)=>{const d=document.createElement('div');d.className=cls;d.innerHTML=html;fr.appendChild(d);};
+  const add=(cls,html)=>{ const d=document.createElement('div'); d.className=cls; d.innerHTML=html; fr.appendChild(d); };
   add('fn',`투입<div class="fs">${fmode==='2ch'?'2열':'1열'}</div>`);
   for(let i=0;i<4;i++){
     add('fa','→');
     const on=i<zcnt;
     const t=on?(gi('ztemp'+i)?.value||'—'):'—';
     const p=on?(gi('zpump'+i)?.value||'—'):'—';
-    add(`fn${on?'':' off'}`,`${i+1}단 ${ZN[i]}<div class="fs">${on?t+'°C|'+p+'L':'미사용'}</div>`);
+    add(`fn${on?'':' off'}`,`${i+1}단 ${ZN[i]}<div class="fs">${on?t+'°C|'+Math.round(p)+'L':'미사용'}</div>`);
   }
   add('fa','→'); add('fn','배출');
 }
 
-// ═══════════════════════════ 추천 ═══════════════════════════
 function buildRec(cr,tgt,dlv,zcnt,hole,press,temp,det,cov,cSpd,optSpd,qty,iqty){
   const recs=[];
-  if(cr>=tgt) recs.push({e:'🟢',t:`세척율 <b>${cr.toFixed(1)}%</b> — 목표 ${tgt}% 달성. 현재 설계 적합.`});
-  else if(cr>=tgt-5) recs.push({e:'🟡',t:`세척율 <b>${cr.toFixed(1)}%</b> — 목표 근접. 세척제 +1% 또는 온도 +5°C로 달성 가능.`});
-  else recs.push({e:'🔴',t:`세척율 <b>${cr.toFixed(1)}%</b> — 목표 미달. 세척조 +1단 또는 속도 감소 + 온도 상향.`});
+  if(cr>=tgt) recs.push({e:'🟢',t:`세척율 <b>${cr.toFixed(1)}%</b> — 목표 ${tgt}% 달성.`});
+  else if(cr>=tgt-5) recs.push({e:'🟡',t:`세척율 <b>${cr.toFixed(1)}%</b> — 세척제 +1% 또는 온도 +5°C 시 달성 가능.`});
+  else recs.push({e:'🔴',t:`세척율 <b>${cr.toFixed(1)}%</b> — 목표 미달. 세척조 +1단 또는 속도 감소 권장.`});
   if(cov<75) recs.push({e:'⚠️',t:`커버리지 <b>${cov.toFixed(0)}%</b> — 노즐 수량 증가 또는 간격 조정 필요.`});
-  if(hole<1.8) recs.push({e:'⚠️',t:`홀 Ø<b>${hole}mm</b> — 막힘 위험. 필터(100μm↓) 필수. 2.0mm 이상 권장.`});
-  if(press>400) recs.push({e:'🔴',t:`분사압 <b>${press}kPa</b> — 과압. 배관 확대 또는 바이패스 밸브 적용.`});
-  if(qty<iqty*0.85) recs.push({e:'⚡',t:`처리량 ${qty}개/h — 목표 대비 부족. 속도 ${optSpd}m/min 최적값 적용 권장.`});
-
-  const recZone=cr<tgt-8?Math.min(4,zcnt+1):zcnt;
+  if(hole<1.8) recs.push({e:'⚠️',t:`홀 Ø<b>${hole}mm</b> — 막힘 위험. 필터(100μm↓) 필수.`});
+  if(press>400) recs.push({e:'🔴',t:`분사압 <b>${press}kPa</b> — 과압. 배관 확대 권장.`});
+  if(qty<iqty*.85) recs.push({e:'⚡',t:`처리량 ${qty}개/h — 목표 대비 부족. 속도 ${optSpd}m/min 권장.`});
+  const recZ=cr<tgt-8?Math.min(4,zcnt+1):zcnt;
   gi('recBody').innerHTML=`
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
       <table class="dt"><thead><tr><th colspan="2">현재 설계</th></tr></thead><tbody>
@@ -1219,347 +1188,317 @@ function buildRec(cr,tgt,dlv,zcnt,hole,press,temp,det,cov,cSpd,optSpd,qty,iqty){
         <tr><td>세척율</td><td class="${cr>=tgt?'hi2':'hi'}">${cr.toFixed(1)}%</td></tr>
       </tbody></table>
       <table class="dt"><thead><tr><th colspan="2">🌟 최적 추천</th></tr></thead><tbody>
-        <tr><td>세척조</td><td class="hi">${recZone}단</td></tr>
+        <tr><td>세척조</td><td class="hi">${recZ}단</td></tr>
         <tr><td>노즐홀</td><td>${DIRT.hole[dlv]}mm</td></tr>
         <tr><td>분사압</td><td>${DIRT.press[dlv]}kPa</td></tr>
         <tr><td>온도</td><td>${DIRT.temp[dlv]}°C</td></tr>
         <tr><td>목표율</td><td>${tgt}%+</td></tr>
       </tbody></table>
     </div>
-    <div class="rec-box">
-      <div class="rec-box-t">💡 설계 권장 사항</div>
+    <div class="rec-box"><div class="rec-box-t">💡 설계 권장</div>
       ${recs.map(r=>`<div class="ri"><div class="rd"></div><div class="rx">${r.e} ${r.t}</div></div>`).join('')}
     </div>`;
 }
 
-// ═══════════════════════════ FIREBASE ═══════════════════════════
-const FB_API  = 'AIzaSyC4DWFGGJjJmVlqnfmZaVDdKJWCXK0Yr_g';
-const FB_PROJ = 'insys-work';
-const FB_COL  = 'washer_sessions';
-const FB_BASE = `https://firestore.googleapis.com/v1/projects/${FB_PROJ}/databases/(default)/documents/${FB_COL}`;
-
-let fbReady = false;
-
-// ── Firestore REST 헬퍼 ──
-async function fbPost(url, body) {
-  const r = await fetch(url, {
-    method:'POST', headers:{'Content-Type':'application/json','x-goog-api-key':FB_API},
-    body: JSON.stringify(body)
+// ══════════════════════════════════════════════
+// localStorage (새로고침 복원)
+// ══════════════════════════════════════════════
+function collectSettings(){
+  const zcnt=+gv('zcnt'), zones=[];
+  for(let i=0;i<4;i++) zones.push({
+    tank:+(gi('ztank'+i)?.value||0), temp:+(gi('ztemp'+i)?.value||0),
+    heat:+(gi('zheat'+i)?.value||0), pump:+(gi('zpump'+i)?.value||0),
+    pipe:+(gi('zpipe'+i)?.value||0), det: +(gi('zdet'+i)?.value||0),
   });
-  if(!r.ok) throw new Error(await r.text());
-  return r.json();
-}
-async function fbGet(url) {
-  const r = await fetch(url+'?key='+FB_API);
-  if(!r.ok) throw new Error(await r.text());
-  return r.json();
-}
-async function fbPatch(url, body) {
-  const r = await fetch(url+'?key='+FB_API, {
-    method:'PATCH', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify(body)
-  });
-  if(!r.ok) throw new Error(await r.text());
-  return r.json();
-}
-async function fbDelete(url) {
-  const r = await fetch(url+'?key='+FB_API, {method:'DELETE'});
-  if(!r.ok) throw new Error(await r.text());
+  return {
+    itype:gv('itype'),fmode:gv('fmode'),
+    iW:+gv('iW'),iD:+gv('iD'),iH:+gv('iH'),
+    dlv:+gv('dlv'),tgtClean:+gv('tgtClean'),iqty:+gv('iqty'),zcnt,
+    nHole:+gv('nHole'),nPress:+gv('nPress'),nAng:+gv('nAng'),
+    nCol:+gv('nCol'),nRow:+gv('nRow'),nGapX:+gv('nGapX'),nGapY:+gv('nGapY'),
+    nManW:+gv('nManW'),nManD:+gv('nManD'),nDist:+gv('nDist'),
+    pFlow:+gv('pFlow'),pPipe:+gv('pPipe'),pEff:+gv('pEff'),
+    cSpd:+gv('cSpd'),cPitch:+gv('cPitch'),det:+gv('det'),
+    gapLocked,zones,
+    resultCr:+(gi('kC')?.textContent?.replace('%','')||0),
+    resultQty:+(gi('kQ')?.textContent?.replace(/,/g,'')||0),
+    resultPow:+(gi('kP')?.textContent||0),
+    savedAt:new Date().toISOString(),
+  };
 }
 
-// ── Firestore 값 변환 ──
-function toFsValue(v) {
-  if(typeof v === 'string')  return {stringValue: v};
-  if(typeof v === 'number')  return {doubleValue: v};
-  if(typeof v === 'boolean') return {booleanValue: v};
-  if(v === null)             return {nullValue: null};
-  if(Array.isArray(v))       return {arrayValue:{values:v.map(toFsValue)}};
-  if(typeof v === 'object')  return {mapValue:{fields:objToFields(v)}};
-  return {stringValue: String(v)};
+function applySettings(s){
+  const sv2=(id,v,cls='')=>{ const e=gi(id); if(!e||v===undefined||v===null) return; e.value=v; if(cls) e.className=cls; };
+  sv2('itype',s.itype); sv2('fmode',s.fmode);
+  sv2('iW',s.iW); sv2('iD',s.iD); sv2('iH',s.iH);
+  sv2('dlv',s.dlv); sv2('tgtClean',s.tgtClean);
+  sv2('iqty',s.iqty); sv2('zcnt',s.zcnt);
+  sv2('nHole',s.nHole,'s-rec'); sv2('nPress',s.nPress,'s-rec'); sv2('nAng',s.nAng,'s-rec');
+  sv2('nCol',s.nCol,'s-rec'); sv2('nRow',s.nRow,'s-rec');
+  sv2('nGapX',s.nGapX,'s-auto'); sv2('nGapY',s.nGapY,'s-auto');
+  sv2('nManW',s.nManW,'s-auto'); sv2('nManD',s.nManD,'s-auto'); sv2('nDist',s.nDist);
+  sv2('pFlow',s.pFlow,'s-auto'); sv2('pPipe',s.pPipe,'s-auto'); sv2('pEff',s.pEff);
+  sv2('cSpd',s.cSpd,'s-rec'); sv2('cPitch',s.cPitch); sv2('det',s.det,'s-rec');
+  if(s.gapLocked!==undefined) gapLocked=s.gapLocked;
+  // gapLocked 버튼 텍스트 반영
+  gi('btnUnlockGap').textContent = gapLocked ? '🔓 간격 수동 입력 모드' : '🔒 간격 자동계산 모드';
+  // nGapX/Y 편집 가능 여부
+  ['nGapX','nGapY'].forEach(id=>{
+    const e=gi(id); if(e){ e.readOnly=gapLocked; e.className=gapLocked?'s-auto':'s-user'; }
+  });
+  OPT.hole=s.nHole||2.5; OPT.press=s.nPress; OPT.temp=+(s.zones?.[0]?.temp||60);
+  OPT.totalQ=s.pFlow; OPT.spd=s.cSpd;
+  buildZonePanels();
+  if(s.zones) s.zones.forEach((z,i)=>{
+    sv2('ztank'+i,z.tank,'s-rec'); sv2('ztemp'+i,z.temp,'s-rec');
+    sv2('zheat'+i,z.heat,'s-rec'); sv2('zpump'+i,z.pump,'s-rec');
+    sv2('zpipe'+i,z.pipe,'s-auto'); sv2('zdet'+i,z.det);
+  });
+  updateAutoCalc();
+  runSim();
 }
-function objToFields(obj) {
-  const f={};
-  for(const k in obj) f[k]=toFsValue(obj[k]);
-  return f;
+
+function lsSave(){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(collectSettings())); } catch(e){}
 }
-function fromFsFields(fields) {
-  if(!fields) return {};
-  const obj={};
-  for(const k in fields) obj[k]=fromFsValue(fields[k]);
-  return obj;
+function lsLoad(){
+  try{
+    const d=localStorage.getItem(LS_KEY);
+    if(d) return JSON.parse(d);
+  }catch(e){}
+  return null;
 }
-function fromFsValue(v) {
+
+// ══════════════════════════════════════════════
+// Firebase REST
+// ══════════════════════════════════════════════
+const FB_API='AIzaSyC4DWFGGJjJmVlqnfmZaVDdKJWCXK0Yr_g';
+const FB_PROJ='insys-work';
+const FB_COL='washer_sessions';
+const FB_BASE=`https://firestore.googleapis.com/v1/projects/${FB_PROJ}/databases/(default)/documents/${FB_COL}`;
+
+async function fbFetch(url,opts={}){
+  const sep=url.includes('?')?'&':'?';
+  const r=await fetch(url+sep+'key='+FB_API, opts);
+  if(!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+function toFsV(v){
+  if(typeof v==='string') return {stringValue:v};
+  if(typeof v==='number') return {doubleValue:v};
+  if(typeof v==='boolean') return {booleanValue:v};
+  if(v===null||v===undefined) return {nullValue:null};
+  if(Array.isArray(v)) return {arrayValue:{values:v.map(toFsV)}};
+  if(typeof v==='object') return {mapValue:{fields:toFields(v)}};
+  return {stringValue:String(v)};
+}
+function toFields(obj){ const f={}; for(const k in obj) f[k]=toFsV(obj[k]); return f; }
+function fromV(v){
   if('stringValue'  in v) return v.stringValue;
   if('doubleValue'  in v) return v.doubleValue;
   if('integerValue' in v) return Number(v.integerValue);
   if('booleanValue' in v) return v.booleanValue;
   if('nullValue'    in v) return null;
-  if('arrayValue'   in v) return (v.arrayValue.values||[]).map(fromFsValue);
-  if('mapValue'     in v) return fromFsFields(v.mapValue.fields);
+  if('arrayValue'   in v) return (v.arrayValue.values||[]).map(fromV);
+  if('mapValue'     in v) return fromFields(v.mapValue.fields||{});
   return null;
 }
+function fromFields(f){ const o={}; for(const k in f) o[k]=fromV(f[k]); return o; }
 
-// ── 현재 설계값 수집 ──
-function collectSettings() {
-  const zcnt = +gv('zcnt');
-  const zones = [];
-  for(let i=0;i<4;i++){
-    zones.push({
-      tank:  +(gi('ztank'+i)?.value||0),
-      temp:  +(gi('ztemp'+i)?.value||0),
-      heat:  +(gi('zheat'+i)?.value||0),
-      pump:  +(gi('zpump'+i)?.value||0),
-      pipe:  +(gi('zpipe'+i)?.value||0),
-      det:   +(gi('zdet'+i)?.value||0),
-    });
-  }
-  return {
-    // 기본 조건
-    itype:    gv('itype'),
-    fmode:    gv('fmode'),
-    iW:       +gv('iW'), iD:+gv('iD'), iH:+gv('iH'),
-    dlv:      +gv('dlv'),
-    tgtClean: +gv('tgtClean'),
-    iqty:     +gv('iqty'),
-    zcnt,
-    // 노즐
-    nHole:  +gv('nHole'), nPress:+gv('nPress'), nAng:+gv('nAng'),
-    nCol:   +gv('nCol'),  nRow:  +gv('nRow'),
-    nGapX:  +gv('nGapX'), nGapY:+gv('nGapY'),
-    nManW:  +gv('nManW'), nManD:+gv('nManD'), nDist:+gv('nDist'),
-    // 펌프
-    pFlow:  +gv('pFlow'), pPipe:+gv('pPipe'), pEff:+gv('pEff'),
-    // 컨베이어
-    cSpd:   +gv('cSpd'), cPitch:+gv('cPitch'), det:+gv('det'),
-    // 세척조
-    zones,
-    // 결과 스냅샷
-    resultCr:    +(gi('kC')?.textContent?.replace('%','')||0),
-    resultQty:   +(gi('kQ')?.textContent?.replace(/,/g,'')||0),
-    resultPow:   +(gi('kP')?.textContent||0),
-    resultWater: +(gi('kW')?.textContent?.replace(/,/g,'')||0),
-  };
+// ── 자동저장 (변경 후 2초 디바운스) ──
+let autoFbTimer=null;
+function scheduleAutoFbSave(){
+  clearTimeout(autoFbTimer);
+  const ind=gi('autoSaveIndicator');
+  if(ind){ ind.textContent='● 저장 대기'; ind.className='saving'; }
+  autoFbTimer=setTimeout(async()=>{
+    const name=gi('fbName')?.value?.trim()||'자동저장';
+    const proj=gi('fbProj')?.value?.trim()||'—';
+    await doFbSave(name+'(자동)', proj, '자동저장', true);
+    if(ind){ ind.textContent='✓ 자동저장 완료'; ind.className='saved';
+      setTimeout(()=>{ ind.textContent='● 대기중'; ind.className=''; },3000); }
+  },2000);
 }
 
-// ── 설계값 복원 ──
-function applySettings(s) {
-  const setV=(id,v)=>{ const e=gi(id); if(e&&v!==undefined&&v!==null){ e.value=v; e.classList.remove('adj'); e.classList.add('opt'); }};
-  setV('itype',s.itype); setV('fmode',s.fmode);
-  setV('iW',s.iW); setV('iD',s.iD); setV('iH',s.iH);
-  setV('dlv',s.dlv); setV('tgtClean',s.tgtClean);
-  setV('iqty',s.iqty); setV('zcnt',s.zcnt);
-  setV('nHole',s.nHole); setV('nPress',s.nPress); setV('nAng',s.nAng);
-  setV('nCol',s.nCol); setV('nRow',s.nRow);
-  setV('nGapX',s.nGapX); setV('nGapY',s.nGapY);
-  setV('nManW',s.nManW); setV('nManD',s.nManD); setV('nDist',s.nDist);
-  setV('pFlow',s.pFlow); setV('pPipe',s.pPipe); setV('pEff',s.pEff);
-  setV('cSpd',s.cSpd); setV('cPitch',s.cPitch); setV('det',s.det);
-
-  // OPT 최소 설정으로 시뮬 가능하게
-  OPT.hole = s.nHole;
-
-  // 세척조 패널 재생성 후 값 복원
-  buildZonePanels();
-  if(s.zones){
-    s.zones.forEach((z,i)=>{
-      setV('ztank'+i, z.tank); setV('ztemp'+i, z.temp);
-      setV('zheat'+i, z.heat); setV('zpump'+i, z.pump);
-      setV('zpipe'+i, z.pipe); setV('zdet'+i,  z.det);
+async function doFbSave(name,proj,memo,silent=false){
+  try{
+    const s=collectSettings();
+    const body={fields:toFields({name,project:proj,memo,
+      ...s, savedAt:new Date().toISOString()})};
+    await fbFetch(FB_BASE,{
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
     });
+    if(!silent) await fbLoadAll();
+  }catch(e){
+    if(!silent) showFbSt('fbSaveSt','err','저장 실패: '+e.message);
   }
-  runSim();
 }
 
-// ── 저장 ──
-async function fbSave() {
-  const name    = gi('fbSaveName')?.value?.trim();
-  const project = gi('fbSaveProject')?.value?.trim()||'—';
-  const memo    = gi('fbSaveMemo')?.value?.trim()||'';
-  if(!name){ showFbStatus('fbSaveStatus','err','저장 이름을 입력하세요.'); return; }
-
-  showFbStatus('fbSaveStatus','ing','저장 중...');
-  try {
-    const settings = collectSettings();
-    const now      = new Date().toISOString();
-    const docData  = {
-      fields: objToFields({
-        name, project, memo,
-        savedAt: now,
-        ...settings
-      })
-    };
-    await fbPost(FB_BASE+'?key='+FB_API, docData);
-    showFbStatus('fbSaveStatus','ok',`✅ "${name}" 저장 완료 (${now.slice(0,10)})`);
-    gi('fbSaveName').value=''; gi('fbSaveMemo').value='';
-    await fbLoadAll();
-  } catch(e) {
-    showFbStatus('fbSaveStatus','err','저장 실패: '+e.message);
-  }
+// ── 수동 저장 ──
+async function fbSave(){
+  const name=gi('fbName')?.value?.trim();
+  if(!name){ showFbSt('fbSaveSt','err','저장 이름을 입력하세요.'); return; }
+  const proj=gi('fbProj')?.value?.trim()||'—';
+  const memo=gi('fbMemo')?.value?.trim()||'';
+  showFbSt('fbSaveSt','ing','저장 중...');
+  await doFbSave(name,proj,memo,false);
+  showFbSt('fbSaveSt','ok',`✅ "${name}" 저장 완료`);
+  gi('fbName').value=''; gi('fbMemo').value='';
 }
 
 // ── 전체 불러오기 ──
-async function fbLoadAll() {
-  showFbStatus('fbSearchStatus','ing','불러오는 중...');
-  try {
-    const data = await fbGet(FB_BASE);
-    const docs = data.documents || [];
-    renderFbList(docs, '');
-    gi('fbConnStatus').textContent = docs.length+'건 저장됨';
-    gi('fbConnStatus').style.background='#d4edda'; gi('fbConnStatus').style.color='#155724';
-    hideStatus('fbSearchStatus');
-  } catch(e) {
-    showFbStatus('fbSearchStatus','err','불러오기 실패: '+e.message);
-    gi('fbConnStatus').textContent='연결 오류';
-    gi('fbConnStatus').style.background='#f8d7da'; gi('fbConnStatus').style.color='#721c24';
+async function fbLoadAll(){
+  showFbSt('fbSrchSt','ing','불러오는 중...');
+  try{
+    const data=await fbFetch(FB_BASE);
+    const docs=data.documents||[];
+    renderFbList(docs,'');
+    const n=docs.length;
+    gi('fbConnSt').textContent=n+'건 저장됨';
+    gi('fbConnSt').style.cssText='background:#d4edda;color:#155724;';
+    hideFS('fbSrchSt');
+  }catch(e){
+    showFbSt('fbSrchSt','err','불러오기 실패');
+    gi('fbConnSt').textContent='연결 오류';
+    gi('fbConnSt').style.cssText='background:#f8d7da;color:#721c24;';
   }
 }
 
 // ── 검색 ──
-async function fbSearch() {
-  const q = gi('fbSearchInput')?.value?.trim().toLowerCase();
+async function fbSearch(){
+  const q=(gi('fbQ')?.value||'').trim().toLowerCase();
   if(!q){ await fbLoadAll(); return; }
-  showFbStatus('fbSearchStatus','ing','검색 중...');
-  try {
-    const data = await fbGet(FB_BASE);
-    const docs = (data.documents||[]).filter(doc=>{
-      const f = fromFsFields(doc.fields);
-      return (
-        (f.name||'').toLowerCase().includes(q) ||
-        (f.project||'').toLowerCase().includes(q) ||
-        (f.memo||'').toLowerCase().includes(q) ||
-        String(f.dlv||'').includes(q) ||
-        String(f.resultCr||'').includes(q) ||
-        (f.itype||'').toLowerCase().includes(q)
-      );
+  showFbSt('fbSrchSt','ing','검색 중...');
+  try{
+    const data=await fbFetch(FB_BASE);
+    const docs=(data.documents||[]).filter(doc=>{
+      const f=fromFields(doc.fields);
+      return [f.name,f.project,f.memo,String(f.dlv||''),String(f.resultCr||''),f.itype].some(v=>(v||'').toLowerCase().includes(q));
     });
-    renderFbList(docs, q);
-    showFbStatus('fbSearchStatus','ok',`검색 결과: ${docs.length}건`);
-  } catch(e) {
-    showFbStatus('fbSearchStatus','err','검색 실패: '+e.message);
-  }
+    renderFbList(docs,q);
+    showFbSt('fbSrchSt','ok',`검색 결과: ${docs.length}건`);
+  }catch(e){ showFbSt('fbSrchSt','err','검색 실패'); }
 }
 
 // ── 목록 렌더링 ──
-function renderFbList(docs, keyword) {
-  const list = gi('fbList');
-  if(!docs.length){
-    list.innerHTML='<div class="fb-empty">검색 결과가 없습니다.</div>';
-    return;
-  }
-  // 최신순 정렬
+function renderFbList(docs,kw){
+  const list=gi('fbList');
+  if(!docs.length){ list.innerHTML='<div class="fb-empty">저장된 조건이 없습니다.</div>'; return; }
   docs.sort((a,b)=>{
-    const fa=fromFsFields(a.fields), fb2=fromFsFields(b.fields);
-    return (fb2.savedAt||'') > (fa.savedAt||'') ? 1 : -1;
+    const fa=fromFields(a.fields),fb2=fromFields(b.fields);
+    return (fb2.savedAt||'')>(fa.savedAt||'')?1:-1;
   });
-
-  list.innerHTML = docs.map(doc=>{
-    const f  = fromFsFields(doc.fields);
-    const id = doc.name.split('/').pop();
-    const cr = f.resultCr ? f.resultCr.toFixed(1)+'%' : '—';
-    const dt = f.savedAt ? f.savedAt.slice(0,16).replace('T',' ') : '—';
-    const dlvTxt=['','①경미','②보통','③중간','④심함','⑤극심'][f.dlv||3];
-    const hl = keyword ? highlight : x=>x;
-    function highlight(s){ return String(s||'').replace(new RegExp('('+escRe(keyword)+')','gi'),'<mark style="background:#fff176;">$1</mark>'); }
-    function escRe(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
+  function hl(s){ if(!kw) return s||''; return String(s||'').replace(new RegExp('('+kw.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'),'<mark style="background:#fff176;">$1</mark>'); }
+  list.innerHTML=docs.map(doc=>{
+    const f=fromFields(doc.fields), id=doc.name.split('/').pop();
+    const cr=f.resultCr?f.resultCr.toFixed(1)+'%':'—';
+    const dt=(f.savedAt||'').slice(0,16).replace('T',' ');
+    const dlvTxt=['','①경미','②보통','③중간','④심함','⑤극심'][f.dlv||3]||'—';
+    const isAuto=(f.name||'').includes('(자동)');
     return `<div class="fb-item" data-id="${id}" onclick="fbLoad('${id}')">
-      <div class="fb-item-info">
-        <div class="fb-item-name">${hl(f.name||'—')} <span class="fb-tag">${hl(f.project||'—')}</span></div>
-        <div class="fb-item-meta">
-          ${dt} | ${f.itype==='box'?'박스':'트레이'} ${f.iW}×${f.iD}×${f.iH}mm |
-          오염도 ${dlvTxt} | 세척조 ${f.zcnt}단 | 압력 ${f.nPress}kPa
-          ${f.memo?'<br>📝 '+hl(f.memo):''}
-        </div>
+      <div style="flex:1;">
+        <div class="fb-iname">${hl(f.name||'—')}${isAuto?'<span style="font-size:9px;color:#7a90a4;margin-left:5px;">자동</span>':''} <span class="fb-tag">${hl(f.project||'—')}</span></div>
+        <div class="fb-imeta">${dt} | ${f.itype==='box'?'박스':'트레이'} ${f.iW||'?'}×${f.iD||'?'}×${f.iH||'?'}mm | 오염 ${dlvTxt} | ${f.zcnt||'?'}단 | ${f.nPress||'?'}kPa${f.memo?`<br>📝 ${hl(f.memo)}`:''}</div>
       </div>
-      <div class="fb-item-cr">${cr}</div>
-      <div class="fb-item-del" onclick="event.stopPropagation();fbDel('${id}',this)">🗑</div>
+      <div class="fb-icr">${cr}</div>
+      <div class="fb-idel" onclick="event.stopPropagation();fbDel('${id}',this)">🗑</div>
     </div>`;
   }).join('');
 }
 
-// ── 개별 불러오기 ──
-async function fbLoad(docId) {
-  showFbStatus('fbSearchStatus','ing','불러오는 중...');
-  try {
-    const data = await fbGet(FB_BASE+'/'+docId);
-    const f    = fromFsFields(data.fields);
-    // 선택 강조
-    document.querySelectorAll('.fb-item').forEach(el=>{
-      el.classList.toggle('selected', el.dataset.id===docId);
-    });
+// ── 불러오기 ──
+async function fbLoad(docId){
+  showFbSt('fbSrchSt','ing','불러오는 중...');
+  try{
+    const data=await fbFetch(FB_BASE+'/'+docId);
+    const f=fromFields(data.fields);
+    document.querySelectorAll('.fb-item').forEach(el=>el.classList.toggle('sel',el.dataset.id===docId));
     applySettings(f);
-    // 저장 이름 필드에 현재 불러온 이름 표시
-    if(gi('fbSaveName')) gi('fbSaveName').value='[불러옴] '+(f.name||'');
-    showFbStatus('fbSearchStatus','ok',`✅ "${f.name}" 불러오기 완료`);
-  } catch(e) {
-    showFbStatus('fbSearchStatus','err','불러오기 실패: '+e.message);
-  }
+    if(gi('fbName')) gi('fbName').value=(f.name||'').replace('(자동)','');
+    if(gi('fbProj')) gi('fbProj').value=f.project||'';
+    showFbSt('fbSrchSt','ok',`✅ "${f.name}" 불러오기 완료`);
+  }catch(e){ showFbSt('fbSrchSt','err','불러오기 실패'); }
 }
-window.fbLoad = fbLoad; // 인라인 onclick용
+window.fbLoad=fbLoad;
 
 // ── 삭제 ──
-async function fbDel(docId, el) {
-  const item = el.closest('.fb-item');
-  const name = item?.querySelector('.fb-item-name')?.textContent?.trim()||docId;
-  if(!confirm(`"${name}" 을(를) 삭제하시겠습니까?`)) return;
-  try {
-    await fbDelete(FB_BASE+'/'+docId);
-    item?.remove();
-    const remaining = gi('fbList').querySelectorAll('.fb-item').length;
-    gi('fbConnStatus').textContent = remaining+'건 저장됨';
-    if(!remaining) gi('fbList').innerHTML='<div class="fb-empty">저장된 조건이 없습니다.</div>';
-  } catch(e) {
-    showFbStatus('fbSearchStatus','err','삭제 실패: '+e.message);
-  }
+async function fbDel(docId,el){
+  const nm=el.closest('.fb-item')?.querySelector('.fb-iname')?.textContent?.trim()||docId;
+  if(!confirm(`"${nm}" 삭제하시겠습니까?`)) return;
+  try{
+    await fetch(FB_BASE+'/'+docId+'?key='+FB_API,{method:'DELETE'});
+    el.closest('.fb-item')?.remove();
+    const n=gi('fbList').querySelectorAll('.fb-item').length;
+    gi('fbConnSt').textContent=n+'건 저장됨';
+    if(!n) gi('fbList').innerHTML='<div class="fb-empty">저장된 조건이 없습니다.</div>';
+  }catch(e){ showFbSt('fbSrchSt','err','삭제 실패'); }
 }
-window.fbDel = fbDel;
+window.fbDel=fbDel;
 
 // ── 상태 표시 ──
-function showFbStatus(id, type, msg) {
-  const el=gi(id); if(!el) return;
-  el.className='fb-status '+type; el.textContent=msg;
-  if(type==='ok') setTimeout(()=>{ el.style.display='none'; },4000);
+function showFbSt(id,type,msg){
+  const e=gi(id); if(!e) return;
+  e.className='fb-st '+type; e.textContent=msg;
+  if(type==='ok') setTimeout(()=>e.style.display='none',4000);
 }
-function hideStatus(id){ const e=gi(id); if(e) e.style.display='none'; }
+function hideFS(id){ const e=gi(id); if(e) e.style.display='none'; }
 
-// ── 초기 연결 ──
-async function fbInit() {
-  try {
-    await fbLoadAll();
-    fbReady=true;
-  } catch(e) {
-    gi('fbConnStatus').textContent='오프라인';
-  }
+// ══════════════════════════════════════════════
+// triggerSim: updateAutoCalc + runSim 통합 호출
+// ══════════════════════════════════════════════
+function triggerSim(){
+  clearTimeout(simTimer);
+  simTimer=setTimeout(()=>{ updateAutoCalc(); runSim(); },280);
 }
 
-// ═══════════════════════════ 이벤트 ═══════════════════════════
+// ══════════════════════════════════════════════
+// 이벤트 등록
+// ══════════════════════════════════════════════
 gi('btnOpt').addEventListener('click', calcOptimal);
-gi('btnReset').addEventListener('click',()=>{ HIST=[]; gi('historyBars').innerHTML=''; });
+gi('btnReset').addEventListener('click',()=>{ HIST=[]; gi('histBars').innerHTML=''; });
 
-// Firebase 버튼
-gi('fbBtnSave')?.addEventListener('click', fbSave);
-gi('fbBtnSearch')?.addEventListener('click', fbSearch);
-gi('fbBtnAll')?.addEventListener('click', fbLoadAll);
-gi('fbSearchInput')?.addEventListener('keydown', e=>{ if(e.key==='Enter') fbSearch(); });
+// 수정 시 상태 업데이트 + triggerSim
+const baseIds=['itype','fmode','iW','iD','iH','dlv','tgtClean','iqty','zcnt'];
+const nozIds=['nHole','nPress','nAng','nCol','nRow','nDist','nManW','nManD'];
+const pumpIds=['pFlow','pPipe','pEff'];
+const convIds=['cSpd','cPitch','det'];
 
-// 조정값 변경 시 adj 표시 + autoSim
-const adjIds=['nHole','nPress','nAng','nCol','nRow','nGapX','nGapY','nManW','nManD','nDist','pFlow','pPipe','pEff','cSpd','cPitch','det'];
-adjIds.forEach(id=>{
-  gi(id)?.addEventListener('input',()=>{
-    gi(id).classList.add('adj'); gi(id).classList.remove('opt');
-    autoSim();
+[...nozIds,...pumpIds,...convIds].forEach(id=>{
+  const e=gi(id); if(!e) return;
+  e.addEventListener('input',()=>{
+    if(e.className!=='s-auto'&&e.className!=='s-ro')
+      e.className='s-user';
+    triggerSim();
   });
 });
-['itype','fmode','iW','iD','iH','dlv','tgtClean','iqty','zcnt'].forEach(id=>{
-  gi(id)?.addEventListener('change',()=>{ if(OPT.hole) autoSim(); });
-  gi(id)?.addEventListener('input',()=>{ if(OPT.hole) autoSim(); });
+baseIds.forEach(id=>{
+  gi(id)?.addEventListener('change',()=>{ if(OPT.hole) triggerSim(); });
+  gi(id)?.addEventListener('input',()=>{ if(OPT.hole) triggerSim(); });
 });
 
-let simT=null;
-function autoSim(){ clearTimeout(simT); simT=setTimeout(runSim,280); }
+// 간격 잠금/해제
+gi('btnUnlockGap').addEventListener('click',()=>{
+  gapLocked=!gapLocked;
+  gi('btnUnlockGap').textContent=gapLocked?'🔓 간격 수동 입력 모드':'🔒 간격 자동계산 모드';
+  ['nGapX','nGapY'].forEach(id=>{
+    const e=gi(id); if(!e) return;
+    e.readOnly=gapLocked;
+    e.className=gapLocked?'s-auto':'s-user';
+  });
+  if(gapLocked) triggerSim();
+});
+gi('nGapX')?.addEventListener('input',()=>{ if(!gapLocked) triggerSim(); });
+gi('nGapY')?.addEventListener('input',()=>{ if(!gapLocked) triggerSim(); });
 
+// Firebase
+gi('fbBtnSave')?.addEventListener('click', fbSave);
+gi('fbBtnSrch')?.addEventListener('click', fbSearch);
+gi('fbBtnAll')?.addEventListener('click', fbLoadAll);
+gi('fbQ')?.addEventListener('keydown',e=>{ if(e.key==='Enter') fbSearch(); });
+
+// PC/Mobile
 gi('bPC').addEventListener('click',()=>{
-  gi('WRAP').style.gridTemplateColumns='420px 1fr';
-  gi('WRAP').classList.remove('mob');
+  gi('WRAP').style.gridTemplateColumns='430px 1fr'; gi('WRAP').classList.remove('mob');
   gi('bPC').classList.add('on'); gi('bMB').classList.remove('on');
 });
 gi('bMB').addEventListener('click',()=>{
@@ -1567,18 +1506,33 @@ gi('bMB').addEventListener('click',()=>{
   gi('bPC').classList.remove('on'); gi('bMB').classList.add('on');
 });
 
-// Canvas 크기 반응형
-function resizeCanvases(){
-  const effCv=gi('effCv');
-  if(effCv){ const w=effCv.parentElement.offsetWidth; if(w>0) effCv.width=Math.max(300,w); }
-  const pvCv=gi('pvCv');
-  if(pvCv){ const w=pvCv.parentElement.offsetWidth; if(w>0) pvCv.width=Math.max(300,w); }
+// Canvas 반응형
+function resizeCv(){
+  const eff=gi('effCv'); if(eff){ const w=eff.parentElement.offsetWidth; if(w>0) eff.width=Math.max(300,w); }
+  const pv=gi('pvCv');  if(pv){  const w=pv.parentElement.offsetWidth;  if(w>0) pv.width=Math.max(300,w); }
   if(OPT.hole) runSim();
 }
-window.addEventListener('resize',()=>{ clearTimeout(window._rsT); window._rsT=setTimeout(resizeCanvases,200); });
+window.addEventListener('resize',()=>{ clearTimeout(window._rsT); window._rsT=setTimeout(resizeCv,200); });
 
-// ── 초기 자동 실행 ──
-setTimeout(()=>{ calcOptimal(); resizeCanvases(); fbInit(); },300);
+// ══════════════════════════════════════════════
+// 초기화 — localStorage 복원 또는 기본 산출
+// ══════════════════════════════════════════════
+async function init(){
+  // 1. Firebase 연결
+  fbLoadAll().catch(()=>{});
+
+  // 2. localStorage 복원 시도
+  const saved=lsLoad();
+  if(saved && saved.nHole){
+    applySettings(saved);
+  } else {
+    // 기본값으로 산출
+    setTimeout(()=>{ calcOptimal(); resizeCv(); },300);
+    return;
+  }
+  setTimeout(resizeCv,400);
+}
+init();
 </script>
 </body>
 </html>
