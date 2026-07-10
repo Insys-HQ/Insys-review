@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>세척기 설계 시뮬레이터 v3.0 | 인시스 AI혁신 R&D센터</title>
+<title>세척기 설계 시뮬레이터 v3.1 | 인시스 AI혁신 R&D센터</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -162,6 +162,35 @@ body{font-family:'Noto Sans KR',sans-serif;background:#e9edf2;color:#1a2535;font
 .ldot{width:12px;height:12px;border-radius:3px;flex-shrink:0;}
 
 footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
+
+/* ── Firebase 저장/검색 ── */
+.fb-card{background:#fff;border-radius:10px;box-shadow:0 1px 6px rgba(0,0,0,.09);overflow:hidden;margin-bottom:8px;}
+.fb-head{padding:7px 14px;display:flex;align-items:center;gap:7px;border-bottom:1px solid #e2eaf2;background:linear-gradient(135deg,#f0f7ff,#e8f3fd);}
+.fb-head .ci{font-size:14px;}
+.fb-head .cl{font-size:13px;font-weight:700;color:#0b2640;flex:1;}
+.fb-body{padding:10px 14px;}
+.fb-row{display:flex;gap:7px;margin-bottom:7px;align-items:flex-end;}
+.fb-row .fl{flex:1;}
+.fb-status{font-size:11px;padding:5px 9px;border-radius:7px;margin-top:5px;display:none;}
+.fb-status.ok{background:#d4edda;color:#155724;display:block;}
+.fb-status.err{background:#f8d7da;color:#721c24;display:block;}
+.fb-status.ing{background:#d1ecf1;color:#0c5460;display:block;}
+.fb-list{margin-top:8px;max-height:260px;overflow-y:auto;border:1px solid #dde5ee;border-radius:7px;}
+.fb-item{padding:8px 11px;border-bottom:1px solid #eef2f7;cursor:pointer;transition:background .15s;display:flex;align-items:center;gap:8px;}
+.fb-item:last-child{border-bottom:none;}
+.fb-item:hover{background:#f0f6fd;}
+.fb-item.selected{background:#daeefa;}
+.fb-item-info{flex:1;}
+.fb-item-name{font-size:12px;font-weight:700;color:#0b2640;}
+.fb-item-meta{font-size:10px;color:#7a90a4;margin-top:2px;}
+.fb-item-cr{font-size:13px;font-weight:900;color:#0d7fa8;min-width:44px;text-align:right;}
+.fb-item-del{font-size:11px;color:#c62828;cursor:pointer;padding:2px 6px;border-radius:5px;border:1px solid #f5c6cb;background:#fdf0f0;flex-shrink:0;}
+.fb-item-del:hover{background:#f8d7da;}
+.fb-empty{padding:16px;text-align:center;color:#aab;font-size:12px;}
+.fb-search-row{display:flex;gap:6px;margin-bottom:7px;}
+.fb-search-row input{flex:1;border:1px solid #cad3dd;border-radius:6px;padding:5px 9px;font-size:12px;font-family:inherit;}
+.fb-search-row input:focus{outline:none;border-color:#0d7fa8;}
+.fb-tag{display:inline-block;padding:1px 7px;border-radius:6px;font-size:10px;font-weight:700;background:#daeefa;color:#0b5a80;margin-left:4px;}
 </style>
 </head>
 <body>
@@ -174,7 +203,7 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
   <div class="hdr-r">
     <button class="vt on" id="bPC">PC</button>
     <button class="vt" id="bMB">Mobile</button>
-    <span class="vb">v3.0</span>
+    <span class="vb">v3.1</span>
   </div>
 </div>
 
@@ -182,6 +211,36 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
 
 <!-- ════════════ 좌측 패널 ════════════ -->
 <div class="lp">
+
+  <!-- Firebase 저장/검색/불러오기 -->
+  <div class="fb-card">
+    <div class="fb-head"><span class="ci">🗄️</span><span class="cl">조건 저장 / 검색 / 불러오기</span><span class="cq cq-blue" id="fbConnStatus">연결 중...</span></div>
+    <div class="fb-body">
+      <!-- 저장 -->
+      <div class="st" style="margin-top:0;">💾 현재 조건 저장</div>
+      <div class="fb-row">
+        <div class="fl"><label>저장 이름</label><input type="text" id="fbSaveName" placeholder="예: 파인창원 600박스 오염3단계" maxlength="50"></div>
+        <div class="fl" style="max-width:130px;"><label>프로젝트/현장</label><input type="text" id="fbSaveProject" placeholder="예: 전주공장" maxlength="30"></div>
+      </div>
+      <div class="fb-row">
+        <div class="fl"><label>메모 (선택)</label><input type="text" id="fbSaveMemo" placeholder="참고사항 입력" maxlength="100"></div>
+        <button class="btn-p" id="fbBtnSave" style="flex-shrink:0;width:90px;padding:7px 0;font-size:12px;">💾 저장</button>
+      </div>
+      <div class="fb-status" id="fbSaveStatus"></div>
+
+      <!-- 검색/불러오기 -->
+      <div class="st">🔍 저장된 조건 검색</div>
+      <div class="fb-search-row">
+        <input type="text" id="fbSearchInput" placeholder="이름·현장·오염도·세척율로 검색...">
+        <button class="btn-s" id="fbBtnSearch">검색</button>
+        <button class="btn-s" id="fbBtnAll">전체</button>
+      </div>
+      <div class="fb-status" id="fbSearchStatus"></div>
+      <div class="fb-list" id="fbList">
+        <div class="fb-empty">저장된 조건이 없습니다.<br>현재 설계값을 저장해 보세요.</div>
+      </div>
+    </div>
+  </div>
 
   <!-- STEP 1: 기본 조건 -->
   <div class="card">
@@ -503,7 +562,7 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
 </div><!-- /rp -->
 </div><!-- /wrap -->
 
-<footer>인시스 AI혁신 R&D센터 | 세척기 설계 시뮬레이터 v3.0 | ys.kim@in-sys.co.kr</footer>
+<footer>인시스 AI혁신 R&D센터 | 세척기 설계 시뮬레이터 v3.1 | ys.kim@in-sys.co.kr</footer>
 
 <script>
 'use strict';
@@ -1173,9 +1232,314 @@ function buildRec(cr,tgt,dlv,zcnt,hole,press,temp,det,cov,cSpd,optSpd,qty,iqty){
     </div>`;
 }
 
+// ═══════════════════════════ FIREBASE ═══════════════════════════
+const FB_API  = 'AIzaSyC4DWFGGJjJmVlqnfmZaVDdKJWCXK0Yr_g';
+const FB_PROJ = 'insys-work';
+const FB_COL  = 'washer_sessions';
+const FB_BASE = `https://firestore.googleapis.com/v1/projects/${FB_PROJ}/databases/(default)/documents/${FB_COL}`;
+
+let fbReady = false;
+
+// ── Firestore REST 헬퍼 ──
+async function fbPost(url, body) {
+  const r = await fetch(url, {
+    method:'POST', headers:{'Content-Type':'application/json','x-goog-api-key':FB_API},
+    body: JSON.stringify(body)
+  });
+  if(!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+async function fbGet(url) {
+  const r = await fetch(url+'?key='+FB_API);
+  if(!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+async function fbPatch(url, body) {
+  const r = await fetch(url+'?key='+FB_API, {
+    method:'PATCH', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  });
+  if(!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+async function fbDelete(url) {
+  const r = await fetch(url+'?key='+FB_API, {method:'DELETE'});
+  if(!r.ok) throw new Error(await r.text());
+}
+
+// ── Firestore 값 변환 ──
+function toFsValue(v) {
+  if(typeof v === 'string')  return {stringValue: v};
+  if(typeof v === 'number')  return {doubleValue: v};
+  if(typeof v === 'boolean') return {booleanValue: v};
+  if(v === null)             return {nullValue: null};
+  if(Array.isArray(v))       return {arrayValue:{values:v.map(toFsValue)}};
+  if(typeof v === 'object')  return {mapValue:{fields:objToFields(v)}};
+  return {stringValue: String(v)};
+}
+function objToFields(obj) {
+  const f={};
+  for(const k in obj) f[k]=toFsValue(obj[k]);
+  return f;
+}
+function fromFsFields(fields) {
+  if(!fields) return {};
+  const obj={};
+  for(const k in fields) obj[k]=fromFsValue(fields[k]);
+  return obj;
+}
+function fromFsValue(v) {
+  if('stringValue'  in v) return v.stringValue;
+  if('doubleValue'  in v) return v.doubleValue;
+  if('integerValue' in v) return Number(v.integerValue);
+  if('booleanValue' in v) return v.booleanValue;
+  if('nullValue'    in v) return null;
+  if('arrayValue'   in v) return (v.arrayValue.values||[]).map(fromFsValue);
+  if('mapValue'     in v) return fromFsFields(v.mapValue.fields);
+  return null;
+}
+
+// ── 현재 설계값 수집 ──
+function collectSettings() {
+  const zcnt = +gv('zcnt');
+  const zones = [];
+  for(let i=0;i<4;i++){
+    zones.push({
+      tank:  +(gi('ztank'+i)?.value||0),
+      temp:  +(gi('ztemp'+i)?.value||0),
+      heat:  +(gi('zheat'+i)?.value||0),
+      pump:  +(gi('zpump'+i)?.value||0),
+      pipe:  +(gi('zpipe'+i)?.value||0),
+      det:   +(gi('zdet'+i)?.value||0),
+    });
+  }
+  return {
+    // 기본 조건
+    itype:    gv('itype'),
+    fmode:    gv('fmode'),
+    iW:       +gv('iW'), iD:+gv('iD'), iH:+gv('iH'),
+    dlv:      +gv('dlv'),
+    tgtClean: +gv('tgtClean'),
+    iqty:     +gv('iqty'),
+    zcnt,
+    // 노즐
+    nHole:  +gv('nHole'), nPress:+gv('nPress'), nAng:+gv('nAng'),
+    nCol:   +gv('nCol'),  nRow:  +gv('nRow'),
+    nGapX:  +gv('nGapX'), nGapY:+gv('nGapY'),
+    nManW:  +gv('nManW'), nManD:+gv('nManD'), nDist:+gv('nDist'),
+    // 펌프
+    pFlow:  +gv('pFlow'), pPipe:+gv('pPipe'), pEff:+gv('pEff'),
+    // 컨베이어
+    cSpd:   +gv('cSpd'), cPitch:+gv('cPitch'), det:+gv('det'),
+    // 세척조
+    zones,
+    // 결과 스냅샷
+    resultCr:    +(gi('kC')?.textContent?.replace('%','')||0),
+    resultQty:   +(gi('kQ')?.textContent?.replace(/,/g,'')||0),
+    resultPow:   +(gi('kP')?.textContent||0),
+    resultWater: +(gi('kW')?.textContent?.replace(/,/g,'')||0),
+  };
+}
+
+// ── 설계값 복원 ──
+function applySettings(s) {
+  const setV=(id,v)=>{ const e=gi(id); if(e&&v!==undefined&&v!==null){ e.value=v; e.classList.remove('adj'); e.classList.add('opt'); }};
+  setV('itype',s.itype); setV('fmode',s.fmode);
+  setV('iW',s.iW); setV('iD',s.iD); setV('iH',s.iH);
+  setV('dlv',s.dlv); setV('tgtClean',s.tgtClean);
+  setV('iqty',s.iqty); setV('zcnt',s.zcnt);
+  setV('nHole',s.nHole); setV('nPress',s.nPress); setV('nAng',s.nAng);
+  setV('nCol',s.nCol); setV('nRow',s.nRow);
+  setV('nGapX',s.nGapX); setV('nGapY',s.nGapY);
+  setV('nManW',s.nManW); setV('nManD',s.nManD); setV('nDist',s.nDist);
+  setV('pFlow',s.pFlow); setV('pPipe',s.pPipe); setV('pEff',s.pEff);
+  setV('cSpd',s.cSpd); setV('cPitch',s.cPitch); setV('det',s.det);
+
+  // OPT 최소 설정으로 시뮬 가능하게
+  OPT.hole = s.nHole;
+
+  // 세척조 패널 재생성 후 값 복원
+  buildZonePanels();
+  if(s.zones){
+    s.zones.forEach((z,i)=>{
+      setV('ztank'+i, z.tank); setV('ztemp'+i, z.temp);
+      setV('zheat'+i, z.heat); setV('zpump'+i, z.pump);
+      setV('zpipe'+i, z.pipe); setV('zdet'+i,  z.det);
+    });
+  }
+  runSim();
+}
+
+// ── 저장 ──
+async function fbSave() {
+  const name    = gi('fbSaveName')?.value?.trim();
+  const project = gi('fbSaveProject')?.value?.trim()||'—';
+  const memo    = gi('fbSaveMemo')?.value?.trim()||'';
+  if(!name){ showFbStatus('fbSaveStatus','err','저장 이름을 입력하세요.'); return; }
+
+  showFbStatus('fbSaveStatus','ing','저장 중...');
+  try {
+    const settings = collectSettings();
+    const now      = new Date().toISOString();
+    const docData  = {
+      fields: objToFields({
+        name, project, memo,
+        savedAt: now,
+        ...settings
+      })
+    };
+    await fbPost(FB_BASE+'?key='+FB_API, docData);
+    showFbStatus('fbSaveStatus','ok',`✅ "${name}" 저장 완료 (${now.slice(0,10)})`);
+    gi('fbSaveName').value=''; gi('fbSaveMemo').value='';
+    await fbLoadAll();
+  } catch(e) {
+    showFbStatus('fbSaveStatus','err','저장 실패: '+e.message);
+  }
+}
+
+// ── 전체 불러오기 ──
+async function fbLoadAll() {
+  showFbStatus('fbSearchStatus','ing','불러오는 중...');
+  try {
+    const data = await fbGet(FB_BASE);
+    const docs = data.documents || [];
+    renderFbList(docs, '');
+    gi('fbConnStatus').textContent = docs.length+'건 저장됨';
+    gi('fbConnStatus').style.background='#d4edda'; gi('fbConnStatus').style.color='#155724';
+    hideStatus('fbSearchStatus');
+  } catch(e) {
+    showFbStatus('fbSearchStatus','err','불러오기 실패: '+e.message);
+    gi('fbConnStatus').textContent='연결 오류';
+    gi('fbConnStatus').style.background='#f8d7da'; gi('fbConnStatus').style.color='#721c24';
+  }
+}
+
+// ── 검색 ──
+async function fbSearch() {
+  const q = gi('fbSearchInput')?.value?.trim().toLowerCase();
+  if(!q){ await fbLoadAll(); return; }
+  showFbStatus('fbSearchStatus','ing','검색 중...');
+  try {
+    const data = await fbGet(FB_BASE);
+    const docs = (data.documents||[]).filter(doc=>{
+      const f = fromFsFields(doc.fields);
+      return (
+        (f.name||'').toLowerCase().includes(q) ||
+        (f.project||'').toLowerCase().includes(q) ||
+        (f.memo||'').toLowerCase().includes(q) ||
+        String(f.dlv||'').includes(q) ||
+        String(f.resultCr||'').includes(q) ||
+        (f.itype||'').toLowerCase().includes(q)
+      );
+    });
+    renderFbList(docs, q);
+    showFbStatus('fbSearchStatus','ok',`검색 결과: ${docs.length}건`);
+  } catch(e) {
+    showFbStatus('fbSearchStatus','err','검색 실패: '+e.message);
+  }
+}
+
+// ── 목록 렌더링 ──
+function renderFbList(docs, keyword) {
+  const list = gi('fbList');
+  if(!docs.length){
+    list.innerHTML='<div class="fb-empty">검색 결과가 없습니다.</div>';
+    return;
+  }
+  // 최신순 정렬
+  docs.sort((a,b)=>{
+    const fa=fromFsFields(a.fields), fb2=fromFsFields(b.fields);
+    return (fb2.savedAt||'') > (fa.savedAt||'') ? 1 : -1;
+  });
+
+  list.innerHTML = docs.map(doc=>{
+    const f  = fromFsFields(doc.fields);
+    const id = doc.name.split('/').pop();
+    const cr = f.resultCr ? f.resultCr.toFixed(1)+'%' : '—';
+    const dt = f.savedAt ? f.savedAt.slice(0,16).replace('T',' ') : '—';
+    const dlvTxt=['','①경미','②보통','③중간','④심함','⑤극심'][f.dlv||3];
+    const hl = keyword ? highlight : x=>x;
+    function highlight(s){ return String(s||'').replace(new RegExp('('+escRe(keyword)+')','gi'),'<mark style="background:#fff176;">$1</mark>'); }
+    function escRe(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
+    return `<div class="fb-item" data-id="${id}" onclick="fbLoad('${id}')">
+      <div class="fb-item-info">
+        <div class="fb-item-name">${hl(f.name||'—')} <span class="fb-tag">${hl(f.project||'—')}</span></div>
+        <div class="fb-item-meta">
+          ${dt} | ${f.itype==='box'?'박스':'트레이'} ${f.iW}×${f.iD}×${f.iH}mm |
+          오염도 ${dlvTxt} | 세척조 ${f.zcnt}단 | 압력 ${f.nPress}kPa
+          ${f.memo?'<br>📝 '+hl(f.memo):''}
+        </div>
+      </div>
+      <div class="fb-item-cr">${cr}</div>
+      <div class="fb-item-del" onclick="event.stopPropagation();fbDel('${id}',this)">🗑</div>
+    </div>`;
+  }).join('');
+}
+
+// ── 개별 불러오기 ──
+async function fbLoad(docId) {
+  showFbStatus('fbSearchStatus','ing','불러오는 중...');
+  try {
+    const data = await fbGet(FB_BASE+'/'+docId);
+    const f    = fromFsFields(data.fields);
+    // 선택 강조
+    document.querySelectorAll('.fb-item').forEach(el=>{
+      el.classList.toggle('selected', el.dataset.id===docId);
+    });
+    applySettings(f);
+    // 저장 이름 필드에 현재 불러온 이름 표시
+    if(gi('fbSaveName')) gi('fbSaveName').value='[불러옴] '+(f.name||'');
+    showFbStatus('fbSearchStatus','ok',`✅ "${f.name}" 불러오기 완료`);
+  } catch(e) {
+    showFbStatus('fbSearchStatus','err','불러오기 실패: '+e.message);
+  }
+}
+window.fbLoad = fbLoad; // 인라인 onclick용
+
+// ── 삭제 ──
+async function fbDel(docId, el) {
+  const item = el.closest('.fb-item');
+  const name = item?.querySelector('.fb-item-name')?.textContent?.trim()||docId;
+  if(!confirm(`"${name}" 을(를) 삭제하시겠습니까?`)) return;
+  try {
+    await fbDelete(FB_BASE+'/'+docId);
+    item?.remove();
+    const remaining = gi('fbList').querySelectorAll('.fb-item').length;
+    gi('fbConnStatus').textContent = remaining+'건 저장됨';
+    if(!remaining) gi('fbList').innerHTML='<div class="fb-empty">저장된 조건이 없습니다.</div>';
+  } catch(e) {
+    showFbStatus('fbSearchStatus','err','삭제 실패: '+e.message);
+  }
+}
+window.fbDel = fbDel;
+
+// ── 상태 표시 ──
+function showFbStatus(id, type, msg) {
+  const el=gi(id); if(!el) return;
+  el.className='fb-status '+type; el.textContent=msg;
+  if(type==='ok') setTimeout(()=>{ el.style.display='none'; },4000);
+}
+function hideStatus(id){ const e=gi(id); if(e) e.style.display='none'; }
+
+// ── 초기 연결 ──
+async function fbInit() {
+  try {
+    await fbLoadAll();
+    fbReady=true;
+  } catch(e) {
+    gi('fbConnStatus').textContent='오프라인';
+  }
+}
+
 // ═══════════════════════════ 이벤트 ═══════════════════════════
 gi('btnOpt').addEventListener('click', calcOptimal);
 gi('btnReset').addEventListener('click',()=>{ HIST=[]; gi('historyBars').innerHTML=''; });
+
+// Firebase 버튼
+gi('fbBtnSave')?.addEventListener('click', fbSave);
+gi('fbBtnSearch')?.addEventListener('click', fbSearch);
+gi('fbBtnAll')?.addEventListener('click', fbLoadAll);
+gi('fbSearchInput')?.addEventListener('keydown', e=>{ if(e.key==='Enter') fbSearch(); });
 
 // 조정값 변경 시 adj 표시 + autoSim
 const adjIds=['nHole','nPress','nAng','nCol','nRow','nGapX','nGapY','nManW','nManD','nDist','pFlow','pPipe','pEff','cSpd','cPitch','det'];
@@ -1214,7 +1578,7 @@ function resizeCanvases(){
 window.addEventListener('resize',()=>{ clearTimeout(window._rsT); window._rsT=setTimeout(resizeCanvases,200); });
 
 // ── 초기 자동 실행 ──
-setTimeout(()=>{ calcOptimal(); resizeCanvases(); },300);
+setTimeout(()=>{ calcOptimal(); resizeCanvases(); fbInit(); },300);
 </script>
 </body>
 </html>
