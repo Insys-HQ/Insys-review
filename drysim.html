@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>건조실 환경 시뮬레이터 v2.4</title>
+<title>건조실 환경 시뮬레이터 v2.5</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -213,7 +213,7 @@ body.mobile .grid-main{grid-template-columns:1fr!important;}
         <button class="vt-btn active" id="btnPC" onclick="setView('pc')">💻 PC</button>
         <button class="vt-btn" id="btnMobile" onclick="setView('mobile')">📱 모바일</button>
       </div>
-      <span class="badge-ver">v2.4</span>
+      <span class="badge-ver">v2.5</span>
     </div>
   </div>
 </div>
@@ -478,6 +478,7 @@ body.mobile .grid-main{grid-template-columns:1fr!important;}
 
     <!-- 기기별 건조 기여도 — resultBody 위에 고정, 실시간 업데이트 -->
     <div class="pb" id="barPanel" style="display:none;border-bottom:1px solid var(--border);padding-bottom:14px;">
+      <div id="resBadge" class="res-badge" style="display:none;margin-bottom:10px;"></div>
       <div class="chart-t" style="margin-bottom:10px;">📊 기기별 건조 기여도 (실시간)</div>
       <div class="bars" id="liveBarChart">
         <div class="bar-col">
@@ -906,13 +907,13 @@ function runSim(){
   else{pc='danger';pt='🔴 건조 효율 부족';pd='에어나이프 + 제습기 조합을 권장합니다.';}
 
   const sn=$('saveName').value.trim(), sc=$('saveCode').value.trim();
+  updateLocationBadge();
   const ph1h=akOn?Math.min(0.2,ttd*0.05):0;
   const ph2h=dhOn?Math.min(ttd*0.6,2):0;
   const ph3h=Math.max(0,ttd-ph1h-ph2h);
   const tlT=ph1h+ph2h+ph3h||1;
 
   $('resultBody').innerHTML=`
-    ${sn&&sc?`<div class="res-badge">📍 ${sc} — ${sn}</div>`:''}
     <div class="rg">
       <div class="sc blue"><div class="sv blue">${finalRem.toFixed(0)}<span style="font-size:15px">%</span></div><div class="slabel">수분 제거율</div></div>
       <div class="sc ${ttd<6?'green':ttd<12?'orange':''}"><div class="sv ${ttd<6?'green':ttd<12?'orange':''}">${tl}</div><div class="slabel">완전 건조 예상</div></div>
@@ -989,6 +990,18 @@ function runSim(){
 // ══════════════════════════════════════════════════════
 // EVENT BINDING — 모든 입력에 이벤트 연결
 // ══════════════════════════════════════════════════════
+function updateLocationBadge(){
+  const sn=$('saveName').value.trim(), sc=$('saveCode').value.trim();
+  const badge=$('resBadge');
+  if(!badge) return;
+  if(sn||sc){
+    badge.style.display='inline-flex';
+    badge.textContent=`📍 ${sc?sc+' — ':''}${sn}`;
+  } else {
+    badge.style.display='none';
+  }
+}
+
 function bindEvents(){
   // 건조실 규격 / 환경 / 트레이
   ['w','d','h','initHumid','targetHumid','temp',
@@ -1014,8 +1027,10 @@ function bindEvents(){
   ['airknife','dehum','fan','heater','exhaust'].forEach(id=>{
     $('tog-'+id+'-head').addEventListener('click',()=>toggleDev(id));
   });
-  // 버튼
-  $('btnSim').addEventListener('click', runSim);
+  // 장소명 / 조건번호 실시간 배지 업데이트
+  ['saveName','saveCode'].forEach(id=>{
+    $(id).addEventListener('input', updateLocationBadge);
+  });
   $('btnSave').addEventListener('click', saveFirebase);
   $('btnLoadModal').addEventListener('click', openModal);
   $('btnCloseModal').addEventListener('click', closeModal);
