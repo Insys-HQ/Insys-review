@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>건조실 환경 시뮬레이터 v2.7</title>
+<title>건조실 환경 시뮬레이터 v2.8</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -213,7 +213,7 @@ body.mobile .grid-main{grid-template-columns:1fr!important;}
         <button class="vt-btn active" id="btnPC" onclick="setView('pc')">💻 PC</button>
         <button class="vt-btn" id="btnMobile" onclick="setView('mobile')">📱 모바일</button>
       </div>
-      <span class="badge-ver">v2.7</span>
+      <span class="badge-ver">v2.8</span>
     </div>
   </div>
 </div>
@@ -241,6 +241,16 @@ body.mobile .grid-main{grid-template-columns:1fr!important;}
       <div class="ib"><label>초기 습도 (%)</label><input type="number" id="initHumid" value="85" min="40" max="100"></div>
       <div class="ib"><label>목표 습도 (%)</label><input type="number" id="targetHumid" value="60" min="20" max="80"></div>
       <div class="ib"><label>실내 온도 (°C)</label><input type="number" id="temp" value="25" min="5" max="45"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 공간 기반 기기 자동 추천 -->
+<div class="panel">
+  <div class="ph" style="background:linear-gradient(90deg,#b45309,#d97706);">🎯 공간 기반 최적 기기 자동 추천</div>
+  <div class="pb" id="recoPanel">
+    <div style="text-align:center;color:var(--text3);font-size:13px;padding:16px 0;">
+      위 건조실 규격을 입력하면 자동으로 추천됩니다.
     </div>
   </div>
 </div>
@@ -634,6 +644,137 @@ const SP = {
 };
 
 // ══════════════════════════════════════════════════════
+// 공간 기반 기기 자동 추천
+// ══════════════════════════════════════════════════════
+function calcReco(){
+  const w=num('w',13), d=num('d',6), h=num('h',5);
+  const area=w*d, vol=area*h;
+  const initH=num('initHumid',85), targH=num('targetHumid',60);
+  const humiDiff=Math.max(initH-targH,10);
+
+  // 제습기: 용적×습도차 계수×안전계수
+  const dhRequired=Math.ceil(vol*0.67*(humiDiff/25)*1.5);
+  const dhSteps=[50,100,150,200,260,300,400,500];
+  let dhCap=50,dhCnt=1,found=false;
+  for(let cnt=1;cnt<=3&&!found;cnt++){for(const c of dhSteps){if(c*cnt>=dhRequired){dhCap=c;dhCnt=cnt;found=true;break;}}}
+  const dhS=SP.dehum[dhCap]||SP.dehum[260];
+
+  // 순환팬: ACH 6회 기준
+  const achTarget=6;
+  const fanRequired=Math.ceil(vol*achTarget);
+  const fanSteps=[500,1000,2000,3000,5000];
+  let fanFlow=1000,fanCnt=1; found=false;
+  for(let cnt=1;cnt<=4&&!found;cnt++){for(const f of fanSteps){if(f*cnt>=fanRequired){fanFlow=f;fanCnt=cnt;found=true;break;}}}
+  const fanS=SP.fan[fanFlow]||SP.fan[1000];
+  const needHvls=h>=4.5;
+
+  // 열풍기: 겨울 기준 +10°C 가열
+  const heatRequired=Math.ceil(vol*1.2*0.31*10/0.86);
+  const htSteps=[5000,10000,15000,20000,30000];
+  let htHeat=5000,htCnt=1; found=false;
+  for(let cnt=1;cnt<=2&&!found;cnt++){for(const ht of htSteps){if(ht*cnt>=heatRequired){htHeat=ht;htCnt=cnt;found=true;break;}}}
+  const htS=SP.heater[htHeat]||SP.heater[5000];
+
+  // 배기팬: ACH 2.5회
+  const exRequired=Math.ceil(vol*2.5);
+  const exSteps=[500,1200,3000,5000,10000];
+  let exFlow=1200,exCnt=1; found=false;
+  for(let cnt=1;cnt<=2&&!found;cnt++){for(const f of exSteps){if(f*cnt>=exRequired){exFlow=f;exCnt=cnt;found=true;break;}}}
+  const exS=SP.exhaust[exFlow]||SP.exhaust[1200];
+
+  const totalReco=(dhS.pw*dhCnt)+(fanS.pw*fanCnt)+(htS.pw*htCnt)+(exS.pw*exCnt);
+
+  const card=(icon,title,color,bg,border,unit,required,recoVal,recoLabel,power,powerTot,fill,model,extra)=>`
+    <div style="border:1.5px solid ${border};border-radius:8px;overflow:hidden;margin-bottom:10px;">
+      <div style="background:${bg};padding:8px 12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px;">
+        <span style="font-size:13px;font-weight:700;color:${color};">${icon} ${title}</span>
+        <span style="background:${color};color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:700;">${recoLabel}</span>
+      </div>
+      <div style="padding:10px 12px;background:#fafbfc;">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px;">
+          <div style="text-align:center;"><div style="font-size:11px;color:var(--text3);">필요 ${unit}</div><div style="font-size:13px;font-weight:700;color:${color};">${required}</div></div>
+          <div style="text-align:center;"><div style="font-size:11px;color:var(--text3);">추천 ${unit}</div><div style="font-size:13px;font-weight:700;color:${color};">${recoVal}</div></div>
+          <div style="text-align:center;"><div style="font-size:11px;color:var(--text3);">소비전력</div><div style="font-size:13px;font-weight:700;color:var(--danger);">${powerTot} kW</div></div>
+        </div>
+        <div style="font-size:12px;color:var(--text2);">▸ ${model}</div>
+        ${extra}
+        <div style="margin-top:6px;height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden;">
+          <div style="height:100%;width:${Math.min(100,fill)}%;background:${border};border-radius:4px;transition:width 0.6s;"></div>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:3px;">충족률 ${Math.min(100,Math.round(fill))}%</div>
+      </div>
+    </div>`;
+
+  $('recoPanel').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+      <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:10px;text-align:center;">
+        <div style="font-size:11px;color:#92400e;font-weight:600;">건조실 면적</div>
+        <div style="font-size:20px;font-weight:900;color:#b45309;">${area.toFixed(0)} ㎡</div>
+      </div>
+      <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:10px;text-align:center;">
+        <div style="font-size:11px;color:#92400e;font-weight:600;">건조실 용적</div>
+        <div style="font-size:20px;font-weight:900;color:#b45309;">${vol.toFixed(0)} ㎥</div>
+      </div>
+    </div>
+
+    ${card('💧','제습기 추천','#1d4ed8','#dbeafe','#93c5fd','용량',
+      dhRequired+' L/day', (dhCap*dhCnt)+' L/day', dhCap+'L × '+dhCnt+'대',
+      dhS.pw.toFixed(1), (dhS.pw*dhCnt).toFixed(1),
+      dhCap*dhCnt/dhRequired*100,
+      '참고모델: '+dhS.model+' × '+dhCnt+'대 | '+dhS.volt, ''
+    )}
+
+    ${card('🌀','순환팬 추천','#6d28d9','#ede9fe','#c4b5fd','풍량',
+      fanRequired.toLocaleString()+' CMH', (fanFlow*fanCnt).toLocaleString()+' CMH', fanFlow.toLocaleString()+'CMH × '+fanCnt+'대',
+      fanS.pw.toFixed(2), (fanS.pw*fanCnt).toFixed(2),
+      fanFlow*fanCnt/fanRequired*100,
+      '풍속 '+fanS.speed+'m/s | ACH '+((fanFlow*fanCnt)/vol).toFixed(1)+'회/h | '+fanS.volt,
+      needHvls?`<div style="margin-top:6px;background:#f3e8ff;border:1px solid #c4b5fd;border-radius:6px;padding:6px 10px;font-size:12px;color:#5b21b6;">💡 높이 ${h}m — HVLS 실링팬 추가 권장 (직경 3~4m, 1.5~2.2kW)</div>`:''
+    )}
+
+    ${card('🔥','열풍 건조기 추천','#b45309','#fef9c3','#fcd34d','열량',
+      heatRequired.toLocaleString()+' kcal/h', (htHeat*htCnt).toLocaleString()+' kcal/h', htHeat.toLocaleString()+'kcal × '+htCnt+'대',
+      htS.pw.toFixed(1), (htS.pw*htCnt).toFixed(1),
+      htHeat*htCnt/heatRequired*100,
+      '설정온도 '+htS.temp+'°C | 겨울 기준 +10°C 가열 | 열효율 ≥95%', ''
+    )}
+
+    ${card('🔃','배기 환기팬 추천','#059669','#d1fae5','#6ee7b7','배기량',
+      exRequired.toLocaleString()+' CMH', (exFlow*exCnt).toLocaleString()+' CMH', exFlow.toLocaleString()+'CMH × '+exCnt+'대',
+      exS.pw.toFixed(2), (exS.pw*exCnt).toFixed(2),
+      exFlow*exCnt/exRequired*100,
+      '환기 '+((exFlow*exCnt)/vol).toFixed(1)+'회/h | '+exS.volt, ''
+    )}
+
+    <div style="background:#1e2a38;border-radius:8px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+      <div>
+        <div style="color:#94a3b8;font-size:12px;">⚡ 추천 기기 총 소비 전력 (건조실)</div>
+        <div style="color:#fbbf24;font-size:20px;font-weight:900;margin-top:2px;">${totalReco.toFixed(1)} kW</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="color:#94a3b8;font-size:12px;">전기요금 (100원/kWh, 8h/day)</div>
+        <div style="color:#34d399;font-size:14px;font-weight:700;">${(totalReco*8*100).toLocaleString()}원/일</div>
+      </div>
+    </div>
+
+    <button onclick="applyReco(${dhCap},${dhCnt},${fanFlow},${fanCnt},${htHeat},${htCnt},${exFlow},${exCnt})"
+      style="width:100%;padding:12px;background:linear-gradient(135deg,#b45309,#d97706);color:#fff;border:none;border-radius:8px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;">
+      ✅ 이 추천 설정을 기기에 바로 적용
+    </button>`;
+}
+
+function applyReco(dhCap,dhCnt,fanFlow,fanCnt,htHeat,htCnt,exFlow,exCnt){
+  ['dehum','fan','heater','exhaust'].forEach(id=>{if(!DEV[id]) toggleDev(id,false);});
+  const sv=(id,v)=>{if($(id)) $(id).value=v;};
+  sv('sel-dehum',dhCap);sv('cnt-dehum',dhCnt);
+  sv('sel-fan',fanFlow);sv('cnt-fan',fanCnt);
+  sv('sel-heater',htHeat);sv('cnt-heater',htCnt);
+  sv('sel-exhaust',exFlow);sv('cnt-exhaust',exCnt);
+  refreshSpec('all');refreshTotalPwr();schedSim();
+  showToast('✅ 추천 설정이 기기에 적용되었습니다.','ok');
+}
+
+// ══════════════════════════════════════════════════════
 // DEVICE STATE
 // ══════════════════════════════════════════════════════
 const DEV = {airknife:true, dehum:false, fan:false, heater:false, exhaust:false};
@@ -826,6 +967,7 @@ function refreshVol(){
   const a=w*d, v=a*h;
   $('volMain').textContent=v.toFixed(0)+' ㎥';
   $('volDet').innerHTML=`면적: ${a.toFixed(1)} ㎡<br>환기량: ${Math.round(v)}~${Math.round(v*2)} ㎥/h<br>최소 제습: ${Math.ceil(v*0.67)} L/day`;
+  if(typeof SP!=='undefined') calcReco(); // 공간 변경 시 추천 즉시 갱신
 }
 
 function refreshTray(){
