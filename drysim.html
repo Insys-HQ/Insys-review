@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>건조실 환경 시뮬레이터 v2.5</title>
+<title>건조실 환경 시뮬레이터 v2.6</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -213,7 +213,7 @@ body.mobile .grid-main{grid-template-columns:1fr!important;}
         <button class="vt-btn active" id="btnPC" onclick="setView('pc')">💻 PC</button>
         <button class="vt-btn" id="btnMobile" onclick="setView('mobile')">📱 모바일</button>
       </div>
-      <span class="badge-ver">v2.5</span>
+      <span class="badge-ver">v2.6</span>
     </div>
   </div>
 </div>
@@ -984,7 +984,147 @@ function runSim(){
         <tr><td>활성 기기 수</td><td class="val">${actCnt}개</td></tr>
         <tr><td>종합 효율 점수</td><td class="val">${score}점 / 100</td></tr>
       </table>
+    </div>
+
+    <!-- 추천 기기 설정 비교 그래프 -->
+    <div class="chart-a" style="margin-top:14px;margin-bottom:0;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+        <div class="chart-t" style="margin-bottom:0;">🔍 추천 기기 설정 비교</div>
+        <div style="display:flex;gap:6px;">
+          <button id="btnCmpCost" onclick="showCmp('cost')"
+            style="border:none;border-radius:6px;padding:5px 12px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;background:var(--success);color:#fff;">
+            💰 가성비 추천
+          </button>
+          <button id="btnCmpPerf" onclick="showCmp('perf')"
+            style="border:none;border-radius:6px;padding:5px 12px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;background:#e2e8f0;color:var(--text2);">
+            ⚡ 효과 추천
+          </button>
+        </div>
+      </div>
+
+      <!-- 비교 그래프 영역 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" id="cmpGrid">
+
+        <!-- 현재 설정 -->
+        <div style="background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:12px;">
+          <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:10px;">📌 현재 설정</div>
+          <div style="display:flex;flex-direction:column;gap:6px;" id="cmpCurrentBars">
+            ${['에어나이프','제습기','순환팬','열풍기','배기팬'].map((name,i)=>{
+              const vals=[bvAk,bvDh,bvFn,bvHt,bvEx];
+              const colors=['#3b82f6','#06b6d4','#8b5cf6','#f59e0b','#10b981'];
+              const v=vals[i];
+              return `<div>
+                <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;">
+                  <span style="color:var(--text2);">${name}</span>
+                  <span style="font-weight:700;color:${colors[i]};">${v}%</span>
+                </div>
+                <div style="height:10px;background:#e2e8f0;border-radius:5px;overflow:hidden;">
+                  <div style="height:100%;width:${v}%;background:${colors[i]};border-radius:5px;transition:width 0.6s;"></div>
+                </div>
+              </div>`;
+            }).join('')}
+          </div>
+          <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:12px;">
+            <span style="color:var(--text3);">수분제거율</span><span style="font-weight:700;color:var(--accent);">${finalRem.toFixed(0)}%</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-top:3px;">
+            <span style="color:var(--text3);">소비전력</span><span style="font-weight:700;color:var(--danger);">${totalPow.toFixed(1)} kW</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-top:3px;">
+            <span style="color:var(--text3);">건조시간</span><span style="font-weight:700;">${tl}</span>
+          </div>
+        </div>
+
+        <!-- 추천 설정 (기본: 가성비) -->
+        <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:8px;padding:12px;" id="cmpRecoPanel">
+          <div style="font-size:12px;font-weight:700;color:#15803d;margin-bottom:10px;" id="cmpRecoTitle">💰 가성비 추천 설정</div>
+          <div style="display:flex;flex-direction:column;gap:6px;" id="cmpRecoBars"></div>
+          <div style="margin-top:10px;padding-top:8px;border-top:1px solid #86efac;" id="cmpRecoStats"></div>
+          <div style="margin-top:8px;font-size:12px;color:#166534;line-height:1.6;" id="cmpRecoDesc"></div>
+        </div>
+
+      </div>
     </div>`;
+
+  // 비교 그래프 초기 표시 (가성비)
+  setTimeout(()=>showCmp('cost'), 50);
+}
+
+// ══════════════════════════════════════════════════════
+// 추천 설정 비교 그래프
+// ══════════════════════════════════════════════════════
+function showCmp(mode){
+  $('btnCmpCost').style.background = mode==='cost'?'var(--success)':'#e2e8f0';
+  $('btnCmpCost').style.color = mode==='cost'?'#fff':'var(--text2)';
+  $('btnCmpPerf').style.background = mode==='perf'?'var(--accent)':'#e2e8f0';
+  $('btnCmpPerf').style.color = mode==='perf'?'#fff':'var(--text2)';
+
+  const vol = num('w',13)*num('d',6)*num('h',5);
+
+  // 추천 설정값 정의
+  const presets = {
+    cost: {
+      title: '💰 가성비 추천 설정',
+      panelBg: '#f0fdf4', panelBorder: '#86efac', titleColor: '#15803d', descColor: '#166534',
+      // 제습기260 ×1 + 순환팬1000 ×2 + 배기팬1200 ×1
+      bars: [
+        {n:'에어나이프', v:0,  c:'#3b82f6'},
+        {n:'제습기',     v:40, c:'#06b6d4'},
+        {n:'순환팬',     v:35, c:'#8b5cf6'},
+        {n:'열풍기',     v:0,  c:'#f59e0b'},
+        {n:'배기팬',     v:20, c:'#10b981'},
+      ],
+      removal: 72, power: 6.75, time: '4.2h',
+      desc: '• 제습기 260L×1대 (4.5kW)\n• 순환팬 1,000CMH×2대 (1.5kW)\n• 배기팬 1,200CMH×1대 (0.75kW)\n→ 총 6.75kW로 72% 제거 달성\n→ 설치비 최소, 운영비 절감',
+    },
+    perf: {
+      title: '⚡ 최고 효과 추천 설정',
+      panelBg: '#eff6ff', panelBorder: '#93c5fd', titleColor: '#1d4ed8', descColor: '#1e40af',
+      // 에어나이프 + 제습기300×2 + 순환팬2000×2 + 열풍기10000 + 배기팬3000
+      bars: [
+        {n:'에어나이프', v:65, c:'#3b82f6'},
+        {n:'제습기',     v:40, c:'#06b6d4'},
+        {n:'순환팬',     v:55, c:'#8b5cf6'},
+        {n:'열풍기',     v:28, c:'#f59e0b'},
+        {n:'배기팬',     v:25, c:'#10b981'},
+      ],
+      removal: 95, power: 38.2, time: '1.5h',
+      desc: '• 에어나이프 5HP×3대 (11.2kW)\n• 제습기 300L×2대 (11.0kW)\n• 순환팬 2,000CMH×2대 (3.0kW)\n• 열풍기 10,000kcal×1대 (11.6kW)\n• 배기팬 3,000CMH×1대 (1.5kW)\n→ 총 38.3kW로 95% 제거 달성',
+    }
+  };
+
+  const p = presets[mode];
+  if(!$('cmpRecoPanel')) return;
+
+  $('cmpRecoPanel').style.background = p.panelBg;
+  $('cmpRecoPanel').style.borderColor = p.panelBorder;
+  $('cmpRecoTitle').style.color = p.titleColor;
+  $('cmpRecoTitle').textContent = p.title;
+
+  $('cmpRecoBars').innerHTML = p.bars.map(b=>`
+    <div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;">
+        <span style="color:var(--text2);">${b.n}</span>
+        <span style="font-weight:700;color:${b.c};">${b.v}%</span>
+      </div>
+      <div style="height:10px;background:#e2e8f0;border-radius:5px;overflow:hidden;">
+        <div style="height:100%;width:${b.v}%;background:${b.c};border-radius:5px;transition:width 0.6s;"></div>
+      </div>
+    </div>`).join('');
+
+  $('cmpRecoStats').innerHTML = `
+    <div style="display:flex;justify-content:space-between;font-size:12px;">
+      <span style="color:var(--text3);">수분제거율</span><span style="font-weight:700;color:var(--accent);">${p.removal}%</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;margin-top:3px;">
+      <span style="color:var(--text3);">소비전력</span><span style="font-weight:700;color:var(--danger);">${p.power} kW</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;margin-top:3px;">
+      <span style="color:var(--text3);">건조시간</span><span style="font-weight:700;">${p.time}</span>
+    </div>`;
+
+  $('cmpRecoDesc').innerHTML = p.desc.replace(/\n/g,'<br>');
+  $('cmpRecoDesc').style.color = p.descColor;
 }
 
 // ══════════════════════════════════════════════════════
