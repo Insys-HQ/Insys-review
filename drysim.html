@@ -1463,9 +1463,35 @@ async function deleteFbData(id,name){
 // INIT
 // ══════════════════════════════════════════════════════
 bindEvents();
-const restored = loadLocal();
-if(!restored) refreshAll();
-else refreshAll();
+
+// 인텍코리아 임시건조실 조건 강제 적용 (localStorage 무시)
+(function injectIntekKorea(){
+  const sv=(id,v)=>{if($(id)) $(id).value=v;};
+  // 건조실 규격: 7×4×3m
+  sv('w',7); sv('d',4); sv('h',3);
+  // 환경 조건
+  sv('initHumid',85); sv('targetHumid',60); sv('temp',25);
+  // 트레이 (일반 세척 트레이 기준)
+  sv('trayW',500); sv('trayD',350); sv('trayH',40);
+  sv('trayPockets',0); sv('trayCount',60); sv('moisture',120);
+  // 에어나이프 (세척기 내 기존 설정 유지)
+  sv('sl-ak-power',5); sv('sl-ak-slit',1.0); sv('sl-ak-count',4);
+  // 제습기: 100L × 1대
+  sv('sel-dehum',100); sv('cnt-dehum',1);
+  // 순환팬: 실링팬2 + 벽걸이2 + 스탠드1 → 총 5대, 500CMH×5 근사
+  sv('sel-fan',500); sv('cnt-fan',5);
+  // 열풍기: DSPE-301F = 2580kcal → 5000kcal 선택 후 대수 1 (근사)
+  sv('sel-heater',5000); sv('cnt-heater',1);
+  // 배기팬: 미설치
+  // 장소/조건 정보
+  sv('saveName','인텍코리아 임시건조실');
+  sv('saveCode','INTEK-001');
+  sv('saveMemo','7×4×3m | DSPE-301F+제습기100L+팬5대');
+  // 기기 ON
+  ['dehum','fan','heater'].forEach(id=>{ if(!DEV[id]) toggleDev(id,false); });
+  refreshAll();
+})();
+
 if(window.innerWidth<600) setView('mobile');
 initFirebase();
 setTimeout(runSim, 500);
