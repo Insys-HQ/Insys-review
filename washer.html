@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>세척·건조기 시뮬레이터 v1.0 | 인시스 AI혁신 R&D센터</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;color:#1e2a3a;font-size:13px;min-height:100vh;}
+
+/* ── 헤더 ── */
+.app-header{background:linear-gradient(135deg,#1a3a5c 0%,#0f6e8c 100%);color:#fff;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,.25);}
+.app-header .title{font-size:17px;font-weight:700;letter-spacing:-.3px;}
+.app-header .subtitle{font-size:11px;opacity:.75;margin-top:2px;}
+.badge-ver{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);border-radius:12px;padding:2px 10px;font-size:11px;font-weight:700;}
+.view-toggle{display:flex;gap:6px;margin-left:16px;}
+.view-toggle button{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;padding:3px 12px;border-radius:10px;cursor:pointer;font-size:11px;font-family:'Noto Sans KR',sans-serif;}
+.view-toggle button.active{background:rgba(255,255,255,.35);}
+
+/* ── 레이아웃 ── */
+.main-wrap{display:grid;grid-template-columns:400px 1fr;gap:10px;padding:10px;max-width:1400px;margin:0 auto;}
+@media(max-width:900px){.main-wrap{grid-template-columns:1fr;}}
+.left-panel{display:flex;flex-direction:column;gap:8px;}
+.right-panel{display:flex;flex-direction:column;gap:8px;}
+
+/* ── 카드 ── */
+.card{background:#fff;border-radius:10px;box-shadow:0 1px 6px rgba(0,0,0,.08);overflow:hidden;}
+.card-head{padding:7px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #e8ecf0;}
+.card-head .icon{font-size:15px;}
+.card-head .label{font-size:13px;font-weight:700;color:#1a3a5c;}
+.card-head .badge{margin-left:auto;background:#e8f4fd;color:#0f6e8c;font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px;}
+.card-body{padding:10px 14px;}
+
+/* ── 입력 그리드 ── */
+.inp-grid{display:grid;gap:6px;}
+.inp-grid.col2{grid-template-columns:1fr 1fr;}
+.inp-grid.col3{grid-template-columns:1fr 1fr 1fr;}
+.inp-grid.col4{grid-template-columns:1fr 1fr 1fr 1fr;}
+.field{display:flex;flex-direction:column;gap:3px;}
+.field label{font-size:11px;color:#5a6a7a;font-weight:500;}
+.field input,.field select{border:1px solid #d0d8e0;border-radius:6px;padding:5px 8px;font-size:12px;font-family:'Noto Sans KR',sans-serif;color:#1e2a3a;background:#fafbfc;transition:border .2s;}
+.field input:focus,.field select:focus{outline:none;border-color:#0f6e8c;background:#fff;}
+.field .unit{font-size:10px;color:#8a9aaa;}
+
+/* ── 세척조 탭 ── */
+.zone-tabs{display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap;}
+.zone-tab{padding:4px 12px;border-radius:8px;border:1px solid #d0d8e0;cursor:pointer;font-size:12px;font-family:'Noto Sans KR',sans-serif;background:#f5f7fa;color:#5a6a7a;transition:all .2s;}
+.zone-tab.active{background:#1a3a5c;color:#fff;border-color:#1a3a5c;}
+.zone-tab.disabled{opacity:.35;cursor:not-allowed;}
+.zone-panel{display:none;}
+.zone-panel.active{display:block;}
+
+/* ── 스위치 ── */
+.sw-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.sw-row label{font-size:12px;color:#3a4a5a;font-weight:500;}
+.switch{position:relative;width:36px;height:20px;flex-shrink:0;}
+.switch input{opacity:0;width:0;height:0;}
+.slider{position:absolute;inset:0;background:#c5cdd5;border-radius:20px;cursor:pointer;transition:.3s;}
+.slider:before{content:'';position:absolute;width:14px;height:14px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.3s;}
+.switch input:checked+.slider{background:#0f6e8c;}
+.switch input:checked+.slider:before{transform:translateX(16px);}
+
+/* ── 분사 시각화 ── */
+.nozzle-vis{background:#f0f4f8;border-radius:8px;padding:10px;margin-top:8px;}
+.nozzle-vis-title{font-size:11px;font-weight:700;color:#3a5a7a;margin-bottom:6px;}
+#nozzle-canvas{width:100%;border-radius:6px;border:1px solid #d0d8e0;background:#fff;}
+
+/* ── 결과 ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;}
+@media(max-width:600px){.kpi-grid{grid-template-columns:repeat(2,1fr);}}
+.kpi-card{background:linear-gradient(145deg,#f0f6fb,#e8f2f9);border:1px solid #c8dce8;border-radius:10px;padding:10px;text-align:center;}
+.kpi-val{font-size:22px;font-weight:900;color:#0f6e8c;line-height:1;}
+.kpi-label{font-size:10px;color:#5a7a8a;margin-top:4px;font-weight:500;}
+
+.bar-wrap{margin-bottom:8px;}
+.bar-label-row{display:flex;justify-content:space-between;margin-bottom:3px;}
+.bar-label{font-size:11px;color:#3a4a5a;font-weight:500;}
+.bar-val{font-size:11px;color:#0f6e8c;font-weight:700;}
+.bar-bg{background:#e8ecf0;border-radius:6px;height:14px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:6px;transition:width .6s ease;display:flex;align-items:center;justify-content:flex-end;padding-right:4px;}
+.bar-fill span{font-size:9px;color:#fff;font-weight:700;}
+
+/* ── 공정 흐름 ── */
+.flow-row{display:flex;align-items:center;gap:4px;flex-wrap:wrap;padding:8px 0;}
+.flow-node{background:#1a3a5c;color:#fff;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;white-space:nowrap;}
+.flow-node.off{background:#b0bec5;color:#546e7a;}
+.flow-arrow{color:#0f6e8c;font-size:14px;font-weight:900;}
+
+/* ── 표 ── */
+.res-table{width:100%;border-collapse:collapse;font-size:12px;}
+.res-table th{background:#e8f0f6;color:#1a3a5c;padding:5px 8px;font-weight:700;border:1px solid #d0dce8;text-align:center;}
+.res-table td{padding:5px 8px;border:1px solid #e0e8f0;color:#2a3a4a;text-align:center;}
+.res-table tr:nth-child(even) td{background:#f7fafc;}
+.res-table .hi{color:#0f6e8c;font-weight:700;}
+
+/* ── 추천 박스 ── */
+.rec-box{background:linear-gradient(135deg,#e8f4fd,#d0eaf8);border:1px solid #a8d0e8;border-radius:10px;padding:12px 14px;margin-top:8px;}
+.rec-box .rec-title{font-size:12px;font-weight:700;color:#1a3a5c;margin-bottom:8px;}
+.rec-item{display:flex;align-items:flex-start;gap:6px;margin-bottom:5px;}
+.rec-item .dot{width:6px;height:6px;border-radius:50%;background:#0f6e8c;margin-top:4px;flex-shrink:0;}
+.rec-item .txt{font-size:12px;color:#2a4a6a;line-height:1.5;}
+
+/* ── 섹션 타이틀 ── */
+.sec-title{font-size:11px;font-weight:700;color:#3a5a7a;border-bottom:1px solid #e0e8f0;padding-bottom:4px;margin-bottom:7px;margin-top:8px;}
+.sec-title:first-child{margin-top:0;}
+
+/* ── 버튼 ── */
+.btn-sim{width:100%;padding:9px;background:linear-gradient(135deg,#1a3a5c,#0f6e8c);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;letter-spacing:.3px;transition:opacity .2s;}
+.btn-sim:hover{opacity:.88;}
+
+.tag-good{background:#d4edda;color:#155724;padding:1px 7px;border-radius:8px;font-size:10px;font-weight:700;}
+.tag-warn{background:#fff3cd;color:#856404;padding:1px 7px;border-radius:8px;font-size:10px;font-weight:700;}
+.tag-bad{background:#f8d7da;color:#721c24;padding:1px 7px;border-radius:8px;font-size:10px;font-weight:700;}
+
+footer{text-align:center;font-size:10px;color:#8a9aaa;padding:12px;margin-top:4px;}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div>
+    <div class="title">🧼 세척·건조기 시뮬레이터</div>
+    <div class="subtitle">인시스 AI혁신 R&D센터</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div class="view-toggle">
+      <button id="btn-pc" class="active">PC</button>
+      <button id="btn-mobile">Mobile</button>
+    </div>
+    <span class="badge-ver">v1.0</span>
+  </div>
+</div>
+
+<div class="main-wrap" id="main-wrap">
+
+<!-- ══════════ 좌측 패널 ══════════ -->
+<div class="left-panel">
+
+  <!-- 1. 피세척물 설정 -->
+  <div class="card">
+    <div class="card-head"><span class="icon">📦</span><span class="label">피세척물 설정</span></div>
+    <div class="card-body">
+      <div class="inp-grid col2" style="margin-bottom:8px;">
+        <div class="field">
+          <label>종류</label>
+          <select id="item-type">
+            <option value="box">박스 (상·하·좌·우 분사)</option>
+            <option value="tray">트레이 (좌·우 분사)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>투입 방식</label>
+          <select id="feed-mode">
+            <option value="1ch">1열 투입</option>
+            <option value="2ch" selected>2열 투입 (세워서)</option>
+          </select>
+        </div>
+      </div>
+      <div class="sec-title">크기 입력 (mm)</div>
+      <div class="inp-grid col3">
+        <div class="field"><label>가로 W</label><input type="number" id="item-w" value="600" min="100" max="2000"><span class="unit">mm</span></div>
+        <div class="field"><label>세로 D</label><input type="number" id="item-d" value="400" min="100" max="2000"><span class="unit">mm</span></div>
+        <div class="field"><label>높이 H</label><input type="number" id="item-h" value="300" min="50" max="1500"><span class="unit">mm</span></div>
+      </div>
+      <div class="sec-title" style="margin-top:9px;">오염 수준</div>
+      <div class="inp-grid col2">
+        <div class="field">
+          <label>오염도</label>
+          <select id="dirt-level">
+            <option value="1">① 경미 — 먼지/이물 소량</option>
+            <option value="2">② 보통 — 기름기·찌꺼기 있음</option>
+            <option value="3" selected>③ 중간 — 유지류·슬러지 부착</option>
+            <option value="4">④ 심함 — 경화 오염·스케일</option>
+            <option value="5">⑤ 극심 — 고착 이물·탄화물</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>시간당 투입 수량</label>
+          <input type="number" id="item-qty" value="200" min="1" max="9999"><span class="unit">개/h</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. 세척조 설정 -->
+  <div class="card">
+    <div class="card-head"><span class="icon">🚿</span><span class="label">세척조 구성</span><span class="badge" id="zone-count-badge">3단</span></div>
+    <div class="card-body">
+      <div class="inp-grid col2" style="margin-bottom:8px;">
+        <div class="field">
+          <label>세척조 단수</label>
+          <select id="zone-count">
+            <option value="1">1단</option>
+            <option value="2">2단</option>
+            <option value="3" selected>3단</option>
+            <option value="4">4단</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>컨베이어 속도</label>
+          <input type="number" id="conv-speed" value="2.5" step="0.1" min="0.5" max="10"><span class="unit">m/min</span>
+        </div>
+      </div>
+
+      <div class="zone-tabs" id="zone-tabs"></div>
+      <div id="zone-panels"></div>
+    </div>
+  </div>
+
+  <!-- 3. 노즐 설정 -->
+  <div class="card">
+    <div class="card-head"><span class="icon">💧</span><span class="label">분사 노즐 설정</span><span class="badge">1차 세척조 기준</span></div>
+    <div class="card-body">
+      <div class="inp-grid col2">
+        <div class="field"><label>노즐 가로 수량</label><input type="number" id="noz-col" value="5" min="1" max="20"><span class="unit">개</span></div>
+        <div class="field"><label>노즐 세로 수량</label><input type="number" id="noz-row" value="4" min="1" max="20"><span class="unit">개</span></div>
+        <div class="field"><label>가로 간격</label><input type="number" id="noz-gap-x" value="120" min="10" max="500"><span class="unit">mm</span></div>
+        <div class="field"><label>세로 간격</label><input type="number" id="noz-gap-y" value="80" min="10" max="500"><span class="unit">mm</span></div>
+        <div class="field"><label>분사 각도</label><input type="number" id="noz-angle" value="15" min="0" max="60"><span class="unit">°</span></div>
+        <div class="field"><label>토출구 홀 직경</label><input type="number" id="noz-hole" value="2.5" step="0.1" min="0.5" max="10"><span class="unit">mm</span></div>
+      </div>
+      <div class="nozzle-vis">
+        <div class="nozzle-vis-title">🔵 노즐 배열 시각화 (1차 세척조)</div>
+        <canvas id="nozzle-canvas" width="340" height="160"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- 시뮬레이션 버튼 -->
+  <button class="btn-sim" id="btn-simulate">▶ 시뮬레이션 실행</button>
+
+</div><!-- /left-panel -->
+
+<!-- ══════════ 우측 패널 ══════════ -->
+<div class="right-panel">
+
+  <!-- 공정 흐름 -->
+  <div class="card">
+    <div class="card-head"><span class="icon">⚙️</span><span class="label">공정 흐름</span></div>
+    <div class="card-body">
+      <div class="flow-row" id="flow-row">
+        <div class="flow-node">투입</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node" id="fn1">1단</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node" id="fn2">2단</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node" id="fn3">3단</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node off" id="fn4">4단</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">배출</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI -->
+  <div class="card">
+    <div class="card-head"><span class="icon">📊</span><span class="label">시뮬레이션 결과</span></div>
+    <div class="card-body">
+      <div class="kpi-grid">
+        <div class="kpi-card"><div class="kpi-val" id="kpi-clean">—</div><div class="kpi-label">세척율 (%)</div></div>
+        <div class="kpi-card"><div class="kpi-val" id="kpi-qty">—</div><div class="kpi-label">시간당 세척량 (개/h)</div></div>
+        <div class="kpi-card"><div class="kpi-val" id="kpi-water">—</div><div class="kpi-label">시간당 물 사용량 (L/h)</div></div>
+        <div class="kpi-card"><div class="kpi-val" id="kpi-power">—</div><div class="kpi-label">총 소비전력 (kW)</div></div>
+        <div class="kpi-card"><div class="kpi-val" id="kpi-time">—</div><div class="kpi-label">아이템당 체류시간 (s)</div></div>
+        <div class="kpi-card"><div class="kpi-val" id="kpi-pressure">—</div><div class="kpi-label">노즐 분사압 (kPa)</div></div>
+      </div>
+
+      <!-- 세척율 진행바 -->
+      <div class="bar-wrap">
+        <div class="bar-label-row"><span class="bar-label">세척율</span><span class="bar-val" id="bar-val-clean">—</span></div>
+        <div class="bar-bg"><div class="bar-fill" id="bar-clean" style="width:0%;background:linear-gradient(90deg,#0f6e8c,#1a9fc5);"><span></span></div></div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-label-row"><span class="bar-label">노즐 커버리지</span><span class="bar-val" id="bar-val-cover">—</span></div>
+        <div class="bar-bg"><div class="bar-fill" id="bar-cover" style="width:0%;background:linear-gradient(90deg,#2e7d32,#43a047);"><span></span></div></div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-label-row"><span class="bar-label">온도 세척 기여도</span><span class="bar-val" id="bar-val-temp">—</span></div>
+        <div class="bar-bg"><div class="bar-fill" id="bar-temp" style="width:0%;background:linear-gradient(90deg,#e65100,#ff8f00);"><span></span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 물탱크 분석표 -->
+  <div class="card">
+    <div class="card-head"><span class="icon">🪣</span><span class="label">물탱크 및 펌프 분석</span></div>
+    <div class="card-body">
+      <table class="res-table" id="tank-table">
+        <thead>
+          <tr>
+            <th>세척조</th><th>역할</th><th>탱크용량<br>(L)</th><th>설정온도<br>(°C)</th>
+            <th>히터용량<br>(kW)</th><th>펌프용량<br>(LPM)</th><th>배관직경<br>(mm)</th>
+            <th>시간당<br>물 사용(L)</th><th>상태</th>
+          </tr>
+        </thead>
+        <tbody id="tank-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 노즐 상세 분석 -->
+  <div class="card">
+    <div class="card-head"><span class="icon">💧</span><span class="label">노즐 분사 분석</span></div>
+    <div class="card-body">
+      <table class="res-table" id="nozzle-table">
+        <thead>
+          <tr>
+            <th>분사면</th><th>노즐 수</th><th>홀 직경(mm)</th><th>분사각(°)</th>
+            <th>노즐당 유량(L/min)</th><th>면당 토출량(L/min)</th><th>분사 커버(%)</th>
+          </tr>
+        </thead>
+        <tbody id="nozzle-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 최적 사양 추천 -->
+  <div class="card">
+    <div class="card-head"><span class="icon">⭐</span><span class="label">최적 사양 추천</span></div>
+    <div class="card-body" id="rec-body">
+      <div style="color:#8a9aaa;font-size:12px;padding:10px 0;">시뮬레이션을 실행하면 추천 사양이 표시됩니다.</div>
+    </div>
+  </div>
+
+</div><!-- /right-panel -->
+</div><!-- /main-wrap -->
+
+<footer>인시스 AI혁신 R&D센터 | 세척·건조기 시뮬레이터 v1.0 | ys.kim@in-sys.co.kr</footer>
+
+<script>
+// ── 세척조 기본 설정 ──
+const ZONE_DEFAULTS = [
+  {name:'예세척',  tempDefault:45, tankDefault:500,  pumpDefault:80,  pipeDefault:50, heaterDefault:3.0},
+  {name:'본세척',  tempDefault:60, tankDefault:800,  pumpDefault:120, pipeDefault:65, heaterDefault:6.0},
+  {name:'헹굼',   tempDefault:50, tankDefault:600,  pumpDefault:100, pipeDefault:50, heaterDefault:4.0},
+  {name:'최종헹굼',tempDefault:25, tankDefault:400,  pumpDefault:60,  pipeDefault:40, heaterDefault:0},
+];
+
+// ── 세척조 패널 동적 생성 ──
+function buildZonePanels() {
+  const count = parseInt(document.getElementById('zone-count').value);
+  document.getElementById('zone-count-badge').textContent = count + '단';
+  const tabsEl = document.getElementById('zone-tabs');
+  const panelsEl = document.getElementById('zone-panels');
+  tabsEl.innerHTML = '';
+  panelsEl.innerHTML = '';
+
+  for (let i = 0; i < count; i++) {
+    const def = ZONE_DEFAULTS[i];
+    // tab
+    const tab = document.createElement('button');
+    tab.className = 'zone-tab' + (i === 0 ? ' active' : '');
+    tab.textContent = (i+1) + '단 ' + def.name;
+    tab.dataset.idx = i;
+    tabsEl.appendChild(tab);
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.zone-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.zone-panel').forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('zp-' + i).classList.add('active');
+    });
+
+    // panel
+    const panel = document.createElement('div');
+    panel.className = 'zone-panel' + (i === 0 ? ' active' : '');
+    panel.id = 'zp-' + i;
+    panel.innerHTML = `
+      <div class="sec-title">${i+1}단 — ${def.name} 세척조</div>
+      <div class="inp-grid col2" style="margin-bottom:6px;">
+        <div class="field"><label>탱크 용량</label><input type="number" id="z${i}-tank" value="${def.tankDefault}" min="50" max="10000"><span class="unit">L</span></div>
+        <div class="field"><label>설정 온도</label><input type="number" id="z${i}-temp" value="${def.tempDefault}" min="10" max="95"><span class="unit">°C</span></div>
+        <div class="field"><label>펌프 용량</label><input type="number" id="z${i}-pump" value="${def.pumpDefault}" min="10" max="2000"><span class="unit">LPM</span></div>
+        <div class="field"><label>배관 직경</label><input type="number" id="z${i}-pipe" value="${def.pipeDefault}" min="10" max="200"><span class="unit">mm</span></div>
+        <div class="field"><label>가열 히터</label><input type="number" id="z${i}-heater" value="${def.heaterDefault}" step="0.5" min="0" max="50"><span class="unit">kW</span></div>
+        <div class="field"><label>세척제 농도</label><input type="number" id="z${i}-detergent" value="${i===0?3:i===1?5:0}" step="0.5" min="0" max="20"><span class="unit">%</span></div>
+      </div>
+    `;
+    panelsEl.appendChild(panel);
+  }
+
+  updateFlowRow();
+}
+
+// ── 공정 흐름 업데이트 ──
+function updateFlowRow() {
+  const count = parseInt(document.getElementById('zone-count').value);
+  const names = ZONE_DEFAULTS.map(d => d.name);
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById('fn' + i);
+    if (!el) continue;
+    if (i <= count) {
+      el.classList.remove('off');
+      el.textContent = i + '단 ' + names[i-1];
+    } else {
+      el.classList.add('off');
+      el.textContent = i + '단 (미사용)';
+    }
+  }
+}
+
+// ── 노즐 캔버스 시각화 ──
+function drawNozzleCanvas() {
+  const canvas = document.getElementById('nozzle-canvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const cols = parseInt(document.getElementById('noz-col').value) || 5;
+  const rows = parseInt(document.getElementById('noz-row').value) || 4;
+  const angle = parseInt(document.getElementById('noz-angle').value) || 15;
+  const hole = parseFloat(document.getElementById('noz-hole').value) || 2.5;
+
+  const padX = 30, padY = 20;
+  const cellW = (W - padX*2) / Math.max(cols, 1);
+  const cellH = (H - padY*2) / Math.max(rows, 1);
+  const r = Math.max(3, Math.min(9, hole * 1.8));
+  const spray = Math.min(cellW, cellH) * 0.35;
+  const rad = (angle * Math.PI) / 180;
+
+  ctx.fillStyle = '#e8f4fd';
+  ctx.fillRect(0, 0, W, H);
+
+  // grid lines
+  ctx.strokeStyle = '#c8dce8';
+  ctx.lineWidth = 0.5;
+  for (let c = 0; c <= cols; c++) {
+    const x = padX + c * cellW;
+    ctx.beginPath(); ctx.moveTo(x, padY); ctx.lineTo(x, H - padY); ctx.stroke();
+  }
+  for (let rr = 0; rr <= rows; rr++) {
+    const y = padY + rr * cellH;
+    ctx.beginPath(); ctx.moveTo(padX, y); ctx.lineTo(W - padX, y); ctx.stroke();
+  }
+
+  for (let rr = 0; rr < rows; rr++) {
+    for (let c = 0; c < cols; c++) {
+      const cx = padX + c * cellW + cellW / 2;
+      const cy = padY + rr * cellH + cellH / 2;
+
+      // spray fan
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, spray, Math.PI/2 - rad, Math.PI/2 + rad);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(15,110,140,0.12)';
+      ctx.fill();
+
+      // nozzle circle
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fillStyle = '#0f6e8c';
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+  }
+
+  // labels
+  ctx.fillStyle = '#3a5a7a';
+  ctx.font = '10px Noto Sans KR';
+  ctx.textAlign = 'center';
+  ctx.fillText(`${cols}×${rows} = ${cols*rows}개 | 홀 Ø${hole}mm | 각도 ${angle}°`, W/2, H - 5);
+}
+
+// ── 배관 유속 계산 (Hazen-Williams 간략) ──
+function pipeVelocity(lpm, diamMm) {
+  const r = diamMm / 1000 / 2;
+  const area = Math.PI * r * r;
+  const m3s = lpm / 1000 / 60;
+  return m3s / area; // m/s
+}
+
+// ── 노즐 유량 (오리피스 방정식 간략) ──
+// Q = Cd * A * sqrt(2gh), 압력(kPa)→ h(m), Cd=0.62
+function nozzleFlowRate(holeMm, pressureKPa) {
+  const Cd = 0.62;
+  const r = holeMm / 1000 / 2;
+  const A = Math.PI * r * r;
+  const h = pressureKPa * 1000 / (1000 * 9.81); // kPa→m수두
+  const Q_m3s = Cd * A * Math.sqrt(2 * 9.81 * h);
+  return Q_m3s * 1000 * 60; // L/min
+}
+
+// ── 분사 커버리지 ──
+function sprayCoverage(cols, rows, gapX, gapY, itemW, itemH, angleDeg, zoneHeight) {
+  const spreadPerNozzle = Math.tan(angleDeg * Math.PI / 180) * zoneHeight * 2; // 양방향
+  const coverX = Math.min(1, (cols * gapX + spreadPerNozzle * cols) / itemW);
+  const coverY = Math.min(1, (rows * gapY + spreadPerNozzle * rows) / itemH);
+  return Math.min(100, coverX * coverY * 100 * 1.05);
+}
+
+// ── 세척율 계산 ──
+function calcCleanRate(dirtLevel, zoneCnt, avgTemp, convSpeed, coverage, itemH, detergentAvg) {
+  // 기본 물리세척 + 온도효과 + 세척제 + 체류시간 + 커버리지
+  const baseByZone = [55, 72, 83, 90]; // 단수별 기본
+  let base = baseByZone[Math.min(zoneCnt, 4) - 1];
+
+  // 오염도 페널티
+  const dirtPenalty = [0, 0, -3, -8, -16, -28];
+  base += dirtPenalty[dirtLevel];
+
+  // 온도 보너스 (25°C 기준)
+  const tempBonus = Math.min(12, (avgTemp - 25) * 0.25);
+  base += tempBonus;
+
+  // 세척제 보너스
+  const detBonus = Math.min(8, detergentAvg * 0.8);
+  base += detBonus;
+
+  // 커버리지 반영
+  const covFactor = coverage / 100;
+  base *= (0.7 + 0.3 * covFactor);
+
+  // 속도 페널티 (빠를수록 세척시간↓)
+  const speedPenalty = Math.max(-10, -(convSpeed - 1.5) * 2);
+  base += speedPenalty;
+
+  return Math.min(99, Math.max(20, base));
+}
+
+// ── 메인 시뮬레이션 ──
+function runSim() {
+  const itemType = document.getElementById('item-type').value;
+  const feedMode = document.getElementById('feed-mode').value;
+  const itemW = parseFloat(document.getElementById('item-w').value) || 600;
+  const itemD = parseFloat(document.getElementById('item-d').value) || 400;
+  const itemH = parseFloat(document.getElementById('item-h').value) || 300;
+  const dirtLevel = parseInt(document.getElementById('dirt-level').value);
+  const itemQtyPerH = parseInt(document.getElementById('item-qty').value) || 200;
+  const zoneCnt = parseInt(document.getElementById('zone-count').value);
+  const convSpeed = parseFloat(document.getElementById('conv-speed').value) || 2.5;
+
+  const nozCol = parseInt(document.getElementById('noz-col').value) || 5;
+  const nozRow = parseInt(document.getElementById('noz-row').value) || 4;
+  const nozGapX = parseFloat(document.getElementById('noz-gap-x').value) || 120;
+  const nozGapY = parseFloat(document.getElementById('noz-gap-y').value) || 80;
+  const nozAngle = parseFloat(document.getElementById('noz-angle').value) || 15;
+  const nozHole = parseFloat(document.getElementById('noz-hole').value) || 2.5;
+
+  // 피치(mm): 아이템 + 여유
+  const pitch = (itemType === 'box' ? Math.max(itemW, itemD) : itemD) + 50;
+  const pitchM = pitch / 1000;
+  const secPerItem = pitchM / (convSpeed / 60); // seconds
+  const channelFactor = feedMode === '2ch' ? 2 : 1;
+  const actualQtyH = Math.min(itemQtyPerH, Math.round(3600 / secPerItem * channelFactor));
+
+  // 세척 면 수
+  const faceCount = itemType === 'box' ? 4 : 2;
+
+  // 분사 커버리지
+  const zoneHeight = 0.8; // 분사 거리 기본 0.8m
+  const coverage = sprayCoverage(nozCol, nozRow, nozGapX, nozGapY, itemW, itemH, nozAngle, zoneHeight);
+
+  // 탱크별 집계
+  let totalPower = 0;
+  let totalWaterH = 0;
+  let avgTemp = 0;
+  let detergentAvg = 0;
+  const tbodyRows = [];
+
+  for (let i = 0; i < zoneCnt; i++) {
+    const tank = parseFloat(document.getElementById(`z${i}-tank`)?.value) || ZONE_DEFAULTS[i].tankDefault;
+    const temp = parseFloat(document.getElementById(`z${i}-temp`)?.value) || ZONE_DEFAULTS[i].tempDefault;
+    const pump = parseFloat(document.getElementById(`z${i}-pump`)?.value) || ZONE_DEFAULTS[i].pumpDefault;
+    const pipe = parseFloat(document.getElementById(`z${i}-pipe`)?.value) || ZONE_DEFAULTS[i].pipeDefault;
+    const heater = parseFloat(document.getElementById(`z${i}-heater`)?.value) || 0;
+    const det = parseFloat(document.getElementById(`z${i}-detergent`)?.value) || 0;
+
+    // 시간당 물 사용: 펌프 유량 × 60 × 교체율 (탱크 대비)
+    const turnoverRate = Math.min(1, pump * 60 / tank * 0.15); // 탱크 교체율
+    const waterPerH = pump * 60 * turnoverRate;
+    totalWaterH += waterPerH;
+
+    // 파이프 유속
+    const vel = pipeVelocity(pump, pipe);
+
+    // 히터 전력 + 펌프 전력 추정
+    const pumpKW = pump * 0.003; // LPM → kW 추정
+    totalPower += heater + pumpKW;
+
+    avgTemp += temp;
+    detergentAvg += det;
+
+    // 상태 판단
+    let status, statusClass;
+    if (vel > 3.0) { status = '유속 과다'; statusClass = 'tag-bad'; }
+    else if (vel > 2.0) { status = '적정'; statusClass = 'tag-good'; }
+    else if (vel < 0.5) { status = '유속 부족'; statusClass = 'tag-warn'; }
+    else { status = '양호'; statusClass = 'tag-good'; }
+
+    tbodyRows.push(`<tr>
+      <td>${i+1}단</td>
+      <td>${ZONE_DEFAULTS[i].name}</td>
+      <td class="hi">${tank.toLocaleString()}</td>
+      <td>${temp}</td>
+      <td>${heater}</td>
+      <td>${pump}</td>
+      <td>${pipe}</td>
+      <td class="hi">${Math.round(waterPerH).toLocaleString()}</td>
+      <td><span class="${statusClass}">${status}</span></td>
+    </tr>`);
+  }
+
+  avgTemp /= zoneCnt;
+  detergentAvg /= zoneCnt;
+
+  // 세척율
+  const cleanRate = calcCleanRate(dirtLevel, zoneCnt, avgTemp, convSpeed, coverage, itemH, detergentAvg);
+
+  // 노즐 압력: 펌프 유량 → 압력 역산 (간략, 0.01 kPa/LPM^0.6)
+  const pump0 = parseFloat(document.getElementById('z0-pump')?.value) || 80;
+  const pressureKPa = Math.round(150 + pump0 * 0.8);
+  const nozzleFlowPerUnit = nozzleFlowRate(nozHole, pressureKPa); // L/min per nozzle
+
+  // 노즐 분석 테이블
+  const faces = itemType === 'box'
+    ? ['상면','하면','좌면','우면']
+    : ['좌면','우면'];
+  const nozzleRows = faces.map(face => {
+    const nozzleCount = nozCol * nozRow;
+    const faceFlow = nozzleFlowPerUnit * nozzleCount;
+    const faceCover = Math.min(100, coverage * (itemType === 'box' ? 1.05 : 1.1));
+    return `<tr>
+      <td>${face}</td>
+      <td>${nozzleCount}</td>
+      <td>${nozHole}</td>
+      <td>${nozAngle}</td>
+      <td>${nozzleFlowPerUnit.toFixed(2)}</td>
+      <td class="hi">${faceFlow.toFixed(1)}</td>
+      <td><span class="${faceCover>=80?'tag-good':faceCover>=60?'tag-warn':'tag-bad'}">${faceCover.toFixed(1)}%</span></td>
+    </tr>`;
+  });
+
+  // ── DOM 업데이트 ──
+  document.getElementById('kpi-clean').textContent = cleanRate.toFixed(1) + '%';
+  document.getElementById('kpi-qty').textContent = actualQtyH.toLocaleString();
+  document.getElementById('kpi-water').textContent = Math.round(totalWaterH).toLocaleString();
+  document.getElementById('kpi-power').textContent = totalPower.toFixed(1);
+  document.getElementById('kpi-time').textContent = secPerItem.toFixed(1);
+  document.getElementById('kpi-pressure').textContent = pressureKPa;
+
+  // bars
+  const setBar = (id, valId, pct, txt) => {
+    document.getElementById(id).style.width = Math.min(100, pct) + '%';
+    document.getElementById(valId).textContent = txt;
+  };
+  setBar('bar-clean','bar-val-clean', cleanRate, cleanRate.toFixed(1)+'%');
+  setBar('bar-cover','bar-val-cover', coverage, coverage.toFixed(1)+'%');
+  const tempPct = Math.min(100, (avgTemp - 15) / (90 - 15) * 100);
+  setBar('bar-temp','bar-val-temp', tempPct, avgTemp.toFixed(1)+'°C');
+
+  document.getElementById('tank-tbody').innerHTML = tbodyRows.join('');
+  document.getElementById('nozzle-tbody').innerHTML = nozzleRows.join('');
+
+  // ── 추천 ──
+  buildRecommendation(cleanRate, dirtLevel, zoneCnt, avgTemp, coverage, nozHole, pump0, pressureKPa, totalPower, actualQtyH);
+}
+
+function buildRecommendation(cleanRate, dirtLevel, zoneCnt, avgTemp, coverage, hole, pump, pressure, power, qty) {
+  const recs = [];
+
+  if (cleanRate < 75) recs.push({icon:'🔴', txt:`세척율 <b>${cleanRate.toFixed(1)}%</b> — 세척조 추가(+1단) 또는 온도 5~10°C 상향을 권장합니다.`});
+  else if (cleanRate < 88) recs.push({icon:'🟡', txt:`세척율 <b>${cleanRate.toFixed(1)}%</b> — 세척제 농도 1~2% 증가 시 90% 이상 달성 가능합니다.`});
+  else recs.push({icon:'🟢', txt:`세척율 <b>${cleanRate.toFixed(1)}%</b> — 우수한 세척 조건입니다.`});
+
+  if (coverage < 70) recs.push({icon:'⚠️', txt:`노즐 커버리지 <b>${coverage.toFixed(0)}%</b> — 노즐 수량 증가(세로 +1~2열) 또는 홀 직경 확대를 권장합니다.`});
+
+  if (hole < 1.5) recs.push({icon:'⚠️', txt:`홀 직경 <b>${hole}mm</b> — 막힘 위험. 최소 2.0mm 이상 권장합니다.`});
+  if (pressure > 400) recs.push({icon:'🔴', txt:`분사압 <b>${pressure}kPa</b> — 과압. 펌프 용량 또는 배관 직경 조정을 권장합니다.`});
+  if (avgTemp > 80) recs.push({icon:'⚠️', txt:`평균 온도 <b>${avgTemp.toFixed(0)}°C</b> — 소재 변형 위험 확인 필요.`});
+
+  // 추천 사양표
+  const recPump = Math.round(coverage < 80 ? pump * 1.2 : pump);
+  const recHole = hole < 2.0 ? 2.5 : hole;
+  const recZone = cleanRate < 75 ? Math.min(4, zoneCnt + 1) : zoneCnt;
+
+  const html = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+      <table class="res-table">
+        <thead><tr><th colspan="2">현재 사양</th></tr></thead>
+        <tbody>
+          <tr><td>세척조</td><td class="hi">${zoneCnt}단</td></tr>
+          <tr><td>노즐홀</td><td>${hole}mm</td></tr>
+          <tr><td>펌프용량</td><td>${pump} LPM</td></tr>
+          <tr><td>소비전력</td><td>${power.toFixed(1)} kW</td></tr>
+        </tbody>
+      </table>
+      <table class="res-table">
+        <thead><tr><th colspan="2">🌟 추천 사양</th></tr></thead>
+        <tbody>
+          <tr><td>세척조</td><td class="hi">${recZone}단</td></tr>
+          <tr><td>노즐홀</td><td>${recHole}mm</td></tr>
+          <tr><td>펌프용량</td><td>${recPump} LPM</td></tr>
+          <tr><td>목표 세척율</td><td>${Math.min(99,cleanRate+3).toFixed(0)}%+</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="rec-box">
+      <div class="rec-title">💡 개선 권장 사항</div>
+      ${recs.map(r => `<div class="rec-item"><div class="dot"></div><div class="txt">${r.icon} ${r.txt}</div></div>`).join('')}
+    </div>
+  `;
+  document.getElementById('rec-body').innerHTML = html;
+}
+
+// ── 이벤트 ──
+document.getElementById('zone-count').addEventListener('change', () => {
+  buildZonePanels();
+  autoSim();
+});
+
+document.getElementById('btn-simulate').addEventListener('click', () => {
+  runSim();
+  drawNozzleCanvas();
+});
+
+// 노즐 실시간
+['noz-col','noz-row','noz-gap-x','noz-gap-y','noz-angle','noz-hole'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => {
+    drawNozzleCanvas();
+    autoSim();
+  });
+});
+
+// 기타 입력 자동 시뮬
+let simTimer = null;
+function autoSim() {
+  clearTimeout(simTimer);
+  simTimer = setTimeout(() => { runSim(); }, 350);
+}
+document.querySelectorAll('input, select').forEach(el => {
+  el.addEventListener('input', autoSim);
+  el.addEventListener('change', autoSim);
+});
+
+// PC/Mobile 뷰 토글
+document.getElementById('btn-pc').addEventListener('click', () => {
+  document.getElementById('main-wrap').style.gridTemplateColumns = '400px 1fr';
+  document.getElementById('btn-pc').classList.add('active');
+  document.getElementById('btn-mobile').classList.remove('active');
+});
+document.getElementById('btn-mobile').addEventListener('click', () => {
+  document.getElementById('main-wrap').style.gridTemplateColumns = '1fr';
+  document.getElementById('btn-mobile').classList.add('active');
+  document.getElementById('btn-pc').classList.remove('active');
+});
+
+// ── 초기화 ──
+buildZonePanels();
+drawNozzleCanvas();
+setTimeout(() => { runSim(); }, 400);
+</script>
+</body>
+</html>
