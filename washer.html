@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>세척기 설계 시뮬레이터 v3.6 | 인시스 AI혁신 R&D센터</title>
+<title>세척기 설계 시뮬레이터 v3.7 | 인시스 AI혁신 R&D센터</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -199,7 +199,7 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
     <span id="autoSaveIndicator">● 대기중</span>
     <button class="vt on" id="bPC">PC</button>
     <button class="vt" id="bMB">Mobile</button>
-    <span class="vb">v3.6</span>
+    <span class="vb">v3.7</span>
   </div>
 </div>
 
@@ -585,7 +585,7 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
 
 </div><!-- /rp -->
 </div><!-- /wrap -->
-<footer>인시스 AI혁신 R&D센터 | 세척기 설계 시뮬레이터 v3.6 | ys.kim@in-sys.co.kr</footer>
+<footer>인시스 AI혁신 R&D센터 | 세척기 설계 시뮬레이터 v3.7 | ys.kim@in-sys.co.kr</footer>
 
 <script>
 'use strict';
@@ -602,7 +602,7 @@ const DIRT={
   hole: [0,  3.0,  2.5,  2.5,  2.0,  1.8],
 };
 const HP_PER_KW=1.341;
-const LS_KEY='washer_v36_last'; // localStorage 키
+const LS_KEY='washer_v37_last'; // localStorage 키
 
 // ── SUS 배관 규격 (KS B 1501 / JIS B 2311 스케줄 10S 기준) ──
 const SUS_PIPES=[
@@ -1678,18 +1678,32 @@ function lsLoad(){
 }
 
 // ══════════════════════════════════════════════
-// Firebase REST
+// Firebase SDK (모듈 방식)
 // ══════════════════════════════════════════════
-const FB_API='AIzaSyC4DWFGGJjJmVlqnfmZaVDdKJWCXK0Yr_g';
-const FB_PROJ='insys-work';
-const FB_COL='washer_sessions';
-const FB_BASE=`https://firestore.googleapis.com/v1/projects/${FB_PROJ}/databases/(default)/documents/${FB_COL}`;
+const FB_CONFIG = {
+  apiKey:            'AIzaSyC4DWFGGJjJmVlqnfmZaVDdKJWCXK0Yr_g',
+  authDomain:        'insys-work.firebaseapp.com',
+  projectId:         'insys-work',
+  storageBucket:     'insys-work.appspot.com',
+  messagingSenderId: '427197903',
+  appId:             '1:427197903:web:insys0001'
+};
+const FB_COL = 'washer_sessions';
 
-async function fbFetch(url,opts={}){
-  const sep=url.includes('?')?'&':'?';
-  const r=await fetch(url+sep+'key='+FB_API, opts);
-  if(!r.ok) throw new Error(await r.text());
-  return r.json();
+let _fbApp=null, _db=null;
+
+async function getDB(){
+  if(_db) return _db;
+  try{
+    const { initializeApp, getApps } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
+    const { getFirestore, collection, addDoc, getDocs, getDoc, doc, deleteDoc, query, orderBy, serverTimestamp }
+      = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+    if(!getApps().length) _fbApp = initializeApp(FB_CONFIG);
+    else _fbApp = getApps()[0];
+    _db = getFirestore(_fbApp);
+    _db._fns = { collection, addDoc, getDocs, getDoc, doc, deleteDoc, query, orderBy, serverTimestamp };
+    return _db;
+  }catch(e){ throw new Error('Firebase SDK 로드 실패: '+e.message); }
 }
 function toFsV(v){
   if(typeof v==='string') return {stringValue:v};
@@ -1725,15 +1739,18 @@ function scheduleAutoFbSave(){
 
 async function doFbSave(name,proj,memo,silent=false){
   try{
-    const s=collectSettings();
-    const body={fields:toFields({name,project:proj,memo,
-      ...s, savedAt:new Date().toISOString()})};
-    await fbFetch(FB_BASE,{
-      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
+    const db = await getDB();
+    const {collection, addDoc, serverTimestamp} = db._fns;
+    const s = collectSettings();
+    await addDoc(collection(db, FB_COL), {
+      name, project:proj||'—', memo:memo||'',
+      savedAt: new Date().toISOString(),
+      ...s
     });
     if(!silent) await fbLoadAll();
   }catch(e){
     if(!silent) showFbSt('fbSaveSt','err','저장 실패: '+e.message);
+    console.error('doFbSave 오류:', e);
   }
 }
 
@@ -1751,19 +1768,36 @@ async function fbSave(){
 
 // ── 전체 불러오기 ──
 async function fbLoadAll(){
-  showFbSt('fbSrchSt','ing','불러오는 중...');
+  showFbSt('fbSrchSt','ing','연결 중...');
   try{
-    const data=await fbFetch(FB_BASE);
-    const docs=data.documents||[];
+    const db = await getDB();
+    const {collection, getDocs, query, orderBy} = db._fns;
+    const q = query(collection(db, FB_COL), orderBy('savedAt','desc'));
+    const snap = await getDocs(q);
+    const docs = snap.docs.map(d=>({id:d.id, ...d.data()}));
     renderFbList(docs,'');
-    const n=docs.length;
-    gi('fbConnSt').textContent=n+'건 저장됨';
-    gi('fbConnSt').style.cssText='background:#d4edda;color:#155724;';
+    const n = docs.length;
+    gi('fbConnSt').textContent = n+'건 저장됨';
+    gi('fbConnSt').style.cssText = 'background:#d4edda;color:#155724;font-weight:700;';
     hideFS('fbSrchSt');
   }catch(e){
-    showFbSt('fbSrchSt','err','불러오기 실패');
-    gi('fbConnSt').textContent='연결 오류';
-    gi('fbConnSt').style.cssText='background:#f8d7da;color:#721c24;';
+    // orderBy 인덱스 없는 경우 폴백: 정렬 없이 전체 조회
+    try{
+      const db2 = await getDB();
+      const {collection, getDocs} = db2._fns;
+      const snap2 = await getDocs(collection(db2, FB_COL));
+      const docs2 = snap2.docs.map(d=>({id:d.id,...d.data()}))
+        .sort((a,b)=>(b.savedAt||'')>(a.savedAt||'')?1:-1);
+      renderFbList(docs2,'');
+      gi('fbConnSt').textContent = docs2.length+'건 저장됨';
+      gi('fbConnSt').style.cssText = 'background:#d4edda;color:#155724;font-weight:700;';
+      hideFS('fbSrchSt');
+    }catch(e2){
+      showFbSt('fbSrchSt','err','연결 실패: '+e2.message);
+      gi('fbConnSt').textContent = '연결 오류';
+      gi('fbConnSt').style.cssText = 'background:#f8d7da;color:#721c24;';
+      console.error('fbLoadAll 오류:', e2);
+    }
   }
 }
 
@@ -1773,96 +1807,103 @@ async function fbSearch(){
   if(!q){ await fbLoadAll(); return; }
   showFbSt('fbSrchSt','ing','검색 중...');
   try{
-    const data=await fbFetch(FB_BASE);
-    const docs=(data.documents||[]).filter(doc=>{
-      const f=fromFields(doc.fields);
-      return [f.name,f.project,f.memo,String(f.dlv||''),String(f.resultCr||''),f.itype].some(v=>(v||'').toLowerCase().includes(q));
-    });
+    const db = await getDB();
+    const {collection, getDocs} = db._fns;
+    const snap = await getDocs(collection(db, FB_COL));
+    const all  = snap.docs.map(d=>({id:d.id,...d.data()}));
+    const docs = all.filter(f=>{
+      const targets=[f.name,f.project,f.memo,String(f.dlv||''),String(f.resultCr||''),f.itype,f.iW,f.iD,f.iH];
+      return targets.some(v=>(String(v||'')).toLowerCase().includes(q));
+    }).sort((a,b)=>(b.savedAt||'')>(a.savedAt||'')?1:-1);
     renderFbList(docs,q);
-    showFbSt('fbSrchSt','ok',`검색 결과: ${docs.length}건`);
-  }catch(e){ showFbSt('fbSrchSt','err','검색 실패'); }
+    showFbSt('fbSrchSt','ok','검색 결과: '+docs.length+'건');
+  }catch(e){ showFbSt('fbSrchSt','err','검색 실패: '+e.message); }
 }
 
 // ── 목록 렌더링 ──
 function renderFbList(docs,kw){
   const list=gi('fbList');
-  if(!docs.length){ list.innerHTML='<div class="fb-empty">저장된 조건이 없습니다.</div>'; return; }
-  // 최신순 정렬
-  docs.sort((a,b)=>{
-    const fa=fromFields(a.fields),fb2=fromFields(b.fields);
-    return (fb2.savedAt||'')>(fa.savedAt||'')?1:-1;
-  });
+  if(!docs||!docs.length){
+    list.innerHTML='<div class="fb-empty">저장된 조건이 없습니다.<br>현재 설계값을 저장해 보세요.</div>';
+    return;
+  }
   function hl(s){
     if(!kw) return String(s||'');
-    return String(s||'').replace(new RegExp('('+kw.replace(/[.*+?^${}()|[\]\]/g,'\$&')+')','gi'),'<mark style="background:#fff176;">$1</mark>');
+    try{
+      return String(s||'').replace(new RegExp('('+kw.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'),'<mark style="background:#fff176;">$1</mark>');
+    }catch(e){ return String(s||''); }
   }
-  list.innerHTML = docs.map(doc=>{
-    const f=fromFields(doc.fields);
-    const id=doc.name.split('/').pop();
-    const cr=typeof f.resultCr==='number' ? f.resultCr.toFixed(1)+'%' : '—';
-    const dt=(f.savedAt||'').slice(0,16).replace('T',' ');
-    const dlvTxt=['','①경미','②보통','③중간','④심함','⑤극심'][+(f.dlv||3)]||'—';
-    const itypeTxt=f.itype==='box'?'박스':'트레이';
+  // docs는 SDK 방식: {id, name, project, savedAt, itype, ...} 플랫 구조
+  list.innerHTML = docs.map(f=>{
+    const id  = f.id || '';
+    const cr  = typeof f.resultCr==='number' ? f.resultCr.toFixed(1)+'%' : '—';
+    const dt  = (f.savedAt||'').slice(0,16).replace('T',' ');
+    const dlvTxt = ['','①경미','②보통','③중간','④심함','⑤극심'][+(f.dlv||3)]||'—';
+    const itypeTxt = f.itype==='box'?'박스':'트레이';
     return `<div class="fb-item" data-docid="${id}">
-      <div style="flex:1;min-width:0;">
+      <div style="flex:1;min-width:0;overflow:hidden;">
         <div class="fb-iname">${hl(f.name||'—')} <span class="fb-tag">${hl(f.project||'—')}</span></div>
-        <div class="fb-imeta">${dt} | ${itypeTxt} ${f.iW||'?'}×${f.iD||'?'}×${f.iH||'?'}mm | ${dlvTxt} | ${f.zcnt||'?'}단 | ${f.nPress||'?'}kPa${f.memo?` | 📝${hl(f.memo)}`:''}</div>
+        <div class="fb-imeta">${dt} | ${itypeTxt} ${f.iW||'?'}×${f.iD||'?'}×${f.iH||'?'}mm | ${dlvTxt} | ${f.zcnt||'?'}단 | ${f.nPress||'?'}kPa${f.memo?' | 📝'+hl(f.memo):''}</div>
       </div>
       <div class="fb-icr">${cr}</div>
       <button class="fb-idel" data-delid="${id}" type="button">🗑</button>
     </div>`;
   }).join('');
 
-  // 이벤트 위임 방식으로 클릭 처리 (onclick 인라인 제거)
+  // 이벤트 위임
   list.querySelectorAll('.fb-item').forEach(el=>{
     el.addEventListener('click', e=>{
-      if(e.target.classList.contains('fb-idel')) return; // 삭제 버튼은 별도 처리
-      const docid = el.dataset.docid;
+      if(e.target.classList.contains('fb-idel')||e.target.closest('.fb-idel')) return;
+      const docid=el.dataset.docid;
       if(docid) fbLoad(docid);
     });
   });
   list.querySelectorAll('.fb-idel').forEach(btn=>{
     btn.addEventListener('click', e=>{
       e.stopPropagation();
-      const docid = btn.dataset.delid;
-      if(docid) fbDelById(docid, btn.closest('.fb-item'));
+      fbDelById(btn.dataset.delid, btn.closest('.fb-item'));
     });
   });
 }
 
 // ── 불러오기 ──
 async function fbLoad(docId){
+  if(!docId){ showFbSt('fbSrchSt','err','문서 ID 없음'); return; }
   showFbSt('fbSrchSt','ing','불러오는 중...');
   try{
-    const data = await fbFetch(FB_BASE+'/'+docId);
-    if(!data || !data.fields) throw new Error('문서 없음');
-    const f = fromFields(data.fields);
+    const db = await getDB();
+    const {doc, getDoc} = db._fns;
+    const snap = await getDoc(doc(db, FB_COL, docId));
+    if(!snap.exists()) throw new Error('문서를 찾을 수 없습니다');
+    const f = snap.data();
     // 선택 강조
     gi('fbList').querySelectorAll('.fb-item').forEach(el=>{
       el.classList.toggle('sel', el.dataset.docid===docId);
     });
-    // 저장 이름 필드에 현재 이름 표시
     if(gi('fbName')) gi('fbName').value = (f.name||'').replace('(자동)','').trim();
     if(gi('fbProj')) gi('fbProj').value = f.project||'';
-    // 설정 복원
     applySettings(f);
-    showFbSt('fbSrchSt','ok','✅ "'+( f.name||docId)+'" 불러오기 완료');
-  } catch(e){
+    showFbSt('fbSrchSt','ok','✅ "'+(f.name||docId)+'" 불러오기 완료');
+  }catch(e){
     showFbSt('fbSrchSt','err','불러오기 실패: '+e.message);
+    console.error('fbLoad 오류:', e);
   }
 }
 
 // ── 삭제 ──
 async function fbDelById(docId, itemEl){
-  const nm = itemEl?.querySelector('.fb-iname')?.textContent?.trim() || docId;
+  if(!docId) return;
+  const nm = itemEl?.querySelector('.fb-iname')?.textContent?.trim()||docId;
   if(!confirm('"'+nm+'" 삭제하시겠습니까?')) return;
   try{
-    await fetch(FB_BASE+'/'+docId+'?key='+FB_API, {method:'DELETE'});
+    const db = await getDB();
+    const {doc, deleteDoc} = db._fns;
+    await deleteDoc(doc(db, FB_COL, docId));
     itemEl?.remove();
     const n = gi('fbList').querySelectorAll('.fb-item').length;
     gi('fbConnSt').textContent = n+'건 저장됨';
     if(!n) gi('fbList').innerHTML='<div class="fb-empty">저장된 조건이 없습니다.</div>';
-  } catch(e){
+  }catch(e){
     showFbSt('fbSrchSt','err','삭제 실패: '+e.message);
   }
 }
