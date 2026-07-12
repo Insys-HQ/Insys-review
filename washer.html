@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>세척기 설계 시뮬레이터 v3.3 | 인시스 AI혁신 R&D센터</title>
+<title>세척기 설계 시뮬레이터 v3.4 | 인시스 AI혁신 R&D센터</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -199,7 +199,7 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
     <span id="autoSaveIndicator">● 대기중</span>
     <button class="vt on" id="bPC">PC</button>
     <button class="vt" id="bMB">Mobile</button>
-    <span class="vb">v3.3</span>
+    <span class="vb">v3.4</span>
   </div>
 </div>
 
@@ -585,7 +585,7 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
 
 </div><!-- /rp -->
 </div><!-- /wrap -->
-<footer>인시스 AI혁신 R&D센터 | 세척기 설계 시뮬레이터 v3.3 | ys.kim@in-sys.co.kr</footer>
+<footer>인시스 AI혁신 R&D센터 | 세척기 설계 시뮬레이터 v3.4 | ys.kim@in-sys.co.kr</footer>
 
 <script>
 'use strict';
@@ -602,7 +602,7 @@ const DIRT={
   hole: [0,  3.0,  2.5,  2.5,  2.0,  1.8],
 };
 const HP_PER_KW=1.341;
-const LS_KEY='washer_v33_last'; // localStorage 키
+const LS_KEY='washer_v34_last'; // localStorage 키
 
 // ── SUS 배관 규격 (KS B 1501 / JIS B 2311 스케줄 10S 기준) ──
 const SUS_PIPES=[
@@ -660,21 +660,37 @@ function faceSpread(ang, dist){
   return Math.tan(ang*Math.PI/180)*dist; // 분사반경 (mm)
 }
 function calcCoverage(nc, nr, gapX, gapY, fw, fh, ang, dist){
-  const sr=faceSpread(ang,dist);
-  const totalX=nc*gapX+sr*2*(nc+1);
-  const totalY=nr*gapY+sr*2*(nr+1);
-  return Math.min(100, (totalX/fw)*(totalY/fh)*105);
+  // 분사 스프레드 반경 (노즐에서 거리 dist 위치의 스프레드 반경)
+  const sr = faceSpread(ang, dist);
+  // 노즐 배열 전체 커버 범위:
+  //   첫 노즐 위치 = gapX, 끝 노즐 위치 = nc*gapX
+  //   노즐군 폭 = (nc-1)*gapX
+  //   양끝 + 스프레드 sr = (nc-1)*gapX + 2*sr
+  //   단, 노즐간 겹침이 있으면 100%를 넘을 수 있으므로 min(fw) 처리
+  const coveredX = Math.min(fw, (nc - 1) * gapX + 2 * sr);
+  const coveredY = Math.min(fh, (nr - 1) * gapY + 2 * sr);
+  // 커버리지 = 커버 면적 / 전체 면적 × 100
+  return Math.min(100, (coveredX / fw) * (coveredY / fh) * 100);
 }
-function calcCleanRate({dlv,zcnt,temp,presKPa,det,cspd,pitchMm,iH,coverage,tgt}){
+function calcCleanRate({dlv,zcnt,temp,presKPa,det,cspd,pitchMm,iH,coverage,tgt,dwellOverride=null}){
   const base=[52,68,80,90][Math.min(zcnt,4)-1];
   const dirtP=[0,0,-3,-9,-18,-32][dlv];
   const tempB=Math.min(18,(temp-25)*0.36);
   const detB=Math.min(12,det*1.1);
   const pressB=Math.min(10,(presKPa-100)*0.028);
   const covF=0.6+0.4*(Math.min(100,coverage)/100);
-  const sec=(iH+pitchMm)/1000/(cspd/60);
-  const totalDwell=sec*zcnt;
-  const dwellB=Math.min(6,(totalDwell-60)*0.04);
+  // 아이템 1개 통과 피치 시간: (피세척물 높이H + 피치여유) / 컨베이어속도
+  // 세워서 투입 → 컨베이어 방향 점유길이 = 피세척물 높이(H) + 여유
+  const pitchM = pitchMm / 1000;           // m
+  const cspdMs = cspd / 60;                // m/s
+  const sec = pitchM / cspdMs;             // 아이템 1개 간격 통과시간(s)
+  // 세척 체류시간 = 세척조 합계 길이 / 속도 (피치와 무관)
+  // 세척조 길이는 외부에서 전달받거나 기본값 사용
+  // 각 세척조 평균 통과시간 ≈ sec * zcnt (간이 추정)
+  // 더 정확한 체류시간은 runSim에서 세척조 길이 합으로 계산
+  // dwellOverride: runSim에서 세척조 실제 길이로 계산한 체류시간
+  const totalDwell = dwellOverride !== null ? dwellOverride : sec * zcnt;
+  const dwellB = Math.min(8, (totalDwell - 30) * 0.05); // 30초 기준, 최대 +8점
   const spdP=Math.max(-14,-(cspd-2)*2.5);
   const cr=(base+dirtP+tempB+detB+pressB+dwellB+spdP)*covF;
   return {
@@ -719,7 +735,10 @@ function calcOptimal(){
   const supPipe=optPipeDia(totalQ,1.5);
   const sprayPipe=optPipeDia(totalQ/faces.length,2.0);
   const tankBase=Math.ceil(totalQ*15/100)*100;
-  const heaterKW=(tankBase*4.18*(rTemp-20))/3600*1.2;
+  // 히터 용량 = m[kg] × Cp[kJ/(kg·K)] × ΔT[K] / 가열시간[s] × 여유율
+  // m = tankBase[L] = tankBase[kg], Cp=4.18kJ/(kg·K), 가열시간=1h=3600s
+  // 여유율 1.35: 방열손실(15%) + 기동부하(10%) + 온도유지 여유(10%)
+  const heaterKW = (tankBase * 4.18 * (rTemp - 20)) / 3600 * 1.35;
   const chF=fmode==='2ch'?2:1;
   const pitchMm=iH+50;
   const rSpd=Math.min(12,(iqty/chF)*((pitchMm/1000)/60));
@@ -778,11 +797,18 @@ function updateAutoCalc(){
   const f0=faces[0];
 
   // 3. 노즐 간격 자동계산 (gapLocked=true 일 때만)
+  // 가로간격: 분사면 가로폭 / (가로노즐수+1) — 양쪽 여백 포함 균등배분
+  // 세로간격: 분사면 세로높이 / (세로노즐수+1) — 양쪽 여백 포함 균등배분
+  // 박스 기준 대표 분사면: 좌/우면 = iD(세로) × iH(높이)
+  // 상/하면: iW(가로) × iD(세로) → 별도 참고값
+  // 분사관 배열 기준면 = 이동방향 수직 단면(iD × iH)을 기본으로 사용
   if(gapLocked){
-    const gapX=Math.round(f0.fw/(nCol+1));
-    const gapY=Math.round(f0.fh/(nRow+1));
-    setAuto('nGapX', gapX);
-    setAuto('nGapY', gapY);
+    const refW = iD;   // 분사관 가로 배열 기준: 피세척물 세로(D) = 컨베이어 폭방향
+    const refH = iH;   // 분사관 세로 배열 기준: 피세척물 높이(H)
+    const gapX = Math.round(refW / (nCol + 1));  // 균등배분, 양끝 여백 포함
+    const gapY = Math.round(refH / (nRow + 1));  // 균등배분, 양끝 여백 포함
+    setAuto('nGapX', Math.max(20, gapX));
+    setAuto('nGapY', Math.max(20, gapY));
   }
 
   // 현재 간격 (자동 or 수동)
@@ -793,9 +819,16 @@ function updateAutoCalc(){
   setAuto('nManW', Math.max(iW,iD));
 
   // 5. 총 노즐 유량 → 펌프 유량
-  const nTotal=nCol*nRow;
-  const faceCount=faces.length;
-  const totalQ=qEach*nTotal*faceCount*1.15;
+  // 각 면별 노즐수가 다를 수 있으므로 각 면의 노즐수를 개별 계산
+  // 박스: 상하면(iW×iD), 좌우면(iD×iH) → 크기 다름 → 노즐수 다름
+  // 트레이: 좌우면(iD×iH) 2면
+  const nTotal = nCol * nRow;   // 현재 입력된 배열 기준 (1면 노즐수)
+  const faceCount = faces.length;
+  // 각 면의 실제 노즐수 추정 (면 크기 비율 기반)
+  // 상/하면은 좌/우면보다 크므로 노즐수가 더 많을 수 있음
+  // 단, 현재 UI는 단일 배열 입력 → 모든 면 동일 nTotal 적용 (보수적)
+  // 펌프 유량 = 단일 면 노즐 총유량 × 면수 × 여유율(15%) + 배관 손실(10%)
+  const totalQ = qEach * nTotal * faceCount * 1.15;
   setAuto('pFlow', Math.round(totalQ));
 
   // 6. SUS 배관 규격 자동 선택
@@ -857,14 +890,22 @@ function getFaces(itype,iW,iD,iH){
     :[{n:'좌면',fw:iD,fh:iH},{n:'우면',fw:iD,fh:iH}];
 }
 function calcLayout(fw,fh,hole,press,flux){
-  const qE=nozzleQ(hole,press);
-  const qN=fw*fh/1e6*flux;
-  const nMin=Math.max(4,Math.ceil(qN/qE));
-  const ratio=fw/fh;
-  let nc=Math.max(2,Math.round(Math.sqrt(nMin*ratio)));
-  let nr=Math.max(2,Math.ceil(nMin/nc));
-  if(nc%2!==0)nc++;
-  return {nc,nr,nTotal:nc*nr,qEach:qE,qTotal:qE*nc*nr};
+  const qE = nozzleQ(hole, press);
+  const areaMm2 = fw * fh;
+  const qNeed = areaMm2 / 1e6 * flux;  // 필요 총유량 (L/min)
+  // 필요 노즐수 = 필요유량 / 노즐당 유량, 최소 2개
+  const nMin = Math.max(2, Math.ceil(qNeed / qE));
+  // 가로:세로 비율로 배열 결정
+  const ratio = fw / fh;
+  let nc = Math.max(2, Math.round(Math.sqrt(nMin * ratio)));
+  let nr = Math.max(1, Math.ceil(nMin / nc));
+  // 노즐수 홀짝 강제 없음 — 면 크기에 맞게 자연 배분
+  // 간격 검증: 최소 간격 30mm 이상 보장
+  const minGap = 30;
+  while (nc > 1 && fw / (nc + 1) < minGap) nc--;
+  while (nr > 1 && fh / (nr + 1) < minGap) nr--;
+  const nTotal = nc * nr;
+  return {nc, nr, nTotal, qEach: qE, qTotal: qE * nTotal};
 }
 
 function buildZonePanels(){
@@ -889,10 +930,14 @@ function buildZonePanels(){
     tab.addEventListener('click',()=>switchZ(i));
 
     const php=lpmToHP(pA[i],OPT.press||200,.75);
-    // 세척조 길이·폭 기반 기본 탱크 용량: L×W×0.4 (40% 충진율)
+    // 세척조 치수 기반 탱크 용량
+    // 부피(L) = 길이(mm) × 폭(mm) × 깊이(mm) / 1,000,000
+    // 탱크 유효 용량 = 부피 × 충진율 75% (상부 여유 확보)
+    // 탱크는 세척조 하부에 위치하므로 조 깊이의 80% 수준
     const zLenDef=[1500,1200,1000,800][i];
     const zWidDef=[800,800,800,800][i];
-    const tankBySize=Math.round(zLenDef*zWidDef*0.4/1000); // mm³→L
+    const zDepDef=600; // 기본 깊이 600mm
+    const tankBySize=Math.round(zLenDef*zWidDef*zDepDef*0.75/1e6); // mm³→L, 충진율 75%
     const tankDefault=Math.min(Math.round(tkA[i]), tankBySize);
     // 분사관 SUS 규격 (면당 유량 기준)
     const faceQ=pA[i]/Math.max(1,(OPT.faces||[{},{},{}]).length);
@@ -1035,9 +1080,17 @@ function runSim(){
   const coverages=faces.map(f=>calcCoverage(nCol,nRow,nGapX,nGapY,f.fw,f.fh,nAng,nDist));
   const avgCov=coverages.reduce((a,b)=>a+b,0)/faces.length;
 
-  const pitchMm=iH+cPitch;
-  const temp0=+(gi('ztemp0')?.value||OPT.temp||60);
-  const res=calcCleanRate({dlv,zcnt,temp:temp0,presKPa,det:detVal,cspd:cSpd,pitchMm,iH,coverage:avgCov,tgt});
+  const pitchMm = iH + cPitch;
+  const temp0 = +(gi('ztemp0')?.value || OPT.temp || 60);
+  // 세척 체류시간: 각 세척조 길이 합 / 컨베이어 속도
+  // 세척조 길이가 입력되지 않으면 기본값 사용
+  let totalZoneLen = 0;
+  const zoneLenDef = [1500,1200,1000,800];
+  for(let i=0;i<zcnt;i++){
+    totalZoneLen += +(gi('zlen'+i)?.value || zoneLenDef[i]);
+  }
+  const dwellTimeSec = (totalZoneLen / 1000) / (cSpd / 60); // 세척조 총길이 / 속도
+  const res = calcCleanRate({dlv,zcnt,temp:temp0,presKPa,det:detVal,cspd:cSpd,pitchMm,iH,coverage:avgCov,tgt,dwellOverride:dwellTimeSec});
   const {cr,secPerItem,totalDwell,contrib}=res;
 
   const chF=fmode==='2ch'?2:1;
@@ -1052,7 +1105,11 @@ function runSim(){
     const heat=+(gi('zheat'+i)?.value||0);
     const pipe=spID(getSpecPipe('zpipeSpec'+i)||{od:42.16,t:3.56})||35;
     const vel=pipeVel(pump,pipe);
-    const wH=pump*60*(1/8)*0.8;
+    // 시간당 실제 물 사용량:
+    // 1) 순환 손실: 펌프 순환 중 피세척물 부착·반출·증발 = 약 3%
+    // 2) 탱크 교체분: 탱크용량 / 교체주기(h)
+    const changeH = 8; // 탱크 교체주기 (기본 8시간 교대)
+    const wH = (pump * 60 * 0.03) + (tank / changeH);
     totalWater+=wH;
     const pkw=lpmToKW(pump,presKPa,pEff);
     const php=pkw*HP_PER_KW;
