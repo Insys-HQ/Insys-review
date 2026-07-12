@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>세척기 설계 시뮬레이터 v3.4 | 인시스 AI혁신 R&D센터</title>
+<title>세척기 설계 시뮬레이터 v3.5 | 인시스 AI혁신 R&D센터</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -199,7 +199,7 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
     <span id="autoSaveIndicator">● 대기중</span>
     <button class="vt on" id="bPC">PC</button>
     <button class="vt" id="bMB">Mobile</button>
-    <span class="vb">v3.4</span>
+    <span class="vb">v3.5</span>
   </div>
 </div>
 
@@ -492,7 +492,7 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
 
   <!-- KPI -->
   <div class="card">
-    <div class="ch"><span class="ci">📊</span><span class="cl">핵심 지표</span><span class="cq cq-g" id="simTime">—</span></div>
+    <div class="ch"><span class="ci">📊</span><span class="cl">핵심 지표</span><span class="cq cq-b" id="chInfoBadge">—</span><span class="cq cq-g" id="simTime" style="margin-left:4px;">—</span></div>
     <div class="cb">
       <div class="kpi-row">
         <div class="kcard kc1"><div class="kv" id="kC">—</div><div class="kl">세척율 (%)</div></div>
@@ -585,7 +585,7 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
 
 </div><!-- /rp -->
 </div><!-- /wrap -->
-<footer>인시스 AI혁신 R&D센터 | 세척기 설계 시뮬레이터 v3.4 | ys.kim@in-sys.co.kr</footer>
+<footer>인시스 AI혁신 R&D센터 | 세척기 설계 시뮬레이터 v3.5 | ys.kim@in-sys.co.kr</footer>
 
 <script>
 'use strict';
@@ -602,7 +602,7 @@ const DIRT={
   hole: [0,  3.0,  2.5,  2.5,  2.0,  1.8],
 };
 const HP_PER_KW=1.341;
-const LS_KEY='washer_v34_last'; // localStorage 키
+const LS_KEY='washer_v35_last'; // localStorage 키
 
 // ── SUS 배관 규격 (KS B 1501 / JIS B 2311 스케줄 10S 기준) ──
 const SUS_PIPES=[
@@ -724,17 +724,22 @@ function calcOptimal(){
   const rHole=DIRT.hole[dlv], rPress=DIRT.press[dlv];
   const rTemp=DIRT.temp[dlv], rDet=DIRT.det[dlv], rFlux=DIRT.flux[dlv];
 
-  const faces=getFaces(itype,iW,iD,iH);
-  const lay0=calcLayout(faces[0].fw,faces[0].fh,rHole,rPress,rFlux);
+  const chInfo   = getChannelInfo(itype, fmode, iW, iD, iH);
+  const {ch, facesPerCh, allFaces} = chInfo;
+  const lay0     = calcLayout(facesPerCh[0].fw, facesPerCh[0].fh, rHole, rPress, rFlux);
 
-  const totalQ=faces.reduce((s,f)=>{
-    const l=calcLayout(f.fw,f.fh,rHole,rPress,rFlux);
-    return s+l.qTotal;
-  },0)*1.15;
+  // 1채널당 총 유량 = 채널 내 모든 면 노즐 유량 합 × 여유율 15%
+  const qPerCh = facesPerCh.reduce((s,f)=>{
+    const l = calcLayout(f.fw, f.fh, rHole, rPress, rFlux);
+    return s + l.qTotal;
+  }, 0) * 1.15;
+  // 전체 펌프 유량 = 1ch 유량 × 채널수
+  const totalQ = qPerCh * ch;
 
-  const supPipe=optPipeDia(totalQ,1.5);
-  const sprayPipe=optPipeDia(totalQ/faces.length,2.0);
-  const tankBase=Math.ceil(totalQ*15/100)*100;
+  const supPipe   = optPipeDia(totalQ, 1.5);
+  const sprayPipe = optPipeDia(qPerCh / facesPerCh.length, 2.0);
+  // 탱크 용량: 1채널 기준 (탱크는 채널별 독립 또는 공유 가능)
+  const tankBase  = Math.ceil(qPerCh * 15 / 100) * 100;
   // 히터 용량 = m[kg] × Cp[kJ/(kg·K)] × ΔT[K] / 가열시간[s] × 여유율
   // m = tankBase[L] = tankBase[kg], Cp=4.18kJ/(kg·K), 가열시간=1h=3600s
   // 여유율 1.35: 방열손실(15%) + 기동부하(10%) + 온도유지 여유(10%)
@@ -745,8 +750,8 @@ function calcOptimal(){
 
   OPT={dlv,zcnt,iW,iD,iH,iqty,tgt,itype,fmode,
     hole:rHole,press:rPress,temp:rTemp,det:rDet,flux:rFlux,
-    spd:+rSpd.toFixed(2),tank:tankBase,totalQ,supPipe,sprayPipe,
-    heaterKW,faces,pitchMm};
+    spd:+rSpd.toFixed(2),tank:tankBase,totalQ,qPerCh,ch,supPipe,sprayPipe,
+    heaterKW,faces:allFaces,facesPerCh,pitchMm};
 
   // 추천값 세팅
   setRec('nHole',  rHole.toFixed(1));
@@ -792,50 +797,45 @@ function updateAutoCalc(){
   const qEach=nozzleQ(holeMm, presKPa);
   gi('dv-qEach').textContent=qEach.toFixed(3);
 
-  // 2. 분사면 크기 → 첫 면 기준
-  const faces=getFaces(itype,iW,iD,iH);
-  const f0=faces[0];
+  // 2. 채널 구성 계산
+  const chInfo = getChannelInfo(itype, gv('fmode'), iW, iD, iH);
+  const {ch, facesPerCh, allFaces} = chInfo;
+  const f0 = facesPerCh[0]; // 대표 면 (1채널 첫 번째 면)
 
-  // 3. 노즐 간격 자동계산 (gapLocked=true 일 때만)
-  // 가로간격: 분사면 가로폭 / (가로노즐수+1) — 양쪽 여백 포함 균등배분
-  // 세로간격: 분사면 세로높이 / (세로노즐수+1) — 양쪽 여백 포함 균등배분
-  // 박스 기준 대표 분사면: 좌/우면 = iD(세로) × iH(높이)
-  // 상/하면: iW(가로) × iD(세로) → 별도 참고값
-  // 분사관 배열 기준면 = 이동방향 수직 단면(iD × iH)을 기본으로 사용
+  // 3. 노즐 간격 자동계산
+  // 대표 면 = 측면(iD × iH) — 분사관 배열 기준
+  // 가로간격: 분사면 폭(D) / (가로노즐수+1)
+  // 세로간격: 분사면 높이(H) / (세로노즐수+1)
   if(gapLocked){
-    const refW = iD;   // 분사관 가로 배열 기준: 피세척물 세로(D) = 컨베이어 폭방향
-    const refH = iH;   // 분사관 세로 배열 기준: 피세척물 높이(H)
-    const gapX = Math.round(refW / (nCol + 1));  // 균등배분, 양끝 여백 포함
-    const gapY = Math.round(refH / (nRow + 1));  // 균등배분, 양끝 여백 포함
-    setAuto('nGapX', Math.max(20, gapX));
-    setAuto('nGapY', Math.max(20, gapY));
+    const refW = iD;  // 측면 폭 = 피세척물 세로(D)
+    const refH = iH;  // 측면 높이 = 피세척물 높이(H)
+    const gapX = Math.max(20, Math.round(refW / (nCol + 1)));
+    const gapY = Math.max(20, Math.round(refH / (nRow + 1)));
+    setAuto('nGapX', gapX);
+    setAuto('nGapY', gapY);
   }
+  const nGapX = +gv('nGapX') || 100;
+  const nGapY = +gv('nGapY') || 100;
 
-  // 현재 간격 (자동 or 수동)
-  const nGapX=+gv('nGapX')||150;
-  const nGapY=+gv('nGapY')||100;
+  // 4. 분사관 폭 = 채널당 최대 면폭
+  const manW = fmode === '2ch' ? iD : Math.max(iW, iD);
+  setAuto('nManW', manW);
 
-  // 4. 분사관 폭 = 피세척물 최대 폭
-  setAuto('nManW', Math.max(iW,iD));
-
-  // 5. 총 노즐 유량 → 펌프 유량
-  // 각 면별 노즐수가 다를 수 있으므로 각 면의 노즐수를 개별 계산
-  // 박스: 상하면(iW×iD), 좌우면(iD×iH) → 크기 다름 → 노즐수 다름
-  // 트레이: 좌우면(iD×iH) 2면
-  const nTotal = nCol * nRow;   // 현재 입력된 배열 기준 (1면 노즐수)
-  const faceCount = faces.length;
-  // 각 면의 실제 노즐수 추정 (면 크기 비율 기반)
-  // 상/하면은 좌/우면보다 크므로 노즐수가 더 많을 수 있음
-  // 단, 현재 UI는 단일 배열 입력 → 모든 면 동일 nTotal 적용 (보수적)
-  // 펌프 유량 = 단일 면 노즐 총유량 × 면수 × 여유율(15%) + 배관 손실(10%)
-  const totalQ = qEach * nTotal * faceCount * 1.15;
+  // 5. 펌프 유량 계산 (채널 기반)
+  // 1채널당 노즐 총유량 = (면당 노즐수 × 면수) × 단위유량 × 여유율
+  const nTotal    = nCol * nRow;               // 1면 노즐수
+  const faceCount = facesPerCh.length;         // 1채널당 면수
+  const qPerCh    = qEach * nTotal * faceCount * 1.15; // 1ch 유량
+  const totalQ    = qPerCh * ch;               // 전체 = 1ch × 채널수
   setAuto('pFlow', Math.round(totalQ));
 
   // 6. SUS 배관 규격 자동 선택
   // 분사관: 면당 유량 기준 v≤2.5m/s
-  const qPerFace=totalQ/faceCount;
-  const bestSpray=bestSusPipe(qPerFace, 2.5);
-  const bestSupply=bestSusPipe(totalQ, 1.8);
+  // SUS 규격: 분사관은 1채널 1면 유량, 공급관은 전체 유량 기준
+  const _qPerCh2  = (typeof qPerCh!=='undefined') ? qPerCh : pFlow/Math.max(1,ch);
+  const qPerFace  = _qPerCh2 / facesPerCh.length;  // 1면당 유량 (1ch 기준)
+  const bestSpray  = bestSusPipe(qPerFace, 2.5);
+  const bestSupply = bestSusPipe(totalQ, 1.8);
   // 분사관 SELECT 자동 설정
   const sprayVal=susPipeVal(bestSpray);
   const supplyVal=susPipeVal(bestSupply);
@@ -884,10 +884,67 @@ function updateAutoCalc(){
 // ══════════════════════════════════════════════
 // 세척조 패널 생성
 // ══════════════════════════════════════════════
+// ── 채널 구성 계산 ──
+// 2ch 투입 시: 중앙 격벽으로 좌우 채널 분리
+// 박스 1ch: 상·하·좌·우 4면
+// 박스 2ch: 채널당 상·하·외벽·내벽(격벽) 4면 × 2채널
+//           → 격벽 측(내벽)도 독립 노즐 필요
+// 트레이 1ch: 좌·우 2면
+// 트레이 2ch: 채널당 외벽·내벽(격벽) 2면 × 2채널
 function getFaces(itype,iW,iD,iH){
+  // 하위 호환용 (fmode 없이 호출 시)
   return itype==='box'
-    ?[{n:'상면',fw:iW,fh:iD},{n:'하면',fw:iW,fh:iD},{n:'좌면',fw:iD,fh:iH},{n:'우면',fw:iD,fh:iH}]
-    :[{n:'좌면',fw:iD,fh:iH},{n:'우면',fw:iD,fh:iH}];
+    ?[{n:'상면',fw:iW,fh:iD},{n:'하면',fw:iW,fh:iD},{n:'좌면(외)',fw:iD,fh:iH},{n:'우면(외)',fw:iD,fh:iH}]
+    :[{n:'좌면(외)',fw:iD,fh:iH},{n:'우면(외)',fw:iD,fh:iH}];
+}
+
+function getChannelInfo(itype, fmode, iW, iD, iH){
+  const ch = fmode==='2ch' ? 2 : 1;
+
+  // 1채널당 분사 면 정의
+  let facesPerCh;
+  if(itype==='box'){
+    if(fmode==='2ch'){
+      // 2ch 격벽 구조: 채널당 상면·하면·외벽·격벽(내벽) 4면
+      // 격벽은 양 채널에서 공유하지만 각 채널이 독립 노즐 필요
+      facesPerCh = [
+        {n:'상면',    fw:iW, fh:iD, note:'컨베이어 진행방향 상부'},
+        {n:'하면',    fw:iW, fh:iD, note:'컨베이어 진행방향 하부'},
+        {n:'외벽(좌)',fw:iD, fh:iH, note:'채널 외측벽'},
+        {n:'격벽(내)',fw:iD, fh:iH, note:'중앙 격벽 — 채널당 독립 노즐'},
+      ];
+    } else {
+      facesPerCh = [
+        {n:'상면', fw:iW, fh:iD},
+        {n:'하면', fw:iW, fh:iD},
+        {n:'좌면', fw:iD, fh:iH},
+        {n:'우면', fw:iD, fh:iH},
+      ];
+    }
+  } else {
+    // 트레이
+    if(fmode==='2ch'){
+      facesPerCh = [
+        {n:'외벽(좌)',fw:iD, fh:iH, note:'채널 외측'},
+        {n:'격벽(내)',fw:iD, fh:iH, note:'중앙 격벽'},
+      ];
+    } else {
+      facesPerCh = [
+        {n:'좌면', fw:iD, fh:iH},
+        {n:'우면', fw:iD, fh:iH},
+      ];
+    }
+  }
+
+  // 전체 면 목록 (ch × facesPerCh, 시각화·계산용)
+  const allFaces = [];
+  for(let c=0;c<ch;c++){
+    facesPerCh.forEach(f=>{
+      allFaces.push({...f, n:`CH${c+1} ${f.n}`, ch:c+1});
+    });
+  }
+
+  return {ch, facesPerCh, allFaces, facePerChCount: facesPerCh.length};
 }
 function calcLayout(fw,fh,hole,press,flux){
   const qE = nozzleQ(hole, press);
@@ -940,7 +997,7 @@ function buildZonePanels(){
     const tankBySize=Math.round(zLenDef*zWidDef*zDepDef*0.75/1e6); // mm³→L, 충진율 75%
     const tankDefault=Math.min(Math.round(tkA[i]), tankBySize);
     // 분사관 SUS 규격 (면당 유량 기준)
-    const faceQ=pA[i]/Math.max(1,(OPT.faces||[{},{},{}]).length);
+    const faceQ=pA[i]/Math.max(1,(OPT.facesPerCh||OPT.faces||[{},{},{}]).length);
     const bestSp=bestSusPipe(faceQ,2.5);
     const spNm=bestSp.nm; const spIDv=spID(bestSp).toFixed(1);
     const p=document.createElement('div');
@@ -1027,7 +1084,7 @@ function buildZonePanels(){
           const spEl=gi('zpipeSpec'+i);
           if(spEl){
             const pp=getSpecPipe('zpipeSpec'+i);
-            const fq=+(gi('zpump'+i)?.value||100)/Math.max(1,(OPT.faces||[{},{},{}]).length);
+            const fq=+(gi('zpump'+i)?.value||100)/Math.max(1,(OPT.facesPerCh||OPT.faces||[{},{}]).length);
             const un=gi('zpipe-un'+i);
             if(un) un.textContent=`v=${spVel(fq,pp).toFixed(2)}m/s | ID ${spID(pp).toFixed(1)}mm`;
           }
@@ -1035,7 +1092,7 @@ function buildZonePanels(){
         // zpipeSpec 변경 시 유속 표시 업데이트
         if(el.id==='zpipeSpec'+i){
           const pp=getSpecPipe('zpipeSpec'+i);
-          const fq=+(gi('zpump'+i)?.value||100)/Math.max(1,(OPT.faces||[{},{},{}]).length);
+          const fq=+(gi('zpump'+i)?.value||100)/Math.max(1,(OPT.facesPerCh||OPT.faces||[{},{}]).length);
           const un=gi('zpipe-un'+i);
           if(un) un.textContent=`v=${spVel(fq,pp).toFixed(2)}m/s | ID ${spID(pp).toFixed(1)}mm`;
         }
@@ -1093,8 +1150,8 @@ function runSim(){
   const res = calcCleanRate({dlv,zcnt,temp:temp0,presKPa,det:detVal,cspd:cSpd,pitchMm,iH,coverage:avgCov,tgt,dwellOverride:dwellTimeSec});
   const {cr,secPerItem,totalDwell,contrib}=res;
 
-  const chF=fmode==='2ch'?2:1;
-  const actualQty=Math.min(+gv('iqty')||200,Math.round(3600/secPerItem*chF));
+  // 처리량 = 채널당 처리량 × 채널수
+  const actualQty=Math.min(+gv('iqty')||200,Math.round(3600/secPerItem*ch));
 
   let totalPow=0, totalWater=0, avgTemp=0;
   const zRows=[];
@@ -1122,7 +1179,7 @@ function runSim(){
     const zwidV=+(gi('zwid'+i)?.value||800);
     const zmaxTk=Math.round(zlenV*zwidV*(+(gi('zdep'+i)?.value||600))*0.4/1e6);
     const spSpecPipe=getSpecPipe('zpipeSpec'+i);
-    const spSpecNm=spSpecPipe.nm; const spSpecVel=spVel(pump/Math.max(1,(OPT.faces||[{}]).length),spSpecPipe);
+    const spSpecNm=spSpecPipe.nm; const spSpecVel=spVel(pump/Math.max(1,(OPT.facesPerCh||OPT.faces||[{}]).length),spSpecPipe);
     zRows.push(`<tr><td>${i+1}</td><td>${ZN[i]}</td>
       <td class="hi">${zlenV.toLocaleString()}</td><td>${zwidV}</td>
       <td class="hi">${tank.toLocaleString()}</td><td class="hi2">${zmaxTk.toLocaleString()}</td>
@@ -1151,6 +1208,12 @@ function runSim(){
   gi('kD').textContent=totalDwell.toFixed(1);
   gi('kCov').textContent=avgCov.toFixed(1)+'%';
 
+  // 채널 구성 요약 표시
+  const chSummary = ch===2
+    ? `${ch}ch 격벽분리 | 채널당 ${facesPerCh.length}면 | 총${ch*facesPerCh.length}면`
+    : `${ch}ch | ${facesPerCh.length}면`;
+  if(gi('chInfoBadge')) gi('chInfoBadge').textContent = chSummary;
+
   const elapsed=(performance.now()-t0).toFixed(0);
   gi('simTime').textContent=`${new Date().toLocaleTimeString()} | ${elapsed}ms`;
 
@@ -1165,15 +1228,15 @@ function runSim(){
   // 그래프
   renderFactorBars(contrib,cr,avgCov,presKPa,avgTemp,detVal);
   renderEffChart(cr,contrib,tgt);
-  renderFaceBars(faces,coverages,qEach,nTotal);
+  renderFaceBars(facesPerCh,coverages,qEach,nTotal,ch,allFaces);
   renderZoneBars(zcnt,avgTemp);
-  drawNozzleVis(nCol,nRow,nGapX,nGapY,holeMm,presKPa,nAng,nDist,nManW,faces[0]);
+  drawNozzleVis(nCol,nRow,nGapX,nGapY,holeMm,presKPa,nAng,nDist,nManW,facesPerCh[0],ch);
   // SUS 규격 정보 (buildSpecTable에 전달)
   const _spPipe=getSpecPipe('nManSpec');
   const _suPipe=getSpecPipe('pPipeSpec');
   const spPipeNm=_spPipe.nm; const spPipeID=spID(_spPipe).toFixed(1);
   const suPipeNm=_suPipe.nm; const suPipeID=spID(_suPipe).toFixed(1);
-  buildSpecTable(holeMm,presKPa,nCol,nRow,nGapX,nGapY,nManW,spPipeNm,spPipeID,suPipeNm,suPipeID,pFlow,pumpHP,pumpKW,cSpd,cr,tgt,avgCov,actualQty,+gv('iqty')||200);
+  buildSpecTable(holeMm,presKPa,nCol,nRow,nGapX,nGapY,nManW,spPipeNm,spPipeID,suPipeNm,suPipeID,pFlow,pumpHP,pumpKW,cSpd,cr,tgt,avgCov,actualQty,+gv('iqty')||200,ch,facesPerCh,qPerCh);
   updateFlow(zcnt,fmode,avgTemp);
   buildRec(cr,tgt,dlv,zcnt,holeMm,presKPa,avgTemp,detVal,avgCov,cSpd,OPT.spd||cSpd,actualQty,+gv('iqty')||200);
 
@@ -1229,12 +1292,24 @@ function renderZoneBars(zcnt,avgTemp){
   gi('zoneBars').innerHTML=rows.join('');
 }
 
-function renderFaceBars(faces,coverages,qEach,nTotal){
-  gi('faceBars').innerHTML=faces.map((f,i)=>{
-    const c=Math.min(100,coverages[i]||0);
-    const col=c>=80?'#2e7d32':c>=60?'#e65100':'#c62828';
-    return hbar(f.n+` ${f.fw}×${f.fh}`,c,100,col,`노즐${nTotal}개 | ${(qEach*nTotal).toFixed(1)}L/min`);
-  }).join('');
+function renderFaceBars(facesPerCh, coverages, qEach, nTotal, ch, allFaces){
+  // coverages는 1채널 기준 면별 커버리지
+  const chColors = ['#0d7fa8','#7b1fa2']; // 채널1, 채널2 색상
+  let html = '';
+  // 채널별로 표시
+  for(let c=0;c<ch;c++){
+    if(ch>1) html += `<div style="font-size:11px;font-weight:700;color:#0b2640;margin:6px 0 3px;">CH${c+1} 채널</div>`;
+    facesPerCh.forEach((f,fi)=>{
+      const cov = Math.min(100, coverages[fi]||0);
+      const col = cov>=80?'#2e7d32':cov>=60?'#e65100':'#c62828';
+      html += hbar(
+        `${f.n} ${f.fw}×${f.fh}mm`,
+        cov, 100, col,
+        `노즐${nTotal}개/면 | ${(qEach*nTotal).toFixed(1)}L/min | CH${c+1}`
+      );
+    });
+  }
+  gi('faceBars').innerHTML = html;
 }
 
 function renderEffChart(cr,contrib,tgt){
@@ -1316,7 +1391,7 @@ function renderHistBars(){
 // ══════════════════════════════════════════════
 // 노즐 시각화
 // ══════════════════════════════════════════════
-function drawNozzleVis(nc,nr,gapX,gapY,holeMm,presKPa,ang,dist,manW,face){
+function drawNozzleVis(nc,nr,gapX,gapY,holeMm,presKPa,ang,dist,manW,face,ch=1){
   const cv=gi('pvCv'); if(!cv||!face) return;
   const ctx=cv.getContext('2d'), W=cv.width, H=cv.height;
   ctx.clearRect(0,0,W,H);
@@ -1354,22 +1429,51 @@ function drawNozzleVis(nc,nr,gapX,gapY,holeMm,presKPa,ang,dist,manW,face){
       ctx.fillStyle='rgba(0,0,0,.4)'; ctx.fill();
     }
   }
+  // 2ch 격벽 시각화
+  if(ch === 2){
+    // 격벽 위치: 캔버스 중앙에 수직선
+    const wallX = ox + dW / 2;
+    ctx.save();
+    ctx.setLineDash([6,3]);
+    ctx.strokeStyle = '#c62828';
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(wallX, oy); ctx.lineTo(wallX, oy+dH); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#c62828';
+    ctx.font = 'bold 10px Noto Sans KR';
+    ctx.textAlign = 'center';
+    ctx.fillText('격벽', wallX, oy - 4);
+    // CH1 / CH2 라벨
+    ctx.fillStyle = 'rgba(13,127,168,0.12)';
+    ctx.fillRect(ox, oy, dW/2, dH);
+    ctx.fillStyle = 'rgba(123,31,162,0.10)';
+    ctx.fillRect(ox+dW/2, oy, dW/2, dH);
+    ctx.fillStyle = '#0d7fa8'; ctx.font = 'bold 11px Noto Sans KR';
+    ctx.fillText('CH1', ox + dW*0.25, oy + 14);
+    ctx.fillStyle = '#7b1fa2';
+    ctx.fillText('CH2', ox + dW*0.75, oy + 14);
+    ctx.restore();
+  }
+
   ctx.fillStyle='#0b2640'; ctx.font='bold 10px Noto Sans KR'; ctx.textAlign='center';
-  ctx.fillText(`${face.n} ${fw}×${fh}mm | ${nc}×${nr}=${nc*nr}개 | Ø${holeMm}mm | ${presKPa}kPa | ${qEach.toFixed(3)}L/min/개`, W/2, oy+dH+14);
+  const chLabel = ch===2 ? ` | ${ch}ch (격벽 분리)` : '';
+  ctx.fillText(`${face.n} ${fw}×${fh}mm | ${nc}×${nr}=${nc*nr}개/면 | Ø${holeMm}mm | ${presKPa}kPa | ${qEach.toFixed(3)}L/min/노즐${chLabel}`, W/2, oy+dH+14);
   ctx.fillStyle='#4a7a9a'; ctx.font='9px Noto Sans KR';
-  ctx.fillText(`간격 ${gapX}×${gapY}mm | 분사관폭 ${manW}mm | 분사거리 ${dist}mm | 분사각 ${ang}° | 스프레드 ±${faceSpread(ang,dist).toFixed(0)}mm`, W/2, oy+dH+27);
-  gi('pvTitle').textContent=`${face.n} — ${nc}열×${nr}행`;
+  ctx.fillText(`간격 ${gapX}×${gapY}mm | 분사관폭 ${manW}mm | 분사거리 ${dist}mm | 분사각 ${ang}° | ±${faceSpread(ang,dist).toFixed(0)}mm스프레드`, W/2, oy+dH+27);
+  gi('pvTitle').textContent=`${face.n} — ${nc}열×${nr}행 | ${ch}ch ${ch===2?'격벽분리':'단일채널'}`;
 }
 
 // ══════════════════════════════════════════════
 // 사양표 / 공정 / 추천
 // ══════════════════════════════════════════════
-function buildSpecTable(hole,press,nc,nr,gapX,gapY,manW,spPipeNm,spPipeID,suPipeNm,suPipeID,pFlow,pHP,pKW,cSpd,cr,tgt,cov,qty,iqty){
+function buildSpecTable(hole,press,nc,nr,gapX,gapY,manW,spPipeNm,spPipeID,suPipeNm,suPipeID,pFlow,pHP,pKW,cSpd,cr,tgt,cov,qty,iqty,ch,facesPerCh,qPerCh){
   const dlv=+gv('dlv');
   const rows=[
     ['노즐 홀 직경',hole+'mm',DIRT.hole[dlv]+'mm','1.5~4.0mm','오리피스 Cd=0.62',hole<1.5?'tg-r':hole>5?'tg-w':'tg-g'],
     ['분사 압력',press+'kPa',DIRT.press[dlv]+'kPa','100~350kPa','오염도 Bernoulli',press>450?'tg-r':'tg-g'],
-    ['노즐 배열',`${nc}×${nr}=${nc*nr}개`,'-','면적·플럭스','유량/단위유량','tg-g'],
+    ['투입 채널',ch===2?`2ch (격벽 분리)`:`1ch (단열)`,'-',`ch당 ${facesPerCh.length}면`,'getChannelInfo','tg-g'],
+    ['채널당 유량',`${Math.round(qPerCh)}LPM`,'-','-','1ch 유량','tg-g'],
+    ['노즐 배열',`${nc}×${nr}=${nc*nr}개/면`,'-','면적·플럭스','유량/단위유량','tg-g'],
     ['가로 간격',gapX+'mm',`면폭/(${nc}+1)`,'균등배분','기하 계산','tg-g'],
     ['세로 간격',gapY+'mm',`면고/(${nr}+1)`,'균등배분','기하 계산','tg-g'],
     ['분사관 폭',manW+'mm','피세척물 폭↑','—','—','tg-g'],
@@ -1395,7 +1499,10 @@ function updateFlow(zcnt,fmode,avgTemp){
   const fr=gi('flowrow'); if(!fr) return;
   fr.innerHTML='';
   const add=(cls,html)=>{ const d=document.createElement('div'); d.className=cls; d.innerHTML=html; fr.appendChild(d); };
-  add('fn',`투입<div class="fs">${fmode==='2ch'?'2열':'1열'}</div>`);
+  const chDesc = fmode==='2ch'
+    ? (itype==='box'?'2ch/격벽/상하좌우':'2ch/격벽/좌우')
+    : (itype==='box'?'1ch/상하좌우':'1ch/좌우');
+  add('fn',`투입<div class="fs">${chDesc}</div>`);
   for(let i=0;i<4;i++){
     add('fa','→');
     const on=i<zcnt;
