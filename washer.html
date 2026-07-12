@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>세척기 설계 시뮬레이터 v3.5 | 인시스 AI혁신 R&D센터</title>
+<title>세척기 설계 시뮬레이터 v3.6 | 인시스 AI혁신 R&D센터</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -199,7 +199,7 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
     <span id="autoSaveIndicator">● 대기중</span>
     <button class="vt on" id="bPC">PC</button>
     <button class="vt" id="bMB">Mobile</button>
-    <span class="vb">v3.5</span>
+    <span class="vb">v3.6</span>
   </div>
 </div>
 
@@ -463,7 +463,7 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
         </div>
         <div class="fl">
           <label>세척제 농도 <span class="lbadge lbadge-r">추천</span></label>
-          <input type="number" id="det" class="s-rec" value="3.0" step="0.5" min="0" max="15">
+          <input type="number" id="det" class="s-rec" value="0" step="0.5" min="0" max="15">
           <span class="un">% → 세척율 연동</span>
         </div>
       </div>
@@ -585,7 +585,7 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
 
 </div><!-- /rp -->
 </div><!-- /wrap -->
-<footer>인시스 AI혁신 R&D센터 | 세척기 설계 시뮬레이터 v3.5 | ys.kim@in-sys.co.kr</footer>
+<footer>인시스 AI혁신 R&D센터 | 세척기 설계 시뮬레이터 v3.6 | ys.kim@in-sys.co.kr</footer>
 
 <script>
 'use strict';
@@ -602,7 +602,7 @@ const DIRT={
   hole: [0,  3.0,  2.5,  2.5,  2.0,  1.8],
 };
 const HP_PER_KW=1.341;
-const LS_KEY='washer_v35_last'; // localStorage 키
+const LS_KEY='washer_v36_last'; // localStorage 키
 
 // ── SUS 배관 규격 (KS B 1501 / JIS B 2311 스케줄 10S 기준) ──
 const SUS_PIPES=[
@@ -975,7 +975,7 @@ function buildZonePanels(){
   const pA=[q0,q0*.9,q0*.75,q0*.5];
   const tkA=[tk0,tk0*.8,tk0*.65,tk0*.5];
   const hA=[h0,h0*.7,h0*.5,0];
-  const dA=[OPT.det||3,(OPT.det||3)*.5,.5,0];
+  const dA=[0,0,0,0];
 
   for(let i=0;i<4;i++){
     const tab=document.createElement('button');
@@ -1112,7 +1112,8 @@ function switchZ(i){
 // 메인 시뮬레이션
 // ══════════════════════════════════════════════
 function runSim(){
-  if(!OPT.hole) return;
+  if(!OPT.hole && !gv('nHole')) return; // nHole 입력이 있으면 허용
+  if(!OPT.hole) OPT.hole = +gv('nHole') || 2.5;
   const t0=performance.now();
 
   const itype=gv('itype'), fmode=gv('fmode');
@@ -1563,7 +1564,8 @@ function collectSettings(){
     dlv:+gv('dlv'),tgtClean:+gv('tgtClean'),iqty:+gv('iqty'),zcnt,
     nHole:+gv('nHole'),nPress:+gv('nPress'),nAng:+gv('nAng'),
     nCol:+gv('nCol'),nRow:+gv('nRow'),nGapX:+gv('nGapX'),nGapY:+gv('nGapY'),
-    nManW:+gv('nManW'),nManD:+gv('nManD'),nDist:+gv('nDist'),
+    nManW:+gv('nManW'),nDist:+gv('nDist'),
+    nManSpec:gv('nManSpec'),pPipeSpec:gv('pPipeSpec'),nSusMat:gv('nSusMat'),
     pFlow:+gv('pFlow'),pPipe:+gv('pPipe'),pEff:+gv('pEff'),
     cSpd:+gv('cSpd'),cPitch:+gv('cPitch'),det:+gv('det'),
     gapLocked,zones,
@@ -1575,44 +1577,93 @@ function collectSettings(){
 }
 
 function applySettings(s){
-  const sv2=(id,v,cls='')=>{ const e=gi(id); if(!e||v===undefined||v===null) return; e.value=v; if(cls) e.className=cls; };
-  sv2('itype',s.itype); sv2('fmode',s.fmode);
-  sv2('iW',s.iW); sv2('iD',s.iD); sv2('iH',s.iH);
-  sv2('dlv',s.dlv); sv2('tgtClean',s.tgtClean);
-  sv2('iqty',s.iqty); sv2('zcnt',s.zcnt);
-  sv2('nHole',s.nHole,'s-rec'); sv2('nPress',s.nPress,'s-rec'); sv2('nAng',s.nAng,'s-rec');
-  sv2('nCol',s.nCol,'s-rec'); sv2('nRow',s.nRow,'s-rec');
-  sv2('nGapX',s.nGapX,'s-auto'); sv2('nGapY',s.nGapY,'s-auto');
-  sv2('nManW',s.nManW,'s-auto'); sv2('nManD',s.nManD,'s-auto'); sv2('nDist',s.nDist);
-  sv2('pFlow',s.pFlow,'s-auto'); sv2('pPipe',s.pPipe,'s-auto'); sv2('pEff',s.pEff);
-  sv2('cSpd',s.cSpd,'s-rec'); sv2('cPitch',s.cPitch); sv2('det',s.det,'s-rec');
-  if(s.gapLocked!==undefined) gapLocked=s.gapLocked;
-  // gapLocked 버튼 텍스트 반영
+  // ── 헬퍼: 값 세팅 ──
+  const sv2=(id,v,cls)=>{ const e=gi(id); if(!e||v===undefined||v===null) return; e.value=v; if(cls) e.className=cls; };
+  const selByPrefix=(id,prefix)=>{ const el=gi(id); if(!el||!prefix) return; for(const o of el.options){ if(o.value.startsWith(prefix+'|')){ el.value=o.value; break; } } };
+
+  // 1. 기본 조건 복원
+  sv2('itype', s.itype); sv2('fmode', s.fmode);
+  sv2('iW', s.iW); sv2('iD', s.iD); sv2('iH', s.iH);
+  sv2('dlv', s.dlv); sv2('tgtClean', s.tgtClean);
+  sv2('iqty', s.iqty); sv2('zcnt', s.zcnt);
+
+  // 2. 노즐 설계값 복원
+  sv2('nHole',  s.nHole,  s.nHole  ? 's-rec' : '');
+  sv2('nPress', s.nPress, s.nPress ? 's-rec' : '');
+  sv2('nAng',   s.nAng,   s.nAng   ? 's-rec' : '');
+  sv2('nCol',   s.nCol,   s.nCol   ? 's-rec' : '');
+  sv2('nRow',   s.nRow,   s.nRow   ? 's-rec' : '');
+  sv2('nGapX',  s.nGapX,  's-auto');
+  sv2('nGapY',  s.nGapY,  's-auto');
+  sv2('nManW',  s.nManW,  's-auto');
+  sv2('nDist',  s.nDist);
+  // nManSpec SELECT 복원
+  if(s.nManSpec) selByPrefix('nManSpec', s.nManSpec.split('|')[0]);
+  if(s.pPipeSpec) selByPrefix('pPipeSpec', s.pPipeSpec.split('|')[0]);
+  if(s.nSusMat) sv2('nSusMat', s.nSusMat);
+
+  // 3. 펌프·배관 복원
+  sv2('pFlow',  s.pFlow,  's-auto');
+  sv2('pEff',   s.pEff);
+
+  // 4. 컨베이어 복원
+  sv2('cSpd',   s.cSpd,   s.cSpd   ? 's-rec' : '');
+  sv2('cPitch', s.cPitch);
+  sv2('det',    s.det !== undefined ? s.det : 0);
+
+  // 5. gapLocked 복원
+  if(s.gapLocked !== undefined) gapLocked = !!s.gapLocked;
   gi('btnUnlockGap').textContent = gapLocked ? '🔓 간격 수동 입력 모드' : '🔒 간격 자동계산 모드';
-  // nGapX/Y 편집 가능 여부
   ['nGapX','nGapY'].forEach(id=>{
     const e=gi(id); if(e){ e.readOnly=gapLocked; e.className=gapLocked?'s-auto':'s-user'; }
   });
-  OPT.hole=s.nHole||2.5; OPT.press=s.nPress; OPT.temp=+(s.zones?.[0]?.temp||60);
-  OPT.totalQ=s.pFlow; OPT.spd=s.cSpd;
+
+  // 6. OPT 복원 — 채널 정보 포함
+  const iW=s.iW||600, iD=s.iD||400, iH=s.iH||300;
+  const itype=s.itype||'box', fmode=s.fmode||'2ch';
+  const chInfo = getChannelInfo(itype, fmode, iW, iD, iH);
+  OPT = {
+    dlv:  s.dlv||3,  zcnt: s.zcnt||3,
+    iW, iD, iH,      iqty: s.iqty||200,
+    tgt:  s.tgtClean||90, itype, fmode,
+    hole: s.nHole||2.5,   press: s.nPress||200,
+    temp: s.zones?.[0]?.temp || 60,
+    det:  s.det !== undefined ? s.det : 0,
+    totalQ: s.pFlow||120,
+    qPerCh: (s.pFlow||120) / Math.max(1, chInfo.ch),
+    spd:  s.cSpd||2.5,
+    tank: s.zones?.[0]?.tank || 500,
+    heaterKW: s.zones?.[0]?.heat || 5,
+    faces: chInfo.allFaces,
+    facesPerCh: chInfo.facesPerCh,
+    ch: chInfo.ch,
+    pitchMm: iH + (s.cPitch||50),
+  };
+
+  // 7. 세척조 패널 재생성 후 값 복원
   buildZonePanels();
-  if(s.zones) s.zones.forEach((z,i)=>{
-    sv2('ztank'+i,z.tank,'s-rec'); sv2('ztemp'+i,z.temp,'s-rec');
-    sv2('zheat'+i,z.heat,'s-rec'); sv2('zpump'+i,z.pump,'s-rec');
-    sv2('zdet'+i,z.det);
-    if(z.zlen){ sv2('zlen'+i,z.zlen); sv2('zwid'+i,z.zwid); sv2('zdep'+i,z.zdep); }
-    // 세척조 치수 기반 탱크 최대 재계산
-    const len2=z.zlen||1500, wid2=z.zwid||800, dep2=z.zdep||600;
-    const mx=Math.round(len2*wid2*dep2*0.4/1e6);
-    if(gi('ztankmax'+i)) gi('ztankmax'+i).value=mx;
-    if(gi('ztank-un'+i)) gi('ztank-un'+i).textContent='최대 '+mx+'L 이하';
-    if(gi('ztank'+i)) gi('ztank'+i).max=mx;
-    // 분사관 규격 복원
-    if(z.zpipeSpec){ const sel=gi('zpipeSpec'+i); if(sel){ for(const o of sel.options){ if(o.value.startsWith(z.zpipeSpec.split('|')[0]+'|')){ sel.value=o.value; break; } } } }
-    if(z.zsupSpec){ const sel=gi('zsupSpec'+i); if(sel){ for(const o of sel.options){ if(o.value.startsWith(z.zsupSpec.split('|')[0]+'|')){ sel.value=o.value; break; } } } }
-  });
-  updateAutoCalc();
-  runSim();
+  if(s.zones) {
+    s.zones.forEach((z,i)=>{
+      sv2('ztank'+i, z.tank, 's-rec');
+      sv2('ztemp'+i, z.temp, 's-rec');
+      sv2('zheat'+i, z.heat, 's-rec');
+      sv2('zpump'+i, z.pump, 's-rec');
+      sv2('zdet'+i,  z.det !== undefined ? z.det : 0);
+      if(z.zlen !== undefined){ sv2('zlen'+i, z.zlen); sv2('zwid'+i, z.zwid); sv2('zdep'+i, z.zdep); }
+      // 탱크 최대 재계산
+      const len2=+(z.zlen||1500), wid2=+(z.zwid||800), dep2=+(z.zdep||600);
+      const mx = Math.round(len2*wid2*dep2*0.75/1e6);
+      if(gi('ztankmax'+i)){ gi('ztankmax'+i).value=mx; }
+      if(gi('ztank-un'+i)){ gi('ztank-un'+i).textContent='최대 '+mx+'L 이하'; }
+      if(gi('ztank'+i)) gi('ztank'+i).max = mx;
+      // 분사관 규격 복원
+      if(z.zpipeSpec){ selByPrefix('zpipeSpec'+i, z.zpipeSpec.split('|')[0]); }
+      if(z.zsupSpec){  selByPrefix('zsupSpec'+i,  z.zsupSpec.split('|')[0]);  }
+    });
+  }
+
+  // 8. 자동계산 + 시뮬레이션
+  setTimeout(()=>{ updateAutoCalc(); runSim(); }, 50);
 }
 
 function lsSave(){
@@ -1662,19 +1713,14 @@ function fromV(v){
 }
 function fromFields(f){ const o={}; for(const k in f) o[k]=fromV(f[k]); return o; }
 
-// ── 자동저장 (변경 후 2초 디바운스) ──
+// ── 자동저장: localStorage만 (Firebase는 수동 저장) ──
 let autoFbTimer=null;
 function scheduleAutoFbSave(){
-  clearTimeout(autoFbTimer);
+  // localStorage 자동저장은 runSim 끝에서 lsSave()로 처리
+  // Firebase는 문서 중복 방지를 위해 수동 저장만 사용
   const ind=gi('autoSaveIndicator');
-  if(ind){ ind.textContent='● 저장 대기'; ind.className='saving'; }
-  autoFbTimer=setTimeout(async()=>{
-    const name=gi('fbName')?.value?.trim()||'자동저장';
-    const proj=gi('fbProj')?.value?.trim()||'—';
-    await doFbSave(name+'(자동)', proj, '자동저장', true);
-    if(ind){ ind.textContent='✓ 자동저장 완료'; ind.className='saved';
-      setTimeout(()=>{ ind.textContent='● 대기중'; ind.className=''; },3000); }
-  },2000);
+  if(ind){ ind.textContent='✓ 로컬 저장됨'; ind.className='saved';
+    setTimeout(()=>{ ind.textContent='● 대기중'; ind.className=''; },2000); }
 }
 
 async function doFbSave(name,proj,memo,silent=false){
@@ -1741,56 +1787,85 @@ async function fbSearch(){
 function renderFbList(docs,kw){
   const list=gi('fbList');
   if(!docs.length){ list.innerHTML='<div class="fb-empty">저장된 조건이 없습니다.</div>'; return; }
+  // 최신순 정렬
   docs.sort((a,b)=>{
     const fa=fromFields(a.fields),fb2=fromFields(b.fields);
     return (fb2.savedAt||'')>(fa.savedAt||'')?1:-1;
   });
-  function hl(s){ if(!kw) return s||''; return String(s||'').replace(new RegExp('('+kw.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'),'<mark style="background:#fff176;">$1</mark>'); }
-  list.innerHTML=docs.map(doc=>{
-    const f=fromFields(doc.fields), id=doc.name.split('/').pop();
-    const cr=f.resultCr?f.resultCr.toFixed(1)+'%':'—';
+  function hl(s){
+    if(!kw) return String(s||'');
+    return String(s||'').replace(new RegExp('('+kw.replace(/[.*+?^${}()|[\]\]/g,'\$&')+')','gi'),'<mark style="background:#fff176;">$1</mark>');
+  }
+  list.innerHTML = docs.map(doc=>{
+    const f=fromFields(doc.fields);
+    const id=doc.name.split('/').pop();
+    const cr=typeof f.resultCr==='number' ? f.resultCr.toFixed(1)+'%' : '—';
     const dt=(f.savedAt||'').slice(0,16).replace('T',' ');
-    const dlvTxt=['','①경미','②보통','③중간','④심함','⑤극심'][f.dlv||3]||'—';
-    const isAuto=(f.name||'').includes('(자동)');
-    return `<div class="fb-item" data-id="${id}" onclick="fbLoad('${id}')">
-      <div style="flex:1;">
-        <div class="fb-iname">${hl(f.name||'—')}${isAuto?'<span style="font-size:9px;color:#7a90a4;margin-left:5px;">자동</span>':''} <span class="fb-tag">${hl(f.project||'—')}</span></div>
-        <div class="fb-imeta">${dt} | ${f.itype==='box'?'박스':'트레이'} ${f.iW||'?'}×${f.iD||'?'}×${f.iH||'?'}mm | 오염 ${dlvTxt} | ${f.zcnt||'?'}단 | ${f.nPress||'?'}kPa${f.memo?`<br>📝 ${hl(f.memo)}`:''}</div>
+    const dlvTxt=['','①경미','②보통','③중간','④심함','⑤극심'][+(f.dlv||3)]||'—';
+    const itypeTxt=f.itype==='box'?'박스':'트레이';
+    return `<div class="fb-item" data-docid="${id}">
+      <div style="flex:1;min-width:0;">
+        <div class="fb-iname">${hl(f.name||'—')} <span class="fb-tag">${hl(f.project||'—')}</span></div>
+        <div class="fb-imeta">${dt} | ${itypeTxt} ${f.iW||'?'}×${f.iD||'?'}×${f.iH||'?'}mm | ${dlvTxt} | ${f.zcnt||'?'}단 | ${f.nPress||'?'}kPa${f.memo?` | 📝${hl(f.memo)}`:''}</div>
       </div>
       <div class="fb-icr">${cr}</div>
-      <div class="fb-idel" onclick="event.stopPropagation();fbDel('${id}',this)">🗑</div>
+      <button class="fb-idel" data-delid="${id}" type="button">🗑</button>
     </div>`;
   }).join('');
+
+  // 이벤트 위임 방식으로 클릭 처리 (onclick 인라인 제거)
+  list.querySelectorAll('.fb-item').forEach(el=>{
+    el.addEventListener('click', e=>{
+      if(e.target.classList.contains('fb-idel')) return; // 삭제 버튼은 별도 처리
+      const docid = el.dataset.docid;
+      if(docid) fbLoad(docid);
+    });
+  });
+  list.querySelectorAll('.fb-idel').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.stopPropagation();
+      const docid = btn.dataset.delid;
+      if(docid) fbDelById(docid, btn.closest('.fb-item'));
+    });
+  });
 }
 
 // ── 불러오기 ──
 async function fbLoad(docId){
   showFbSt('fbSrchSt','ing','불러오는 중...');
   try{
-    const data=await fbFetch(FB_BASE+'/'+docId);
-    const f=fromFields(data.fields);
-    document.querySelectorAll('.fb-item').forEach(el=>el.classList.toggle('sel',el.dataset.id===docId));
+    const data = await fbFetch(FB_BASE+'/'+docId);
+    if(!data || !data.fields) throw new Error('문서 없음');
+    const f = fromFields(data.fields);
+    // 선택 강조
+    gi('fbList').querySelectorAll('.fb-item').forEach(el=>{
+      el.classList.toggle('sel', el.dataset.docid===docId);
+    });
+    // 저장 이름 필드에 현재 이름 표시
+    if(gi('fbName')) gi('fbName').value = (f.name||'').replace('(자동)','').trim();
+    if(gi('fbProj')) gi('fbProj').value = f.project||'';
+    // 설정 복원
     applySettings(f);
-    if(gi('fbName')) gi('fbName').value=(f.name||'').replace('(자동)','');
-    if(gi('fbProj')) gi('fbProj').value=f.project||'';
-    showFbSt('fbSrchSt','ok',`✅ "${f.name}" 불러오기 완료`);
-  }catch(e){ showFbSt('fbSrchSt','err','불러오기 실패'); }
+    showFbSt('fbSrchSt','ok','✅ "'+( f.name||docId)+'" 불러오기 완료');
+  } catch(e){
+    showFbSt('fbSrchSt','err','불러오기 실패: '+e.message);
+  }
 }
-window.fbLoad=fbLoad;
 
 // ── 삭제 ──
-async function fbDel(docId,el){
-  const nm=el.closest('.fb-item')?.querySelector('.fb-iname')?.textContent?.trim()||docId;
-  if(!confirm(`"${nm}" 삭제하시겠습니까?`)) return;
+async function fbDelById(docId, itemEl){
+  const nm = itemEl?.querySelector('.fb-iname')?.textContent?.trim() || docId;
+  if(!confirm('"'+nm+'" 삭제하시겠습니까?')) return;
   try{
-    await fetch(FB_BASE+'/'+docId+'?key='+FB_API,{method:'DELETE'});
-    el.closest('.fb-item')?.remove();
-    const n=gi('fbList').querySelectorAll('.fb-item').length;
-    gi('fbConnSt').textContent=n+'건 저장됨';
+    await fetch(FB_BASE+'/'+docId+'?key='+FB_API, {method:'DELETE'});
+    itemEl?.remove();
+    const n = gi('fbList').querySelectorAll('.fb-item').length;
+    gi('fbConnSt').textContent = n+'건 저장됨';
     if(!n) gi('fbList').innerHTML='<div class="fb-empty">저장된 조건이 없습니다.</div>';
-  }catch(e){ showFbSt('fbSrchSt','err','삭제 실패'); }
+  } catch(e){
+    showFbSt('fbSrchSt','err','삭제 실패: '+e.message);
+  }
 }
-window.fbDel=fbDel;
 
 // ── 상태 표시 ──
 function showFbSt(id,type,msg){
@@ -1880,19 +1955,24 @@ window.addEventListener('resize',()=>{ clearTimeout(window._rsT); window._rsT=se
 // 초기화 — localStorage 복원 또는 기본 산출
 // ══════════════════════════════════════════════
 async function init(){
-  // 1. Firebase 연결
-  fbLoadAll().catch(()=>{});
+  // 1. Firebase 목록 로드 (비동기, 실패해도 계속)
+  fbLoadAll().catch(e=>console.warn('Firebase 연결 실패:', e.message));
 
-  // 2. localStorage 복원 시도
-  const saved=lsLoad();
-  if(saved && saved.nHole){
-    applySettings(saved);
+  // 2. localStorage에서 마지막 상태 복원
+  const saved = lsLoad();
+  if(saved && saved.nHole && saved.iW){
+    // 저장된 상태 복원
+    try{
+      applySettings(saved);
+    } catch(e){
+      console.warn('복원 실패, 기본값 사용:', e.message);
+      setTimeout(()=>{ calcOptimal(); },300);
+    }
   } else {
-    // 기본값으로 산출
-    setTimeout(()=>{ calcOptimal(); resizeCv(); },300);
-    return;
+    // 최초 실행 또는 저장 없음 → 기본값으로 최적화 실행
+    setTimeout(()=>{ calcOptimal(); },300);
   }
-  setTimeout(resizeCv,400);
+  setTimeout(resizeCv, 500);
 }
 init();
 </script>
