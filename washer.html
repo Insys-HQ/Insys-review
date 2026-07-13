@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>세척기 설계 시뮬레이터 v3.7 | 인시스 AI혁신 R&D센터</title>
+<title>세척기 설계 시뮬레이터 v3.8 | 인시스 AI혁신 R&D센터</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -186,6 +186,10 @@ body{font-family:'Noto Sans KR',sans-serif;background:#e9edf2;color:#1a2535;font
 #pvCv{width:100%;display:block;border-radius:6px;border:1px solid #cad8e2;}
 
 footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
+.live-chip{font-size:11px;font-weight:700;padding:2px 9px;border-radius:8px;background:#fff;border:1px solid #c8dcea;color:#0b5a80;white-space:nowrap;}
+.live-chip.good{background:#d4edda;border-color:#a5d6a7;color:#1b5e20;}
+.live-chip.warn{background:#fff3cd;border-color:#ffb300;color:#856404;}
+.live-chip.bad {background:#f8d7da;border-color:#ef9a9a;color:#b71c1c;}
 </style>
 </head>
 <body>
@@ -199,7 +203,7 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
     <span id="autoSaveIndicator">● 대기중</span>
     <button class="vt on" id="bPC">PC</button>
     <button class="vt" id="bMB">Mobile</button>
-    <span class="vb">v3.7</span>
+    <span class="vb">v3.8</span>
   </div>
 </div>
 
@@ -293,6 +297,16 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
   <!-- STEP 2: 노즐 설계 -->
   <div class="card">
     <div class="ch"><span class="ci">💧</span><span class="cl">STEP 2 — 분사 노즐 설계</span><span class="cq cq-b">변경 시 연동값 자동계산</span></div>
+    <!-- 실시간 결과 요약 바 -->
+    <div id="step2LiveBar" style="display:flex;gap:8px;padding:6px 13px;background:#f0f6fd;border-bottom:1px solid #e2eaf2;flex-wrap:wrap;align-items:center;">
+      <span style="font-size:11px;font-weight:700;color:#1a4060;">📊 실시간:</span>
+      <span class="live-chip" id="lv-cov">커버리지: —</span>
+      <span class="live-chip" id="lv-noz">노즐: —</span>
+      <span class="live-chip" id="lv-q">면유량: —</span>
+      <span class="live-chip" id="lv-hp">펌프: — HP</span>
+      <span class="live-chip" id="lv-cr">세척율: —</span>
+      <span class="live-chip" id="lv-pipe">분사관: —</span>
+    </div>
     <div class="cb">
       <!-- 범례 -->
       <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
@@ -585,7 +599,7 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
 
 </div><!-- /rp -->
 </div><!-- /wrap -->
-<footer>인시스 AI혁신 R&D센터 | 세척기 설계 시뮬레이터 v3.7 | ys.kim@in-sys.co.kr</footer>
+<footer>인시스 AI혁신 R&D센터 | 세척기 설계 시뮬레이터 v3.8 | ys.kim@in-sys.co.kr</footer>
 
 <script>
 'use strict';
@@ -602,7 +616,7 @@ const DIRT={
   hole: [0,  3.0,  2.5,  2.5,  2.0,  1.8],
 };
 const HP_PER_KW=1.341;
-const LS_KEY='washer_v37_last'; // localStorage 키
+const LS_KEY='washer_v38_last'; // localStorage 키
 
 // ── SUS 배관 규격 (KS B 1501 / JIS B 2311 스케줄 10S 기준) ──
 const SUS_PIPES=[
@@ -759,6 +773,9 @@ function calcOptimal(){
   setRec('nAng',   15);
   setRec('nCol',   lay0.nc);
   setRec('nRow',   lay0.nr);
+  // lay0에서 계산된 실제 간격 반영
+  if(lay0.gapX){ setRec('nGapX', lay0.gapX); }
+  if(lay0.gapY){ setRec('nGapY', lay0.gapY); }
   setRec('nManW',  Math.max(iW,iD));
   setRec('cSpd',   rSpd.toFixed(2));
   setRec('det',    rDet.toFixed(1));
@@ -802,20 +819,29 @@ function updateAutoCalc(){
   const {ch, facesPerCh, allFaces} = chInfo;
   const f0 = facesPerCh[0]; // 대표 면 (1채널 첫 번째 면)
 
-  // 3. 노즐 간격 자동계산
-  // 대표 면 = 측면(iD × iH) — 분사관 배열 기준
-  // 가로간격: 분사면 폭(D) / (가로노즐수+1)
-  // 세로간격: 분사면 높이(H) / (세로노즐수+1)
+  // 3. 노즐 간격 계산
+  // 기준면: 분사 대상 면(측면 기준 — 컨베이어 방향 단면)
+  // 박스 측면: 폭=iD, 높이=iH
+  // 간격 = 면크기 / (노즐수 + 1) — 양끝 여백 포함 균등배분
+  const refW = iD;  // 피세척물 세로(D) = 컨베이어 폭방향
+  const refH = iH;  // 피세척물 높이(H)
   if(gapLocked){
-    const refW = iD;  // 측면 폭 = 피세척물 세로(D)
-    const refH = iH;  // 측면 높이 = 피세척물 높이(H)
-    const gapX = Math.max(20, Math.round(refW / (nCol + 1)));
-    const gapY = Math.max(20, Math.round(refH / (nRow + 1)));
+    // 자동 계산: 노즐수에 맞춰 간격 결정
+    const gapX = Math.max(40, Math.round(refW / (nCol + 1)));
+    const gapY = Math.max(40, Math.round(refH / (nRow + 1)));
     setAuto('nGapX', gapX);
     setAuto('nGapY', gapY);
+  } else {
+    // 수동 입력 모드: 간격 입력 시 노즐수 역산하여 표시
+    const manGapX = +gv('nGapX') || 100;
+    const manGapY = +gv('nGapY') || 100;
+    const derivedNc = Math.max(2, Math.round(refW / manGapX) - 1);
+    const derivedNr = Math.max(2, Math.round(refH / manGapY) - 1);
+    gi('dep-col').textContent = `→ 노즐수 역산: 가로 ${derivedNc}개`;
+    gi('dep-row').textContent = `→ 노즐수 역산: 세로 ${derivedNr}개`;
   }
-  const nGapX = +gv('nGapX') || 100;
-  const nGapY = +gv('nGapY') || 100;
+  const nGapX = +gv('nGapX') || Math.round(refW / (nCol + 1));
+  const nGapY = +gv('nGapY') || Math.round(refH / (nRow + 1));
 
   // 4. 분사관 폭 = 채널당 최대 면폭
   const manW = fmode === '2ch' ? iD : Math.max(iW, iD);
@@ -865,11 +891,14 @@ function updateAutoCalc(){
   gi('pLPM').textContent=Math.round(totalQ);
   gi('pPRESS').textContent=presKPa;
 
-  // 8. 커버리지 미리보기
+  // 8. 커버리지 미리보기 + 연동 표시
   const cov=calcCoverage(nCol,nRow,nGapX,nGapY,f0.fw,f0.fh,nAng,nDist);
-  gi('dep-ang').textContent=`→ 커버리지 예상: ${cov.toFixed(1)}%`;
-  gi('dep-col').textContent=`→ 가로간격: ${nGapX}mm`;
-  gi('dep-row').textContent=`→ 세로간격: ${nGapY}mm`;
+  const covClass = cov>=85?'color:#2e7d32':'cov>=65?color:#e65100':'color:#c62828';
+  gi('dep-ang').textContent=`→ 커버리지: ${cov.toFixed(1)}% | 스프레드 ±${faceSpread(nAng,nDist).toFixed(0)}mm`;
+  if(gapLocked){
+    gi('dep-col').textContent=`→ 가로간격 ${nGapX}mm (${iD}mm / ${nCol+1}등분)`;
+    gi('dep-row').textContent=`→ 세로간격 ${nGapY}mm (${iH}mm / ${nRow+1}등분)`;
+  }
 
   // 세척조 HP 업데이트
   const zcnt=+gv('zcnt');
@@ -878,6 +907,21 @@ function updateAutoCalc(){
     const hp=lpmToHP(pump,presKPa,pEff);
     const hpEl=gi('zhp'+i);
     if(hpEl) hpEl.value=hp.toFixed(1);
+
+  // ── 실시간 결과 바 업데이트 ──
+  const liveCov = calcCoverage(nCol,nRow,nGapX,nGapY,f0.fw,f0.fh,nAng,nDist);
+  const liveQ   = qEach*nCol*nRow;
+  const liveHP  = pumpHP;
+  const liveNoz = nCol*nRow;
+  function setLive(id,txt,cls){
+    const el=gi(id); if(!el) return;
+    el.textContent=txt; el.className='live-chip'+(cls?' '+cls:'');
+  }
+  setLive('lv-cov', `커버리지: ${liveCov.toFixed(0)}%`, liveCov>=85?'good':liveCov>=65?'warn':'bad');
+  setLive('lv-noz', `노즐: ${nCol}×${nRow}=${liveNoz}개/면`, liveNoz>=4?'good':'warn');
+  setLive('lv-q',   `면유량: ${liveQ.toFixed(1)}L/min`, '');
+  setLive('lv-hp',  `펌프: ${liveHP.toFixed(2)}HP`, liveHP>10?'warn':'good');
+  setLive('lv-pipe',`분사관: ${spIDnow}mm ID v=${spVelNow.toFixed(1)}m/s`, spVelNow>3?'bad':spVelNow>2?'warn':'good');
   }
 }
 
@@ -946,23 +990,62 @@ function getChannelInfo(itype, fmode, iW, iD, iH){
 
   return {ch, facesPerCh, allFaces, facePerChCount: facesPerCh.length};
 }
-function calcLayout(fw,fh,hole,press,flux){
+// 오염도별 목표 노즐 간격 (mm)
+const TARGET_GAP_BY_FLUX = [
+  {flux:0,   gap:150}, // 기본
+  {flux:4.0, gap:150}, // 경미
+  {flux:7.0, gap:120}, // 보통
+  {flux:12.0,gap:100}, // 중간
+  {flux:18.0,gap: 80}, // 심함
+  {flux:25.0,gap: 60}, // 극심
+];
+function targetGap(flux){
+  let g=150;
+  for(const e of TARGET_GAP_BY_FLUX){ if(flux>=e.flux) g=e.gap; }
+  return g;
+}
+
+function calcLayout(fw, fh, hole, press, flux){
   const qE = nozzleQ(hole, press);
+
+  // ── Step 1: 커버리지 기반 노즐수 결정 (핵심 로직) ──
+  // 목표 간격으로 면을 채우는 노즐 수
+  const tGap = targetGap(flux);
+  let nc = Math.max(2, Math.round(fw / tGap));
+  let nr = Math.max(2, Math.round(fh / tGap));
+
+  // ── Step 2: 유량 기반 보완 (플럭스 부족 시 노즐 추가) ──
   const areaMm2 = fw * fh;
-  const qNeed = areaMm2 / 1e6 * flux;  // 필요 총유량 (L/min)
-  // 필요 노즐수 = 필요유량 / 노즐당 유량, 최소 2개
-  const nMin = Math.max(2, Math.ceil(qNeed / qE));
-  // 가로:세로 비율로 배열 결정
-  const ratio = fw / fh;
-  let nc = Math.max(2, Math.round(Math.sqrt(nMin * ratio)));
-  let nr = Math.max(1, Math.ceil(nMin / nc));
-  // 노즐수 홀짝 강제 없음 — 면 크기에 맞게 자연 배분
-  // 간격 검증: 최소 간격 30mm 이상 보장
-  const minGap = 30;
-  while (nc > 1 && fw / (nc + 1) < minGap) nc--;
-  while (nr > 1 && fh / (nr + 1) < minGap) nr--;
+  const qNeed   = areaMm2 / 1e6 * flux;
+  const nForQ   = Math.ceil(qNeed / qE);
+  if(nc * nr < nForQ){
+    // 유량이 부족하면 비율 유지하며 노즐수 증가
+    const ratio = fw / fh;
+    let nc2 = Math.max(nc, Math.round(Math.sqrt(nForQ * ratio)));
+    let nr2 = Math.max(nr, Math.ceil(nForQ / nc2));
+    nc = nc2; nr = nr2;
+  }
+
+  // ── Step 3: 간격 검증 (물리적 최소·최대 간격) ──
+  const minGap = 40;   // 노즐 몸체 고려 최소 40mm
+  const maxGap = 200;  // 커버리지 유지 최대 200mm
+  // 너무 촘촘하면 줄이기
+  while(nc > 2 && fw / (nc + 1) < minGap) nc--;
+  while(nr > 2 && fh / (nr + 1) < minGap) nr--;
+  // 너무 드물면 늘리기
+  while(fw / (nc + 1) > maxGap) nc++;
+  while(fh / (nr + 1) > maxGap) nr++;
+
+  // 최소 보장: 박스 세척 시 각 방향 최소 2개
+  nc = Math.max(2, nc);
+  nr = Math.max(2, nr);
+
   const nTotal = nc * nr;
-  return {nc, nr, nTotal, qEach: qE, qTotal: qE * nTotal};
+  // 실제 간격
+  const gapX = Math.round(fw / (nc + 1));
+  const gapY = Math.round(fh / (nr + 1));
+
+  return {nc, nr, nTotal, gapX, gapY, qEach: qE, qTotal: qE * nTotal};
 }
 
 function buildZonePanels(){
@@ -1246,6 +1329,13 @@ function runSim(){
   if(HIST.length>10) HIST.shift();
   renderHistBars();
 
+  // 실시간 세척율 칩 업데이트
+  const _tgt2=+gv('tgtClean')||90;
+  const _crEl=gi('lv-cr');
+  if(_crEl){
+    _crEl.textContent='세척율: '+cr.toFixed(1)+'%';
+    _crEl.className='live-chip '+(cr>=_tgt2?'good':cr>=_tgt2-5?'warn':'bad');
+  }
   // localStorage 즉시 저장
   lsSave();
   // Firebase 자동저장 (디바운스 2초)
@@ -1932,7 +2022,7 @@ gi('btnReset').addEventListener('click',()=>{ HIST=[]; gi('histBars').innerHTML=
 
 // 수정 시 상태 업데이트 + triggerSim
 const baseIds=['itype','fmode','iW','iD','iH','dlv','tgtClean','iqty','zcnt'];
-const nozIds=['nHole','nPress','nAng','nCol','nRow','nDist','nManW'];
+const nozIds=['nHole','nPress','nAng','nCol','nRow','nDist','nManW','nGapX','nGapY'];
 const pumpIds=['pFlow','pEff'];
 const convIds=['cSpd','cPitch','det'];
 
@@ -1958,10 +2048,11 @@ gi('btnUnlockGap').addEventListener('click',()=>{
     e.readOnly=gapLocked;
     e.className=gapLocked?'s-auto':'s-user';
   });
-  if(gapLocked) triggerSim();
+  triggerSim();
 });
-gi('nGapX')?.addEventListener('input',()=>{ if(!gapLocked) triggerSim(); });
-gi('nGapY')?.addEventListener('input',()=>{ if(!gapLocked) triggerSim(); });
+// 수동 모드일 때 간격 입력 → 즉시 시뮬레이션
+gi('nGapX')?.addEventListener('input',()=>{ triggerSim(); });
+gi('nGapY')?.addEventListener('input',()=>{ triggerSim(); });
 
 // SUS 규격 SELECT 이벤트
 ['nManSpec','pPipeSpec','nSusMat'].forEach(id=>{
