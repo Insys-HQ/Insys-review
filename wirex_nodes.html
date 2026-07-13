@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HL0FRC WIRES-X 노드 등록 현황</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --red:#CC0000;--red-d:#990000;--red-l:#FFECEC;--red-b:#E88080;
+  --bg:#F5F6F8;--line:#E0E4EC;--txt:#1A2A3A;--sub:#3A4A5A;
+  --shd:0 2px 10px rgba(0,0,0,0.08);
+}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--txt);font-size:15px;}
+
+/* 헤더 */
+.hdr{background:linear-gradient(120deg,#AA0000,#CC0000 55%,#DD2020);color:#fff;
+  box-shadow:0 3px 14px rgba(0,0,0,.3);}
+.hdr-in{max-width:900px;margin:0 auto;display:flex;align-items:center;padding:14px 20px;gap:14px;}
+.hdr-logo{width:48px;height:48px;flex-shrink:0;background:#fff;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:26px;font-weight:900;color:var(--red);
+  box-shadow:0 0 0 3px rgba(255,255,255,.3);}
+.hdr-txt h1{font-size:clamp(14px,3vw,19px);font-weight:900;line-height:1.3;}
+.hdr-txt .cs{font-size:12px;color:rgba(255,255,255,.85);margin-top:3px;letter-spacing:.8px;}
+.hdr-ver{margin-left:auto;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);
+  border-radius:20px;padding:4px 14px;font-size:12px;color:#fff;white-space:nowrap;flex-shrink:0;}
+
+/* 컨테이너 */
+.wrap{max-width:900px;margin:0 auto;padding:24px 18px 52px;display:flex;flex-direction:column;gap:24px;}
+
+/* 섹션 타이틀 */
+.st{font-size:12px;font-weight:700;letter-spacing:1px;color:var(--red);
+  text-transform:uppercase;display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.st::after{content:'';flex:1;height:2px;background:linear-gradient(to right,var(--red-b),transparent);}
+
+/* 요약 배너 */
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+.sum-card{background:#fff;border-radius:10px;padding:16px 18px;box-shadow:var(--shd);
+  border-top:4px solid var(--red);text-align:center;}
+.sum-card .num{font-size:28px;font-weight:900;color:var(--red);line-height:1;}
+.sum-card .lbl{font-size:12px;color:var(--sub);margin-top:5px;}
+.sum-card .val{font-size:13px;font-weight:700;color:var(--txt);margin-top:3px;}
+
+/* 노드 카드 */
+.node-card{background:#fff;border-radius:12px;box-shadow:var(--shd);overflow:hidden;border:1px solid var(--line);}
+.node-hd{display:flex;align-items:center;gap:12px;padding:14px 20px;
+  background:linear-gradient(90deg,var(--red-l),#fff);border-bottom:1px solid var(--red-b);}
+.node-num{width:32px;height:32px;background:var(--red);color:#fff;border-radius:50%;
+  font-size:14px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.node-hd-txt .callsign{font-size:18px;font-weight:900;color:var(--red-d);}
+.node-hd-txt .role{font-size:12px;color:var(--sub);margin-top:2px;}
+.node-hd-badge{margin-left:auto;background:var(--red);color:#fff;
+  font-size:11px;font-weight:700;border-radius:20px;padding:4px 12px;white-space:nowrap;}
+
+/* 노드 본문 2열 */
+.node-body{display:grid;grid-template-columns:1fr 1fr;gap:0;}
+.node-col{padding:16px 20px;}
+.node-col:first-child{border-right:1px solid var(--line);}
+.field{display:flex;flex-direction:column;gap:10px;}
+.frow{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;
+  background:#FAFAFA;border-radius:6px;border:1px solid var(--line);}
+.frow .flbl{font-size:11px;font-weight:700;color:var(--sub);white-space:nowrap;
+  min-width:90px;padding-top:1px;}
+.frow .fval{font-size:13px;font-weight:500;color:var(--txt);word-break:break-all;line-height:1.5;}
+.frow .fval.mono{font-family:monospace;font-size:13px;background:#F0F0F0;
+  border-radius:4px;padding:1px 7px;color:var(--red-d);font-weight:700;}
+.frow .fval.pw{font-family:monospace;font-size:13px;background:#FFF0F0;
+  border-radius:4px;padding:1px 7px;color:var(--red-d);font-weight:700;
+  letter-spacing:1px;}
+
+/* 위치 박스 */
+.location{margin:12px 20px;padding:12px 16px;background:#F7F8FA;
+  border-radius:8px;border:1px solid var(--line);border-left:4px solid var(--red);}
+.location .loc-lbl{font-size:11px;font-weight:700;color:var(--sub);margin-bottom:5px;letter-spacing:.5px;}
+.location .loc-val{font-size:13px;color:var(--txt);line-height:1.6;}
+
+/* 전체 비교표 */
+.compare-wrap{background:#fff;border-radius:12px;box-shadow:var(--shd);overflow:hidden;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{background:var(--red-d);color:#fff;padding:10px 14px;text-align:left;font-size:12px;font-weight:600;}
+th:first-child{border-radius:0;}
+td{padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:nth-child(even) td{background:#FFF8F8;}
+.td-label{font-weight:700;color:var(--sub);font-size:12px;white-space:nowrap;}
+.mono{font-family:monospace;background:#F0F0F0;border-radius:4px;
+  padding:2px 7px;color:var(--red-d);font-weight:700;font-size:12px;}
+.pw-cell{font-family:monospace;background:#FFF0F0;border-radius:4px;
+  padding:2px 7px;color:var(--red-d);font-weight:700;font-size:12px;}
+.badge-role{display:inline-block;background:var(--red-l);border:1px solid var(--red-b);
+  color:var(--red-d);font-size:11px;font-weight:700;border-radius:4px;padding:2px 8px;}
+
+/* 다음 단계 */
+.steps{display:flex;flex-direction:column;gap:10px;}
+.si{display:flex;gap:12px;align-items:flex-start;background:#fff;
+  border-radius:8px;padding:13px 16px;box-shadow:var(--shd);border-left:4px solid var(--red);}
+.sn{flex-shrink:0;width:26px;height:26px;background:var(--red);color:#fff;
+  border-radius:50%;font-size:12px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;}
+.stit{font-size:14px;font-weight:700;color:var(--red-d);margin-bottom:3px;}
+.sdesc{font-size:13px;color:var(--sub);line-height:1.65;}
+.sdesc code{background:#FFF0F0;border:1px solid var(--red-b);border-radius:3px;
+  font-size:12px;padding:1px 6px;color:var(--red-d);font-family:monospace;}
+
+/* 푸터 */
+footer{background:var(--red-d);color:rgba(255,255,255,.85);
+  text-align:center;padding:18px;font-size:13px;line-height:1.8;}
+footer strong{color:#fff;}
+
+@media(max-width:640px){
+  .summary{grid-template-columns:1fr 1fr;}
+  .node-body{grid-template-columns:1fr;}
+  .node-col:first-child{border-right:none;border-bottom:1px solid var(--line);}
+}
+@media(max-width:400px){.summary{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="hdr-in">
+    <div class="hdr-logo">✚</div>
+    <div class="hdr-txt">
+      <h1>대한적십자사 서울지사 재난대응봉사회<br>WIRES-X 노드 등록 현황</h1>
+      <div class="cs">HL0FRC / NDRT &nbsp;·&nbsp; DS0ARC / DS0ARC/M</div>
+    </div>
+    <div class="hdr-ver">2026.07.12 등록</div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<!-- 요약 -->
+<section>
+  <div class="st">등록 요약</div>
+  <div class="summary">
+    <div class="sum-card">
+      <div class="num">3</div>
+      <div class="lbl">등록 노드 수</div>
+      <div class="val">HL0FRC · DS0ARC/M · DS0ARC</div>
+    </div>
+    <div class="sum-card">
+      <div class="num">127022~4</div>
+      <div class="lbl">수신 번호</div>
+      <div class="val">2026.07.12 10:40 GMT 일괄 등록</div>
+    </div>
+    <div class="sum-card">
+      <div class="num">Public</div>
+      <div class="lbl">공개 설정</div>
+      <div class="val">Node ID · Room ID 전체 공개</div>
+    </div>
+  </div>
+</section>
+
+<!-- 노드 1 -->
+<section>
+  <div class="st">노드 상세 정보</div>
+
+  <div class="node-card" style="margin-bottom:16px;">
+    <div class="node-hd">
+      <div class="node-num">1</div>
+      <div class="node-hd-txt">
+        <div class="callsign">HL0FRC</div>
+        <div class="role">긴급구호차량 이동 노드 (PDN 모드)</div>
+      </div>
+      <div class="node-hd-badge">수신번호 127022</div>
+    </div>
+    <div class="node-body">
+      <div class="node-col">
+        <div class="field">
+          <div class="frow"><span class="flbl">Member ID</span><span class="fval mono">HL0FRC</span></div>
+          <div class="frow"><span class="flbl">Password</span><span class="fval pw">FRC260704</span></div>
+          <div class="frow"><span class="flbl">Callsign</span><span class="fval mono">HL0FRC</span></div>
+          <div class="frow"><span class="flbl">Radio ID</span><span class="fval mono">FD9Qs</span></div>
+          <div class="frow"><span class="flbl">HRI-200 S/N</span><span class="fval">FD9Qs</span></div>
+        </div>
+      </div>
+      <div class="node-col">
+        <div class="field">
+          <div class="frow"><span class="flbl">Node Style</span><span class="fval">GM (Group Monitor) 모드</span></div>
+          <div class="frow"><span class="flbl">HRI-200</span><span class="fval">없음 — USB 직결 PDN</span></div>
+          <div class="frow"><span class="flbl">안테나</span><span class="fval">UV WHIP (144/430MHz 차량용)</span></div>
+          <div class="frow"><span class="flbl">GM Auto Connect</span><span class="fval">✅ 활성화</span></div>
+          <div class="frow"><span class="flbl">등록 일시</span><span class="fval">2026.07.12 10:40:04 GMT</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="location">
+      <div class="loc-lbl">📍 운용 위치</div>
+      <div class="loc-val">서울특별시 성동구 마장로39길 28 (우편번호 04748)<br>
+        <span style="font-size:12px;color:var(--sub);">Comments: NDRT mobile vehicle node for disaster response, Korea Red Cross Seoul HL0FRC</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 노드 2 -->
+  <div class="node-card" style="margin-bottom:16px;">
+    <div class="node-hd">
+      <div class="node-num">2</div>
+      <div class="node-hd-txt">
+        <div class="callsign">DS0ARC/M</div>
+        <div class="role">신월동 이동 노드 (Portable HRI 모드)</div>
+      </div>
+      <div class="node-hd-badge">수신번호 127023</div>
+    </div>
+    <div class="node-body">
+      <div class="node-col">
+        <div class="field">
+          <div class="frow"><span class="flbl">Member ID</span><span class="fval mono">NDRTARC</span></div>
+          <div class="frow"><span class="flbl">Password</span><span class="fval pw">ndrt260704</span></div>
+          <div class="frow"><span class="flbl">Callsign</span><span class="fval mono">DS0ARC/M</span></div>
+          <div class="frow"><span class="flbl">Radio ID</span><span class="fval mono">FD776</span></div>
+          <div class="frow"><span class="flbl">HRI-200 S/N</span><span class="fval">FD776</span></div>
+        </div>
+      </div>
+      <div class="node-col">
+        <div class="field">
+          <div class="frow"><span class="flbl">Node Style</span><span class="fval">Portable HRI 모드</span></div>
+          <div class="frow"><span class="flbl">HRI-200</span><span class="fval">CT-174 연결 (Radio ID: FD776)</span></div>
+          <div class="frow"><span class="flbl">안테나</span><span class="fval">UV GP (144/430MHz 고정)</span></div>
+          <div class="frow"><span class="flbl">DTMF #55555</span><span class="fval">✅ 활성화 필수</span></div>
+          <div class="frow"><span class="flbl">등록 일시</span><span class="fval">2026.07.12 10:40:22 GMT</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="location">
+      <div class="loc-lbl">📍 운용 위치</div>
+      <div class="loc-val">서울특별시 양천구 신월동 중앙로 345 (우편번호 07933)<br>
+        <span style="font-size:12px;color:var(--sub);">Comments: NDRT mobile vehicle node for disaster response, Korea Red Cross Seoul DS0ARC/M</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 노드 3 -->
+  <div class="node-card">
+    <div class="node-hd">
+      <div class="node-num">3</div>
+      <div class="node-hd-txt">
+        <div class="callsign">DS0ARC</div>
+        <div class="role">신월동 고정 기지국 (Room Host)</div>
+      </div>
+      <div class="node-hd-badge">수신번호 127024</div>
+    </div>
+    <div class="node-body">
+      <div class="node-col">
+        <div class="field">
+          <div class="frow"><span class="flbl">Member ID</span><span class="fval mono">DS0ARC</span></div>
+          <div class="frow"><span class="flbl">Password</span><span class="fval pw">ds0arc260704</span></div>
+          <div class="frow"><span class="flbl">Callsign</span><span class="fval mono">DS0ARC</span></div>
+          <div class="frow"><span class="flbl">Radio ID</span><span class="fval mono">5H980033</span></div>
+          <div class="frow"><span class="flbl">HRI-200 S/N</span><span class="fval">5H980033</span></div>
+        </div>
+      </div>
+      <div class="node-col">
+        <div class="field">
+          <div class="frow"><span class="flbl">Node Style</span><span class="fval">Portable HRI / <strong>Room Host</strong></span></div>
+          <div class="frow"><span class="flbl">HRI-200</span><span class="fval">CT-174 연결 (Radio ID: 5H980033)</span></div>
+          <div class="frow"><span class="flbl">안테나</span><span class="fval">UV GP (144/430MHz 고정)</span></div>
+          <div class="frow"><span class="flbl">DTMF #55555</span><span class="fval">✅ 활성화 필수</span></div>
+          <div class="frow"><span class="flbl">등록 일시</span><span class="fval">2026.07.12 10:40:32 GMT</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="location">
+      <div class="loc-lbl">📍 운용 위치</div>
+      <div class="loc-val">서울특별시 양천구 신월동 중앙로 345 (우편번호 07933)<br>
+        <span style="font-size:12px;color:var(--sub);">Comments: Emergency communication station for disaster response in Korea Red Cross Seoul</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 비교표 -->
+<section>
+  <div class="st">3개 노드 비교표</div>
+  <div class="compare-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>항목</th>
+          <th>① HL0FRC</th>
+          <th>② DS0ARC/M</th>
+          <th>③ DS0ARC</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="td-label">역할</td>
+          <td><span class="badge-role">구호차량 이동 노드</span></td>
+          <td><span class="badge-role">신월동 이동 노드</span></td>
+          <td><span class="badge-role">신월동 기지국 Host</span></td>
+        </tr>
+        <tr><td class="td-label">수신번호</td><td>127022</td><td>127023</td><td>127024</td></tr>
+        <tr><td class="td-label">Member ID</td>
+          <td><span class="mono">HL0FRC</span></td>
+          <td><span class="mono">NDRTARC</span></td>
+          <td><span class="mono">DS0ARC</span></td>
+        </tr>
+        <tr><td class="td-label">Password</td>
+          <td><span class="pw-cell">FRC260704</span></td>
+          <td><span class="pw-cell">ndrt260704</span></td>
+          <td><span class="pw-cell">ds0arc260704</span></td>
+        </tr>
+        <tr><td class="td-label">Callsign</td>
+          <td><span class="mono">HL0FRC</span></td>
+          <td><span class="mono">DS0ARC/M</span></td>
+          <td><span class="mono">DS0ARC</span></td>
+        </tr>
+        <tr><td class="td-label">Radio ID</td>
+          <td><span class="mono">FD9Qs</span></td>
+          <td><span class="mono">FD776</span></td>
+          <td><span class="mono">5H980033</span></td>
+        </tr>
+        <tr><td class="td-label">Node Style</td>
+          <td>GM 모드</td><td>Portable HRI</td><td>Portable HRI + Room Host</td></tr>
+        <tr><td class="td-label">HRI-200</td>
+          <td>없음 (PDN)</td><td>CT-174 연결</td><td>CT-174 연결</td></tr>
+        <tr><td class="td-label">안테나</td>
+          <td>UV WHIP 차량용</td><td>UV GP 고정</td><td>UV GP 고정</td></tr>
+        <tr><td class="td-label">GM Auto Connect</td>
+          <td>✅ 활성화</td><td>✅ 활성화</td><td>✅ Room Host</td></tr>
+        <tr><td class="td-label">DTMF #55555</td>
+          <td>—</td><td>✅ 필수</td><td>✅ 필수</td></tr>
+        <tr><td class="td-label">운용 위치</td>
+          <td>성동구 마장로39길 28</td>
+          <td colspan="2">양천구 신월동 중앙로 345</td></tr>
+        <tr><td class="td-label">공개 설정</td>
+          <td>Public</td><td>Public</td><td>Public</td></tr>
+        <tr><td class="td-label">등록 이메일</td>
+          <td colspan="3">hl2tls@naver.com &nbsp;·&nbsp; 010-3693-5960</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 다음 단계 -->
+<section>
+  <div class="st">소프트웨어 설정 순서</div>
+  <div class="steps">
+    <div class="si"><div class="sn">1</div><div>
+      <div class="stit">YAESU 승인 이메일 확인</div>
+      <div class="sdesc"><code>hl2tls@naver.com</code> 수신함 확인 → 각 노드 최종 승인 완료 후 소프트웨어 로그인 활성화</div>
+    </div></div>
+    <div class="si"><div class="sn">2</div><div>
+      <div class="stit">DS0ARC (신월동 기지국) — Room 개설</div>
+      <div class="sdesc">WIRES-X SW → Member ID <code>DS0ARC</code> 로그인 → Room Activation → <strong>GM Room "HL0FRC-NDRT"</strong> 생성 → Room Host 설정</div>
+    </div></div>
+    <div class="si"><div class="sn">3</div><div>
+      <div class="stit">DS0ARC/M (신월동 이동) — Room 접속</div>
+      <div class="sdesc">Member ID <code>NDRTARC</code> 로그인 → Portable HRI 모드 → DS0ARC Room 접속 설정 → DTMF <code>#55555</code> 활성화</div>
+    </div></div>
+    <div class="si"><div class="sn">4</div><div>
+      <div class="stit">HL0FRC (구호차량) — GM Auto Connect</div>
+      <div class="sdesc">Member ID <code>HL0FRC</code> 로그인 → GM 모드 → GM Auto Connect 체크 → SW 기동 즉시 DS0ARC Room 자동 접속 확인</div>
+    </div></div>
+    <div class="si"><div class="sn">5</div><div>
+      <div class="stit">3국 동시 교신 시험</div>
+      <div class="sdesc">DS0ARC ↔ DS0ARC/M ↔ HL0FRC 3국 동시 음성 교신 확인 → 아날로그 무전기 DTMF <code>#55555</code> → Room 접속 테스트</div>
+    </div></div>
+  </div>
+</section>
+
+</div>
+
+<footer>
+  <strong>대한적십자사 서울지사 재난대응봉사회 — WIRES-X 노드 등록 현황</strong><br>
+  HL0FRC / NDRT &nbsp;·&nbsp; DS0ARC / DS0ARC/M &nbsp;·&nbsp; 2026년 7월 12일 등록 완료
+</footer>
+
+</body>
+</html>
