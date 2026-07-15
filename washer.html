@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>세척기 설계 시뮬레이터 v3.8 | 인시스 AI혁신 R&D센터</title>
+<title>세척기 설계 시뮬레이터 v3.9 | 인시스 AI혁신 R&D센터</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -203,7 +203,7 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
     <span id="autoSaveIndicator">● 대기중</span>
     <button class="vt on" id="bPC">PC</button>
     <button class="vt" id="bMB">Mobile</button>
-    <span class="vb">v3.8</span>
+    <span class="vb">v3.9</span>
   </div>
 </div>
 
@@ -599,7 +599,7 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
 
 </div><!-- /rp -->
 </div><!-- /wrap -->
-<footer>인시스 AI혁신 R&D센터 | 세척기 설계 시뮬레이터 v3.8 | ys.kim@in-sys.co.kr</footer>
+<footer>인시스 AI혁신 R&D센터 | 세척기 설계 시뮬레이터 v3.9 | ys.kim@in-sys.co.kr</footer>
 
 <script>
 'use strict';
@@ -616,7 +616,7 @@ const DIRT={
   hole: [0,  3.0,  2.5,  2.5,  2.0,  1.8],
 };
 const HP_PER_KW=1.341;
-const LS_KEY='washer_v38_last'; // localStorage 키
+const LS_KEY='washer_v39_last'; // localStorage 키
 
 // ── SUS 배관 규격 (KS B 1501 / JIS B 2311 스케줄 10S 기준) ──
 const SUS_PIPES=[
@@ -893,7 +893,7 @@ function updateAutoCalc(){
 
   // 8. 커버리지 미리보기 + 연동 표시
   const cov=calcCoverage(nCol,nRow,nGapX,nGapY,f0.fw,f0.fh,nAng,nDist);
-  const covClass = cov>=85?'color:#2e7d32':'cov>=65?color:#e65100':'color:#c62828';
+  // covClass 제거 — dep-ang 텍스트만 사용
   gi('dep-ang').textContent=`→ 커버리지: ${cov.toFixed(1)}% | 스프레드 ±${faceSpread(nAng,nDist).toFixed(0)}mm`;
   if(gapLocked){
     gi('dep-col').textContent=`→ 가로간격 ${nGapX}mm (${iD}mm / ${nCol+1}등분)`;
@@ -907,21 +907,6 @@ function updateAutoCalc(){
     const hp=lpmToHP(pump,presKPa,pEff);
     const hpEl=gi('zhp'+i);
     if(hpEl) hpEl.value=hp.toFixed(1);
-
-  // ── 실시간 결과 바 업데이트 ──
-  const liveCov = calcCoverage(nCol,nRow,nGapX,nGapY,f0.fw,f0.fh,nAng,nDist);
-  const liveQ   = qEach*nCol*nRow;
-  const liveHP  = pumpHP;
-  const liveNoz = nCol*nRow;
-  function setLive(id,txt,cls){
-    const el=gi(id); if(!el) return;
-    el.textContent=txt; el.className='live-chip'+(cls?' '+cls:'');
-  }
-  setLive('lv-cov', `커버리지: ${liveCov.toFixed(0)}%`, liveCov>=85?'good':liveCov>=65?'warn':'bad');
-  setLive('lv-noz', `노즐: ${nCol}×${nRow}=${liveNoz}개/면`, liveNoz>=4?'good':'warn');
-  setLive('lv-q',   `면유량: ${liveQ.toFixed(1)}L/min`, '');
-  setLive('lv-hp',  `펌프: ${liveHP.toFixed(2)}HP`, liveHP>10?'warn':'good');
-  setLive('lv-pipe',`분사관: ${spIDnow}mm ID v=${spVelNow.toFixed(1)}m/s`, spVelNow>3?'bad':spVelNow>2?'warn':'good');
   }
 }
 
@@ -1048,6 +1033,17 @@ function calcLayout(fw, fh, hole, press, flux){
   return {nc, nr, nTotal, gapX, gapY, qEach: qE, qTotal: qE * nTotal};
 }
 
+// SUS SELECT 옵션 HTML 생성 (innerHTML 중첩 백틱 방지용)
+function susSelectHtml(selectedNm, showOD){
+  return SUS_PIPES.map(function(sp){
+    var v = sp.nm.split(' ')[0]+'|'+sp.od+'|'+sp.t;
+    var s = sp.nm===selectedNm ? ' selected' : '';
+    var l = showOD
+      ? sp.nm+' — OD'+sp.od+'mm/ID'+spID(sp).toFixed(1)+'mm'
+      : sp.nm+' — ID'+spID(sp).toFixed(1)+'mm';
+    return '<option value="'+v+'"'+s+'>'+l+'</option>';
+  }).join('');
+}
 function buildZonePanels(){
   const zcnt=+gv('zcnt');
   gi('zcntbq').textContent=zcnt+'단';
@@ -1128,12 +1124,12 @@ function buildZonePanels(){
           <input type="number" class="s-ro" id="zhp${i}" value="${php.toFixed(1)}" readonly></div>
         <div class="fl">
           <label>분사관 규격<span class="lbadge lbadge-a" style="margin-left:4px;">자동</span></label>
-          <select class="s-auto" id="zpipeSpec${i}">${SUS_PIPES.map(sp=>`<option value="${sp.nm.split(' ')[0]}|${sp.od}|${sp.t}"${sp.nm===bestSp.nm?' selected':''}>${sp.nm} — OD${sp.od}mm/ID${spID(sp).toFixed(1)}mm</option>`).join('')}</select>
+          <select class="s-auto" id="zpipeSpec${i}">${susSelectHtml(bestSp.nm, true)}</select>
           <span class="un" id="zpipe-un${i}">v=${spVel(faceQ,bestSp).toFixed(2)}m/s | ID ${spIDv}mm</span>
         </div>
         <div class="fl">
           <label>공급배관 규격</label>
-          <select id="zsupSpec${i}">${SUS_PIPES.map(sp=>`<option value="${sp.nm.split(' ')[0]}|${sp.od}|${sp.t}">${sp.nm} — ID${spID(sp).toFixed(1)}mm</option>`).join('')}</select>
+          <select id="zsupSpec${i}">${susSelectHtml("", false)}</select>
           <span class="un">공급 배관</span>
         </div>
       </div>`;
@@ -1276,6 +1272,25 @@ function runSim(){
   }
   avgTemp/=zcnt;
   gi('zoneTbody').innerHTML=zRows.join('');
+
+  // ── 실시간 결과 바 업데이트 (for 루프 밖) ──
+  (function updateLiveBar(){
+    const liveCov = calcCoverage(nCol,nRow,nGapX,nGapY,f0.fw,f0.fh,nAng,nDist);
+    const liveNoz = nCol*nRow;
+    const liveQ   = qEach*liveNoz;
+    const livePumpHP = lpmToHP(pFlow,presKPa,(+gv('pEff')||75)/100)*HP_PER_KW;
+    function setLive(id,txt,cls){
+      const el=gi(id); if(!el) return;
+      el.textContent=txt; el.className='live-chip'+(cls?' '+cls:'');
+    }
+    setLive('lv-cov',  `커버리지: ${liveCov.toFixed(0)}%`,  liveCov>=85?'good':liveCov>=65?'warn':'bad');
+    setLive('lv-noz',  `노즐: ${nCol}×${nRow}=${liveNoz}개/면`, liveNoz>=4?'good':'warn');
+    setLive('lv-q',    `면유량: ${liveQ.toFixed(1)}L/min`, '');
+    setLive('lv-hp',   `펌프: ${(lpmToKW(pFlow,presKPa,(+gv('pEff')||75)/100)*HP_PER_KW).toFixed(2)}HP`, '');
+    const spNow=getSpecPipe('nManSpec');
+    const spVn=spVel(liveQ,spNow);
+    setLive('lv-pipe', `분사관: ${spID(spNow).toFixed(0)}mm ID v=${spVn.toFixed(1)}m/s`, spVn>3?'bad':spVn>2?'warn':'good');
+  })();
 
   const pumpKW=lpmToKW(pFlow,presKPa,pEff);
   const pumpHP=pumpKW*HP_PER_KW;
