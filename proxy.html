@@ -199,15 +199,35 @@ input.f-input:focus, textarea.f-input:focus{
   padding-bottom:1px;text-align:center;
 }
 .sign-btn{
-  display:inline-flex;align-items:center;justify-content:center;
-  min-width:72px;height:36px;
-  border:1.5px dashed var(--rc-red);
-  border-radius:6px;background:var(--rc-red-light);
-  cursor:pointer;padding:2px 10px;
+  display:inline-block;
+  min-width:90px;height:40px;
+  border:none;
+  border-bottom:2px solid #333;
+  border-radius:0;
+  background:transparent;
+  cursor:pointer;padding:0 6px;
   transition:all .2s;vertical-align:middle;
+  position:relative;
 }
-.sign-btn:hover{background:var(--rc-red-mid);}
-.sign-name-text{font-size:12px;color:var(--rc-red);font-weight:600;}
+.sign-btn:hover{ border-bottom-color:var(--rc-red); }
+.sign-btn-inner{
+  display:flex;align-items:center;justify-content:center;
+  width:100%;height:100%;
+  position:relative;
+}
+.sign-name-text{
+  font-size:14px;font-weight:700;
+  color:#1a1a1a;letter-spacing:1px;
+  line-height:1;
+}
+#signImg{
+  position:absolute;
+  top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  height:38px;max-width:120px;
+  object-fit:contain;
+  pointer-events:none;
+}
 
 /* ── 제출 버튼 ───────────────────────────────── */
 .btn-preview{
@@ -626,7 +646,7 @@ input.f-input:focus, textarea.f-input:focus{
     <div class="banner-text">
       <div class="banner-org">대한적십자사 서울특별지사 재난대응봉사회</div>
       <div class="banner-title">위 임 장</div>
-      <div class="banner-sub">월례회 불참자 의결권 위임 전자접수 시스템 · v2.2</div>
+      <div class="banner-sub">월례회 불참자 의결권 위임 전자접수 시스템 · v2.3</div>
     </div>
   </div>
 </div>
@@ -728,8 +748,10 @@ input.f-input:focus, textarea.f-input:focus{
     <input type="text" class="sign-input" style="width:32px" id="sMonth" placeholder="월">월
     <input type="text" class="sign-input" style="width:32px" id="sDay" placeholder="일">일
     &nbsp;위임자 :&nbsp;<button class="sign-btn" id="signBtn" onclick="openSignPad()" title="클릭하여 서명하기">
-      <span id="signDisplay" class="sign-name-text">서명 ✍</span>
-      <img id="signImg" src="" style="display:none;height:32px;vertical-align:middle;">
+      <span class="sign-btn-inner">
+        <span id="signDisplay" class="sign-name-text">이름</span>
+        <img id="signImg" src="" style="display:none;">
+      </span>
     </button>&nbsp;(서명)
   </div>
 
@@ -782,7 +804,7 @@ input.f-input:focus, textarea.f-input:focus{
 <div class="modal-overlay" id="signModal">
   <div class="modal-box" style="max-width:420px;">
     <div class="modal-header">
-      <span class="modal-header-title">✍ 서명하기</span>
+      <span class="modal-header-title">✍ 서명하기 — <span id="signModalName" style="font-weight:400;font-size:13px;opacity:.9;"></span></span>
       <button class="modal-close" onclick="closeSignPad()">✕</button>
     </div>
     <div class="modal-actions" style="justify-content:space-between;">
@@ -796,8 +818,9 @@ input.f-input:focus, textarea.f-input:focus{
       <canvas id="signCanvas"
         style="width:100%;height:160px;border:2px solid var(--rc-red);border-radius:8px;background:#1a2236;touch-action:none;cursor:crosshair;display:block;">
       </canvas>
-      <div style="font-size:11px;color:var(--warm-gray3);margin-top:6px;text-align:center;">
-        서명 후 [서명 적용] 버튼을 눌러주세요
+      <div style="font-size:11px;color:var(--warm-gray2);margin-top:8px;text-align:center;line-height:1.7;">
+        손가락(모바일) 또는 마우스(PC)로 서명하세요<br>
+        서명 완료 후 <strong>✅ 서명 적용</strong> 버튼을 눌러주세요
       </div>
     </div>
   </div>
@@ -875,7 +898,7 @@ window.switchTab=switchTab;
 // ── 서명란 실시간
 document.getElementById('dName').addEventListener('input',function(){
   const v=this.value.trim();
-  document.getElementById('signDisplay').textContent=v?v+' ✍':'서명 ✍';
+  document.getElementById('signDisplay').textContent=v||'이름';
 });
 
 // ── 날짜 자동
@@ -1296,6 +1319,9 @@ let signDataURL = '';
 let _signCtx = null, _signing = false, _lastX = 0, _lastY = 0;
 
 function openSignPad(){
+  const name = document.getElementById('dName').value.trim();
+  const el = document.getElementById('signModalName');
+  if(el) el.textContent = name || '';
   const modal = document.getElementById('signModal');
   modal.classList.add('open');
   initCanvas();
@@ -1372,12 +1398,11 @@ function applySign(){
   const cropped = cropSignature(canvas);
   signDataURL = cropped;
 
-  // 서명 버튼에 이미지 삽입
+  // 서명 버튼에 이미지 삽입 (이름은 유지, 서명 이미지 오버레이)
   const img = document.getElementById('signImg');
-  const txt = document.getElementById('signDisplay');
   img.src = cropped;
-  img.style.display = 'inline-block';
-  txt.style.display = 'none';
+  img.style.display = 'block'; // 이름 위에 오버레이
+  // signDisplay(이름)는 그대로 유지
 
   closeSignPad();
   showToast('✅ 서명이 적용되었습니다');
