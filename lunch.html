@@ -6,13 +6,16 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>인시스 점심주문관리 v5.0</title>
+<title>인시스 점심주문관리 v5.1</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root {
   --navy:   #1A3A5C;
   --orange: #E85D26;
   --bg:     #F2F0EB;
+  /* 계절 배경 — JS에서 동적 교체 */
+  --bg-summer: #e0f7f4;
+  --bg-winter: #F2F0EB;
   --card:   #FFFFFF;
   --border: #DDD8CF;
   --text:   #1A1A1A;
@@ -23,7 +26,26 @@
   --tagbg:  #EEF2F7;
 }
 * { box-sizing:border-box; margin:0; padding:0; }
-body { font-family:'Noto Sans KR',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; font-size:15px; }
+body {
+  font-family:'Noto Sans KR',sans-serif;
+  background:var(--bg); color:var(--text);
+  min-height:100vh; font-size:15px;
+  background-attachment:fixed;
+  background-size:cover;
+  background-position:center;
+}
+/* 여름 배경 오버레이 (배경 위 반투명 레이어) */
+body.season-summer::before {
+  content:'';
+  position:fixed; inset:0; z-index:0;
+  background: rgba(224,247,244,0.82);
+  pointer-events:none;
+}
+body.season-summer > * { position:relative; z-index:1; }
+body.season-summer header { z-index:200; }
+body.season-summer #floatPanel { z-index:500; }
+body.season-summer #toast { z-index:999; }
+body.season-summer .modal-overlay { z-index:800; }
 .hidden { display:none !important; }
 
 /* ── 헤더 ─────────────────────────────────────────── */
@@ -600,6 +622,40 @@ main.narrow { max-width:420px; }
   transition:all .15s;
 }
 .btn-skip:hover { border-color:var(--red); color:var(--red); }
+
+/* ── 계절 테마 ────────────────────────────────────────── */
+/* 여름: 에메럴드 바다 톤 */
+body.season-summer {
+  --bg:     #e0f7f4;
+  --card:   #f0fffe;
+  --border: #b2dfdb;
+  --tagbg:  #e0f2f1;
+  --navy:   #006064;
+  --orange: #00897b;
+  --teal:   #00796b;
+  --green:  #2e7d32;
+}
+body.season-summer .hd-inner { background:none; }
+body.season-summer header { background:linear-gradient(135deg,#006064,#00897b); }
+body.season-summer .btn-primary { background:#00897b; }
+body.season-summer .btn-primary:hover { background:#00695c; }
+body.season-summer .rest-btn:hover,body.season-summer .rest-btn.active { background:#006064; border-color:#006064; }
+body.season-summer .tab-btn.active { background:#006064; border-color:#006064; }
+body.season-summer .group-header { background:#006064; }
+body.season-summer #noticeBanner { background:#00897b; }
+body.season-summer #refreshBanner { background:#004d40; }
+body.season-summer .float-add-btn { background:#00897b; box-shadow:0 3px 12px rgba(0,137,123,.4); }
+body.season-summer .slot-open-btn { background:#26a69a; }
+body.season-summer .rca-btn { background:#006064; }
+body.season-summer .duty-volunteer-btn { background:#00897b; }
+
+/* 겨울/온화: 기존 베이지 톤 유지 */
+body.season-warm {
+  --bg:     #F2F0EB;
+  --card:   #FFFFFF;
+  --border: #DDD8CF;
+  --tagbg:  #EEF2F7;
+}
 </style>
 </head>
 <body>
@@ -608,7 +664,7 @@ main.narrow { max-width:420px; }
   <div class="hd-inner">
     <div class="hd-left" style="display:flex;align-items:center;gap:10px">
       <h1>인시스 점심주문관리</h1>
-      <span class="ver-badge">v5.0</span>
+      <span class="ver-badge">v5.1</span>
     </div>
     <div class="hd-right">
       <div id="weatherInfo">🌡️ 로딩중</div>
@@ -812,7 +868,7 @@ main.narrow { max-width:420px; }
     <div id="restaurantAdminList"></div>
   </div>
 
-  <div class="footer-info">점심주문관리 시스템 v5.0</div>
+  <div class="footer-info">점심주문관리 시스템 v5.1</div>
 
   <!-- ══ AI 추천 모달 ══ -->
   <div id="aiModal" class="modal-overlay hidden">
@@ -1765,7 +1821,35 @@ async function openAiRec() {
   $('aiContent').classList.remove('hidden');
   $('aiContent').innerHTML = '<p style="text-align:center;padding:16px;color:var(--muted);font-size:13px">🔍 창원 날씨 확인 중...</p>';
 
-  // ── 전역 날씨 캐시 사용 (loadWeather에서 이미 로드됨) ──
+  
+// ── 계절별 배경 테마 적용 ────────────────────────────────
+function applySeasonTheme() {
+  const month = new Date().getMonth() + 1; // 1~12
+  const body  = document.body;
+
+  // 여름: 6~9월 → 에메럴드 바다
+  // 온화: 10~2월 → 베이지 따뜻한 톤
+  // 봄:   3~5월 → 중간 (기본)
+  const isSummer = month >= 6 && month <= 9;
+  const isWinter = month >= 10 || month <= 2;
+
+  body.classList.remove('season-summer','season-warm');
+
+  if(isSummer) {
+    body.classList.add('season-summer');
+    // 야자수 바닷가 배경 이미지 (Unsplash 무료)
+    body.style.backgroundImage = "url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1920&q=80&auto=format&fit=crop')";
+    body.style.backgroundSize = 'cover';
+    body.style.backgroundPosition = 'center';
+    body.style.backgroundAttachment = 'fixed';
+  } else {
+    if(isWinter) body.classList.add('season-warm');
+    body.style.backgroundImage = 'none';
+  }
+}
+applySeasonTheme();
+
+// ── 전역 날씨 캐시 사용 (loadWeather에서 이미 로드됨) ──
   const temp       = G_WEATHER.temp;
   const wcode      = G_WEATHER.wcode;
   const wdesc      = G_WEATHER.wdesc;
