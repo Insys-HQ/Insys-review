@@ -198,6 +198,16 @@ input.f-input:focus, textarea.f-input:focus{
   font-weight:700;color:var(--text-dark);
   padding-bottom:1px;text-align:center;
 }
+.sign-btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:72px;height:36px;
+  border:1.5px dashed var(--rc-red);
+  border-radius:6px;background:var(--rc-red-light);
+  cursor:pointer;padding:2px 10px;
+  transition:all .2s;vertical-align:middle;
+}
+.sign-btn:hover{background:var(--rc-red-mid);}
+.sign-name-text{font-size:12px;color:var(--rc-red);font-weight:600;}
 
 /* ── 제출 버튼 ───────────────────────────────── */
 .btn-preview{
@@ -494,7 +504,7 @@ input.f-input:focus, textarea.f-input:focus{
     <div class="banner-text">
       <div class="banner-org">대한적십자사 서울특별지사 재난대응봉사회</div>
       <div class="banner-title">위 임 장</div>
-      <div class="banner-sub">월례회 불참자 의결권 위임 전자접수 시스템 · v1.4</div>
+      <div class="banner-sub">월례회 불참자 의결권 위임 전자접수 시스템 · v1.5</div>
     </div>
   </div>
 </div>
@@ -523,7 +533,7 @@ input.f-input:focus, textarea.f-input:focus{
       </div>
       <div class="field">
         <div class="field-label">콜사인</div>
-        <input class="f-input" id="dCall" type="text" placeholder="예) HL2TLS">
+        <input class="f-input" id="dCall" type="text" placeholder="예) HL2TLS" oninput="this.value=this.value.toUpperCase()" style="text-transform:uppercase;ime-mode:disabled;">
       </div>
     </div>
     <div class="row2">
@@ -595,7 +605,10 @@ input.f-input:focus, textarea.f-input:focus{
     <input type="text" class="sign-input" id="sYear" value="2026">년
     <input type="text" class="sign-input" style="width:32px" id="sMonth" placeholder="월">월
     <input type="text" class="sign-input" style="width:32px" id="sDay" placeholder="일">일
-    &nbsp;위임자 :&nbsp;<span class="sign-name" id="signDisplay">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>&nbsp;(서명)
+    &nbsp;위임자 :&nbsp;<button class="sign-btn" id="signBtn" onclick="openSignPad()" title="클릭하여 서명하기">
+      <span id="signDisplay" class="sign-name-text">서명 ✍</span>
+      <img id="signImg" src="" style="display:none;height:32px;vertical-align:middle;">
+    </button>&nbsp;(서명)
   </div>
 
   <button class="btn-preview" onclick="openPreview()">👁 미리보기 &amp; PDF 내보내기</button>
@@ -641,6 +654,32 @@ input.f-input:focus, textarea.f-input:focus{
   </div>
 </div>
 
+
+
+<!-- 서명 모달 -->
+<div class="modal-overlay" id="signModal">
+  <div class="modal-box" style="max-width:420px;">
+    <div class="modal-header">
+      <span class="modal-header-title">✍ 서명하기</span>
+      <button class="modal-close" onclick="closeSignPad()">✕</button>
+    </div>
+    <div class="modal-actions" style="justify-content:space-between;">
+      <span style="font-size:12px;color:var(--warm-gray2);line-height:1.4;">아래 흰 영역에 손가락이나 마우스로<br>서명해 주세요</span>
+      <div style="display:flex;gap:8px;">
+        <button class="modal-btn" onclick="clearSign()">🗑 지우기</button>
+        <button class="modal-btn primary" onclick="applySign()">✅ 서명 적용</button>
+      </div>
+    </div>
+    <div class="modal-body" style="padding:14px 16px 18px;">
+      <canvas id="signCanvas"
+        style="width:100%;height:160px;border:2px solid var(--rc-red);border-radius:8px;background:#fff;touch-action:none;cursor:crosshair;display:block;">
+      </canvas>
+      <div style="font-size:11px;color:var(--warm-gray3);margin-top:6px;text-align:center;">
+        서명 후 [서명 적용] 버튼을 눌러주세요
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- 미리보기 모달 -->
 <div class="modal-overlay" id="previewModal">
@@ -926,7 +965,9 @@ function openPreview(){
 
     <div class="doc-sign-row">
       ${esc(sy)}년 ${esc(sm)}월 ${esc(sd)}일&nbsp;&nbsp;
-      위임자 : <span class="doc-sign-name">${esc(name)}</span> (서명)
+      위임자 : ${signDataURL
+        ? `<img src="${signDataURL}" style="height:32px;vertical-align:middle;border-bottom:1px solid #999;">`
+        : `<span class="doc-sign-name">${esc(name)}</span>`} (서명)
     </div>
   `;
   document.getElementById('previewModal').classList.add('open');
@@ -989,6 +1030,120 @@ function loadScript(src){
   });
 }
 window.loadScript=loadScript;
+
+
+// ── 서명 패드 ─────────────────────────────────
+let signDataURL = '';
+let _signCtx = null, _signing = false, _lastX = 0, _lastY = 0;
+
+function openSignPad(){
+  const modal = document.getElementById('signModal');
+  modal.classList.add('open');
+  initCanvas();
+}
+window.openSignPad = openSignPad;
+
+function closeSignPad(){
+  document.getElementById('signModal').classList.remove('open');
+}
+window.closeSignPad = closeSignPad;
+
+function initCanvas(){
+  const canvas = document.getElementById('signCanvas');
+  // 실제 픽셀 크기를 CSS 크기에 맞춤 (레티나 대응)
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  _signCtx = canvas.getContext('2d');
+  _signCtx.scale(dpr, dpr);
+  _signCtx.clearRect(0, 0, rect.width, rect.height);
+  _signCtx.strokeStyle = '#1a1a1a';
+  _signCtx.lineWidth = 2.5;
+  _signCtx.lineCap = 'round';
+  _signCtx.lineJoin = 'round';
+
+  // 이벤트 (마우스 + 터치)
+  canvas.onmousedown  = e => { _signing=true; const p=getPos(canvas,e); _lastX=p.x; _lastY=p.y; };
+  canvas.onmousemove  = e => { if(!_signing)return; draw(canvas,e); };
+  canvas.onmouseup    = () => _signing=false;
+  canvas.onmouseleave = () => _signing=false;
+
+  canvas.ontouchstart = e => { e.preventDefault(); _signing=true; const p=getPos(canvas,e.touches[0]); _lastX=p.x; _lastY=p.y; };
+  canvas.ontouchmove  = e => { e.preventDefault(); if(!_signing)return; draw(canvas,e.touches[0]); };
+  canvas.ontouchend   = () => _signing=false;
+}
+
+function getPos(canvas, e){
+  const rect = canvas.getBoundingClientRect();
+  return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+}
+
+function draw(canvas, e){
+  const p = getPos(canvas, e);
+  _signCtx.beginPath();
+  _signCtx.moveTo(_lastX, _lastY);
+  _signCtx.lineTo(p.x, p.y);
+  _signCtx.stroke();
+  _lastX = p.x; _lastY = p.y;
+}
+
+function clearSign(){
+  const canvas = document.getElementById('signCanvas');
+  const rect = canvas.getBoundingClientRect();
+  _signCtx.clearRect(0, 0, rect.width, rect.height);
+}
+window.clearSign = clearSign;
+
+function applySign(){
+  const canvas = document.getElementById('signCanvas');
+  // 빈 캔버스 체크
+  const pixels = _signCtx.getImageData(0,0,canvas.width,canvas.height).data;
+  const hasSign = pixels.some((v,i)=>i%4===3 && v>10);
+  if(!hasSign){ showToast('❗ 서명을 먼저 그려주세요'); return; }
+
+  // 서명 영역만 크롭 (여백 제거)
+  const cropped = cropSignature(canvas);
+  signDataURL = cropped;
+
+  // 서명 버튼에 이미지 삽입
+  const img = document.getElementById('signImg');
+  const txt = document.getElementById('signDisplay');
+  img.src = cropped;
+  img.style.display = 'inline-block';
+  txt.style.display = 'none';
+
+  closeSignPad();
+  showToast('✅ 서명이 적용되었습니다');
+}
+window.applySign = applySign;
+
+function cropSignature(canvas){
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  const data = ctx.getImageData(0,0,w,h).data;
+  let minX=w,minY=h,maxX=0,maxY=0;
+  for(let y=0;y<h;y++){
+    for(let x=0;x<w;x++){
+      const a = data[(y*w+x)*4+3];
+      if(a>10){ if(x<minX)minX=x; if(x>maxX)maxX=x; if(y<minY)minY=y; if(y>maxY)maxY=y; }
+    }
+  }
+  const pad=8;
+  minX=Math.max(0,minX-pad); minY=Math.max(0,minY-pad);
+  maxX=Math.min(w,maxX+pad); maxY=Math.min(h,maxY+pad);
+  const cw=maxX-minX, ch=maxY-minY;
+  const tmp=document.createElement('canvas');
+  tmp.width=cw; tmp.height=ch;
+  tmp.getContext('2d').drawImage(canvas,minX,minY,cw,ch,0,0,cw,ch);
+  return tmp.toDataURL('image/png');
+}
+
+// 모달 외부 닫기
+document.getElementById('signModal').addEventListener('click',function(e){
+  if(e.target===this)closeSignPad();
+});
+
 
 // 모달 외부 클릭 닫기
 document.getElementById('previewModal').addEventListener('click',function(e){
