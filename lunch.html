@@ -6,7 +6,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>인시스 점심주문관리 v4.9</title>
+<title>인시스 점심주문관리 v5.0</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -608,7 +608,7 @@ main.narrow { max-width:420px; }
   <div class="hd-inner">
     <div class="hd-left" style="display:flex;align-items:center;gap:10px">
       <h1>인시스 점심주문관리</h1>
-      <span class="ver-badge">v4.9</span>
+      <span class="ver-badge">v5.0</span>
     </div>
     <div class="hd-right">
       <div id="weatherInfo">🌡️ 로딩중</div>
@@ -812,7 +812,7 @@ main.narrow { max-width:420px; }
     <div id="restaurantAdminList"></div>
   </div>
 
-  <div class="footer-info">점심주문관리 시스템 v4.9</div>
+  <div class="footer-info">점심주문관리 시스템 v5.0</div>
 
   <!-- ══ AI 추천 모달 ══ -->
   <div id="aiModal" class="modal-overlay hidden">
@@ -1790,8 +1790,20 @@ async function openAiRec() {
     mild:    ['비빔밥','덮밥','볶음밥','국수','짜장','짬뽕','돈까스'],
     cool:    ['찌개','국밥','탕','해장국','두루치기','전골','덮밥'],
     cold:    ['찌개','국밥','탕','해장국','감자탕','전골','설렁탕','곰탕','부대찌개'],
-    // 보양식 (삼복·동지·대한 등 절기 보양)
-    boyang:  ['삼계탕','닭','오리','장어','추어탕','전복','닭곰탕','육개장','감자탕','설렁탕','곰탕','보신','갈비'],
+    // 보양식 — 실제 등록 메뉴 기준으로 매칭
+    // 복날(삼복): 닭·오리·육개장·해장국·감자탕·갈비탕·전골 등
+    boyang: [
+      // 닭류 (쌈마이닭쌈밥 전메뉴, 달리는커피 오리)
+      '닭쌈밥','닭','오리',
+      // 국물 보양식 (양평해장국, 청기와감자탕, 김밥천국갈비탕)
+      '육개장','해장국','선지','소고기국','감자탕','갈비탕','내장탕',
+      // 전골·찌개류 (시댁, 각 식당)
+      '전골','김치전골','청국장',
+      // 순대국·국밥류 (찐한순대국밥, 가마솥국밥)
+      '순대국','국밥','돼지국밥',
+      // 기타 보양
+      '아구찜','뽈찜',
+    ],
     // 동지·설날·추석 특식
     festive: ['떡국','삼계탕','갈비','전','육개장','닭곰탕'],
   };
@@ -1856,9 +1868,10 @@ async function openAiRec() {
       // ── 절기·기념일 가점 ──
       const sambok = getSambokInfo(month, day);
       if(sambok) {
-        // 삼복 — 보양식 대폭 가점 (+60)
+        // 삼복 — 보양식 대폭 가점 (+60), 비보양식은 소폭 감점
         if(match(PREFER.boyang)) score+=60;
-        else score-=5;
+        else if(match(PREFER.veryHot)||match(PREFER.hot)) score+=0; // 시원한 것도 허용
+        else score-=10;
       }
       if(special.includes('동지')) {
         // 동지 — 팥죽·따뜻한 음식
@@ -1911,8 +1924,10 @@ async function openAiRec() {
     if(colleagueRest[c.rest]) parts.push(`동료 ${colleagueRest[c.rest]}명 선택 중`);
     if(c.deadline) parts.push(`마감 ${c.deadline}`);
     const sambokR = getSambokInfo(month, day);
-    if(sambokR) parts.push(sambokR+' 보양식 추천');
-    else if(special!=='없음') parts.push(special);
+    if(sambokR) {
+      const isBoyangMenu = PREFER.boyang.some(w=>(c.menu+c.rest).includes(w));
+      parts.push(isBoyangMenu ? sambokR+' 보양식 🍗' : sambokR);
+    } else if(special!=='없음') parts.push(special);
     return parts.slice(0,3).join(' · ')+'.';
   }
 
