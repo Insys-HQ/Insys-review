@@ -268,6 +268,10 @@ input.f-input:focus, textarea.f-input:focus{
 .btn-sm:hover{background:var(--rc-red-light);border-color:var(--rc-red);color:var(--rc-red);}
 .btn-sm.danger:hover{background:#fff0f0;border-color:#e00;color:#e00;}
 
+
+/* ── 체크바 ──────────────────────────────────── */
+#chkBar { display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center; }
+
 /* ── Firebase 상태 ───────────────────────────── */
 .fb-status{font-size:11px;text-align:right;color:var(--warm-gray3);margin-bottom:8px;}
 .fb-status.ok{color:#15803d;}.fb-status.local{color:#b45309;}
@@ -590,7 +594,7 @@ input.f-input:focus, textarea.f-input:focus{
     <div class="banner-text">
       <div class="banner-org">대한적십자사 서울특별지사 재난대응봉사회</div>
       <div class="banner-title">위 임 장</div>
-      <div class="banner-sub">월례회 불참자 의결권 위임 전자접수 시스템 · v2.0</div>
+      <div class="banner-sub">월례회 불참자 의결권 위임 전자접수 시스템 · v2.1</div>
     </div>
   </div>
 </div>
@@ -771,7 +775,7 @@ input.f-input:focus, textarea.f-input:focus{
 <div class="modal-overlay" id="previewModal">
   <div class="modal-box">
     <div class="modal-header">
-      <span class="modal-header-title">📄 위임장 미리보기</span>
+      <span class="modal-header-title" id="previewModalTitle">📄 위임장 미리보기</span>
       <button class="modal-close" onclick="closePreview()">✕</button>
     </div>
     <div class="modal-actions">
@@ -941,15 +945,35 @@ function renderList(){
   document.getElementById('stToday').textContent=proxies.filter(p=>p.submittedAt&&p.submittedAt.slice(0,10)===today).length;
   const c=document.getElementById('proxyList');
   if(!filtered.length){c.innerHTML='<div class="empty">📭 접수된 위임장이 없습니다</div>';return;}
-  c.innerHTML=filtered.map((p,i)=>`
-    <div class="proxy-item">
-      <div class="item-num">${filtered.length-i}</div>
-      <div class="item-body">
-        <div class="item-name">${esc(p.name)} <span class="item-call">${p.call?'('+esc(p.call)+')':''}</span></div>
+  // 체크 선택 버튼 툴바
+let chkBar = document.getElementById('chkBar');
+if(!chkBar){
+  chkBar = document.createElement('div');
+  chkBar.id = 'chkBar';
+  chkBar.style.cssText='display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center;';
+  chkBar.innerHTML=`
+    <label style="font-size:12px;font-weight:600;color:var(--text-mid);display:flex;align-items:center;gap:4px;cursor:pointer;">
+      <input type="checkbox" id="chkAll" onchange="toggleAllChk(this)" style="accent-color:var(--rc-red);width:15px;height:15px;"> 전체선택
+    </label>
+    <button class="btn-sm" onclick="previewChecked()" style="background:var(--rc-red);color:#fff;border-color:var(--rc-red);">👁 선택 미리보기</button>
+    <button class="btn-sm" onclick="pdfChecked()">⬇ 선택 PDF</button>
+  `;
+  c.parentNode.insertBefore(chkBar, c);
+}
+
+c.innerHTML=filtered.map((p,i)=>`
+    <div class="proxy-item" id="pi-${esc(p.id)}">
+      <input type="checkbox" class="item-chk" data-id="${esc(p.id)}"
+        style="width:16px;height:16px;accent-color:var(--rc-red);flex-shrink:0;cursor:pointer;">
+      <div class="item-num" style="cursor:pointer;" onclick="previewOne('${esc(p.id)}')">${filtered.length-i}</div>
+      <div class="item-body" style="cursor:pointer;" onclick="previewOne('${esc(p.id)}')">
+        <div class="item-name" style="color:var(--rc-red);text-decoration:underline;text-underline-offset:3px;">
+          ${esc(p.name)} <span class="item-call" style="color:var(--warm-gray2);text-decoration:none;">${p.call?'('+esc(p.call)+')':''}</span>
+        </div>
         <div class="item-detail">${p.year}년 ${p.month}월 위임 · 생년: ${esc(p.birth)}${p.reason?' · '+esc(p.reason):''}</div>
         <div class="item-date">제출: ${p.submittedDateStr||''}</div>
       </div>
-      <button class="item-del" onclick="deleteProxy('${p.id}')" title="삭제">✕</button>
+      <button class="item-del" onclick="deleteProxy('${esc(p.id)}')" title="삭제">✕</button>
     </div>`).join('');
 }
 window.renderList=renderList;
@@ -991,6 +1015,88 @@ function exportCSV(){
   showToast('⬇ CSV 다운로드 완료');
 }
 window.exportCSV=exportCSV;
+
+// ── 전체선택 토글 ─────────────────────────────
+function toggleAllChk(el){
+  document.querySelectorAll('.item-chk').forEach(c=>c.checked=el.checked);
+}
+window.toggleAllChk=toggleAllChk;
+
+// ── 단일 항목 데이터로 위임장 HTML 생성 ──────
+function buildDocHTML(p, signSrc){
+  const signEl = signSrc
+    ? `<img src="${signSrc}" style="height:28px;vertical-align:middle;margin:0 4px;">`
+    : `<span style="display:inline-block;min-width:80px;border-bottom:1px solid #333;">&nbsp;</span>`;
+  return `<div class="print-doc">
+  <div class="pd-title">위 임 장</div>
+  <div class="pd-section">
+    <div class="pd-sec-head"><span class="pd-box"></span> 위 임 자</div>
+    <div class="pd-row">- 소&nbsp;&nbsp;&nbsp;&nbsp;속 : 대한적십자사 서울특별지사 재난대응봉사회</div>
+    <div class="pd-row">- 성&nbsp;&nbsp;&nbsp;&nbsp;명 : ${esc(p.name)}${p.call?' ('+esc(p.call)+')':''}</div>
+    <div class="pd-row">- 생년월일 : ${esc(p.birth||'')}</div>
+    ${p.phone?`<div class="pd-row">- 연&nbsp;락&nbsp;처 : ${esc(p.phone)}</div>`:''}
+  </div>
+  <div class="pd-section">
+    <div class="pd-sec-head"><span class="pd-box"></span> 위임사항 : ${esc(p.year||'')}년도 ${esc(p.month||'')}월 재난대응봉사회&nbsp;&nbsp;회의 의결사항 전체</div>
+    ${p.reason?`<div class="pd-row" style="margin-top:6px;">- 불참 사유 : ${esc(p.reason)}</div>`:''}
+  </div>
+  <div class="pd-section">
+    <div class="pd-sec-head"><span class="pd-box"></span> 수 임 자</div>
+    <div class="pd-row">- 소&nbsp;&nbsp;&nbsp;&nbsp;속 : 대한적십자사 서울특별지사 재난대응봉사회</div>
+    <div class="pd-row">- 성&nbsp;&nbsp;&nbsp;&nbsp;명 : 임천순(DS1CLF)</div>
+    <div class="pd-row">- 직&nbsp;&nbsp;&nbsp;&nbsp;책 : 회&nbsp;&nbsp;장</div>
+  </div>
+  <div class="pd-consent">위임자 본인은 상기 위임사항에 관한 모든 권리를 수임자에게 위임합니다.</div>
+  <div class="pd-date">${esc(p.signDate?p.signDate.replace(/\./g,'년 ').replace(/년 (\d)/g,'년　$1')+'일':p.submittedDateStr||'')}</div>
+  <div class="pd-sign">위임자 :&nbsp;${signEl}&nbsp;&nbsp;&nbsp;(서명)</div>
+</div>`;
+}
+window.buildDocHTML=buildDocHTML;
+
+// ── 목록에서 이름 클릭 → 단일 미리보기 ───────
+function previewOne(id){
+  const p=proxies.find(x=>x.id===id);
+  if(!p){showToast('데이터를 찾을 수 없습니다');return;}
+  document.getElementById('previewDoc').innerHTML=buildDocHTML(p, p.signDataURL||'');
+  // 모달 액션 버튼: 단일 PDF/인쇄
+  document.getElementById('previewModalTitle').textContent='📄 위임장 미리보기 — '+p.name;
+  currentPreviewIds=[id];
+  document.getElementById('previewModal').classList.add('open');
+}
+window.previewOne=previewOne;
+
+// ── 체크된 항목 미리보기 (여러 장) ──────────
+function previewChecked(){
+  const ids=[...document.querySelectorAll('.item-chk:checked')].map(c=>c.dataset.id);
+  if(!ids.length){showToast('❗ 미리볼 항목을 선택해 주세요');return;}
+  currentPreviewIds=ids;
+  const html=ids.map(id=>{
+    const p=proxies.find(x=>x.id===id);
+    return p?`<div style="page-break-after:always;margin-bottom:40px;">${buildDocHTML(p,p.signDataURL||'')}</div>`:'';
+  }).join('');
+  document.getElementById('previewDoc').innerHTML=html;
+  document.getElementById('previewModalTitle').textContent=`📄 위임장 미리보기 — ${ids.length}명`;
+  document.getElementById('previewModal').classList.add('open');
+}
+window.previewChecked=previewChecked;
+
+// ── 체크된 항목 PDF ───────────────────────────
+async function pdfChecked(){
+  const ids=[...document.querySelectorAll('.item-chk:checked')].map(c=>c.dataset.id);
+  if(!ids.length){showToast('❗ PDF로 내보낼 항목을 선택해 주세요');return;}
+  currentPreviewIds=ids;
+  const html=ids.map(id=>{
+    const p=proxies.find(x=>x.id===id);
+    return p?`<div style="page-break-after:always;margin-bottom:40px;">${buildDocHTML(p,p.signDataURL||'')}</div>`:'';
+  }).join('');
+  document.getElementById('previewDoc').innerHTML=html;
+  document.getElementById('previewModal').classList.add('open');
+  setTimeout(()=>downloadPDF(),300);
+}
+window.pdfChecked=pdfChecked;
+
+let currentPreviewIds=[];
+
 
 
 // ── 미리보기 ─────────────────────────────────
@@ -1072,44 +1178,66 @@ function closePreview(){
 window.closePreview=closePreview;
 
 function printDoc(){
-  const content = document.getElementById('previewDoc').innerHTML;
-  let wrap = document.getElementById('printWrap');
-  if(!wrap){ wrap=document.createElement('div'); wrap.id='printWrap'; document.body.appendChild(wrap); }
-  wrap.innerHTML = content;
-  wrap.style.display = 'block';
-  window.print();
-  setTimeout(()=>{ wrap.style.display='none'; wrap.innerHTML=''; }, 800);
+  const content=document.getElementById('previewDoc').innerHTML;
+  let wrap=document.getElementById('printWrap');
+  if(!wrap){wrap=document.createElement('div');wrap.id='printWrap';document.body.appendChild(wrap);}
+  // 폰트 스타일시트 포함한 완전한 인쇄용 HTML
+  wrap.innerHTML=content;
+  wrap.style.display='block';
+  // 잠깐 기다렸다가 인쇄 (렌더링 보장)
+  setTimeout(()=>{
+    window.print();
+    setTimeout(()=>{wrap.style.display='none';wrap.innerHTML='';},600);
+  },200);
 }
 window.printDoc=printDoc;
 
 async function downloadPDF(){
   showToast('⏳ PDF 생성 중…');
-  const doc=document.getElementById('previewDoc');
-
-  // html2canvas + jsPDF (CDN)
-  if(typeof html2canvas==='undefined'||typeof jspdf==='undefined'){
-    // CDN 동적 로드
-    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
-    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
-  }
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
   try{
-    const canvas=await html2canvas(doc,{scale:2,useCORS:true,backgroundColor:'#ffffff'});
-    const imgData=canvas.toDataURL('image/png');
     const {jsPDF}=window.jspdf;
     const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
     const pW=pdf.internal.pageSize.getWidth();
     const pH=pdf.internal.pageSize.getHeight();
-    const ratio=canvas.width/canvas.height;
-    const iW=pW-20;
-    const iH=iW/ratio;
-    const yOffset=(pH-iH)/2;
-    pdf.addImage(imgData,'PNG',10,yOffset>0?yOffset:10,iW,iH);
-    const name=document.getElementById('dName').value.trim()||'위임자';
-    const month=document.getElementById('mMonth').value.trim();
-    pdf.save(`위임장_${name}_${month}월.pdf`);
+    const margin=15;
+
+    // previewDoc 안의 각 .print-doc 를 페이지별 캡처
+    const docs=document.querySelectorAll('#previewDoc .print-doc');
+    const targets=docs.length>0?[...docs]:[document.getElementById('previewDoc')];
+
+    for(let i=0;i<targets.length;i++){
+      const el=targets[i];
+      const canvas=await html2canvas(el,{
+        scale:2,useCORS:true,backgroundColor:'#ffffff',
+        windowWidth:700,
+        onclone:(doc)=>{
+          // 클론된 문서에서도 폰트/스타일 유지
+          doc.querySelectorAll('.print-doc').forEach(d=>{d.style.padding='20px 30px';});
+        }
+      });
+      const imgData=canvas.toDataURL('image/png');
+      const iW=pW-margin*2;
+      const iH=(canvas.height/canvas.width)*iW;
+      const yOff=iH<pH?(pH-iH)/2:margin;
+      if(i>0) pdf.addPage();
+      pdf.addImage(imgData,'PNG',margin,yOff,iW,Math.min(iH,pH-margin*2));
+    }
+
+    // 파일명
+    const ids=currentPreviewIds;
+    let fname='위임장';
+    if(ids.length===1){
+      const p=proxies.find(x=>x.id===ids[0]);
+      if(p) fname=`위임장_${p.name}_${p.month}월`;
+    } else if(ids.length>1){
+      fname=`위임장_${ids.length}명`;
+    }
+    pdf.save(`${fname}.pdf`);
     showToast('✅ PDF 다운로드 완료');
   }catch(e){
-    showToast('❌ PDF 생성 실패 — 인쇄로 저장해 주세요');
+    showToast('❌ PDF 생성 실패: '+e.message);
     console.error(e);
   }
 }
