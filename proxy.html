@@ -340,6 +340,93 @@ input.f-input:focus, textarea.f-input:focus{
   .sign-row{font-size:12px;}
 }
 
+
+/* ── 위임장 출력 문서 스타일 (원본 레이아웃) ─── */
+.print-doc {
+  font-family: 'Noto Sans KR', sans-serif;
+  color: #1a1a1a;
+  max-width: 580px;
+  margin: 0 auto;
+  padding: 10px 0;
+}
+.pd-title {
+  text-align: center;
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 10px;
+  color: #1a1a1a;
+  margin-bottom: 40px;
+  margin-top: 10px;
+}
+.pd-section {
+  margin-bottom: 32px;
+}
+.pd-sec-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 10px;
+}
+.pd-box {
+  display: inline-block;
+  width: 12px; height: 12px;
+  border: 1.5px solid #CE1126;
+  flex-shrink: 0;
+}
+.pd-row {
+  font-size: 13.5px;
+  color: #1a1a1a;
+  padding: 3px 0 3px 18px;
+  letter-spacing: 0.2px;
+  line-height: 1.8;
+}
+.pd-consent {
+  text-align: center;
+  font-size: 14px;
+  color: #1a1a1a;
+  font-weight: 500;
+  padding: 20px 0 10px;
+  line-height: 2;
+}
+.pd-date {
+  text-align: center;
+  font-size: 14px;
+  color: #1a1a1a;
+  padding: 18px 0 0;
+  letter-spacing: 2px;
+}
+.pd-sign {
+  text-align: right;
+  font-size: 14px;
+  color: #1a1a1a;
+  padding: 30px 40px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+/* ── 인쇄 전용 ───────────────────────────────── */
+@media print {
+  body > *:not(#printWrap) { display: none !important; }
+  #printWrap {
+    display: block !important;
+    position: fixed; inset: 0;
+    background: #fff;
+    padding: 40px 50px;
+    z-index: 99999;
+  }
+  .pd-title { font-size: 30px; letter-spacing: 12px; margin-bottom: 50px; }
+  .pd-section { margin-bottom: 38px; }
+  .pd-row { font-size: 14px; }
+  .pd-consent { font-size: 14.5px; padding: 28px 0 14px; }
+  .pd-date { font-size: 14.5px; padding-top: 24px; }
+  .pd-sign { font-size: 14.5px; padding: 36px 60px 0 0; }
+}
+
 /* ── 인쇄 ────────────────────────────────────── */
 @media print{
   .nav,.toolbar,.btn-submit,.btn-sm,.item-del,.agree-box{display:none!important;}
@@ -492,20 +579,18 @@ input.f-input:focus, textarea.f-input:focus{
     <!-- 적십자 SVG 로고 -->
     <div class="rc-logo">
       <svg width="64" height="64" viewBox="0 0 90 90" xmlns="http://www.w3.org/2000/svg">
-        <!-- 헤더와 동일한 붉은 배경 -->
-        <rect width="90" height="90" rx="6" fill="#CE1126"/>
-        <!-- 국제 표준 그리스 십자 - 여백 15px, 셀 20x20 -->
-        <rect x="35" y="15" width="20" height="20" fill="white"/>
-        <rect x="15" y="35" width="20" height="20" fill="white"/>
-        <rect x="35" y="35" width="20" height="20" fill="white"/>
-        <rect x="55" y="35" width="20" height="20" fill="white"/>
-        <rect x="35" y="55" width="20" height="20" fill="white"/>
+        <rect width="90" height="90" rx="6" fill="white"/>
+        <rect x="35" y="15" width="20" height="20" fill="#CE1126"/>
+        <rect x="15" y="35" width="20" height="20" fill="#CE1126"/>
+        <rect x="35" y="35" width="20" height="20" fill="#CE1126"/>
+        <rect x="55" y="35" width="20" height="20" fill="#CE1126"/>
+        <rect x="35" y="55" width="20" height="20" fill="#CE1126"/>
       </svg>
     </div>
     <div class="banner-text">
       <div class="banner-org">대한적십자사 서울특별지사 재난대응봉사회</div>
       <div class="banner-title">위 임 장</div>
-      <div class="banner-sub">월례회 불참자 의결권 위임 전자접수 시스템 · v1.8</div>
+      <div class="banner-sub">월례회 불참자 의결권 위임 전자접수 시스템 · v1.9</div>
     </div>
   </div>
 </div>
@@ -701,7 +786,7 @@ input.f-input:focus, textarea.f-input:focus{
     </div>
   </div>
 </div>
-<div id="printTarget" style="display:none"></div>
+<div id="printWrap" style="display:none"></div>
 </div><!-- /wrap -->
 <div id="toast"></div>
 
@@ -910,77 +995,73 @@ window.exportCSV=exportCSV;
 
 // ── 미리보기 ─────────────────────────────────
 function openPreview(){
-  const name=document.getElementById('dName').value.trim();
-  const birth=document.getElementById('dBirth').value.trim();
-  const call=document.getElementById('dCall').value.trim();
-  const phone=document.getElementById('dPhone').value.trim();
-  const year=document.getElementById('mYear').value.trim();
-  const month=document.getElementById('mMonth').value.trim();
-  const reason=document.getElementById('dReason').value.trim();
-  const sy=document.getElementById('sYear').value.trim();
-  const sm=document.getElementById('sMonth').value.trim();
-  const sd=document.getElementById('sDay').value.trim();
-  if(!name){showToast('❗ 성명을 입력해 주세요');return;}
-  if(!month){showToast('❗ 위임 월을 입력해 주세요');return;}
+  const name   = document.getElementById('dName').value.trim();
+  const birth  = document.getElementById('dBirth').value.trim();
+  const call   = document.getElementById('dCall').value.trim();
+  const phone  = document.getElementById('dPhone').value.trim();
+  const year   = document.getElementById('mYear').value.trim();
+  const month  = document.getElementById('mMonth').value.trim();
+  const reason = document.getElementById('dReason').value.trim();
+  const sy     = document.getElementById('sYear').value.trim();
+  const sm     = document.getElementById('sMonth').value.trim();
+  const sd     = document.getElementById('sDay').value.trim();
+  if(!name) { showToast('❗ 성명을 입력해 주세요'); return; }
+  if(!month){ showToast('❗ 위임 월을 입력해 주세요'); return; }
 
-  document.getElementById('previewDoc').innerHTML=`
-    <div class="doc-rc-mark">
-      <svg width="52" height="52" viewBox="0 0 90 90" xmlns="http://www.w3.org/2000/svg">
-        <rect width="90" height="90" rx="6" fill="#CE1126"/>
-        <rect x="35" y="15" width="20" height="20" fill="white"/>
-        <rect x="15" y="35" width="20" height="20" fill="white"/>
-        <rect x="35" y="35" width="20" height="20" fill="white"/>
-        <rect x="55" y="35" width="20" height="20" fill="white"/>
-        <rect x="35" y="55" width="20" height="20" fill="white"/>
-      </svg>
-      <div style="font-size:11px;color:#7a7270;margin-top:4px;letter-spacing:.5px">대한적십자사 서울특별지사 재난대응봉사회</div>
-    </div>
-    <div class="doc-title">위 임 장</div>
+  const signEl = signDataURL
+    ? `<img src="${signDataURL}" style="height:28px;vertical-align:middle;margin:0 4px;">`
+    : `<span style="display:inline-block;min-width:80px;border-bottom:1px solid #333;">&nbsp;</span>`;
 
-    <div class="doc-section">
-      <div class="doc-section-head">
-        <div class="doc-cross"><svg viewBox="0 0 36 36" fill="none"><rect x="12" y="4" width="12" height="12" fill="white"/><rect x="4" y="12" width="12" height="12" fill="white"/><rect x="12" y="12" width="12" height="12" fill="white"/><rect x="20" y="12" width="12" height="12" fill="white"/><rect x="12" y="20" width="12" height="12" fill="white"/></svg></div>
-        위 임 자
-      </div>
-      <div class="doc-row"><span class="doc-key">소&nbsp;&nbsp;&nbsp;&nbsp;속</span><span class="doc-val">대한적십자사 서울특별지사 재난대응봉사회</span></div>
-      <div class="doc-row"><span class="doc-key">성&nbsp;&nbsp;&nbsp;&nbsp;명</span><span class="doc-val">${esc(name)}${call?' ('+esc(call)+')':''}</span></div>
-      <div class="doc-row"><span class="doc-key">생년월일</span><span class="doc-val">${esc(birth)}</span></div>
-      ${phone?`<div class="doc-row"><span class="doc-key">연&nbsp;락&nbsp;처</span><span class="doc-val">${esc(phone)}</span></div>`:''}
-    </div>
+  document.getElementById('previewDoc').innerHTML = `
+<div class="print-doc">
+  <!-- 제목 -->
+  <div class="pd-title">위 임 장</div>
 
-    <div class="doc-section">
-      <div class="doc-section-head">
-        <div class="doc-cross"><svg viewBox="0 0 36 36" fill="none"><rect x="12" y="4" width="12" height="12" fill="white"/><rect x="4" y="12" width="12" height="12" fill="white"/><rect x="12" y="12" width="12" height="12" fill="white"/><rect x="20" y="12" width="12" height="12" fill="white"/><rect x="12" y="20" width="12" height="12" fill="white"/></svg></div>
-        위 임 사 항
-      </div>
-      <div class="doc-deleg-box">
-        ${esc(year)}년 <strong style="color:#CE1126">${esc(month)}월</strong> 재난대응봉사회 월례회의 의결사항 전체
-        ${reason?'<br><span style="font-size:12px;color:#5a5251">불참사유 : '+esc(reason)+'</span>':''}
-      </div>
+  <!-- 위임자 -->
+  <div class="pd-section">
+    <div class="pd-sec-head">
+      <span class="pd-box"></span> 위 임 자
     </div>
+    <div class="pd-row">- 소&nbsp;&nbsp;&nbsp;&nbsp;속 : 대한적십자사 서울특별지사 재난대응봉사회</div>
+    <div class="pd-row">- 성&nbsp;&nbsp;&nbsp;&nbsp;명 : ${esc(name)}${call?' ('+esc(call)+')':''}</div>
+    <div class="pd-row">- 생년월일 : ${esc(birth)}</div>
+    ${phone?`<div class="pd-row">- 연&nbsp;락&nbsp;처 : ${esc(phone)}</div>`:''}
+  </div>
 
-    <div class="doc-section">
-      <div class="doc-section-head">
-        <div class="doc-cross"><svg viewBox="0 0 36 36" fill="none"><rect x="12" y="4" width="12" height="12" fill="white"/><rect x="4" y="12" width="12" height="12" fill="white"/><rect x="12" y="12" width="12" height="12" fill="white"/><rect x="20" y="12" width="12" height="12" fill="white"/><rect x="12" y="20" width="12" height="12" fill="white"/></svg></div>
-        수 임 자
-      </div>
-      <div class="doc-row"><span class="doc-key">소&nbsp;&nbsp;&nbsp;&nbsp;속</span><span class="doc-val">대한적십자사 서울특별지사 재난대응봉사회</span></div>
-      <div class="doc-row"><span class="doc-key">성&nbsp;&nbsp;&nbsp;&nbsp;명</span><span class="doc-val">임천순 (DS1CLF)</span></div>
-      <div class="doc-row"><span class="doc-key">직&nbsp;&nbsp;&nbsp;&nbsp;책</span><span class="doc-val">회 장</span></div>
+  <!-- 위임사항 -->
+  <div class="pd-section">
+    <div class="pd-sec-head">
+      <span class="pd-box"></span> 위임사항 : ${esc(year)}년도 ${esc(month)}월 재난대응봉사회&nbsp;&nbsp;회의 의결사항 전체
     </div>
+    ${reason?`<div class="pd-row" style="margin-top:6px;">- 불참 사유 : ${esc(reason)}</div>`:''}
+  </div>
 
-    <div class="doc-consent">
-      위임자 본인은 상기 위임사항에 관한 모든 권리를 수임자에게 위임하며,<br>
-      위 내용이 사실임을 확인합니다.
+  <!-- 수임자 -->
+  <div class="pd-section">
+    <div class="pd-sec-head">
+      <span class="pd-box"></span> 수 임 자
     </div>
+    <div class="pd-row">- 소&nbsp;&nbsp;&nbsp;&nbsp;속 : 대한적십자사 서울특별지사 재난대응봉사회</div>
+    <div class="pd-row">- 성&nbsp;&nbsp;&nbsp;&nbsp;명 : 임천순(DS1CLF)</div>
+    <div class="pd-row">- 직&nbsp;&nbsp;&nbsp;&nbsp;책 : 회&nbsp;&nbsp;장</div>
+  </div>
 
-    <div class="doc-sign-row">
-      ${esc(sy)}년 ${esc(sm)}월 ${esc(sd)}일&nbsp;&nbsp;
-      위임자 : ${signDataURL
-        ? `<img src="${signDataURL}" style="height:32px;vertical-align:middle;border-bottom:1px solid #999;">`
-        : `<span class="doc-sign-name">${esc(name)}</span>`} (서명)
-    </div>
-  `;
+  <!-- 동의문 -->
+  <div class="pd-consent">
+    위임자 본인은 상기 위임사항에 관한 모든 권리를 수임자에게 위임합니다.
+  </div>
+
+  <!-- 날짜 -->
+  <div class="pd-date">
+    ${esc(sy)}년&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${esc(sm)}월&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${esc(sd)}일
+  </div>
+
+  <!-- 서명 -->
+  <div class="pd-sign">
+    위임자 :&nbsp;${signEl}&nbsp;&nbsp;&nbsp;(서명)
+  </div>
+</div>`;
+
   document.getElementById('previewModal').classList.add('open');
 }
 window.openPreview=openPreview;
@@ -991,12 +1072,13 @@ function closePreview(){
 window.closePreview=closePreview;
 
 function printDoc(){
-  const content=document.getElementById('previewDoc').innerHTML;
-  const pt=document.getElementById('printTarget');
-  pt.innerHTML=`<div class="doc-wrap">${content}</div>`;
-  pt.style.display='block';
+  const content = document.getElementById('previewDoc').innerHTML;
+  let wrap = document.getElementById('printWrap');
+  if(!wrap){ wrap=document.createElement('div'); wrap.id='printWrap'; document.body.appendChild(wrap); }
+  wrap.innerHTML = content;
+  wrap.style.display = 'block';
   window.print();
-  setTimeout(()=>{pt.style.display='none';pt.innerHTML='';},500);
+  setTimeout(()=>{ wrap.style.display='none'; wrap.innerHTML=''; }, 800);
 }
 window.printDoc=printDoc;
 
