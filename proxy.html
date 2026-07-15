@@ -413,6 +413,38 @@ input.f-input:focus, textarea.f-input:focus{
   gap: 4px;
 }
 
+
+/* ── 서명란 이름+이미지 오버레이 ────────────── */
+.pd-sign-wrap {
+  position: relative;
+  display: inline-block;
+  min-width: 90px;
+  text-align: center;
+  vertical-align: middle;
+  margin: 0 4px;
+}
+.pd-sign-name {
+  display: inline-block;
+  width: 100%;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a1a;
+  border-bottom: 1px solid #555;
+  padding: 0 6px 2px;
+  letter-spacing: 1px;
+  text-align: center;
+}
+.pd-sign-img {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -60%);
+  height: 36px;
+  max-width: 120px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
 /* ── 인쇄 전용 ───────────────────────────────── */
 @media print {
   body > *:not(#printWrap) { display: none !important; }
@@ -594,7 +626,7 @@ input.f-input:focus, textarea.f-input:focus{
     <div class="banner-text">
       <div class="banner-org">대한적십자사 서울특별지사 재난대응봉사회</div>
       <div class="banner-title">위 임 장</div>
-      <div class="banner-sub">월례회 불참자 의결권 위임 전자접수 시스템 · v2.1</div>
+      <div class="banner-sub">월례회 불참자 의결권 위임 전자접수 시스템 · v2.2</div>
     </div>
   </div>
 </div>
@@ -842,7 +874,8 @@ window.switchTab=switchTab;
 
 // ── 서명란 실시간
 document.getElementById('dName').addEventListener('input',function(){
-  document.getElementById('signDisplay').textContent=this.value||'\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0';
+  const v=this.value.trim();
+  document.getElementById('signDisplay').textContent=v?v+' ✍':'서명 ✍';
 });
 
 // ── 날짜 자동
@@ -918,7 +951,8 @@ async function submitProxy(){
   const item={name,birth,call,phone,year,month,reason,
     signDate:`${sy}.${sm}.${sd}`,
     submittedAt:n.toISOString(),
-    submittedDateStr:`${n.getFullYear()}.${String(n.getMonth()+1).padStart(2,'0')}.${String(n.getDate()).padStart(2,'0')}`
+    submittedDateStr:`${n.getFullYear()}.${String(n.getMonth()+1).padStart(2,'0')}.${String(n.getDate()).padStart(2,'0')}`,
+    signDataURL: signDataURL || ''
   };
   const fbId=await saveFb(item);
   item.id=fbId||('local_'+Date.now());
@@ -1024,9 +1058,11 @@ window.toggleAllChk=toggleAllChk;
 
 // ── 단일 항목 데이터로 위임장 HTML 생성 ──────
 function buildDocHTML(p, signSrc){
-  const signEl = signSrc
-    ? `<img src="${signSrc}" style="height:28px;vertical-align:middle;margin:0 4px;">`
-    : `<span style="display:inline-block;min-width:80px;border-bottom:1px solid #333;">&nbsp;</span>`;
+  // 서명란: 이름(밑줄) + 서명 이미지(있으면 이름 위에 오버레이)
+  const signEl = `<span class="pd-sign-wrap">
+    <span class="pd-sign-name">${esc(p.name)}</span>
+    ${signSrc ? `<img src="${signSrc}" class="pd-sign-img">` : ''}
+  </span>`;
   return `<div class="print-doc">
   <div class="pd-title">위 임 장</div>
   <div class="pd-section">
@@ -1114,9 +1150,11 @@ function openPreview(){
   if(!name) { showToast('❗ 성명을 입력해 주세요'); return; }
   if(!month){ showToast('❗ 위임 월을 입력해 주세요'); return; }
 
-  const signEl = signDataURL
-    ? `<img src="${signDataURL}" style="height:28px;vertical-align:middle;margin:0 4px;">`
-    : `<span style="display:inline-block;min-width:80px;border-bottom:1px solid #333;">&nbsp;</span>`;
+  // 서명란: 이름(밑줄) + 서명 이미지(있으면 이름 위에 오버레이)
+  const signEl = `<span class="pd-sign-wrap">
+    <span class="pd-sign-name">\${esc(name)}</span>
+    \${signDataURL ? `<img src="\${signDataURL}" class="pd-sign-img">` : ''}
+  </span>`;
 
   document.getElementById('previewDoc').innerHTML = `
 <div class="print-doc">
