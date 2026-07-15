@@ -2,883 +2,708 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>월례회 위임장 시스템</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>위임장 | 대한적십자사 서울특별지사 재난대응봉사회</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&display=swap" rel="stylesheet">
-
-<!-- Firebase SDKs -->
-<script type="module">
-  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-  import { getFirestore, collection, addDoc, getDocs, query, orderBy, serverTimestamp, deleteDoc, doc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-
-  const firebaseConfig = {
-    apiKey: "AIzaSyBYqd2uRr1ZvFLDCWuS15h9qFkT-Dvg5Es",
-    authDomain: "insys-work.firebaseapp.com",
-    projectId: "insys-work",
-    storageBucket: "insys-work.firebasestorage.app",
-    messagingSenderId: "225275784859",
-    appId: "1:225275784859:web:bd12815c6dc47c0c49e03e"
-  };
-
-  // Firebase 초기화 (설정 필요 시 교체)
-  let db = null;
-  let firebaseOk = false;
-  try {
-    const app = initializeApp(firebaseConfig);
-    db = getFirestore(app);
-    firebaseOk = true;
-  } catch(e) {
-    console.warn('Firebase 초기화 실패, 로컬 저장소 사용');
-  }
-
-  // 전역에 노출
-  window._firebaseDb = db;
-  window._firebaseOk = firebaseOk;
-  window._firestoreApi = { collection, addDoc, getDocs, query, orderBy, serverTimestamp, deleteDoc, doc };
-  window.dispatchEvent(new Event('firebaseReady'));
-</script>
-
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-
-body {
-  font-family: 'Noto Sans KR', sans-serif;
-  background: #f0f2f5;
-  color: #1a2236;
-  min-height: 100vh;
+/* ── 리셋 & 기본 ─────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --rc-red:#CE1126;
+  --rc-red-dark:#a50e1e;
+  --rc-red-light:#f9e6e8;
+  --rc-red-mid:#f0c0c5;
+  --warm-gray:#5a5251;
+  --warm-gray2:#7a7270;
+  --warm-gray3:#b8b3b2;
+  --warm-gray-bg:#f5f3f2;
+  --white:#ffffff;
+  --text-dark:#2a2322;
+  --text-mid:#4a4443;
+  --border:#e0dada;
+}
+body{
+  font-family:'Noto Sans KR',sans-serif;
+  background:var(--warm-gray-bg);
+  color:var(--text-dark);
+  min-height:100vh;
+  font-size:14px;
 }
 
-/* ── 탭 전환 ── */
-.view-tabs {
-  display: flex;
-  gap: 0;
-  background: #fff;
-  border-bottom: 2px solid #dde3ed;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  box-shadow: 0 2px 8px rgba(0,0,0,.07);
+/* ── 탭 네비 ─────────────────────────────────── */
+.nav{
+  position:sticky;top:0;z-index:200;
+  background:var(--white);
+  border-bottom:2px solid var(--rc-red);
+  display:flex;
 }
-.view-tab {
-  flex: 1;
-  padding: 13px 0;
-  border: none;
-  background: none;
-  font-family: 'Noto Sans KR', sans-serif;
-  font-size: 13px;
-  font-weight: 500;
-  color: #6b7a99;
-  cursor: pointer;
-  border-bottom: 3px solid transparent;
-  transition: all .2s;
+.nav-btn{
+  flex:1;padding:12px 4px 10px;
+  border:none;background:none;
+  font-family:'Noto Sans KR',sans-serif;
+  font-size:12px;font-weight:500;
+  color:var(--warm-gray2);cursor:pointer;
+  border-bottom:3px solid transparent;
+  margin-bottom:-2px;
+  transition:all .2s;
+  line-height:1.3;
 }
-.view-tab.active {
-  color: #1d4ed8;
-  border-bottom-color: #1d4ed8;
-  font-weight: 700;
+.nav-btn .icon{display:block;font-size:18px;margin-bottom:2px;}
+.nav-btn.active{color:var(--rc-red);border-bottom-color:var(--rc-red);font-weight:700;}
+
+/* ── 헤더 배너 ───────────────────────────────── */
+.banner{
+  background:var(--rc-red);
+  color:var(--white);
+  padding:20px 16px 18px;
+}
+.banner-inner{
+  max-width:800px;margin:0 auto;
+  display:flex;align-items:center;gap:16px;
+}
+/* SVG 적십자 로고 */
+.rc-logo{flex-shrink:0;}
+.banner-text{flex:1;}
+.banner-org{font-size:11px;color:rgba(255,255,255,.8);letter-spacing:.5px;margin-bottom:3px;}
+.banner-title{
+  font-size:22px;font-weight:900;
+  letter-spacing:6px;
+  text-shadow:0 1px 3px rgba(0,0,0,.2);
+}
+.banner-sub{font-size:11px;color:rgba(255,255,255,.75);margin-top:4px;letter-spacing:.3px;}
+
+/* ── 컨테이너 ────────────────────────────────── */
+.wrap{max-width:800px;margin:0 auto;padding:14px 12px 50px;}
+.panel{display:none;}
+.panel.active{display:block;}
+
+/* ── 카드 ────────────────────────────────────── */
+.card{
+  background:var(--white);
+  border-radius:12px;
+  box-shadow:0 1px 6px rgba(0,0,0,.07);
+  padding:18px 16px;
+  margin-bottom:12px;
+}
+.card-head{
+  display:flex;align-items:center;gap:8px;
+  margin-bottom:14px;
+  padding-bottom:10px;
+  border-bottom:1.5px solid var(--rc-red-light);
+}
+.card-head .cross{
+  width:22px;height:22px;
+  background:var(--rc-red);
+  border-radius:4px;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.card-head .cross svg{width:14px;height:14px;}
+.card-head-title{font-size:14px;font-weight:700;color:var(--rc-red);}
+
+/* ── 필드 ────────────────────────────────────── */
+.field{margin-bottom:11px;}
+.field:last-child{margin-bottom:0;}
+.field-label{
+  font-size:11px;font-weight:700;
+  color:var(--warm-gray2);
+  margin-bottom:4px;letter-spacing:.3px;
+}
+.req{color:var(--rc-red);margin-left:2px;}
+.field-static{
+  background:var(--warm-gray-bg);
+  border:1.5px solid var(--border);
+  border-radius:8px;
+  padding:9px 12px;
+  font-size:13px;
+  color:var(--text-mid);font-weight:500;
+}
+input.f-input, textarea.f-input{
+  width:100%;
+  border:1.5px solid var(--border);
+  border-radius:8px;
+  padding:9px 12px;
+  font-family:'Noto Sans KR',sans-serif;
+  font-size:13px;color:var(--text-dark);
+  background:#fdfcfc;
+  outline:none;
+  transition:border-color .2s;
+}
+input.f-input:focus, textarea.f-input:focus{
+  border-color:var(--rc-red);
+  background:var(--white);
+}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+/* ── 위임사항 박스 ───────────────────────────── */
+.deleg-box{
+  background:var(--rc-red-light);
+  border:1.5px solid var(--rc-red-mid);
+  border-radius:10px;
+  padding:13px 14px;
+  font-size:13px;
+  color:var(--text-dark);
+  line-height:1.9;
+  margin-bottom:10px;
+}
+.deleg-box .inline-input{
+  display:inline-block;
+  width:48px;
+  border:none;
+  border-bottom:2px solid var(--rc-red);
+  background:transparent;
+  text-align:center;
+  font-family:'Noto Sans KR',sans-serif;
+  font-size:13px;font-weight:700;
+  color:var(--rc-red);outline:none;
+}
+.deleg-box .inline-input.w36{width:36px;}
+
+/* ── 동의 ────────────────────────────────────── */
+.agree-box{
+  display:flex;align-items:flex-start;gap:10px;
+  background:#fff9f0;
+  border:1.5px solid #f5d9aa;
+  border-radius:8px;
+  padding:12px 13px;
+  margin-bottom:12px;
+}
+.agree-box input{margin-top:2px;width:16px;height:16px;accent-color:var(--rc-red);}
+.agree-text{font-size:12px;color:#5a4a2e;line-height:1.65;}
+
+/* ── 날짜/서명 ───────────────────────────────── */
+.sign-row{
+  display:flex;align-items:center;
+  justify-content:center;
+  gap:6px;
+  font-size:13px;color:var(--text-mid);
+  padding:10px 0 6px;
+  flex-wrap:wrap;
+}
+.sign-input{
+  display:inline-block;
+  width:42px;
+  border:none;border-bottom:2px solid var(--rc-red);
+  background:transparent;text-align:center;
+  font-family:'Noto Sans KR',sans-serif;
+  font-size:13px;font-weight:700;color:var(--rc-red);
+  outline:none;
+}
+.sign-name{
+  display:inline-block;min-width:60px;
+  border-bottom:1px solid var(--warm-gray3);
+  font-weight:700;color:var(--text-dark);
+  padding-bottom:1px;text-align:center;
 }
 
-/* ── 헤더 배너 ── */
-.banner {
-  background: linear-gradient(135deg, #1a3a6e 0%, #1d4ed8 100%);
-  color: #fff;
-  text-align: center;
-  padding: 28px 16px 22px;
+/* ── 제출 버튼 ───────────────────────────────── */
+.btn-submit{
+  width:100%;
+  background:var(--rc-red);
+  color:var(--white);
+  border:none;border-radius:10px;
+  padding:15px;
+  font-family:'Noto Sans KR',sans-serif;
+  font-size:15px;font-weight:700;
+  cursor:pointer;letter-spacing:1px;
+  transition:background .2s;
 }
-.banner .org { font-size: 12px; color: #a0bcf5; margin-bottom: 6px; letter-spacing: 1px; }
-.banner .title {
-  font-family: 'Noto Serif KR', serif;
-  font-size: 26px;
-  font-weight: 700;
-  letter-spacing: 6px;
-}
-.banner .subtitle { font-size: 12px; color: #c3d4f7; margin-top: 6px; }
+.btn-submit:hover{background:var(--rc-red-dark);}
+.btn-submit:active{transform:scale(.98);}
 
-/* ── 컨테이너 ── */
-.container {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 16px 12px 40px;
+/* ── 통계 바 ─────────────────────────────────── */
+.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
+.stat-card{
+  background:var(--white);border-radius:12px;
+  padding:14px 10px;text-align:center;
+  box-shadow:0 1px 6px rgba(0,0,0,.06);
 }
+.stat-num{font-size:28px;font-weight:900;color:var(--rc-red);}
+.stat-label{font-size:11px;color:var(--warm-gray2);margin-top:2px;}
 
-/* ── 뷰 패널 ── */
-.view-panel { display: none; }
-.view-panel.active { display: block; }
+/* ── 툴바 ────────────────────────────────────── */
+.toolbar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+.search-input{
+  flex:1;min-width:140px;
+  border:1.5px solid var(--border);border-radius:8px;
+  padding:8px 12px;
+  font-family:'Noto Sans KR',sans-serif;font-size:13px;
+  outline:none;
+}
+.search-input:focus{border-color:var(--rc-red);}
+.btn-sm{
+  padding:8px 13px;border-radius:8px;
+  border:1.5px solid var(--border);background:var(--white);
+  font-family:'Noto Sans KR',sans-serif;font-size:12px;font-weight:600;
+  cursor:pointer;color:var(--text-mid);
+  transition:all .2s;white-space:nowrap;
+}
+.btn-sm:hover{background:var(--rc-red-light);border-color:var(--rc-red);color:var(--rc-red);}
+.btn-sm.danger:hover{background:#fff0f0;border-color:#e00;color:#e00;}
 
-/* ── 위임장 폼 카드 ── */
-.form-card {
-  background: #fff;
-  border-radius: 14px;
-  box-shadow: 0 2px 14px rgba(0,0,0,.08);
-  padding: 22px 20px;
-  margin-bottom: 14px;
-}
-.section-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: #eff3ff;
-  color: #1d4ed8;
-  border-radius: 6px;
-  padding: 3px 10px;
-  font-size: 12px;
-  font-weight: 700;
-  margin-bottom: 14px;
-}
-.section-badge .dot {
-  width: 8px; height: 8px;
-  background: #e8382b;
-  border-radius: 2px;
-  display: inline-block;
-}
+/* ── Firebase 상태 ───────────────────────────── */
+.fb-status{font-size:11px;text-align:right;color:var(--warm-gray3);margin-bottom:8px;}
+.fb-status.ok{color:#15803d;}.fb-status.local{color:#b45309;}
 
-.field-group { margin-bottom: 12px; }
-.field-label {
-  font-size: 11px;
-  font-weight: 700;
-  color: #5a6a8a;
-  margin-bottom: 4px;
-  letter-spacing: .3px;
+/* ── 목록 아이템 ─────────────────────────────── */
+.proxy-item{
+  background:var(--white);border-radius:12px;
+  padding:13px 14px;margin-bottom:9px;
+  box-shadow:0 1px 6px rgba(0,0,0,.05);
+  display:flex;align-items:center;gap:12px;
+  transition:box-shadow .2s;
 }
-.field-label .req { color: #e8382b; margin-left: 2px; }
-.field-input {
-  width: 100%;
-  border: 1.5px solid #dde3ed;
-  border-radius: 8px;
-  padding: 9px 12px;
-  font-family: 'Noto Sans KR', sans-serif;
-  font-size: 13px;
-  color: #1a2236;
-  background: #fafbfd;
-  transition: border-color .2s;
-  outline: none;
+.proxy-item:hover{box-shadow:0 3px 14px rgba(206,17,38,.12);}
+.item-num{
+  width:32px;height:32px;
+  background:var(--rc-red);color:var(--white);
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:700;flex-shrink:0;
 }
-.field-input:focus { border-color: #1d4ed8; background: #fff; }
-.field-static {
-  font-size: 13px;
-  color: #2c3e6e;
-  font-weight: 500;
-  padding: 9px 12px;
-  background: #f4f6fb;
-  border-radius: 8px;
-  border: 1.5px solid #e8ecf4;
+.item-body{flex:1;min-width:0;}
+.item-name{font-size:15px;font-weight:700;color:var(--text-dark);}
+.item-call{font-size:12px;color:var(--warm-gray2);font-weight:400;}
+.item-detail{font-size:11px;color:var(--warm-gray2);margin-top:3px;}
+.item-date{font-size:11px;color:var(--warm-gray3);margin-top:2px;}
+.item-del{
+  background:none;border:none;
+  color:var(--warm-gray3);font-size:18px;
+  cursor:pointer;padding:4px;line-height:1;
 }
+.item-del:hover{color:var(--rc-red);}
+.empty{text-align:center;padding:50px 20px;color:var(--warm-gray3);font-size:14px;}
 
-.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+/* ── 요약 테이블 ─────────────────────────────── */
+.sum-title{font-size:13px;font-weight:700;color:var(--rc-red);margin-bottom:12px;}
+.tbl{width:100%;border-collapse:collapse;font-size:12px;}
+.tbl th{
+  background:var(--rc-red-light);color:var(--rc-red);
+  font-weight:700;padding:8px 10px;text-align:left;
+  border-bottom:1.5px solid var(--rc-red-mid);
+}
+.tbl td{padding:8px 10px;border-bottom:1px solid var(--warm-gray-bg);color:var(--text-dark);}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl-actions{margin-top:12px;text-align:right;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;}
 
-/* 위임사항 특별 카드 */
-.delegation-card {
-  background: #eff3ff;
-  border: 1.5px solid #c7d7ff;
-  border-radius: 10px;
-  padding: 12px 16px;
-  margin-bottom: 12px;
-  font-size: 13px;
-  color: #1a2236;
-  line-height: 1.7;
+/* ── 토스트 ──────────────────────────────────── */
+#toast{
+  position:fixed;bottom:24px;left:50%;
+  transform:translateX(-50%) translateY(80px);
+  background:var(--text-dark);color:var(--white);
+  padding:11px 22px;border-radius:100px;
+  font-size:13px;font-weight:500;
+  z-index:9999;transition:transform .3s;white-space:nowrap;
+  pointer-events:none;
 }
-.delegation-card .year-input {
-  display: inline-block;
-  width: 54px;
-  border: none;
-  border-bottom: 2px solid #1d4ed8;
-  background: transparent;
-  text-align: center;
-  font-family: 'Noto Sans KR', sans-serif;
-  font-size: 13px;
-  font-weight: 700;
-  color: #1d4ed8;
-  outline: none;
+#toast.show{transform:translateX(-50%) translateY(0);}
+
+/* ── PC 레이아웃 ─────────────────────────────── */
+@media(min-width:600px){
+  .banner-title{font-size:28px;letter-spacing:8px;}
+  .banner-org{font-size:12px;}
+  .nav-btn{font-size:13px;}
+  .row2{grid-template-columns:1fr 1fr;}
+  .stat-num{font-size:32px;}
 }
-.delegation-card .month-input {
-  display: inline-block;
-  width: 36px;
-  border: none;
-  border-bottom: 2px solid #1d4ed8;
-  background: transparent;
-  text-align: center;
-  font-family: 'Noto Sans KR', sans-serif;
-  font-size: 13px;
-  font-weight: 700;
-  color: #1d4ed8;
-  outline: none;
+@media(max-width:400px){
+  .banner-title{font-size:20px;letter-spacing:4px;}
+  .row2{grid-template-columns:1fr;}
+  .stat-num{font-size:24px;}
+  .sign-row{font-size:12px;}
 }
 
-/* 동의 체크 */
-.agree-wrap {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  background: #fff8f0;
-  border: 1.5px solid #ffd9aa;
-  border-radius: 8px;
-  padding: 12px 14px;
-  margin-bottom: 14px;
+/* ── 인쇄 ────────────────────────────────────── */
+@media print{
+  .nav,.toolbar,.btn-submit,.btn-sm,.item-del,.agree-box{display:none!important;}
+  body{background:#fff;}
+  .proxy-item,.card{box-shadow:none;border:1px solid var(--border);}
 }
-.agree-wrap input[type=checkbox] { margin-top: 2px; width: 16px; height: 16px; accent-color: #1d4ed8; }
-.agree-text { font-size: 12px; color: #5a4a2e; line-height: 1.6; }
-
-/* 날짜 서명 행 */
-.sign-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin: 14px 0 10px;
-  font-size: 13px;
-  color: #2c3e6e;
-}
-.sign-date-input {
-  width: 40px;
-  border: none;
-  border-bottom: 2px solid #1d4ed8;
-  text-align: center;
-  font-family: 'Noto Sans KR', sans-serif;
-  font-size: 13px;
-  font-weight: 700;
-  color: #1d4ed8;
-  outline: none;
-  background: transparent;
-}
-
-/* 제출 버튼 */
-.btn-submit {
-  width: 100%;
-  background: linear-gradient(135deg, #1a3a6e, #1d4ed8);
-  color: #fff;
-  border: none;
-  border-radius: 10px;
-  padding: 14px;
-  font-family: 'Noto Sans KR', sans-serif;
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
-  letter-spacing: 1px;
-  transition: opacity .2s;
-}
-.btn-submit:hover { opacity: .9; }
-
-/* ── 목록 탭 ── */
-.summary-bar {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin-bottom: 14px;
-}
-.stat-card {
-  background: #fff;
-  border-radius: 12px;
-  padding: 14px 12px;
-  text-align: center;
-  box-shadow: 0 2px 8px rgba(0,0,0,.06);
-}
-.stat-num { font-size: 26px; font-weight: 900; color: #1d4ed8; }
-.stat-label { font-size: 11px; color: #6b7a99; margin-top: 2px; }
-
-.toolbar {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-}
-.search-box {
-  flex: 1;
-  min-width: 150px;
-  border: 1.5px solid #dde3ed;
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-family: 'Noto Sans KR', sans-serif;
-  font-size: 13px;
-  outline: none;
-}
-.search-box:focus { border-color: #1d4ed8; }
-.btn-sm {
-  padding: 8px 14px;
-  border-radius: 8px;
-  border: 1.5px solid #dde3ed;
-  background: #fff;
-  font-family: 'Noto Sans KR', sans-serif;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  color: #2c3e6e;
-  transition: all .2s;
-  white-space: nowrap;
-}
-.btn-sm:hover { background: #eff3ff; border-color: #1d4ed8; color: #1d4ed8; }
-.btn-sm.danger:hover { background: #fff0f0; border-color: #e8382b; color: #e8382b; }
-
-/* 목록 아이템 */
-.proxy-item {
-  background: #fff;
-  border-radius: 12px;
-  padding: 14px 16px;
-  margin-bottom: 10px;
-  box-shadow: 0 1px 8px rgba(0,0,0,.06);
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  transition: box-shadow .2s;
-}
-.proxy-item:hover { box-shadow: 0 4px 16px rgba(29,78,216,.12); }
-.item-num {
-  width: 32px; height: 32px;
-  background: #1d4ed8;
-  color: #fff;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  font-weight: 700;
-  flex-shrink: 0;
-}
-.item-body { flex: 1; min-width: 0; }
-.item-name { font-size: 15px; font-weight: 700; color: #1a2236; }
-.item-detail { font-size: 11px; color: #6b7a99; margin-top: 2px; }
-.item-date { font-size: 11px; color: #a0b0cc; margin-top: 3px; }
-.item-del {
-  background: none;
-  border: none;
-  color: #c0c8d8;
-  font-size: 18px;
-  cursor: pointer;
-  padding: 4px;
-  line-height: 1;
-}
-.item-del:hover { color: #e8382b; }
-
-.empty-state {
-  text-align: center;
-  padding: 50px 20px;
-  color: #a0b0cc;
-  font-size: 14px;
-}
-
-/* ── 요약 탭 ── */
-.summary-block {
-  background: #fff;
-  border-radius: 12px;
-  padding: 18px 16px;
-  margin-bottom: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,.06);
-}
-.summary-title { font-size: 13px; font-weight: 700; color: #1d4ed8; margin-bottom: 12px; }
-.summary-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-.summary-table th {
-  background: #eff3ff;
-  color: #1d4ed8;
-  font-weight: 700;
-  padding: 8px 10px;
-  text-align: left;
-  border-bottom: 1.5px solid #c7d7ff;
-}
-.summary-table td {
-  padding: 8px 10px;
-  border-bottom: 1px solid #f0f2f5;
-  color: #1a2236;
-}
-.summary-table tr:last-child td { border-bottom: none; }
-
-/* 인쇄 */
-@media print {
-  .view-tabs, .toolbar, .btn-submit, .btn-sm, .item-del, .agree-wrap { display: none !important; }
-  body { background: #fff; }
-  .proxy-item { box-shadow: none; border: 1px solid #dde3ed; }
-  .form-card { box-shadow: none; border: 1px solid #dde3ed; }
-}
-
-/* 모바일 */
-@media (max-width: 480px) {
-  .banner .title { font-size: 22px; letter-spacing: 4px; }
-  .row2 { grid-template-columns: 1fr; }
-  .summary-bar { grid-template-columns: repeat(3,1fr); }
-  .stat-num { font-size: 22px; }
-}
-
-/* 토스트 */
-#toast {
-  position: fixed;
-  bottom: 28px;
-  left: 50%;
-  transform: translateX(-50%) translateY(80px);
-  background: #1a2236;
-  color: #fff;
-  padding: 11px 24px;
-  border-radius: 100px;
-  font-size: 13px;
-  font-weight: 500;
-  z-index: 9999;
-  transition: transform .3s;
-  white-space: nowrap;
-}
-#toast.show { transform: translateX(-50%) translateY(0); }
-
-/* Firebase 상태 */
-.firebase-status {
-  font-size: 11px;
-  text-align: right;
-  color: #a0b0cc;
-  margin-bottom: 8px;
-}
-.firebase-status.ok { color: #16a34a; }
-.firebase-status.local { color: #d97706; }
 </style>
 </head>
 <body>
 
-<!-- 탭 -->
-<div class="view-tabs">
-  <button class="view-tab active" onclick="switchTab('form')">📝 위임장 작성</button>
-  <button class="view-tab" onclick="switchTab('list')">📋 제출 목록</button>
-  <button class="view-tab" onclick="switchTab('summary')">📊 요약 현황</button>
-</div>
+<!-- 탭 네비 -->
+<nav class="nav">
+  <button class="nav-btn active" onclick="switchTab('form')">
+    <span class="icon">📝</span>위임장 작성
+  </button>
+  <button class="nav-btn" onclick="switchTab('list')">
+    <span class="icon">📋</span>제출 목록
+  </button>
+  <button class="nav-btn" onclick="switchTab('summary')">
+    <span class="icon">📊</span>요약 현황
+  </button>
+</nav>
 
 <!-- 배너 -->
 <div class="banner">
-  <div class="org">대한적십자사 서울특별지사 재난대응봉사회</div>
-  <div class="title">위 임 장</div>
-  <div class="subtitle">월례회 불참자 의결권 위임 전자 접수 시스템</div>
+  <div class="banner-inner">
+    <!-- 적십자 SVG 로고 -->
+    <div class="rc-logo">
+      <svg width="54" height="54" viewBox="0 0 54 54" xmlns="http://www.w3.org/2000/svg">
+        <rect width="54" height="54" rx="6" fill="white"/>
+        <!-- 적십자 심볼: 정사각형 5개 조합 -->
+        <rect x="18" y="6"  width="18" height="14" fill="#CE1126"/>
+        <rect x="6"  y="18" width="14" height="18" fill="#CE1126"/>
+        <rect x="18" y="18" width="18" height="18" fill="#CE1126"/>
+        <rect x="34" y="18" width="14" height="18" fill="#CE1126"/>
+        <rect x="18" y="34" width="18" height="14" fill="#CE1126"/>
+      </svg>
+    </div>
+    <div class="banner-text">
+      <div class="banner-org">대한적십자사 서울특별지사 재난대응봉사회</div>
+      <div class="banner-title">위 임 장</div>
+      <div class="banner-sub">월례회 불참자 의결권 위임 전자접수 시스템 · v1.2</div>
+    </div>
+  </div>
 </div>
 
-<div class="container">
+<div class="wrap">
 
-  <!-- ① 위임장 작성 패널 -->
-  <div id="panel-form" class="view-panel active">
+<!-- ① 위임장 작성 -->
+<div id="panel-form" class="panel active">
 
-    <!-- 위임자 -->
-    <div class="form-card">
-      <div class="section-badge"><span class="dot"></span> 위 임 자</div>
-      <div class="field-group">
-        <div class="field-label">소 속</div>
-        <div class="field-static">대한적십자사 서울특별지사 재난대응봉사회</div>
+  <!-- 위임자 -->
+  <div class="card">
+    <div class="card-head">
+      <div class="cross">
+        <svg viewBox="0 0 14 14" fill="none"><rect x="5" y="1" width="4" height="12" fill="white"/><rect x="1" y="5" width="12" height="4" fill="white"/></svg>
       </div>
-      <div class="row2">
-        <div class="field-group">
-          <div class="field-label">성 명<span class="req">*</span></div>
-          <input class="field-input" id="delegatorName" type="text" placeholder="본인 이름 입력">
-        </div>
-        <div class="field-group">
-          <div class="field-label">콜 사 인</div>
-          <input class="field-input" id="delegatorCall" type="text" placeholder="예) HL2XXX">
-        </div>
+      <span class="card-head-title">위 임 자</span>
+    </div>
+    <div class="field">
+      <div class="field-label">소 속</div>
+      <div class="field-static">대한적십자사 서울특별지사 재난대응봉사회</div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <div class="field-label">성 명<span class="req">*</span></div>
+        <input class="f-input" id="dName" type="text" placeholder="본인 이름">
       </div>
-      <div class="field-group">
+      <div class="field">
+        <div class="field-label">콜사인</div>
+        <input class="f-input" id="dCall" type="text" placeholder="예) HL2TLS">
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
         <div class="field-label">생년월일<span class="req">*</span></div>
-        <input class="field-input" id="delegatorBirth" type="text" placeholder="예) 1980.01.01">
+        <input class="f-input" id="dBirth" type="text" placeholder="예) 1980.01.01">
       </div>
-      <div class="field-group">
+      <div class="field">
         <div class="field-label">연 락 처</div>
-        <input class="field-input" id="delegatorPhone" type="tel" placeholder="010-0000-0000">
+        <input class="f-input" id="dPhone" type="tel" placeholder="010-0000-0000">
       </div>
     </div>
-
-    <!-- 위임사항 -->
-    <div class="form-card">
-      <div class="section-badge"><span class="dot"></span> 위 임 사 항</div>
-      <div class="delegation-card">
-        <input type="text" class="year-input" id="meetYear" value="2026">년&nbsp;
-        <input type="text" class="month-input" id="meetMonth" placeholder="월">월&nbsp;
-        재난대응봉사회 월례회의 의결사항 전체
-      </div>
-      <div class="field-group">
-        <div class="field-label">불참 사유</div>
-        <input class="field-input" id="absentReason" type="text" placeholder="불참 사유를 간략히 입력하세요">
-      </div>
-    </div>
-
-    <!-- 수임자 -->
-    <div class="form-card">
-      <div class="section-badge"><span class="dot"></span> 수 임 자</div>
-      <div class="field-group">
-        <div class="field-label">소 속</div>
-        <div class="field-static">대한적십자사 서울특별지사 재난대응봉사회</div>
-      </div>
-      <div class="row2">
-        <div class="field-group">
-          <div class="field-label">성 명</div>
-          <div class="field-static">임천순 (DS1CLF)</div>
-        </div>
-        <div class="field-group">
-          <div class="field-label">직 책</div>
-          <div class="field-static">회 장</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 동의 -->
-    <div class="agree-wrap">
-      <input type="checkbox" id="agreeChk">
-      <div class="agree-text">
-        본인은 상기 위임사항에 관한 모든 권리를 수임자에게 위임하며,<br>
-        위 내용이 사실임을 확인합니다.
-      </div>
-    </div>
-
-    <!-- 날짜·서명 -->
-    <div class="sign-row">
-      <input type="text" class="sign-date-input" id="signYear" value="2026">년
-      <input type="text" class="sign-date-input" style="width:32px" id="signMonth" placeholder="월">월
-      <input type="text" class="sign-date-input" style="width:32px" id="signDay" placeholder="일">일
-      &nbsp;위임자 :&nbsp;<strong id="signNameDisplay" style="min-width:50px;border-bottom:1px solid #999;display:inline-block;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</strong>&nbsp;(서명)
-    </div>
-
-    <button class="btn-submit" onclick="submitProxy()">📨 위임장 제출하기</button>
   </div>
 
-  <!-- ② 목록 패널 -->
-  <div id="panel-list" class="view-panel">
-    <div class="summary-bar">
-      <div class="stat-card">
-        <div class="stat-num" id="statTotal">0</div>
-        <div class="stat-label">총 제출</div>
+  <!-- 위임사항 -->
+  <div class="card">
+    <div class="card-head">
+      <div class="cross">
+        <svg viewBox="0 0 14 14" fill="none"><rect x="5" y="1" width="4" height="12" fill="white"/><rect x="1" y="5" width="12" height="4" fill="white"/></svg>
       </div>
-      <div class="stat-card">
-        <div class="stat-num" id="statMonth">0</div>
-        <div class="stat-label">이번 달</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-num" id="statToday">0</div>
-        <div class="stat-label">오늘</div>
-      </div>
+      <span class="card-head-title">위 임 사 항</span>
     </div>
-
-    <div class="toolbar">
-      <input class="search-box" id="searchBox" type="text" placeholder="🔍  이름 또는 월 검색…" oninput="renderList()">
-      <button class="btn-sm" onclick="exportCSV()">⬇ CSV</button>
-      <button class="btn-sm" onclick="printList()">🖨 인쇄</button>
-      <button class="btn-sm danger" onclick="clearAll()">🗑 전체삭제</button>
+    <div class="deleg-box">
+      <input type="text" class="inline-input" id="mYear" value="2026">년&nbsp;
+      <input type="text" class="inline-input w36" id="mMonth" placeholder="월">월
+      재난대응봉사회 월례회의 의결사항 전체
     </div>
-
-    <div class="firebase-status" id="fbStatus">Firebase 연결 확인 중…</div>
-    <div id="proxyList"></div>
+    <div class="field">
+      <div class="field-label">불참 사유</div>
+      <input class="f-input" id="dReason" type="text" placeholder="불참 사유를 간략히 입력하세요">
+    </div>
   </div>
 
-  <!-- ③ 요약 패널 -->
-  <div id="panel-summary" class="view-panel">
-    <div class="summary-block">
-      <div class="summary-title">📊 월별 위임 현황</div>
-      <table class="summary-table" id="summaryTable">
-        <thead><tr><th>년/월</th><th>위임자 수</th><th>위임자 명단</th></tr></thead>
-        <tbody id="summaryBody"></tbody>
-      </table>
+  <!-- 수임자 -->
+  <div class="card">
+    <div class="card-head">
+      <div class="cross">
+        <svg viewBox="0 0 14 14" fill="none"><rect x="5" y="1" width="4" height="12" fill="white"/><rect x="1" y="5" width="12" height="4" fill="white"/></svg>
+      </div>
+      <span class="card-head-title">수 임 자</span>
     </div>
-    <div class="summary-block">
-      <div class="summary-title">📋 전체 명단</div>
-      <table class="summary-table">
-        <thead><tr><th>#</th><th>성 명</th><th>콜사인</th><th>위임 월</th><th>불참사유</th><th>제출일</th></tr></thead>
-        <tbody id="fullListBody"></tbody>
-      </table>
+    <div class="field">
+      <div class="field-label">소 속</div>
+      <div class="field-static">대한적십자사 서울특별지사 재난대응봉사회</div>
     </div>
-    <div style="margin-top:12px;text-align:right;">
-      <button class="btn-sm" onclick="printSummary()">🖨 요약 인쇄</button>
+    <div class="row2">
+      <div class="field">
+        <div class="field-label">성 명</div>
+        <div class="field-static">임천순 (DS1CLF)</div>
+      </div>
+      <div class="field">
+        <div class="field-label">직 책</div>
+        <div class="field-static">회 장</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 동의 -->
+  <div class="agree-box">
+    <input type="checkbox" id="agreeChk">
+    <div class="agree-text">
+      위임자 본인은 상기 위임사항에 관한 모든 권리를 수임자에게 위임하며,<br>
+      위 내용이 사실임을 확인합니다.
+    </div>
+  </div>
+
+  <!-- 날짜·서명 -->
+  <div class="sign-row">
+    <input type="text" class="sign-input" id="sYear" value="2026">년
+    <input type="text" class="sign-input" style="width:32px" id="sMonth" placeholder="월">월
+    <input type="text" class="sign-input" style="width:32px" id="sDay" placeholder="일">일
+    &nbsp;위임자 :&nbsp;<span class="sign-name" id="signDisplay">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>&nbsp;(서명)
+  </div>
+
+  <button class="btn-submit" onclick="submitProxy()">📨 위임장 제출하기</button>
+</div>
+
+<!-- ② 제출 목록 -->
+<div id="panel-list" class="panel">
+  <div class="stat-row">
+    <div class="stat-card"><div class="stat-num" id="stTotal">0</div><div class="stat-label">총 제출</div></div>
+    <div class="stat-card"><div class="stat-num" id="stMonth">0</div><div class="stat-label">이번 달</div></div>
+    <div class="stat-card"><div class="stat-num" id="stToday">0</div><div class="stat-label">오 늘</div></div>
+  </div>
+  <div class="toolbar">
+    <input class="search-input" id="searchQ" type="text" placeholder="🔍 이름·월 검색" oninput="renderList()">
+    <button class="btn-sm" onclick="exportCSV()">⬇ CSV</button>
+    <button class="btn-sm" onclick="window.print()">🖨 인쇄</button>
+    <button class="btn-sm danger" onclick="clearAll()">🗑 전체삭제</button>
+  </div>
+  <div class="fb-status" id="fbSt">Firebase 연결 확인 중…</div>
+  <div id="proxyList"></div>
+</div>
+
+<!-- ③ 요약 현황 -->
+<div id="panel-summary" class="panel">
+  <div class="card">
+    <div class="sum-title">📊 월별 위임 현황</div>
+    <table class="tbl">
+      <thead><tr><th>년/월</th><th>인원</th><th>위임자 명단</th></tr></thead>
+      <tbody id="sumBody"></tbody>
+    </table>
+  </div>
+  <div class="card">
+    <div class="sum-title">📋 전체 명단</div>
+    <table class="tbl">
+      <thead><tr><th>#</th><th>성명</th><th>콜사인</th><th>위임월</th><th>불참사유</th><th>제출일</th></tr></thead>
+      <tbody id="fullBody"></tbody>
+    </table>
+    <div class="tbl-actions">
+      <button class="btn-sm" onclick="window.print()">🖨 인쇄</button>
       <button class="btn-sm" onclick="exportCSV()">⬇ CSV 다운로드</button>
     </div>
   </div>
+</div>
 
-</div><!-- /container -->
-
+</div><!-- /wrap -->
 <div id="toast"></div>
 
-<script>
-// ── 앱 상태 ──────────────────────────────────────────
-const APP_VER = 'v1.1';
-const STORAGE_KEY = 'proxy_data_rcnet';
-let proxies = [];
-let db = null, fbApi = null, fbOk = false;
+<!-- Firebase SDKs -->
+<script type="module">
+import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import{getFirestore,collection,addDoc,getDocs,query,orderBy,serverTimestamp,deleteDoc,doc}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+const cfg={
+  apiKey:"AIzaSyBYqd2uRr1ZvFLDCWuS15h9qFkT-Dvg5Es",
+  authDomain:"insys-work.firebaseapp.com",
+  projectId:"insys-work",
+  storageBucket:"insys-work.firebasestorage.app",
+  messagingSenderId:"225275784859",
+  appId:"1:225275784859:web:bd12815c6dc47c0c49e03e"
+};
+try{
+  const app=initializeApp(cfg);
+  const db=getFirestore(app);
+  window._db=db;
+  window._fs={collection,addDoc,getDocs,query,orderBy,serverTimestamp,deleteDoc,doc};
+  window._fbOk=true;
+}catch(e){window._fbOk=false;}
+window.dispatchEvent(new Event('fbReady'));
+</script>
 
-// Firebase 준비 대기
-window.addEventListener('firebaseReady', () => {
-  db = window._firebaseDb;
-  fbApi = window._firestoreApi;
-  fbOk = window._firebaseOk;
-  updateFbStatus();
+<script>
+const SKEY='rcnet_proxy_v2';
+let proxies=[];
+let fbOk=false;
+
+window.addEventListener('fbReady',()=>{
+  fbOk=window._fbOk||false;
+  document.getElementById('fbSt').textContent=fbOk?'✅ Firebase 연결됨 (insys-work)':'⚠️ 로컬 저장소 사용 중';
+  document.getElementById('fbSt').className='fb-status '+(fbOk?'ok':'local');
   loadData();
 });
+setTimeout(()=>{if(!fbOk){document.getElementById('fbSt').textContent='⚠️ 로컬 저장소 사용 중';document.getElementById('fbSt').className='fb-status local';loadData();}},2500);
 
-// Firebase 미사용 시 로컬만 사용
-setTimeout(() => {
-  if (!fbOk) {
-    updateFbStatus();
-    loadData();
-  }
-}, 2000);
-
-function updateFbStatus() {
-  const el = document.getElementById('fbStatus');
-  if (fbOk) {
-    el.textContent = '✅ Firebase 연결됨';
-    el.className = 'firebase-status ok';
-  } else {
-    el.textContent = '⚠️ 로컬 저장소 사용 중 (Firebase 미설정)';
-    el.className = 'firebase-status local';
-  }
-}
-
-// ── 탭 전환 ──────────────────────────────────────────
-function switchTab(tab) {
-  document.querySelectorAll('.view-tab').forEach((t,i) => {
-    const tabs = ['form','list','summary'];
-    t.classList.toggle('active', tabs[i] === tab);
+// ── 탭
+function switchTab(t){
+  ['form','list','summary'].forEach((v,i)=>{
+    document.querySelectorAll('.nav-btn')[i].classList.toggle('active',v===t);
+    document.getElementById('panel-'+v).classList.toggle('active',v===t);
   });
-  document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
-  document.getElementById('panel-' + tab).classList.add('active');
-  if (tab === 'list') renderList();
-  if (tab === 'summary') renderSummary();
+  if(t==='list')renderList();
+  if(t==='summary')renderSummary();
 }
+window.switchTab=switchTab;
 
-// ── 서명란 실시간 반영 ──────────────────────────────
-document.getElementById('delegatorName').addEventListener('input', function() {
-  document.getElementById('signNameDisplay').textContent = this.value || '\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0';
+// ── 서명란 실시간
+document.getElementById('dName').addEventListener('input',function(){
+  document.getElementById('signDisplay').textContent=this.value||'\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0';
 });
 
-// ── 날짜 자동 입력 ───────────────────────────────────
-(function() {
-  const now = new Date();
-  document.getElementById('meetYear').value = now.getFullYear();
-  document.getElementById('meetMonth').value = now.getMonth() + 1;
-  document.getElementById('signYear').value = now.getFullYear();
-  document.getElementById('signMonth').value = now.getMonth() + 1;
-  document.getElementById('signDay').value = now.getDate();
+// ── 날짜 자동
+(()=>{
+  const n=new Date();
+  document.getElementById('mYear').value=n.getFullYear();
+  document.getElementById('mMonth').value=n.getMonth()+1;
+  document.getElementById('sYear').value=n.getFullYear();
+  document.getElementById('sMonth').value=n.getMonth()+1;
+  document.getElementById('sDay').value=n.getDate();
 })();
 
-// ── 로컬 저장 / 불러오기 ─────────────────────────────
-function saveLocal() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(proxies));
-}
-function loadLocal() {
-  try {
-    const d = localStorage.getItem(STORAGE_KEY);
-    proxies = d ? JSON.parse(d) : [];
-  } catch(e) { proxies = []; }
-}
+// ── 로컬 저장
+function saveLocal(){localStorage.setItem(SKEY,JSON.stringify(proxies));}
+function loadLocal(){try{const d=localStorage.getItem(SKEY);proxies=d?JSON.parse(d):[];}catch(e){proxies=[];}}
 
-// ── Firebase 저장 / 불러오기 ─────────────────────────
-async function loadData() {
-  loadLocal(); // 항상 로컬 선 로드
-  if (!fbOk || !db) return;
-  try {
-    const { collection, getDocs, query, orderBy } = fbApi;
-    const q = query(collection(db, 'proxies'), orderBy('createdAt', 'desc'));
-    const snap = await getDocs(q);
-    const fbData = [];
-    snap.forEach(d => fbData.push({ id: d.id, ...d.data() }));
-    if (fbData.length > 0) {
-      proxies = fbData;
-      saveLocal();
-    }
-  } catch(e) {
-    console.warn('Firebase 읽기 실패:', e);
-  }
-  renderList();
-  renderSummary();
+// ── Firebase 불러오기
+async function loadData(){
+  loadLocal();
+  if(!fbOk||!window._db){renderList();renderSummary();return;}
+  try{
+    const{collection:col,getDocs:gd,query:q,orderBy:ob}=window._fs;
+    const snap=await gd(q(col(window._db,'proxies_rcnet'),ob('createdAt','desc')));
+    const fb=[];snap.forEach(d=>fb.push({id:d.id,...d.data()}));
+    if(fb.length>0){proxies=fb;saveLocal();}
+  }catch(e){console.warn('FB load err',e);}
+  renderList();renderSummary();
 }
 
-async function saveToFirebase(item) {
-  if (!fbOk || !db) return null;
-  try {
-    const { collection, addDoc, serverTimestamp } = fbApi;
-    const ref = await addDoc(collection(db, 'proxies'), {
-      ...item,
-      createdAt: serverTimestamp()
-    });
-    return ref.id;
-  } catch(e) {
-    console.warn('Firebase 저장 실패:', e);
-    return null;
-  }
+// ── Firebase 저장
+async function saveFb(item){
+  if(!fbOk||!window._db)return null;
+  try{
+    const{collection:col,addDoc:ad,serverTimestamp:st}=window._fs;
+    const r=await ad(col(window._db,'proxies_rcnet'),{...item,createdAt:st()});
+    return r.id;
+  }catch(e){return null;}
 }
 
-async function deleteFromFirebase(id) {
-  if (!fbOk || !db) return;
-  try {
-    const { doc, deleteDoc } = fbApi;
-    await deleteDoc(doc(db, 'proxies', id));
-  } catch(e) { console.warn('Firebase 삭제 실패:', e); }
+// ── Firebase 삭제
+async function delFb(id){
+  if(!fbOk||!window._db||!id||id.startsWith('local_'))return;
+  try{const{doc:d,deleteDoc:dd}=window._fs;await dd(d(window._db,'proxies_rcnet',id));}catch(e){}
 }
 
-// ── 위임장 제출 ──────────────────────────────────────
-async function submitProxy() {
-  const name = document.getElementById('delegatorName').value.trim();
-  const birth = document.getElementById('delegatorBirth').value.trim();
-  const call = document.getElementById('delegatorCall').value.trim();
-  const phone = document.getElementById('delegatorPhone').value.trim();
-  const year = document.getElementById('meetYear').value.trim();
-  const month = document.getElementById('meetMonth').value.trim();
-  const reason = document.getElementById('absentReason').value.trim();
-  const sy = document.getElementById('signYear').value.trim();
-  const sm = document.getElementById('signMonth').value.trim();
-  const sd = document.getElementById('signDay').value.trim();
-  const agreed = document.getElementById('agreeChk').checked;
-
-  if (!name) { showToast('❗ 성명을 입력해 주세요'); document.getElementById('delegatorName').focus(); return; }
-  if (!birth) { showToast('❗ 생년월일을 입력해 주세요'); document.getElementById('delegatorBirth').focus(); return; }
-  if (!month) { showToast('❗ 위임 월을 입력해 주세요'); document.getElementById('meetMonth').focus(); return; }
-  if (!agreed) { showToast('❗ 동의 체크가 필요합니다'); return; }
-
-  const now = new Date();
-  const item = {
-    name, birth, call, phone, year, month, reason,
-    signDate: `${sy}.${sm}.${sd}`,
-    submittedAt: now.toISOString(),
-    submittedDateStr: `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')}`
+// ── 제출
+async function submitProxy(){
+  const name=document.getElementById('dName').value.trim();
+  const birth=document.getElementById('dBirth').value.trim();
+  const call=document.getElementById('dCall').value.trim();
+  const phone=document.getElementById('dPhone').value.trim();
+  const year=document.getElementById('mYear').value.trim();
+  const month=document.getElementById('mMonth').value.trim();
+  const reason=document.getElementById('dReason').value.trim();
+  const sy=document.getElementById('sYear').value.trim();
+  const sm=document.getElementById('sMonth').value.trim();
+  const sd=document.getElementById('sDay').value.trim();
+  if(!name){showToast('❗ 성명을 입력해 주세요');document.getElementById('dName').focus();return;}
+  if(!birth){showToast('❗ 생년월일을 입력해 주세요');document.getElementById('dBirth').focus();return;}
+  if(!month){showToast('❗ 위임 월을 입력해 주세요');document.getElementById('mMonth').focus();return;}
+  if(!document.getElementById('agreeChk').checked){showToast('❗ 동의 체크가 필요합니다');return;}
+  const n=new Date();
+  const item={name,birth,call,phone,year,month,reason,
+    signDate:`${sy}.${sm}.${sd}`,
+    submittedAt:n.toISOString(),
+    submittedDateStr:`${n.getFullYear()}.${String(n.getMonth()+1).padStart(2,'0')}.${String(n.getDate()).padStart(2,'0')}`
   };
+  const fbId=await saveFb(item);
+  item.id=fbId||('local_'+Date.now());
+  proxies.unshift(item);saveLocal();
+  showToast('✅ 위임장이 접수되었습니다');resetForm();renderList();renderSummary();
+}
+window.submitProxy=submitProxy;
 
-  // Firebase 저장 시도
-  const fbId = await saveToFirebase(item);
-  if (fbId) item.id = fbId;
-  else item.id = 'local_' + Date.now();
-
-  proxies.unshift(item);
-  saveLocal();
-  showToast('✅ 위임장이 접수되었습니다');
-  resetForm();
-  renderList();
-  renderSummary();
+function resetForm(){
+  ['dName','dCall','dBirth','dPhone','dReason'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('agreeChk').checked=false;
+  document.getElementById('signDisplay').textContent='\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0';
 }
 
-function resetForm() {
-  ['delegatorName','delegatorCall','delegatorBirth','delegatorPhone','absentReason'].forEach(id => {
-    document.getElementById(id).value = '';
-  });
-  document.getElementById('agreeChk').checked = false;
-  document.getElementById('signNameDisplay').textContent = '\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0';
-}
-
-// ── 목록 렌더링 ──────────────────────────────────────
-function renderList() {
-  const q = document.getElementById('searchBox').value.trim().toLowerCase();
-  const filtered = proxies.filter(p =>
-    !q || p.name.toLowerCase().includes(q) || (p.month && p.month.toString().includes(q))
-  );
-
-  const now = new Date();
-  const thisMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  const today = now.toISOString().slice(0,10);
-
-  document.getElementById('statTotal').textContent = proxies.length;
-  document.getElementById('statMonth').textContent = proxies.filter(p => {
-    if (!p.submittedAt) return false;
-    return p.submittedAt.slice(0,7) === thisMonth;
-  }).length;
-  document.getElementById('statToday').textContent = proxies.filter(p => {
-    if (!p.submittedAt) return false;
-    return p.submittedAt.slice(0,10) === today;
-  }).length;
-
-  const cont = document.getElementById('proxyList');
-  if (filtered.length === 0) {
-    cont.innerHTML = '<div class="empty-state">📭 접수된 위임장이 없습니다</div>';
-    return;
-  }
-
-  cont.innerHTML = filtered.map((p, i) => `
+// ── 목록 렌더
+function renderList(){
+  const q=(document.getElementById('searchQ').value||'').toLowerCase();
+  const filtered=proxies.filter(p=>!q||p.name.toLowerCase().includes(q)||(p.month&&p.month.toString().includes(q)));
+  const n=new Date();
+  const thisM=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;
+  const today=n.toISOString().slice(0,10);
+  document.getElementById('stTotal').textContent=proxies.length;
+  document.getElementById('stMonth').textContent=proxies.filter(p=>p.submittedAt&&p.submittedAt.slice(0,7)===thisM).length;
+  document.getElementById('stToday').textContent=proxies.filter(p=>p.submittedAt&&p.submittedAt.slice(0,10)===today).length;
+  const c=document.getElementById('proxyList');
+  if(!filtered.length){c.innerHTML='<div class="empty">📭 접수된 위임장이 없습니다</div>';return;}
+  c.innerHTML=filtered.map((p,i)=>`
     <div class="proxy-item">
-      <div class="item-num">${filtered.length - i}</div>
+      <div class="item-num">${filtered.length-i}</div>
       <div class="item-body">
-        <div class="item-name">${esc(p.name)} ${p.call ? '<span style="color:#6b7a99;font-size:12px;font-weight:400">('+esc(p.call)+')</span>' : ''}</div>
-        <div class="item-detail">${p.year}년 ${p.month}월 위임 · 생년: ${esc(p.birth)} ${p.reason ? '· '+esc(p.reason) : ''}</div>
-        <div class="item-date">제출: ${p.submittedDateStr || ''}</div>
+        <div class="item-name">${esc(p.name)} <span class="item-call">${p.call?'('+esc(p.call)+')':''}</span></div>
+        <div class="item-detail">${p.year}년 ${p.month}월 위임 · 생년: ${esc(p.birth)}${p.reason?' · '+esc(p.reason):''}</div>
+        <div class="item-date">제출: ${p.submittedDateStr||''}</div>
       </div>
       <button class="item-del" onclick="deleteProxy('${p.id}')" title="삭제">✕</button>
-    </div>
-  `).join('');
+    </div>`).join('');
 }
+window.renderList=renderList;
 
-async function deleteProxy(id) {
-  if (!confirm('이 위임장을 삭제할까요?')) return;
-  proxies = proxies.filter(p => p.id !== id);
-  saveLocal();
-  await deleteFromFirebase(id);
-  renderList();
-  renderSummary();
-  showToast('🗑 삭제되었습니다');
+async function deleteProxy(id){
+  if(!confirm('이 위임장을 삭제할까요?'))return;
+  proxies=proxies.filter(p=>p.id!==id);saveLocal();
+  await delFb(id);renderList();renderSummary();showToast('🗑 삭제되었습니다');
 }
+window.deleteProxy=deleteProxy;
 
-function clearAll() {
-  if (!confirm(`전체 ${proxies.length}건을 삭제할까요?\n이 작업은 되돌릴 수 없습니다.`)) return;
-  proxies.forEach(p => deleteFromFirebase(p.id));
-  proxies = [];
-  saveLocal();
-  renderList();
-  renderSummary();
-  showToast('전체 삭제 완료');
+function clearAll(){
+  if(!confirm(`전체 ${proxies.length}건을 모두 삭제할까요?\n되돌릴 수 없습니다.`))return;
+  proxies.forEach(p=>delFb(p.id));proxies=[];saveLocal();renderList();renderSummary();showToast('전체 삭제 완료');
 }
+window.clearAll=clearAll;
 
-// ── 요약 렌더링 ──────────────────────────────────────
-function renderSummary() {
-  // 월별 그룹
-  const groups = {};
-  proxies.forEach(p => {
-    const key = `${p.year}-${String(p.month).padStart(2,'0')}`;
-    if (!groups[key]) groups[key] = [];
-    groups[key].push(p.name);
-  });
-
-  const keys = Object.keys(groups).sort().reverse();
-  document.getElementById('summaryBody').innerHTML = keys.length === 0
-    ? '<tr><td colspan="3" style="text-align:center;color:#a0b0cc;padding:20px">데이터 없음</td></tr>'
-    : keys.map(k => {
-        const [y,m] = k.split('-');
-        return `<tr>
-          <td>${y}년 ${parseInt(m)}월</td>
-          <td style="font-weight:700;color:#1d4ed8">${groups[k].length}명</td>
-          <td>${groups[k].join(', ')}</td>
-        </tr>`;
-      }).join('');
-
-  // 전체 명단
-  document.getElementById('fullListBody').innerHTML = proxies.length === 0
-    ? '<tr><td colspan="6" style="text-align:center;color:#a0b0cc;padding:20px">데이터 없음</td></tr>'
-    : proxies.map((p,i) => `<tr>
-        <td>${i+1}</td>
-        <td style="font-weight:600">${esc(p.name)}</td>
-        <td>${esc(p.call||'-')}</td>
-        <td>${p.year}년 ${p.month}월</td>
-        <td>${esc(p.reason||'-')}</td>
-        <td>${p.submittedDateStr||''}</td>
-      </tr>`).join('');
+// ── 요약
+function renderSummary(){
+  const grp={};
+  proxies.forEach(p=>{const k=`${p.year}-${String(p.month).padStart(2,'0')}`;if(!grp[k])grp[k]=[];grp[k].push(p.name);});
+  const keys=Object.keys(grp).sort().reverse();
+  document.getElementById('sumBody').innerHTML=!keys.length?'<tr><td colspan="3" style="text-align:center;color:#b8b3b2;padding:20px">데이터 없음</td></tr>':
+    keys.map(k=>{const[y,m]=k.split('-');return`<tr><td>${y}년 ${parseInt(m)}월</td><td style="font-weight:700;color:var(--rc-red)">${grp[k].length}명</td><td>${grp[k].join(', ')}</td></tr>`;}).join('');
+  document.getElementById('fullBody').innerHTML=!proxies.length?'<tr><td colspan="6" style="text-align:center;color:#b8b3b2;padding:20px">데이터 없음</td></tr>':
+    proxies.map((p,i)=>`<tr><td>${i+1}</td><td style="font-weight:600">${esc(p.name)}</td><td>${esc(p.call||'-')}</td><td>${p.year}년 ${p.month}월</td><td>${esc(p.reason||'-')}</td><td>${p.submittedDateStr||''}</td></tr>`).join('');
 }
+window.renderSummary=renderSummary;
 
-// ── CSV 다운로드 ──────────────────────────────────────
-function exportCSV() {
-  if (proxies.length === 0) { showToast('데이터가 없습니다'); return; }
-  const header = ['순번','성명','콜사인','생년월일','연락처','위임년','위임월','불참사유','제출일'];
-  const rows = proxies.map((p,i) => [
-    i+1, p.name, p.call||'', p.birth, p.phone||'', p.year, p.month, p.reason||'', p.submittedDateStr||''
-  ]);
-  const csv = '\uFEFF' + [header, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-  a.download = `위임장_${new Date().toISOString().slice(0,10)}.csv`;
-  a.click();
+// ── CSV
+function exportCSV(){
+  if(!proxies.length){showToast('데이터가 없습니다');return;}
+  const h=['순번','성명','콜사인','생년월일','연락처','위임년','위임월','불참사유','제출일'];
+  const rows=proxies.map((p,i)=>[i+1,p.name,p.call||'',p.birth,p.phone||'',p.year,p.month,p.reason||'',p.submittedDateStr||'']);
+  const csv='\uFEFF'+[h,...rows].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download=`위임장_${new Date().toISOString().slice(0,10)}.csv`;a.click();
   showToast('⬇ CSV 다운로드 완료');
 }
+window.exportCSV=exportCSV;
 
-// ── 인쇄 ─────────────────────────────────────────────
-function printList() { window.print(); }
-function printSummary() { window.print(); }
-
-// ── 유틸 ─────────────────────────────────────────────
-function esc(s) {
-  if (!s) return '';
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+// ── 유틸
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+let _tt;
+function showToast(m){
+  const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');
+  clearTimeout(_tt);_tt=setTimeout(()=>t.classList.remove('show'),2800);
 }
 
-let toastTimer;
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
-}
-
-// 초기 로드
-loadLocal();
-renderList();
-renderSummary();
+loadLocal();renderList();renderSummary();
 </script>
 </body>
 </html>
