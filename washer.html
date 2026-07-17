@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>세척기 설계 시뮬레이터 v3.9 | 인시스 AI혁신 R&D센터</title>
+<title>세척기 설계 시뮬레이터 v3.10 | 인시스 AI혁신 R&D센터</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -210,7 +210,7 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
        title="새 탭에서 열기">🔗 바로가기</a>
     <button class="vt on" id="bPC">PC</button>
     <button class="vt" id="bMB">Mobile</button>
-    <span class="vb">v3.9</span>
+    <span class="vb">v3.10</span>
   </div>
 </div>
 
@@ -606,7 +606,7 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
 
 </div><!-- /rp -->
 </div><!-- /wrap -->
-<footer>인시스 AI혁신 R&D센터 | 세척기 설계 시뮬레이터 v3.9 | ys.kim@in-sys.co.kr</footer>
+<footer>인시스 AI혁신 R&D센터 | 세척기 설계 시뮬레이터 v3.10 | ys.kim@in-sys.co.kr</footer>
 
 <script>
 'use strict';
@@ -623,7 +623,7 @@ const DIRT={
   hole: [0,  3.0,  2.5,  2.5,  2.0,  1.8],
 };
 const HP_PER_KW=1.341;
-const LS_KEY='washer_v39_last'; // localStorage 키
+const LS_KEY='washer_v310_last'; // localStorage 키
 
 // ── SUS 배관 규격 (KS B 1501 / JIS B 2311 스케줄 10S 기준) ──
 const SUS_PIPES=[
@@ -1217,12 +1217,20 @@ function runSim(){
   const cSpd=+gv('cSpd')||2.5, cPitch=+gv('cPitch')||50;
   const detVal=+gv('det')||3;
 
-  const faces=getFaces(itype,iW,iD,iH);
-  const qEach=nozzleQ(holeMm,presKPa);
-  const nTotal=nCol*nRow;
+  // 채널 구성 계산 (ch 변수 여기서 선언)
+  const chInfo  = getChannelInfo(itype, fmode, iW, iD, iH);
+  const {ch, facesPerCh, allFaces} = chInfo;
+  const faces   = allFaces;   // 전체 면 (시각화용)
+  const f0      = facesPerCh[0]; // 대표 면
 
-  const coverages=faces.map(f=>calcCoverage(nCol,nRow,nGapX,nGapY,f.fw,f.fh,nAng,nDist));
-  const avgCov=coverages.reduce((a,b)=>a+b,0)/faces.length;
+  const qEach  = nozzleQ(holeMm, presKPa);
+  const nTotal = nCol * nRow;
+
+  // 커버리지: 1채널 기준 각 면별 계산
+  const coverages = facesPerCh.map(f =>
+    calcCoverage(nCol, nRow, nGapX, nGapY, f.fw, f.fh, nAng, nDist)
+  );
+  const avgCov = coverages.reduce((a,b)=>a+b,0) / facesPerCh.length;
 
   const pitchMm = iH + cPitch;
   const temp0 = +(gi('ztemp0')?.value || OPT.temp || 60);
@@ -1238,7 +1246,8 @@ function runSim(){
   const {cr,secPerItem,totalDwell,contrib}=res;
 
   // 처리량 = 채널당 처리량 × 채널수
-  const actualQty=Math.min(+gv('iqty')||200,Math.round(3600/secPerItem*ch));
+  const qPerCh = pFlow / Math.max(1, ch);
+  const actualQty = Math.min(+gv('iqty')||200, Math.round(3600/secPerItem*ch));
 
   let totalPow=0, totalWater=0, avgTemp=0;
   const zRows=[];
@@ -1790,33 +1799,51 @@ function lsLoad(){
 }
 
 // ══════════════════════════════════════════════
-// Firebase SDK (모듈 방식)
+// Firebase REST API (SDK 대신 REST 방식 — CSP 호환)
 // ══════════════════════════════════════════════
-const FB_CONFIG = {
-  apiKey:            'AIzaSyC4DWFGGJjJmVlqnfmZaVDdKJWCXK0Yr_g',
-  authDomain:        'insys-work.firebaseapp.com',
-  projectId:         'insys-work',
-  storageBucket:     'insys-work.appspot.com',
-  messagingSenderId: '427197903',
-  appId:             '1:427197903:web:insys0001'
-};
-const FB_COL = 'washer_sessions';
+const FB_API  = 'AIzaSyC4DWFGGJjJmVlqnfmZaVDdKJWCXK0Yr_g';
+const FB_PROJ = 'insys-work';
+const FB_COL  = 'washer_sessions';
+const FB_BASE = 'https://firestore.googleapis.com/v1/projects/'+FB_PROJ+'/databases/(default)/documents/'+FB_COL;
 
-let _fbApp=null, _db=null;
+let _fbReady = false;
 
-async function getDB(){
-  if(_db) return _db;
-  try{
-    const { initializeApp, getApps } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
-    const { getFirestore, collection, addDoc, getDocs, getDoc, doc, deleteDoc, query, orderBy, serverTimestamp }
-      = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
-    if(!getApps().length) _fbApp = initializeApp(FB_CONFIG);
-    else _fbApp = getApps()[0];
-    _db = getFirestore(_fbApp);
-    _db._fns = { collection, addDoc, getDocs, getDoc, doc, deleteDoc, query, orderBy, serverTimestamp };
-    return _db;
-  }catch(e){ throw new Error('Firebase SDK 로드 실패: '+e.message); }
+async function getDB(){ return true; } // 호환성 유지용 더미
+
+// REST 헬퍼
+async function fbRest(url, opts={}){
+  const sep = url.includes('?') ? '&' : '?';
+  const r = await fetch(url + sep + 'key=' + FB_API, opts);
+  if(!r.ok){
+    const txt = await r.text();
+    throw new Error('Firebase 오류 ' + r.status + ': ' + txt.slice(0,200));
+  }
+  return r.json();
 }
+
+// Firestore 값 변환
+function toFsV(v){
+  if(v===null||v===undefined) return {nullValue:null};
+  if(typeof v==='boolean') return {booleanValue:v};
+  if(typeof v==='number')  return {doubleValue:v};
+  if(typeof v==='string')  return {stringValue:v};
+  if(Array.isArray(v))     return {arrayValue:{values:v.map(toFsV)}};
+  if(typeof v==='object')  return {mapValue:{fields:toFields(v)}};
+  return {stringValue:String(v)};
+}
+function toFields(obj){ const f={}; for(const k in obj) if(obj[k]!==undefined) f[k]=toFsV(obj[k]); return f; }
+function fromFsV(v){
+  if(!v) return null;
+  if('stringValue'  in v) return v.stringValue;
+  if('doubleValue'  in v) return v.doubleValue;
+  if('integerValue' in v) return Number(v.integerValue);
+  if('booleanValue' in v) return v.booleanValue;
+  if('nullValue'    in v) return null;
+  if('arrayValue'   in v) return (v.arrayValue.values||[]).map(fromFsV);
+  if('mapValue'     in v) return fromFsFields(v.mapValue.fields||{});
+  return null;
+}
+function fromFsFields(fields){ const o={}; for(const k in fields) o[k]=fromFsV(fields[k]); return o; }
 function toFsV(v){
   if(typeof v==='string') return {stringValue:v};
   if(typeof v==='number') return {doubleValue:v};
@@ -1851,13 +1878,16 @@ function scheduleAutoFbSave(){
 
 async function doFbSave(name,proj,memo,silent=false){
   try{
-    const db = await getDB();
-    const {collection, addDoc, serverTimestamp} = db._fns;
     const s = collectSettings();
-    await addDoc(collection(db, FB_COL), {
+    const body = { fields: toFields({
       name, project:proj||'—', memo:memo||'',
       savedAt: new Date().toISOString(),
       ...s
+    })};
+    await fbRest(FB_BASE, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body)
     });
     if(!silent) await fbLoadAll();
   }catch(e){
@@ -1882,34 +1912,22 @@ async function fbSave(){
 async function fbLoadAll(){
   showFbSt('fbSrchSt','ing','연결 중...');
   try{
-    const db = await getDB();
-    const {collection, getDocs, query, orderBy} = db._fns;
-    const q = query(collection(db, FB_COL), orderBy('savedAt','desc'));
-    const snap = await getDocs(q);
-    const docs = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    const data = await fbRest(FB_BASE);
+    const rawDocs = data.documents || [];
+    const docs = rawDocs.map(d=>({
+      id: d.name.split('/').pop(),
+      ...fromFsFields(d.fields||{})
+    })).sort((a,b)=>(b.savedAt||'')>(a.savedAt||'')?1:-1);
     renderFbList(docs,'');
     const n = docs.length;
     gi('fbConnSt').textContent = n+'건 저장됨';
     gi('fbConnSt').style.cssText = 'background:#d4edda;color:#155724;font-weight:700;';
     hideFS('fbSrchSt');
   }catch(e){
-    // orderBy 인덱스 없는 경우 폴백: 정렬 없이 전체 조회
-    try{
-      const db2 = await getDB();
-      const {collection, getDocs} = db2._fns;
-      const snap2 = await getDocs(collection(db2, FB_COL));
-      const docs2 = snap2.docs.map(d=>({id:d.id,...d.data()}))
-        .sort((a,b)=>(b.savedAt||'')>(a.savedAt||'')?1:-1);
-      renderFbList(docs2,'');
-      gi('fbConnSt').textContent = docs2.length+'건 저장됨';
-      gi('fbConnSt').style.cssText = 'background:#d4edda;color:#155724;font-weight:700;';
-      hideFS('fbSrchSt');
-    }catch(e2){
-      showFbSt('fbSrchSt','err','연결 실패: '+e2.message);
-      gi('fbConnSt').textContent = '연결 오류';
-      gi('fbConnSt').style.cssText = 'background:#f8d7da;color:#721c24;';
-      console.error('fbLoadAll 오류:', e2);
-    }
+    showFbSt('fbSrchSt','err','연결 실패: '+e.message);
+    gi('fbConnSt').textContent = '연결 오류';
+    gi('fbConnSt').style.cssText = 'background:#f8d7da;color:#721c24;';
+    console.error('fbLoadAll 오류:', e);
   }
 }
 
@@ -1919,12 +1937,14 @@ async function fbSearch(){
   if(!q){ await fbLoadAll(); return; }
   showFbSt('fbSrchSt','ing','검색 중...');
   try{
-    const db = await getDB();
-    const {collection, getDocs} = db._fns;
-    const snap = await getDocs(collection(db, FB_COL));
-    const all  = snap.docs.map(d=>({id:d.id,...d.data()}));
+    const data = await fbRest(FB_BASE);
+    const rawDocs = data.documents || [];
+    const all = rawDocs.map(d=>({
+      id: d.name.split('/').pop(),
+      ...fromFsFields(d.fields||{})
+    }));
     const docs = all.filter(f=>{
-      const targets=[f.name,f.project,f.memo,String(f.dlv||''),String(f.resultCr||''),f.itype,f.iW,f.iD,f.iH];
+      const targets=[f.name,f.project,f.memo,String(f.dlv||''),String(f.resultCr||''),f.itype,String(f.iW||''),String(f.iD||''),String(f.iH||'')];
       return targets.some(v=>(String(v||'')).toLowerCase().includes(q));
     }).sort((a,b)=>(b.savedAt||'')>(a.savedAt||'')?1:-1);
     renderFbList(docs,q);
@@ -1983,12 +2003,9 @@ async function fbLoad(docId){
   if(!docId){ showFbSt('fbSrchSt','err','문서 ID 없음'); return; }
   showFbSt('fbSrchSt','ing','불러오는 중...');
   try{
-    const db = await getDB();
-    const {doc, getDoc} = db._fns;
-    const snap = await getDoc(doc(db, FB_COL, docId));
-    if(!snap.exists()) throw new Error('문서를 찾을 수 없습니다');
-    const f = snap.data();
-    // 선택 강조
+    const data = await fbRest(FB_BASE+'/'+docId);
+    if(!data||!data.fields) throw new Error('문서를 찾을 수 없습니다');
+    const f = fromFsFields(data.fields);
     gi('fbList').querySelectorAll('.fb-item').forEach(el=>{
       el.classList.toggle('sel', el.dataset.docid===docId);
     });
@@ -2008,9 +2025,7 @@ async function fbDelById(docId, itemEl){
   const nm = itemEl?.querySelector('.fb-iname')?.textContent?.trim()||docId;
   if(!confirm('"'+nm+'" 삭제하시겠습니까?')) return;
   try{
-    const db = await getDB();
-    const {doc, deleteDoc} = db._fns;
-    await deleteDoc(doc(db, FB_COL, docId));
+    await fetch(FB_BASE+'/'+docId+'?key='+FB_API, {method:'DELETE'});
     itemEl?.remove();
     const n = gi('fbList').querySelectorAll('.fb-item').length;
     gi('fbConnSt').textContent = n+'건 저장됨';
