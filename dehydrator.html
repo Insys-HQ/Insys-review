@@ -3,213 +3,208 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>패드 탈수기 시뮬레이션 v3.2 | 인시스 AI혁신 R&D센터</title>
+<title>패드 탈수기 시뮬레이션 v4.0 | 인시스 AI혁신 R&D센터</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
   --navy:#1e3a5f;--blue:#2563a8;--sky:#0891b2;
-  --bg:#eef2f7;--card:#fff;--border:#e2e8f0;
-  --text:#1e293b;--sub:#475569;--mute:#94a3b8;
-  --green:#16a34a;--red:#dc2626;--amber:#d97706;
+  --bg:#eef2f7;--card:#fff;--border:#dde3ec;
+  --text:#1e293b;--sub:#334155;--mute:#64748b;
+  --green:#15803d;--greenlt:#dcfce7;--red:#b91c1c;--redlt:#fee2e2;
+  --amber:#b45309;--amberlt:#fef3c7;
+  --fs:13px; /* 기본 폰트 — 최소 12px 지침 */
 }
-html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:13px}
+html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:var(--fs)}
 
 /* ── TOP BAR ── */
-.topbar{
-  background:var(--navy);color:#fff;
-  height:36px;display:flex;align-items:center;justify-content:space-between;
-  padding:0 20px;position:sticky;top:0;z-index:200;
-}
-.topbar-brand{font-size:13px;font-weight:700;letter-spacing:.3px}
-.topbar-right{display:flex;align-items:center;gap:10px;font-size:11px}
-.fbs{padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700}
+.topbar{background:var(--navy);color:#fff;height:38px;display:flex;align-items:center;
+  justify-content:space-between;padding:0 20px;position:sticky;top:0;z-index:200}
+.topbar b{font-size:13px;font-weight:700}
+.topbar-r{display:flex;align-items:center;gap:10px}
+.fbs{padding:3px 8px;border-radius:8px;font-size:12px;font-weight:700}
 .fbs.ok{background:#dcfce7;color:#166534}
-.fbs.err{background:#fee2e2;color:#dc2626}
+.fbs.err{background:#fee2e2;color:#b91c1c}
 .fbs.ld{background:#fef3c7;color:#b45309}
-
-/* ── MODE TOGGLE (PC/Mobile) ── */
-.mode-toggle{display:flex;gap:2px;background:rgba(255,255,255,.15);border-radius:6px;padding:2px}
-.mode-btn{padding:2px 10px;border:none;border-radius:4px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;font-size:10px;font-weight:700;background:transparent;color:rgba(255,255,255,.7);transition:.15s}
-.mode-btn.on{background:#fff;color:var(--navy)}
+.mtoggle{display:flex;gap:2px;background:rgba(255,255,255,.15);border-radius:6px;padding:2px}
+.mbtn{padding:3px 12px;border:none;border-radius:4px;cursor:pointer;
+  font-family:'Noto Sans KR',sans-serif;font-size:12px;font-weight:700;
+  background:transparent;color:rgba(255,255,255,.75);transition:.15s}
+.mbtn.on{background:#fff;color:var(--navy)}
+.topbar-info{opacity:.85;font-size:12px}
 
 /* ── TABS ── */
 .tabs{display:flex;gap:2px;padding:4px 20px;background:var(--navy)}
-.tab{padding:5px 18px;border:none;border-radius:5px 5px 0 0;cursor:pointer;font-family:'Noto Sans KR',sans-serif;font-size:12px;font-weight:600;background:rgba(255,255,255,.12);color:rgba(255,255,255,.75);transition:.15s}
+.tab{padding:6px 20px;border:none;border-radius:5px 5px 0 0;cursor:pointer;
+  font-family:'Noto Sans KR',sans-serif;font-size:13px;font-weight:600;
+  background:rgba(255,255,255,.12);color:rgba(255,255,255,.75);transition:.15s}
 .tab.on{background:var(--bg);color:var(--navy)}
 
-/* ── WRAP ── */
+/* ── WRAP / LAYOUT ── */
 .wrap{max-width:1400px;margin:0 auto;padding:12px 16px}
-
-/* ── PC LAYOUT: 3컬럼 — 내용 기준 자동 조절 ── */
-.pc-layout{
-  display:grid;
-  grid-template-columns:minmax(300px,340px) minmax(0,1fr) minmax(280px,320px);
-  gap:10px;
-  align-items:start;
-}
-.mobile-layout{display:flex;flex-direction:column;gap:10px}
+.pc-layout{display:grid;grid-template-columns:minmax(300px,340px) minmax(0,1fr) minmax(290px,330px);
+  gap:10px;align-items:start}
+.mob-layout{display:flex;flex-direction:column;gap:10px}
 
 /* ── CARD ── */
 .card{background:var(--card);border-radius:10px;box-shadow:0 1px 5px rgba(0,0,0,.08)}
-.ch{font-size:12px;font-weight:700;color:var(--navy);padding:7px 12px;border-bottom:1.5px solid var(--border);display:flex;align-items:center;gap:5px;background:#f8fafc;flex-wrap:wrap}
-.cb{padding:10px 12px}
+.ch{font-size:13px;font-weight:700;color:var(--navy);padding:8px 13px;
+  border-bottom:1.5px solid var(--border);display:flex;align-items:center;
+  gap:6px;background:#f8fafc;flex-wrap:wrap}
+.cb{padding:10px 13px}
 
-/* ── SLIDER ROW (PC) — 라벨 min-content, 슬라이더 자동 신축 ── */
-.sr{
-  display:grid;
-  grid-template-columns:min-content 1fr 52px 30px;
-  align-items:center;
-  gap:6px;
-  margin-bottom:6px;
-  min-width:0;
-}
-.sr label{
-  font-size:11px;color:var(--sub);font-weight:600;
-  white-space:nowrap;          /* 라벨 줄바꿈 금지 */
-  min-width:0;
-}
-.sr input[type=range]{
-  accent-color:var(--blue);cursor:pointer;
-  width:100%;height:4px;
-  min-width:60px;              /* 슬라이더 최소 폭 */
-}
-.sv-box{display:flex;align-items:center;justify-content:flex-end}
-.sv-num{
-  font-size:12px;font-weight:800;color:var(--navy);
-  text-align:right;
-  background:#f0f4f8;border:1.5px solid var(--border);
-  border-radius:5px;padding:2px 4px;
-  width:50px;                  /* 고정 — 숫자 잘림 없게 */
-  outline:none;
-  font-family:'Noto Sans KR',sans-serif;
-}
-.sv-num:focus{border-color:var(--blue)}
-.su{
-  font-size:10px;color:var(--sub);font-weight:600;
-  white-space:nowrap;
-  min-width:28px;              /* 단위 잘림 방지 */
-}
+/* ── SLIDER ROW ── */
+.sr{display:grid;grid-template-columns:min-content 1fr 54px 34px;
+  align-items:center;gap:6px;margin-bottom:6px;min-width:0}
+.sr label{font-size:12px;color:var(--sub);font-weight:600;white-space:nowrap}
+.sr input[type=range]{accent-color:var(--blue);cursor:pointer;width:100%;height:4px;min-width:50px}
+.svbox{display:flex;align-items:center}
+.svn{font-size:13px;font-weight:800;color:var(--navy);text-align:right;
+  background:#f0f4f8;border:1.5px solid var(--border);border-radius:5px;
+  padding:2px 5px;width:52px;outline:none;font-family:'Noto Sans KR',sans-serif}
+.svn:focus{border-color:var(--blue)}
+.su{font-size:12px;color:var(--mute);font-weight:600;white-space:nowrap;min-width:30px}
 
-/* mobile: 슬라이더 2열 */
-.sr-mobile{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.sr-m{display:flex;flex-direction:column;gap:3px;background:#f8fafc;border-radius:7px;padding:7px 9px}
-.sr-m label{font-size:10px;color:var(--sub);font-weight:600;white-space:nowrap}
-.sr-m .val-row{display:flex;align-items:center;gap:4px}
+/* 탈수율 목표 슬라이더 — 강조 */
+.sr.target-sr label{color:var(--green);font-weight:800}
+.sr.target-sr .svn{border-color:#16a34a;background:#f0fdf4;color:var(--green);font-size:14px}
+.sr.target-sr input[type=range]{accent-color:#16a34a}
+
+/* mobile slider */
+.sr-mob{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sr-m{display:flex;flex-direction:column;gap:3px;background:#f8fafc;border-radius:7px;padding:8px 10px}
+.sr-m label{font-size:12px;color:var(--sub);font-weight:600;white-space:nowrap}
+.sr-m .vrow{display:flex;align-items:center;gap:4px}
 .sr-m input[type=range]{width:100%;accent-color:var(--blue);height:4px}
-.sr-m .sv-num{
-  width:46px;font-size:12px;font-weight:800;color:var(--navy);
+.sr-m .svn{width:48px;font-size:13px;font-weight:800;color:var(--navy);
   background:#fff;border:1.5px solid var(--border);border-radius:5px;
-  padding:2px 4px;outline:none;
-  font-family:'Noto Sans KR',sans-serif;text-align:right;
-}
-.sr-m .su{font-size:10px;color:var(--mute);font-weight:600;white-space:nowrap}
+  padding:2px 4px;outline:none;font-family:'Noto Sans KR',sans-serif;text-align:right}
+.sr-m .su{font-size:12px;color:var(--mute);font-weight:600;white-space:nowrap}
 
 /* ── BTN ── */
-.btn{padding:7px 16px;border:none;border-radius:7px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;font-weight:700;font-size:12px;transition:.2s}
-.btn-run{background:var(--navy);color:#fff;width:100%;padding:10px;font-size:13px}
+.btn{padding:8px 16px;border:none;border-radius:7px;cursor:pointer;
+  font-family:'Noto Sans KR',sans-serif;font-weight:700;font-size:13px;transition:.2s}
+.btn-run{background:var(--navy);color:#fff;width:100%;padding:10px}
 .btn-run:hover{background:var(--blue)}
 .btn-play{background:var(--blue);color:#fff}
 .btn-rst{background:#f1f5f9;color:var(--sub);border:1px solid var(--border)}
 .btn-del{background:var(--red);color:#fff}
-.btn-sm{padding:4px 12px;font-size:11px;border-radius:5px}
+.btn-sm{padding:5px 13px;font-size:12px;border-radius:6px}
 
-/* ── STATUS BADGE ── */
-.sbadge{display:inline-flex;align-items:center;padding:2px 10px;border-radius:10px;font-size:11px;font-weight:700}
-.si{background:#f1f5f9;color:var(--sub)}
-.sr2{background:#dbeafe;color:#1d4ed8}
-.sp{background:#fef3c7;color:var(--amber)}
-.sb2{background:#fee2e2;color:var(--red)}
-.sd{background:#dcfce7;color:var(--green)}
+/* ── BADGE ── */
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:10px;font-size:12px;font-weight:700}
+.b-idle{background:#f1f5f9;color:var(--sub)}
+.b-accel{background:#dbeafe;color:#1d4ed8}
+.b-peak{background:var(--amberlt);color:var(--amber)}
+.b-brake{background:var(--redlt);color:var(--red)}
+.b-done{background:var(--greenlt);color:var(--green)}
 
 /* ── DRUM ── */
-.drum-row{display:flex;align-items:center;gap:10px}
-.drum{width:90px;height:90px;border:5px solid var(--navy);border-radius:50%;background:#f0f4f8;display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative}
-.drum-inner{width:62px;height:62px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--navy));display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700;text-align:center;line-height:1.4;white-space:pre-line}
-.drum.spinning{animation:spin var(--spd,.5s) linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
+.drum-row{display:flex;align-items:center;gap:12px}
+.drum{width:94px;height:94px;border:5px solid var(--navy);border-radius:50%;
+  background:#f0f4f8;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.drum-inner{width:64px;height:64px;border-radius:50%;
+  background:linear-gradient(135deg,var(--blue),var(--navy));
+  display:flex;align-items:center;justify-content:center;
+  color:#fff;font-size:12px;font-weight:700;text-align:center;line-height:1.4;white-space:pre-line}
+.drum.spin{animation:sp var(--spd,.5s) linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
 
-/* ── GAUGE BAR ── */
-.gb-wrap{flex:1;display:flex;flex-direction:column;gap:5px}
-.gb-item{}
-.gb-label-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:2px}
-.gb-label{font-size:10px;color:var(--sub);font-weight:600}
-.gb-curval{font-size:12px;font-weight:800;color:var(--navy)}
-.gb{height:18px;background:#e2e8f0;border-radius:9px;overflow:hidden}
-.gbf{height:100%;border-radius:9px;transition:width .2s;display:flex;align-items:center;justify-content:flex-end;padding-right:7px}
-.gbf span{color:#fff;font-size:10px;font-weight:700;white-space:nowrap}
+/* ── GAUGE ── */
+.gb-wrap{flex:1;display:flex;flex-direction:column;gap:6px}
+.gb-row{}
+.gb-lr{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px}
+.gb-lbl{font-size:12px;color:var(--sub);font-weight:600}
+.gb-val{font-size:14px;font-weight:800;color:var(--navy)}
+.gb{height:20px;background:#e2e8f0;border-radius:10px;overflow:hidden}
+.gbf{height:100%;border-radius:10px;transition:width .25s;
+  display:flex;align-items:center;justify-content:flex-end;padding-right:8px}
+.gbf span{color:#fff;font-size:12px;font-weight:700;white-space:nowrap}
 .g-rpm{background:linear-gradient(90deg,#3b82f6,var(--navy))}
 .g-time{background:linear-gradient(90deg,var(--sky),#0e7490)}
 .g-water{background:linear-gradient(90deg,#22c55e,var(--green))}
 
-/* ── RESULT GRID — 3번째 컬럼 폭에 맞게 1열로 ── */
+/* ── RESULT ROWS ── */
 .ri-grid{display:grid;grid-template-columns:1fr;gap:4px}
-.ri{background:#f8fafc;border-radius:7px;padding:6px 10px;border-left:3px solid var(--blue);display:flex;align-items:center;justify-content:space-between;gap:6px;min-width:0}
-.rl{font-size:10px;color:var(--sub);font-weight:600;white-space:nowrap;flex-shrink:0}
-.rv{font-size:14px;font-weight:800;color:var(--navy);line-height:1;white-space:nowrap}
-.ru{font-size:10px;color:var(--sub);margin-left:1px}
+.ri{background:#f8fafc;border-radius:7px;padding:7px 11px;border-left:3px solid var(--blue);
+  display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+.rl{font-size:12px;color:var(--sub);font-weight:600;white-space:nowrap;flex-shrink:0}
+.rv{font-size:15px;font-weight:800;color:var(--navy);white-space:nowrap}
+.ru{font-size:12px;color:var(--mute)}
 
-/* ── WATER RESULT ── */
+/* ── WATER ── */
 .water-wrap{display:flex;gap:10px;align-items:flex-start}
-.water-tank{position:relative;width:52px;height:130px;border:2.5px solid var(--border);border-radius:7px;overflow:hidden;background:#f0f9ff;flex-shrink:0}
-.water-fill{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(180deg,#38bdf8,#0369a1);transition:height .8s ease}
-.water-tank-lbl{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:10px;font-weight:800;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.5);white-space:nowrap;text-align:center;line-height:1.4}
-.water-rows{flex:1;display:flex;flex-direction:column;gap:3px;min-width:0}
-.water-row{display:flex;justify-content:space-between;align-items:center;padding:4px 7px;background:#f8fafc;border-radius:6px;font-size:11px;gap:6px}
+.wtank{position:relative;width:54px;height:134px;border:2.5px solid var(--border);
+  border-radius:7px;overflow:hidden;background:#f0f9ff;flex-shrink:0}
+.wfill{position:absolute;bottom:0;left:0;right:0;
+  background:linear-gradient(180deg,#38bdf8,#0369a1);transition:height .8s ease}
+.wlbl{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  font-size:12px;font-weight:800;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.5);
+  white-space:nowrap;text-align:center;line-height:1.4}
+.wrows{flex:1;display:flex;flex-direction:column;gap:3px;min-width:0}
+.wrow{display:flex;justify-content:space-between;align-items:center;
+  padding:5px 8px;background:#f8fafc;border-radius:6px;font-size:12px;gap:6px}
 .wk{color:var(--sub);font-weight:600;white-space:nowrap;flex-shrink:0}
 .wv{font-weight:800;color:var(--navy);white-space:nowrap}
-.wv.green{color:var(--green)}
-.wv.red{color:var(--red)}
+.wv.g{color:var(--green)}.wv.r{color:var(--red)}.wv.a{color:var(--amber)}
 
 /* ── TIMELINE ── */
-.tl-item{display:flex;align-items:flex-start;gap:7px;padding:5px 0;border-bottom:1px solid #f0f4f8}
+.tl-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid #f0f4f8}
 .tl-item:last-child{border:none}
-.tl-dot{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:1px}
+.tl-dot{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
 .td-a{background:#dbeafe;color:#1d4ed8}
-.td-p{background:#fef3c7;color:var(--amber)}
-.td-b{background:#fee2e2;color:var(--red)}
+.td-p{background:var(--amberlt);color:var(--amber)}
+.td-b{background:var(--redlt);color:var(--red)}
 .tl-body{flex:1}
-.tl-t{font-size:12px;font-weight:600}
-.tl-d{font-size:10px;color:var(--sub);margin-top:1px;line-height:1.5}
-.tl-sec{font-size:11px;font-weight:800;color:var(--blue);white-space:nowrap;align-self:center}
+.tl-t{font-size:13px;font-weight:700}
+.tl-d{font-size:12px;color:var(--mute);margin-top:2px;line-height:1.5}
+.tl-s{font-size:12px;font-weight:800;color:var(--blue);white-space:nowrap;align-self:center}
 
 /* ── PROD ── */
 .p4{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px}
-.pi{background:#f8fafc;border-radius:7px;padding:8px;text-align:center}
+.pi{background:#f8fafc;border-radius:7px;padding:10px;text-align:center}
 .pv{font-size:22px;font-weight:800;color:var(--navy)}
-.pl{font-size:10px;color:var(--sub);font-weight:600;margin-top:2px}
-.alert{padding:8px 12px;border-radius:7px;font-size:12px;margin:6px 0}
-.alert.ok{background:#dcfce7;color:#166534}
-.alert.ng{background:#fee2e2;color:#991b1b}
+.pl{font-size:12px;color:var(--sub);font-weight:600;margin-top:2px}
+.alrt{padding:9px 12px;border-radius:7px;font-size:13px;margin:6px 0}
+.alrt.ok{background:var(--greenlt);color:#166534}
+.alrt.ng{background:var(--redlt);color:#991b1b}
+.note{font-size:12px;color:var(--sub);margin-top:6px;line-height:1.6}
 
-/* ── HISTORY ── */
-.hi{display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid #f8fafc;font-size:11px}
+/* ── OPT RESULT ── */
+.opt-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:8px}
+.opt-item{background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:7px;
+  padding:7px 10px;display:flex;justify-content:space-between;align-items:center}
+.ok-lbl{font-size:12px;color:var(--green);font-weight:600}
+.ok-val{font-size:14px;font-weight:800;color:var(--green)}
+.opt-note{font-size:12px;color:var(--mute);margin-top:8px;line-height:1.6}
+
+/* ── HIST ── */
+.hi{display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:1px solid #f0f4f8;font-size:12px}
 .hi:last-child{border:none}
-.ht{color:var(--sub);width:80px;flex-shrink:0}
-.hb{font-size:10px;padding:1px 7px;border-radius:8px;background:#dbeafe;color:#1d4ed8;font-weight:700;white-space:nowrap}
+.ht{color:var(--mute);width:82px;flex-shrink:0}
+.hb{font-size:12px;padding:2px 8px;border-radius:8px;
+  background:#dbeafe;color:#1d4ed8;font-weight:700;white-space:nowrap}
 
-/* ── PANEL ── */
+/* ── PANEL / CHART ── */
 .panel{display:none}.panel.on{display:block}
-
-/* ── CHART LAYOUT (prod tab) ── */
-.prod-charts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-@media(max-width:700px){.prod-charts{grid-template-columns:1fr}}
-
+.prod-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 canvas{display:block;width:100%!important}
 
+/* ── FOOTER ── */
+.footer{text-align:center;padding:12px;font-size:12px;color:var(--mute);
+  border-top:1px solid var(--border);margin-top:10px;background:var(--card)}
+
 /* ── RESPONSIVE ── */
-/* 1100px 이하: 입력컬럼 + 나머지 2열 */
-@media(max-width:1100px){
-  .pc-layout{grid-template-columns:minmax(260px,300px) 1fr}
-  .pc-layout > div:last-child{grid-column:1/-1}
+@media(max-width:1150px){
+  .pc-layout{grid-template-columns:minmax(280px,320px) 1fr}
+  .pc-layout>div:nth-child(3){grid-column:1/-1}
 }
-/* 800px 이하: 1열 */
-@media(max-width:800px){
+@media(max-width:820px){
   .wrap{padding:8px}
   .pc-layout{grid-template-columns:1fr!important}
-  .prod-charts{grid-template-columns:1fr}
-  .tabs .tab{padding:4px 10px;font-size:11px}
-  .topbar-brand{font-size:11px}
+  .prod-row{grid-template-columns:1fr}
+  .tab{padding:5px 12px;font-size:12px}
 }
 </style>
 </head>
@@ -217,14 +212,14 @@ canvas{display:block;width:100%!important}
 
 <!-- TOP BAR -->
 <div class="topbar">
-  <span class="topbar-brand">🏭 인시스 AI혁신 R&D센터 | 패드 탈수기 시뮬레이션</span>
-  <div class="topbar-right">
-    <div class="mode-toggle">
-      <button class="mode-btn on" id="modePC" onclick="setMode('pc')">🖥 PC</button>
-      <button class="mode-btn" id="modeMobile" onclick="setMode('mobile')">📱 모바일</button>
+  <b>🏭 인시스 AI혁신 R&D센터 | 패드 탈수기 시뮬레이션</b>
+  <div class="topbar-r">
+    <div class="mtoggle">
+      <button class="mbtn on" id="modePC" onclick="setMode('pc')">🖥 PC</button>
+      <button class="mbtn" id="modeMob" onclick="setMode('mob')">📱 모바일</button>
     </div>
     <span class="fbs ld" id="fbStatus">Firebase…</span>
-    <span style="color:rgba(255,255,255,0.85);font-size:11px">v3.2 | 900×600×3mm</span>
+    <span class="topbar-info">v4.0 | 900×600×3mm | 목표 2,000장/일</span>
   </div>
 </div>
 
@@ -235,9 +230,9 @@ canvas{display:block;width:100%!important}
   <button class="tab" onclick="showTab('hist',this)">📋 기록</button>
 </div>
 
-<!-- ====== SIM TAB ====== -->
+<!-- ======= SIM TAB ======= -->
 <div class="panel on" id="tab-sim">
-<div class="wrap" id="simWrap">
+<div class="wrap">
 
   <!-- PC LAYOUT -->
   <div class="pc-layout" id="pcLayout">
@@ -252,15 +247,25 @@ canvas{display:block;width:100%!important}
         <div class="ch">💧 패드 수분 조건</div>
         <div class="cb" id="sl-water-pc"></div>
       </div>
+      <!-- 탈수율 목표 -->
+      <div class="card" style="margin-bottom:10px">
+        <div class="ch" style="color:var(--green)">🎯 탈수율 목표 설정</div>
+        <div class="cb" id="sl-target-pc"></div>
+        <div class="cb" style="padding-top:0">
+          <button class="btn btn-run" style="background:var(--green);margin-bottom:6px" onclick="optimizeForTarget()">
+            ⚡ 목표 달성 자동 최적화
+          </button>
+          <div id="optResult-pc"></div>
+        </div>
+      </div>
       <button class="btn btn-run" onclick="runSim()">▶ 시뮬레이션 실행</button>
     </div>
 
-    <!-- COL2: 시각화+차트 -->
+    <!-- COL2: 시각화 + 차트 -->
     <div>
-      <!-- 드럼 + 게이지 -->
       <div class="card" style="margin-bottom:10px">
         <div class="ch">🎯 작동 시각화
-          <span id="statusBadge" class="sbadge si" style="margin-left:auto">대기</span>
+          <span id="statusBadge" class="badge b-idle" style="margin-left:auto">대기</span>
         </div>
         <div class="cb">
           <div class="drum-row">
@@ -268,41 +273,40 @@ canvas{display:block;width:100%!important}
               <div class="drum-inner" id="drumLbl">대기&#10;0 RPM</div>
             </div>
             <div class="gb-wrap">
-              <div class="gb-item">
-                <div class="gb-label-row">
-                  <span class="gb-label">회전수 (RPM)</span>
-                  <span class="gb-curval" id="curRpm">0 RPM</span>
-                </div>
-                <div class="gb"><div class="gbf g-rpm" id="rpmGauge" style="width:0%"></div></div>
+              <div class="gb-row">
+                <div class="gb-lr"><span class="gb-lbl">회전수</span><span class="gb-val" id="curRpm">0 RPM</span></div>
+                <div class="gb"><div class="gbf g-rpm" id="rpmGauge" style="width:0%"><span></span></div></div>
               </div>
-              <div class="gb-item">
-                <div class="gb-label-row">
-                  <span class="gb-label">진행 시간</span>
-                  <span class="gb-curval" id="curTime">0 초</span>
-                </div>
-                <div class="gb"><div class="gbf g-time" id="timeGauge" style="width:0%"></div></div>
+              <div class="gb-row">
+                <div class="gb-lr"><span class="gb-lbl">진행 시간</span><span class="gb-val" id="curTime">0 초</span></div>
+                <div class="gb"><div class="gbf g-time" id="timeGauge" style="width:0%"><span></span></div></div>
               </div>
-              <div class="gb-item">
-                <div class="gb-label-row">
-                  <span class="gb-label">탈수율</span>
-                  <span class="gb-curval" id="curWater">0.0 %</span>
-                </div>
-                <div class="gb"><div class="gbf g-water" id="waterGauge" style="width:0%"></div></div>
+              <div class="gb-row">
+                <div class="gb-lr"><span class="gb-lbl">탈수율</span><span class="gb-val" id="curWater">0.0 %</span></div>
+                <div class="gb"><div class="gbf g-water" id="waterGauge" style="width:0%"><span></span></div></div>
               </div>
             </div>
           </div>
-          <div style="display:flex;gap:5px;margin-top:8px">
+          <div style="display:flex;gap:6px;margin-top:9px">
             <button class="btn btn-play btn-sm" id="playBtn" onclick="playAnim()">▶ 애니메이션</button>
             <button class="btn btn-rst btn-sm" onclick="resetAnim()">↺ 초기화</button>
           </div>
         </div>
       </div>
 
-      <!-- RPM + 탈수율 차트 -->
+      <!-- RPM + 탈수율 + 목표선 차트 -->
       <div class="card" style="margin-bottom:10px">
-        <div class="ch">📈 RPM 프로파일 · 탈수율 곡선</div>
-        <div class="cb" style="padding:8px 10px">
-          <canvas id="rpmChart" height="150"></canvas>
+        <div class="ch">📈 RPM · 탈수율 · 목표선</div>
+        <div class="cb" style="padding:8px 12px">
+          <canvas id="rpmChart" height="170"></canvas>
+        </div>
+      </div>
+
+      <!-- 최적화 파라미터 비교 차트 -->
+      <div class="card" style="margin-bottom:10px">
+        <div class="ch">⚡ 최적화 파라미터 비교</div>
+        <div class="cb" style="padding:8px 12px">
+          <canvas id="optChart" height="140"></canvas>
         </div>
       </div>
 
@@ -310,7 +314,7 @@ canvas{display:block;width:100%!important}
       <div class="card">
         <div class="ch">⏱️ 단계별 타임라인</div>
         <div class="cb" id="timeline">
-          <span style="color:var(--sub);font-size:11px">시뮬레이션 실행 후 표시됩니다</span>
+          <span style="color:var(--mute);font-size:12px">시뮬레이션 실행 후 표시됩니다</span>
         </div>
       </div>
     </div>
@@ -320,65 +324,70 @@ canvas{display:block;width:100%!important}
       <div class="card" style="margin-bottom:10px">
         <div class="ch">📋 사이클 결과</div>
         <div class="cb"><div class="ri-grid" id="cycleResult">
-          <span style="color:var(--sub);font-size:11px">실행 후 표시</span>
+          <span style="color:var(--mute);font-size:12px">실행 후 표시</span>
         </div></div>
       </div>
       <div class="card">
         <div class="ch">💧 탈수 분석</div>
         <div class="cb">
           <div class="water-wrap">
-            <div class="water-tank">
-              <div class="water-fill" id="waterFill" style="height:65%"></div>
-              <div class="water-tank-lbl" id="waterTankLbl">65%<br>수분</div>
+            <div class="wtank">
+              <div class="wfill" id="waterFill" style="height:65%"></div>
+              <div class="wlbl" id="waterTankLbl">65%<br>탈수</div>
             </div>
-            <div class="water-rows" id="waterRows">
-              <span style="color:var(--sub);font-size:11px">실행 후 표시</span>
+            <div class="wrows" id="waterRows">
+              <span style="color:var(--mute);font-size:12px">실행 후 표시</span>
             </div>
           </div>
-          <div style="margin-top:7px;font-size:10px;color:var(--sub);line-height:1.5" id="waterNote" style="font-size:10px;color:var(--sub);line-height:1.5;margin-top:7px"></div>
+          <div class="note" id="waterNote" style="margin-top:8px"></div>
         </div>
       </div>
     </div>
 
   </div><!-- /pc-layout -->
 
-  <!-- MOBILE LAYOUT (hidden by default) -->
-  <div class="mobile-layout" id="mobileLayout" style="display:none">
+  <!-- MOBILE LAYOUT -->
+  <div class="mob-layout" id="mobLayout" style="display:none">
     <div class="card">
       <div class="ch">⚙️ 탈수기 사양</div>
-      <div class="cb"><div class="sr-mobile" id="sl-mech-mob"></div></div>
+      <div class="cb"><div class="sr-mob" id="sl-mech-mob"></div></div>
     </div>
     <div class="card">
       <div class="ch">💧 수분 조건</div>
-      <div class="cb"><div class="sr-mobile" id="sl-water-mob"></div></div>
+      <div class="cb"><div class="sr-mob" id="sl-water-mob"></div></div>
+    </div>
+    <div class="card">
+      <div class="ch" style="color:var(--green)">🎯 탈수율 목표</div>
+      <div class="cb" id="sl-target-mob"></div>
+      <div class="cb" style="padding-top:0">
+        <button class="btn btn-run" style="background:var(--green);margin-bottom:6px" onclick="optimizeForTarget()">⚡ 자동 최적화</button>
+        <div id="optResult-mob"></div>
+      </div>
     </div>
     <button class="btn btn-run" onclick="runSim()">▶ 시뮬레이션 실행</button>
-    <!-- 모바일: 결과 카드들 재사용 -->
     <div class="card">
       <div class="ch">🎯 작동 시각화
-        <span id="statusBadgeMob" class="sbadge si" style="margin-left:auto">대기</span>
+        <span id="statusBadgeMob" class="badge b-idle" style="margin-left:auto">대기</span>
       </div>
       <div class="cb">
         <div class="drum-row">
-          <div class="drum" id="drumElMob">
-            <div class="drum-inner" id="drumLblMob">대기&#10;0 RPM</div>
-          </div>
+          <div class="drum" id="drumElMob"><div class="drum-inner" id="drumLblMob">대기&#10;0 RPM</div></div>
           <div class="gb-wrap">
-            <div class="gb-item">
-              <div class="gb-label-row"><span class="gb-label">RPM</span><span class="gb-curval" id="curRpmMob">0 RPM</span></div>
-              <div class="gb"><div class="gbf g-rpm" id="rpmGaugeMob" style="width:0%"></div></div>
+            <div class="gb-row">
+              <div class="gb-lr"><span class="gb-lbl">RPM</span><span class="gb-val" id="curRpmMob">0 RPM</span></div>
+              <div class="gb"><div class="gbf g-rpm" id="rpmGaugeMob" style="width:0%"><span></span></div></div>
             </div>
-            <div class="gb-item">
-              <div class="gb-label-row"><span class="gb-label">진행</span><span class="gb-curval" id="curTimeMob">0 초</span></div>
-              <div class="gb"><div class="gbf g-time" id="timeGaugeMob" style="width:0%"></div></div>
+            <div class="gb-row">
+              <div class="gb-lr"><span class="gb-lbl">진행</span><span class="gb-val" id="curTimeMob">0 초</span></div>
+              <div class="gb"><div class="gbf g-time" id="timeGaugeMob" style="width:0%"><span></span></div></div>
             </div>
-            <div class="gb-item">
-              <div class="gb-label-row"><span class="gb-label">탈수율</span><span class="gb-curval" id="curWaterMob">0.0 %</span></div>
-              <div class="gb"><div class="gbf g-water" id="waterGaugeMob" style="width:0%"></div></div>
+            <div class="gb-row">
+              <div class="gb-lr"><span class="gb-lbl">탈수율</span><span class="gb-val" id="curWaterMob">0.0 %</span></div>
+              <div class="gb"><div class="gbf g-water" id="waterGaugeMob" style="width:0%"><span></span></div></div>
             </div>
           </div>
         </div>
-        <div style="display:flex;gap:5px;margin-top:8px">
+        <div style="display:flex;gap:6px;margin-top:9px">
           <button class="btn btn-play btn-sm" id="playBtnMob" onclick="playAnim()">▶ 애니메이션</button>
           <button class="btn btn-rst btn-sm" onclick="resetAnim()">↺</button>
         </div>
@@ -387,63 +396,65 @@ canvas{display:block;width:100%!important}
     <div class="card">
       <div class="ch">📋 사이클 결과</div>
       <div class="cb"><div class="ri-grid" id="cycleResultMob">
-        <span style="color:var(--sub);font-size:11px">실행 후 표시</span>
+        <span style="color:var(--mute);font-size:12px">실행 후 표시</span>
       </div></div>
     </div>
     <div class="card">
       <div class="ch">💧 탈수 분석</div>
       <div class="cb">
         <div class="water-wrap">
-          <div class="water-tank">
-            <div class="water-fill" id="waterFillMob" style="height:65%"></div>
-            <div class="water-tank-lbl" id="waterTankLblMob">65%<br>수분</div>
-          </div>
-          <div class="water-rows" id="waterRowsMob">
-            <span style="color:var(--sub);font-size:11px">실행 후 표시</span>
+          <div class="wtank"><div class="wfill" id="waterFillMob" style="height:65%"></div>
+            <div class="wlbl" id="waterTankLblMob">65%<br>탈수</div></div>
+          <div class="wrows" id="waterRowsMob">
+            <span style="color:var(--mute);font-size:12px">실행 후 표시</span>
           </div>
         </div>
       </div>
     </div>
     <div class="card">
-      <div class="ch">📈 RPM · 탈수율 그래프</div>
-      <div class="cb" style="padding:8px 10px"><canvas id="rpmChartMob" height="150"></canvas></div>
+      <div class="ch">📈 RPM · 탈수율 · 목표선</div>
+      <div class="cb" style="padding:8px 12px"><canvas id="rpmChartMob" height="170"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="ch">⚡ 최적화 파라미터 비교</div>
+      <div class="cb" style="padding:8px 12px"><canvas id="optChartMob" height="140"></canvas></div>
     </div>
     <div class="card">
       <div class="ch">⏱️ 단계별 타임라인</div>
       <div class="cb" id="timelineMob">
-        <span style="color:var(--sub);font-size:11px">실행 후 표시</span>
+        <span style="color:var(--mute);font-size:12px">실행 후 표시</span>
       </div>
     </div>
-  </div><!-- /mobile-layout -->
+  </div>
 
 </div><!-- /wrap -->
 </div><!-- /sim tab -->
 
-<!-- ====== PROD TAB ====== -->
+<!-- ======= PROD TAB ======= -->
 <div class="panel" id="tab-prod">
-<div class="wrap" id="prodWrap">
-  <div class="prod-charts">
+<div class="wrap">
+  <div class="prod-row">
     <div class="card">
       <div class="ch">📊 8시간 생산성 요약</div>
       <div class="cb">
         <div class="p4" id="prodGrid"><span style="color:var(--mute)">시뮬레이션 먼저 실행</span></div>
         <div id="prodAlert"></div>
-        <div id="prodNote" style="font-size:10px;color:var(--sub);margin-top:6px;line-height:1.6"></div>
+        <div class="note" id="prodNote"></div>
       </div>
     </div>
     <div class="card">
       <div class="ch">📉 시간별 누적 처리량</div>
-      <div class="cb" style="padding:8px 10px"><canvas id="prodChart" height="160"></canvas></div>
+      <div class="cb" style="padding:8px 12px"><canvas id="prodChart" height="170"></canvas></div>
     </div>
   </div>
   <div class="card" style="margin-top:10px">
-    <div class="ch">📐 입력 파라미터 레이더 차트</div>
-    <div class="cb" style="padding:8px 10px"><canvas id="radarChart" height="220"></canvas></div>
+    <div class="ch">📐 파라미터 레이더</div>
+    <div class="cb" style="padding:8px 12px"><canvas id="radarChart" height="230"></canvas></div>
   </div>
 </div>
 </div>
 
-<!-- ====== HIST TAB ====== -->
+<!-- ======= HIST TAB ======= -->
 <div class="panel" id="tab-hist">
 <div class="wrap">
   <div class="card">
@@ -455,136 +466,102 @@ canvas{display:block;width:100%!important}
 </div>
 </div>
 
-<!-- ===== FIREBASE ===== -->
+<div class="footer">담당부서: 인시스 AI혁신 R&D센터 &nbsp;|&nbsp; ys.kim@in-sys.co.kr &nbsp;|&nbsp; v4.0</div>
+
+<!-- FIREBASE -->
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import{getDatabase,ref,push,onValue,set}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-const cfg={
-  apiKey:"AIzaSyDummy_replace",
-  databaseURL:"https://insys-gantt-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId:"insys-gantt"
-};
+const cfg={apiKey:"AIzaSyDummy",databaseURL:"https://insys-gantt-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"insys-gantt"};
 let db=null,hRef=null;
 try{
-  const app=initializeApp(cfg);
-  db=getDatabase(app);hRef=ref(db,'pad_dehydrator');
+  const app=initializeApp(cfg);db=getDatabase(app);hRef=ref(db,'pad_dh');
   document.getElementById('fbStatus').textContent='Firebase 연결됨';
   document.getElementById('fbStatus').className='fbs ok';
-  loadHist();
+  loadH();
 }catch(e){
   document.getElementById('fbStatus').textContent='로컬 저장';
   document.getElementById('fbStatus').className='fbs err';
-  renderHist(JSON.parse(localStorage.getItem('dh3_hist')||'[]'));
+  renderH(JSON.parse(localStorage.getItem('dh4')||'[]'));
 }
-function loadHist(){
-  if(!hRef)return;
-  onValue(hRef,s=>{
-    const d=s.val();
-    renderHist(d?Object.entries(d).reverse().slice(0,50).map(([k,v])=>({id:k,...v})):[]);
-  },()=>renderHist(JSON.parse(localStorage.getItem('dh3_hist')||'[]')));
-}
-function renderHist(list){
+function loadH(){if(!hRef)return;onValue(hRef,s=>{const d=s.val();renderH(d?Object.entries(d).reverse().slice(0,50).map(([k,v])=>({id:k,...v})):[]);},()=>renderH(JSON.parse(localStorage.getItem('dh4')||'[]')));}
+function renderH(list){
   const el=document.getElementById('histList');
-  if(!list||!list.length){el.innerHTML='<span style="color:var(--mute)">저장된 기록 없음</span>';return;}
-  el.innerHTML=list.map(d=>`
-    <div class="hi">
-      <span class="ht">${d.dt||''}</span>
-      <span style="flex:1;color:var(--text)">
-        <b>${d.batch}장/회</b> · ${d.rpm}RPM · 사이클 <b>${d.cyc}s</b>
-        · 시간당 <b>${d.ph}장</b> · 탈수율 <b>${d.wr}%</b>
-        · 잔류수분 <b>${d.fm}%</b>
-      </span>
-      <span class="hb">${d.ok?'✅달성':'❌미달'}</span>
-    </div>`).join('');
+  if(!list||!list.length){el.innerHTML='<span style="color:var(--mute)">기록 없음</span>';return;}
+  el.innerHTML=list.map(d=>`<div class="hi"><span class="ht">${d.dt||''}</span><span style="flex:1"><b>${d.batch}장/회</b> · ${d.rpm}RPM · 사이클<b>${d.cyc}s</b> · <b>${d.ph}장/h</b> · 탈수<b>${d.wr}%</b> · 목표<b>${d.tgt}%</b></span><span class="hb">${d.ok?'✅달성':'❌미달'}</span></div>`).join('');
 }
-window._fbSave=async function(d){
-  if(hRef){try{await push(hRef,d);return;}catch(e){}}
-  const a=JSON.parse(localStorage.getItem('dh3_hist')||'[]');
-  a.unshift({...d,id:Date.now()});
-  localStorage.setItem('dh3_hist',JSON.stringify(a.slice(0,60)));
-  renderHist(a.slice(0,50));
-};
-window._fbClear=async function(){
-  if(hRef){try{await set(hRef,null);}catch(e){}}
-  localStorage.removeItem('dh3_hist');
-  document.getElementById('histList').innerHTML='<span style="color:var(--mute)">기록 없음</span>';
-};
+window._fbSave=async function(d){if(hRef){try{await push(hRef,d);return;}catch(e){}}const a=JSON.parse(localStorage.getItem('dh4')||'[]');a.unshift({...d,id:Date.now()});localStorage.setItem('dh4',JSON.stringify(a.slice(0,60)));renderH(a.slice(0,50));};
+window._fbClear=async function(){if(hRef){try{await set(hRef,null);}catch(e){}}localStorage.removeItem('dh4');document.getElementById('histList').innerHTML='<span style="color:var(--mute)">기록 없음</span>';};
 </script>
 
-<!-- ===== MAIN SCRIPT ===== -->
 <script>
+const FONT='Noto Sans KR'; // canvas 폰트
+const F12=`12px ${FONT}`, F13=`13px ${FONT}`, F12B=`bold 12px ${FONT}`, F13B=`bold 13px ${FONT}`;
+
 /* ── 슬라이더 정의 ── */
 const MECH=[
-  {id:'maxRpm',  label:'최고 RPM',    min:300,  max:2000, val:800,  step:50,  unit:'RPM'},
-  {id:'drumDia', label:'드럼 직경',   min:600,  max:2000, val:1000, step:50,  unit:'mm'},
-  {id:'batchSz', label:'1회 투입',    min:1,    max:60,   val:10,   step:1,   unit:'장'},
-  {id:'accel',   label:'가속 시간',   min:5,    max:120,  val:25,   step:1,   unit:'초'},
-  {id:'peak',    label:'최고속 유지', min:10,   max:300,  val:45,   step:5,   unit:'초'},
-  {id:'brake',   label:'감속 시간',   min:5,    max:120,  val:20,   step:1,   unit:'초'},
-  {id:'loadT',   label:'투입/인출',   min:10,   max:120,  val:30,   step:1,   unit:'초'},
-  {id:'padWt',   label:'패드 무게',   min:80,   max:600,  val:180,  step:10,  unit:'g'},
+  {id:'maxRpm', label:'최고 RPM',    min:300, max:2000,val:800, step:50, unit:'RPM'},
+  {id:'drumDia',label:'드럼 직경',   min:600, max:2000,val:1000,step:50, unit:'mm'},
+  {id:'batchSz',label:'1회 투입',    min:1,   max:60,  val:10,  step:1,  unit:'장'},
+  {id:'accel',  label:'가속 시간',   min:5,   max:120, val:25,  step:1,  unit:'초'},
+  {id:'peak',   label:'최고속 유지', min:10,  max:300, val:45,  step:5,  unit:'초'},
+  {id:'brake',  label:'감속 시간',   min:5,   max:120, val:20,  step:1,  unit:'초'},
+  {id:'loadT',  label:'투입/인출',   min:10,  max:120, val:30,  step:1,  unit:'초'},
+  {id:'padWt',  label:'패드 무게',   min:80,  max:600, val:180, step:10, unit:'g'},
 ];
 const WATER=[
-  {id:'initM',   label:'초기 수분율', min:20,   max:95,   val:65,   step:1,   unit:'%'},
-  {id:'padThk',  label:'패드 두께',   min:2,    max:10,   val:3,    step:0.5, unit:'mm'},
-  {id:'corrDep', label:'골 깊이',     min:0.3,  max:4,    val:1.5,  step:0.1, unit:'mm'},
-  {id:'fbrDens', label:'섬유 밀도',   min:100,  max:600,  val:280,  step:10,  unit:'g/m²'},
+  {id:'initM',  label:'초기 수분율', min:20,  max:95,  val:65,  step:1,  unit:'%'},
+  {id:'padThk', label:'패드 두께',   min:2,   max:10,  val:3,   step:.5, unit:'mm'},
+  {id:'corrDep',label:'골 깊이',     min:.3,  max:4,   val:1.5, step:.1, unit:'mm'},
+  {id:'fbrDens',label:'섬유 밀도',   min:100, max:600, val:280, step:10, unit:'g/m²'},
+];
+const TARGET=[
+  {id:'targetW',label:'탈수율 목표', min:10,  max:95,  val:70,  step:1,  unit:'%', cls:'target-sr'},
 ];
 
-/* ── 슬라이더 렌더 (PC) ── */
-function buildSliderPC(arr,containerId){
-  document.getElementById(containerId).innerHTML=arr.map(s=>`
-    <div class="sr">
+function buildPC(arr,cid){
+  document.getElementById(cid).innerHTML=arr.map(s=>`
+    <div class="sr${s.cls?' '+s.cls:''}">
       <label>${s.label}</label>
-      <input type="range" id="${s.id}_r" min="${s.min}" max="${s.max}" value="${s.val}" step="${s.step}"
-        oninput="syncVal('${s.id}',this.value)">
-      <div class="sv-box">
-        <input class="sv-num" type="number" id="${s.id}_n" value="${s.val}" min="${s.min}" max="${s.max}" step="${s.step}"
-          oninput="syncRange('${s.id}',this.value)">
-      </div>
+      <input type="range" id="${s.id}_r" min="${s.min}" max="${s.max}" value="${s.val}" step="${s.step}" oninput="syncV('${s.id}',this.value)">
+      <div class="svbox"><input class="svn" type="number" id="${s.id}_n" value="${s.val}" min="${s.min}" max="${s.max}" step="${s.step}" oninput="syncR('${s.id}',this.value)"></div>
       <span class="su">${s.unit}</span>
     </div>`).join('');
 }
-
-/* ── 슬라이더 렌더 (Mobile) ── */
-function buildSliderMob(arr,containerId){
-  document.getElementById(containerId).innerHTML=arr.map(s=>`
+function buildMob(arr,cid){
+  document.getElementById(cid).innerHTML=arr.map(s=>`
     <div class="sr-m">
       <label>${s.label}</label>
-      <input type="range" id="${s.id}_rm" min="${s.min}" max="${s.max}" value="${s.val}" step="${s.step}"
-        oninput="syncVal('${s.id}',this.value)">
-      <div class="val-row">
-        <input class="sv-num" type="number" id="${s.id}_nm" value="${s.val}" min="${s.min}" max="${s.max}" step="${s.step}"
-          oninput="syncRange('${s.id}',this.value)">
-        <span class="su">${s.unit}</span>
-      </div>
+      <input type="range" id="${s.id}_rm" min="${s.min}" max="${s.max}" value="${s.val}" step="${s.step}" oninput="syncV('${s.id}',this.value)">
+      <div class="vrow"><input class="svn" type="number" id="${s.id}_nm" value="${s.val}" min="${s.min}" max="${s.max}" step="${s.step}" oninput="syncR('${s.id}',this.value)"><span class="su">${s.unit}</span></div>
     </div>`).join('');
 }
 
-function syncVal(id,v){
-  ['_r','_rm'].forEach(s=>{const el=document.getElementById(id+s);if(el)el.value=v;});
-  ['_n','_nm'].forEach(s=>{const el=document.getElementById(id+s);if(el)el.value=v;});
-  if(window.simData) runSim(true);
+function syncV(id,v){
+  ['_r','_rm'].forEach(s=>{const e=document.getElementById(id+s);if(e)e.value=v;});
+  ['_n','_nm'].forEach(s=>{const e=document.getElementById(id+s);if(e)e.value=v;});
+  if(window.simData)runSim(true);
 }
-function syncRange(id,v){
-  ['_r','_rm'].forEach(s=>{const el=document.getElementById(id+s);if(el)el.value=v;});
-  ['_n','_nm'].forEach(s=>{const el=document.getElementById(id+s);if(el&&el!==event.target)el.value=v;});
-  if(window.simData) runSim(true);
+function syncR(id,v){
+  ['_r','_rm'].forEach(s=>{const e=document.getElementById(id+s);if(e)e.value=v;});
+  ['_n','_nm'].forEach(s=>{const e=document.getElementById(id+s);if(e&&e!==event.target)e.value=v;});
+  if(window.simData)runSim(true);
 }
-function gv(id){
-  const el=document.getElementById(id+'_n')||document.getElementById(id+'_r');
-  return el?parseFloat(el.value)||0:0;
-}
+function gv(id){const e=document.getElementById(id+'_n')||document.getElementById(id+'_r');return e?parseFloat(e.value)||0:0;}
 
-buildSliderPC(MECH,'sl-mech-pc');
-buildSliderPC(WATER,'sl-water-pc');
-buildSliderMob(MECH,'sl-mech-mob');
-buildSliderMob(WATER,'sl-water-mob');
+buildPC(MECH,'sl-mech-pc'); buildPC(WATER,'sl-water-pc'); buildPC(TARGET,'sl-target-pc');
+buildMob(MECH,'sl-mech-mob'); buildMob(WATER,'sl-water-mob');
+// 모바일 목표 슬라이더
+document.getElementById('sl-target-mob').innerHTML=`
+  <div class="sr-m">
+    <label style="color:var(--green);font-weight:800">🎯 탈수율 목표</label>
+    <input type="range" id="targetW_rm" min="10" max="95" value="70" step="1" oninput="syncV('targetW',this.value)">
+    <div class="vrow"><input class="svn" type="number" id="targetW_nm" value="70" min="10" max="95" style="border-color:#16a34a;color:var(--green)" oninput="syncR('targetW',this.value)"><span class="su">%</span></div>
+  </div>`;
 
-/* ── 물리 계산: 탈수율 ── */
+/* ── 물리 계산 ── */
 function calcDW(maxRpm,drumDia,peakSec,initM,padThk,corrDep,fbrDens){
-  const r=drumDia/2/1000;
-  const omega=maxRpm*2*Math.PI/60;
+  const r=drumDia/2/1000, omega=maxRpm*2*Math.PI/60;
   const G=omega*omega*r/9.81;
   const corrF=Math.min(1.5,1+corrDep/padThk*0.6);
   const effectG=G*corrF;
@@ -593,17 +570,91 @@ function calcDW(maxRpm,drumDia,peakSec,initM,padThk,corrDep,fbrDens){
   const k=0.009*densRes;
   const Sw=S_inf*(1-Math.exp(-k*Math.pow(effectG,0.62)*peakSec));
   const finalM=Math.max(2,initM-Sw*initM/100);
+  return{G:G.toFixed(1),effectG:effectG.toFixed(1),corrF:corrF.toFixed(2),
+    Sw:Math.min(95,Sw).toFixed(1),initM:initM.toFixed(1),finalM:finalM.toFixed(1),
+    removed:(initM-finalM).toFixed(1),tipSpeed:(omega*r).toFixed(1)};
+}
+
+/* ── 역산: 목표 탈수율을 위한 최적 파라미터 계산 ── */
+function calcOptimal(targetW, initM, padThk, corrDep, fbrDens, curRpm, curDia, curBatch, curAccel, curBrake, curLoadT){
+  const corrF=Math.min(1.5,1+corrDep/padThk*0.6);
+  const densRes=Math.max(0.4,1-(fbrDens-200)/700);
+  const S_inf=Math.min(93,initM*0.96);
+  const k=0.009*densRes;
+  // Suter 역산: peakSec = -ln(1-Sw/S_inf) / (k * G^0.62)
+  const SwNeed=Math.min(targetW, S_inf*0.99);
+  if(SwNeed<=0) return null;
+  const lnPart=-Math.log(1-SwNeed/S_inf);
+
+  // 전략1: 현재 RPM 유지, peakSec만 늘림
+  const r1=curDia/2/1000, omega1=curRpm*2*Math.PI/60;
+  const G1=omega1*omega1*r1/9.81*corrF;
+  const peakNeed1=G1>0 ? lnPart/(k*Math.pow(G1,0.62)) : 999;
+
+  // 전략2: peak 현재 유지, RPM 역산
+  const peakCur=gv('peak');
+  // G^0.62 = lnPart / (k * peak)  →  G = (lnPart/(k*peak))^(1/0.62)
+  const GneedRaw=peakCur>0 ? Math.pow(lnPart/(k*peakCur),1/0.62) : 9999;
+  const Gneed=GneedRaw/corrF;
+  // G = omega²r/9.81 → omega=sqrt(G*9.81/r) → rpm=omega*60/(2π)
+  const rpmNeed=Math.sqrt(Gneed*9.81/r1)*60/(2*Math.PI);
+
+  // 전략3: 복합 최적 (RPM 10% 증가 + peak 조정)
+  const rpmOpt=Math.min(2000, Math.round(curRpm*1.1/50)*50);
+  const omegaOpt=rpmOpt*2*Math.PI/60;
+  const GOpt=omegaOpt*omegaOpt*r1/9.81*corrF;
+  const peakOpt=GOpt>0 ? lnPart/(k*Math.pow(GOpt,0.62)) : 999;
+
   return{
-    G:G.toFixed(1),effectG:effectG.toFixed(1),corrF:corrF.toFixed(2),
-    Sw:Math.min(95,Sw).toFixed(1),
-    initM:initM.toFixed(1),finalM:finalM.toFixed(1),
-    removed:(initM-finalM).toFixed(1),
-    tipSpeed:(omega*r).toFixed(1)
+    // 전략1: 현재RPM+peak 연장
+    s1:{rpm:curRpm, peak:Math.ceil(peakNeed1), cyc:Math.ceil(peakNeed1)+curAccel+curBrake+curLoadT, label:'최고속 연장'},
+    // 전략2: RPM 증가
+    s2:{rpm:Math.min(2000,Math.ceil(rpmNeed/50)*50), peak:peakCur, cyc:peakCur+curAccel+curBrake+curLoadT, label:'RPM 증가'},
+    // 전략3: 복합
+    s3:{rpm:rpmOpt, peak:Math.ceil(peakOpt), cyc:Math.ceil(peakOpt)+curAccel+curBrake+curLoadT, label:'복합 최적'},
+    targetW, corrF:corrF.toFixed(2), lnPart:lnPart.toFixed(3)
   };
 }
 
-let simData=null,animFrame=null,animStart=null;
-let currentMode='pc';
+let simData=null, optData=null, animFrame=null, animStart=null, currentMode='pc';
+
+/* ── 자동 최적화 실행 ── */
+function optimizeForTarget(){
+  const targetW=gv('targetW');
+  const initM=gv('initM'),padThk=gv('padThk'),corrDep=gv('corrDep'),fbrDens=gv('fbrDens');
+  const curRpm=gv('maxRpm'),curDia=gv('drumDia'),curBatch=gv('batchSz');
+  const curAccel=gv('accel'),curBrake=gv('brake'),curLoadT=gv('loadT');
+  const opt=calcOptimal(targetW,initM,padThk,corrDep,fbrDens,curRpm,curDia,curBatch,curAccel,curBrake,curLoadT);
+  if(!opt){alert('목표 탈수율이 물리적 한계를 초과합니다.');return;}
+  optData=opt;
+
+  // 전략3(복합 최적)을 기본값으로 슬라이더에 반영
+  const best=opt.s3;
+  syncV('maxRpm', best.rpm);
+  syncV('peak', best.peak);
+
+  const html=renderOptResult(opt);
+  ['optResult-pc','optResult-mob'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=html;});
+  renderOptChart('optChart');
+  if(currentMode==='mob') renderOptChart('optChartMob');
+  runSim(true);
+}
+
+function renderOptResult(opt){
+  const perH=(cyc,batch)=>Math.floor(3600/cyc*batch);
+  const batch=gv('batchSz');
+  const rows=[
+    {l:'전략',v:opt.s3.label,c:''},
+    {l:'최적 RPM',v:opt.s3.rpm+' RPM',c:'g'},
+    {l:'최고속 유지',v:opt.s3.peak+' 초',c:'g'},
+    {l:'1사이클',v:opt.s3.cyc+' 초',c:''},
+    {l:'시간당 처리',v:perH(opt.s3.cyc,batch).toLocaleString()+' 장/h',c:'g'},
+    {l:'목표 탈수율',v:opt.targetW+'%',c:'a'},
+  ];
+  return`<div class="opt-grid">${rows.map(r=>`<div class="opt-item"><span class="ok-lbl">${r.l}</span><span class="ok-val ${r.c}">${r.v}</span></div>`).join('')}</div>
+  <div class="opt-note">※ 3가지 전략 중 복합 최적(RPM+유지시간 동시 조정)이 슬라이더에 반영됨<br>
+  목표 탈수율 ${opt.targetW}% 달성을 위한 최소 조건 · 현장 실측 후 조정 권고</div>`;
+}
 
 /* ── 시뮬레이션 실행 ── */
 function runSim(silent=false){
@@ -611,167 +662,223 @@ function runSim(silent=false){
   const accel=gv('accel'),peak=gv('peak'),brake=gv('brake'),loadT=gv('loadT');
   const padWt=gv('padWt'),initM=gv('initM');
   const padThk=gv('padThk'),corrDep=gv('corrDep'),fbrDens=gv('fbrDens');
-
+  const targetW=gv('targetW');
   const cyc=accel+peak+brake+loadT;
-  const r=drumDia/2/1000;
-  const omega=maxRpm*2*Math.PI/60;
-  const G=omega*omega*r/9.81;
-  const tipSpeed=omega*r;
+  const r=drumDia/2/1000, omega=maxRpm*2*Math.PI/60;
+  const G=omega*omega*r/9.81, tipSpeed=omega*r;
   const batchWt=batch*padWt;
   const perHour=Math.floor(3600/cyc*batch);
-  const per8h=perHour*8;
-  const ok=per8h>=2000;
+  const per8h=perHour*8, ok=per8h>=2000;
   const dw=calcDW(maxRpm,drumDia,peak,initM,padThk,corrDep,fbrDens);
+  const targetOk=parseFloat(dw.Sw)>=targetW;
+  simData={maxRpm,drumDia,batch,accel,peak,brake,loadT,padWt,cyc,batchWt,perHour,per8h,ok,G,tipSpeed,dw,initM,peak,targetW,targetOk};
 
-  simData={maxRpm,drumDia,batch,accel,peak,brake,loadT,padWt,cyc,batchWt,perHour,per8h,ok,G,tipSpeed,dw,initM,peak};
-
-  /* 사이클 결과 */
   const riHTML=[
     {l:'사이클 시간',v:cyc,u:'초'},
     {l:'1회 투입',v:batch,u:'장'},
-    {l:'시간당 처리',v:perHour.toLocaleString(),u:'장/h'},
+    {l:'시간당',v:perHour.toLocaleString(),u:'장/h'},
     {l:'8h 처리량',v:per8h.toLocaleString(),u:'장'},
     {l:'원심가속도',v:G.toFixed(1),u:'G'},
     {l:'팁 속도',v:tipSpeed.toFixed(1),u:'m/s'},
     {l:'적재 무게',v:batchWt.toLocaleString(),u:'g'},
-    {l:'목표달성',v:ok?'✅':'❌',u:ok?'달성':'미달'},
-  ].map(i=>`<div class="ri"><div class="rl">${i.l}</div><div class="rv">${i.v}<span class="ru">${i.u}</span></div></div>`).join('');
+    {l:'목표 달성',v:ok?'✅':'❌',u:ok?'달성':'미달'},
+  ].map(i=>`<div class="ri"><div class="rl">${i.l}</div><div class="rv">${i.v}<span class="ru"> ${i.u}</span></div></div>`).join('');
+  ['cycleResult','cycleResultMob'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=riHTML;});
 
-  document.getElementById('cycleResult').innerHTML=riHTML;
-  if(document.getElementById('cycleResultMob')) document.getElementById('cycleResultMob').innerHTML=riHTML;
-
-  /* 탈수 결과 */
   const Sw=parseFloat(dw.Sw);
-  const waterHTML=[
-    {k:'초기 수분율',v:dw.initM+'%',cls:''},
-    {k:'최종 수분율',v:dw.finalM+'%',cls:'red'},
-    {k:'제거 수분',v:dw.removed+'%p',cls:''},
-    {k:'탈수율',v:dw.Sw+'%',cls:'green'},
-    {k:'유효 G',v:dw.effectG+'G',cls:''},
-    {k:'골 보정계수',v:'×'+dw.corrF,cls:''},
-  ].map(r=>`<div class="water-row"><span class="wk">${r.k}</span><span class="wv ${r.cls}">${r.v}</span></div>`).join('');
-
+  const wHTML=[
+    {k:'초기 수분율',v:dw.initM+'%',c:''},
+    {k:'최종 수분율',v:dw.finalM+'%',c:'r'},
+    {k:'제거 수분',v:dw.removed+'%p',c:''},
+    {k:'탈수율',v:dw.Sw+'%',c:'g'},
+    {k:'목표 탈수율',v:targetW+'%',c:targetOk?'g':'r'},
+    {k:'목표 달성',v:targetOk?'✅달성':'❌미달',c:targetOk?'g':'r'},
+    {k:'유효 G',v:dw.effectG+'G',c:''},
+    {k:'골 보정',v:'×'+dw.corrF,c:''},
+  ].map(r=>`<div class="wrow"><span class="wk">${r.k}</span><span class="wv ${r.c}">${r.v}</span></div>`).join('');
   ['waterFill','waterFillMob'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.height=Sw+'%';});
   ['waterTankLbl','waterTankLblMob'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=Sw+'%<br>탈수';});
-  ['waterRows','waterRowsMob'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=waterHTML;});
+  ['waterRows','waterRowsMob'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=wHTML;});
+  const wn=document.getElementById('waterNote');
+  if(wn)wn.textContent=`※ 골판지 채널 보정 ×${dw.corrF} · G${dw.effectG} · Suter 모델 · 실측 ±5~10%p 가능`;
 
-  const note=`※ 골판지 채널 원심 통로 보정 ×${dw.corrF} 적용 · G${dw.effectG} · Suter 모델 · 실측±5~10%p 가능`;
-  const wn=document.getElementById('waterNote');if(wn)wn.textContent=note;
-
-  /* 타임라인 */
   const hl=loadT/2;
   const tlHTML=[
-    {dot:'td-a',t:`📥 패드 ${batch}장 투입`,d:`적재 ${batchWt.toLocaleString()}g · 초기 수분 ${initM}%`,s:hl},
-    {dot:'td-a',t:`⬆️ 가속`,d:`0→${maxRpm} RPM · G=${G.toFixed(1)} · 팁속 ${tipSpeed.toFixed(1)}m/s`,s:accel},
-    {dot:'td-p',t:`💫 최고속 유지`,d:`${maxRpm} RPM × ${peak}s · 탈수율 ${dw.Sw}% 달성 · 유효G ${dw.effectG}`,s:peak},
-    {dot:'td-b',t:`⛔ 감속·정지`,d:`${maxRpm}→0 RPM · 브레이크 ${brake}s`,s:brake},
+    {dot:'td-a',t:`📥 패드 ${batch}장 투입`,d:`${batchWt.toLocaleString()}g · 초기 수분 ${initM}%`,s:hl},
+    {dot:'td-a',t:`⬆️ 가속`,d:`0→${maxRpm} RPM · G=${G.toFixed(1)} · ${tipSpeed.toFixed(1)}m/s`,s:accel},
+    {dot:'td-p',t:`💫 최고속 유지`,d:`${maxRpm} RPM × ${peak}s · 탈수율 ${dw.Sw}% (목표 ${targetW}%) ${targetOk?'✅':'❌'}`,s:peak},
+    {dot:'td-b',t:`⛔ 감속·정지`,d:`${maxRpm}→0 RPM · ${brake}s`,s:brake},
     {dot:'td-a',t:`📤 패드 인출`,d:`최종 수분 ${dw.finalM}% · 제거 ${dw.removed}%p`,s:hl},
-  ].map((p,i)=>`
-    <div class="tl-item">
-      <div class="tl-dot ${p.dot}">${i+1}</div>
-      <div class="tl-body"><div class="tl-t">${p.t}</div><div class="tl-d">${p.d}</div></div>
-      <div class="tl-sec">${p.s}s</div>
-    </div>`).join('');
-
+  ].map((p,i)=>`<div class="tl-item"><div class="tl-dot ${p.dot}">${i+1}</div>
+    <div class="tl-body"><div class="tl-t">${p.t}</div><div class="tl-d">${p.d}</div></div>
+    <div class="tl-s">${p.s}s</div></div>`).join('');
   ['timeline','timelineMob'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=tlHTML;});
 
   renderRpmChart('rpmChart');
-  if(currentMode==='mobile') renderRpmChart('rpmChartMob');
+  if(currentMode==='mob') renderRpmChart('rpmChartMob');
+  if(optData){renderOptChart('optChart');if(currentMode==='mob')renderOptChart('optChartMob');}
   renderProd();
   resetAnim();
 
   if(!silent){
     const now=new Date();
     const dt=`${now.getMonth()+1}/${now.getDate()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-    if(window._fbSave) window._fbSave({dt,rpm:maxRpm,batch,cyc,ph:perHour,per8h,ok,wr:dw.Sw,fm:dw.finalM});
+    if(window._fbSave) window._fbSave({dt,rpm:maxRpm,batch,cyc,ph:perHour,per8h,ok,wr:dw.Sw,fm:dw.finalM,tgt:targetW});
   }
 }
 
-/* ── RPM + 탈수율 차트 ── */
-function renderRpmChart(canvasId){
-  if(!simData) return;
-  const c=document.getElementById(canvasId);
-  if(!c)return;
+/* ── RPM + 탈수율 + 목표선 차트 ── */
+function renderRpmChart(cid){
+  if(!simData)return;
+  const c=document.getElementById(cid);if(!c)return;
   c.width=c.parentElement.offsetWidth||500;
-  const {maxRpm,accel,peak,brake,loadT,cyc,dw}=simData;
-  const H=150;c.height=H;
+  const{maxRpm,accel,peak,brake,loadT,cyc,dw,targetW}=simData;
+  const H=170;c.height=H;
   const ctx=c.getContext('2d');
-  const W=c.width,pad={t:16,r:40,b:24,l:44};
+  const W=c.width,pad={t:20,r:44,b:28,l:48};
   const iW=W-pad.l-pad.r,iH=H-pad.t-pad.b;
-  const hl=loadT/2;
-  const Sw=parseFloat(dw.Sw);
-
+  const hl=loadT/2, Sw=parseFloat(dw.Sw);
   const tx=t=>pad.l+(t/cyc)*iW;
   const tY=r=>pad.t+iH-(r/maxRpm)*iH;
   const wY=w=>pad.t+iH-(w/100)*iH;
-
   ctx.clearRect(0,0,W,H);
 
-  /* 배경 영역 */
+  // 배경
   [[0,hl,'#f0f9ff'],[hl,hl+accel,'#dbeafe'],[hl+accel,hl+accel+peak,'#fef3c7'],
    [hl+accel+peak,hl+accel+peak+brake,'#fee2e2'],[hl+accel+peak+brake,cyc,'#f0f9ff']]
   .forEach(([s,e,col])=>{ctx.fillStyle=col;ctx.fillRect(tx(s),pad.t,tx(e)-tx(s),iH);});
 
-  /* 그리드 */
+  // Y 그리드 (RPM)
   ctx.strokeStyle='#e2e8f0';ctx.lineWidth=.6;
   [0,.25,.5,.75,1].forEach(f=>{
     const y=tY(maxRpm*f);
     ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(W-pad.r,y);ctx.stroke();
-    ctx.fillStyle='#64748b';ctx.font='10px Noto Sans KR';ctx.textAlign='right';
-    ctx.fillText(Math.round(maxRpm*f),pad.l-3,y+3);
+    ctx.fillStyle='#334155';ctx.font=F12;ctx.textAlign='right';
+    ctx.fillText(Math.round(maxRpm*f),pad.l-4,y+4);
   });
 
-  /* 탈수율 Y축 (오른쪽) */
-  ctx.fillStyle='#15803d';ctx.textAlign='left';ctx.font='10px Noto Sans KR';
-  [0,25,50,75,100].forEach(w=>ctx.fillText(w+'%',W-pad.r+3,wY(w)+3));
+  // Y 오른쪽 (탈수율%)
+  ctx.fillStyle='#166534';ctx.font=F12;ctx.textAlign='left';
+  [0,25,50,75,100].forEach(w=>ctx.fillText(w+'%',W-pad.r+4,wY(w)+4));
 
-  /* 탈수율 채우기 영역 */
+  // 탈수율 목표선 (강조)
+  const tyLine=wY(targetW);
+  ctx.save();
+  ctx.strokeStyle='#b91c1c';ctx.lineWidth=2;ctx.setLineDash([6,3]);
+  ctx.beginPath();ctx.moveTo(pad.l,tyLine);ctx.lineTo(W-pad.r,tyLine);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='#b91c1c';ctx.font=F12B;ctx.textAlign='right';
+  ctx.fillText('목표 '+targetW+'%',W-pad.r-2,tyLine-5);
+  ctx.restore();
+
+  // 탈수율 fill
   const wPts=[];
-  for(let i=0;i<=80;i++){
-    const t=cyc*i/80,w=calcWaterAt(t,hl,accel,peak,Sw);
-    wPts.push([tx(t),wY(w)]);
-  }
-  ctx.beginPath();
-  ctx.moveTo(wPts[0][0],pad.t+iH);
+  for(let i=0;i<=80;i++){const t=cyc*i/80;wPts.push([tx(t),wY(calcWA(t,hl,accel,peak,Sw))]);}
+  ctx.beginPath();ctx.moveTo(wPts[0][0],pad.t+iH);
   wPts.forEach(([x,y])=>ctx.lineTo(x,y));
-  ctx.lineTo(wPts[wPts.length-1][0],pad.t+iH);
-  ctx.closePath();
-  ctx.fillStyle='rgba(22,163,74,.12)';ctx.fill();
+  ctx.lineTo(wPts[wPts.length-1][0],pad.t+iH);ctx.closePath();
+  ctx.fillStyle='rgba(22,163,74,.13)';ctx.fill();
 
-  /* 탈수율 곡선 */
-  ctx.beginPath();ctx.strokeStyle='#16a34a';ctx.lineWidth=2;ctx.setLineDash([5,3]);
+  // 탈수율 곡선
+  ctx.beginPath();ctx.strokeStyle='#16a34a';ctx.lineWidth=2.2;ctx.setLineDash([6,3]);
   wPts.forEach(([x,y],i)=>i===0?ctx.moveTo(x,y):ctx.lineTo(x,y));
   ctx.stroke();ctx.setLineDash([]);
 
-  /* RPM 곡선 */
+  // 달성값 표시
+  const px=tx(hl+accel+peak),py=wY(Sw);
+  ctx.fillStyle='#15803d';ctx.font=F13B;ctx.textAlign='left';
+  ctx.fillText(Sw+'%',px+4,py+4);
+
+  // 목표-달성 차이 표시
+  const diff=(Sw-targetW).toFixed(1);
+  ctx.fillStyle=Sw>=targetW?'#166534':'#b91c1c';
+  ctx.font=F12;ctx.textAlign='left';
+  ctx.fillText((Sw>=targetW?'▲+':'▼')+diff+'%p',px+4,py+18);
+
+  // RPM 곡선
   const rpts=[[0,0],[hl,0],[hl+accel,maxRpm],[hl+accel+peak,maxRpm],[hl+accel+peak+brake,0],[cyc,0]];
   ctx.beginPath();ctx.strokeStyle='#2563a8';ctx.lineWidth=2.5;
   rpts.forEach(([t,r],i)=>i===0?ctx.moveTo(tx(t),tY(r)):ctx.lineTo(tx(t),tY(r)));
   ctx.stroke();
+  rpts.forEach(([t,r])=>{ctx.beginPath();ctx.arc(tx(t),tY(r),4,0,2*Math.PI);ctx.fillStyle='#1e3a5f';ctx.fill();});
 
-  /* 포인트 */
-  rpts.forEach(([t,r])=>{ctx.beginPath();ctx.arc(tx(t),tY(r),3.5,0,2*Math.PI);ctx.fillStyle='#1e3a5f';ctx.fill();});
+  // 범례
+  let lx=pad.l;
+  ctx.fillStyle='#2563a8';ctx.fillRect(lx,4,16,6);
+  ctx.fillStyle='#1e3a5f';ctx.font=F12;ctx.textAlign='left';ctx.fillText('RPM',lx+20,12);lx+=62;
+  ctx.strokeStyle='#16a34a';ctx.setLineDash([6,3]);ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(lx,7);ctx.lineTo(lx+16,7);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#166534';ctx.fillText('탈수율',lx+20,12);lx+=68;
+  ctx.strokeStyle='#b91c1c';ctx.setLineDash([6,3]);ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(lx,7);ctx.lineTo(lx+16,7);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#b91c1c';ctx.fillText(`목표 ${targetW}%`,lx+20,12);
 
-  /* 범례 */
-  ctx.fillStyle='#2563a8';ctx.fillRect(pad.l,3,14,5);
-  ctx.fillStyle='#334155';ctx.font='10px Noto Sans KR';ctx.textAlign='left';ctx.fillText('RPM',pad.l+17,9);
-  ctx.strokeStyle='#16a34a';ctx.setLineDash([5,3]);ctx.lineWidth=1.8;
-  ctx.beginPath();ctx.moveTo(pad.l+58,5);ctx.lineTo(pad.l+72,5);ctx.stroke();ctx.setLineDash([]);
-  ctx.fillStyle='#15803d';ctx.fillText('탈수율',pad.l+75,9);
-
-  /* X 레이블 */
-  ctx.fillStyle='#64748b';ctx.font='10px Noto Sans KR';ctx.textAlign='center';
+  // X 레이블
+  ctx.fillStyle='#334155';ctx.font=F12;ctx.textAlign='center';
   [['투입',0,hl],['가속',hl,hl+accel],['최고속',hl+accel,hl+accel+peak],
    ['감속',hl+accel+peak,hl+accel+peak+brake],['인출',hl+accel+peak+brake,cyc]]
-  .forEach(([l,s,e])=>ctx.fillText(l,tx((s+e)/2),H-4));
-
-  /* 최고속 탈수율 주석 */
-  const px=tx(hl+accel+peak),py=wY(Sw);
-  ctx.fillStyle='#15803d';ctx.font='bold 10px Noto Sans KR';ctx.textAlign='right';
-  ctx.fillText(Sw+'%',px-3,py-5);
+  .forEach(([l,s,e])=>ctx.fillText(l,tx((s+e)/2),H-6));
 }
 
-function calcWaterAt(t,hl,accel,peak,Sw){
+/* ── 최적화 파라미터 비교 차트 ── */
+function renderOptChart(cid){
+  const c=document.getElementById(cid);if(!c||!optData||!simData)return;
+  c.width=c.parentElement.offsetWidth||500;
+  const H=140;c.height=H;
+  const ctx=c.getContext('2d');
+  const W=c.width,pad={t:24,r:16,b:28,l:16};
+  const iW=W-pad.l-pad.r,iH=H-pad.t-pad.b;
+  ctx.clearRect(0,0,W,H);
+
+  const strats=[
+    {lbl:optData.s1.label,rpm:optData.s1.rpm,peak:optData.s1.peak,col:'#2563a8'},
+    {lbl:optData.s2.label,rpm:optData.s2.rpm,peak:optData.s2.peak,col:'#0891b2'},
+    {lbl:optData.s3.label,rpm:optData.s3.rpm,peak:optData.s3.peak,col:'#16a34a'},
+  ];
+  const curRpm=simData.maxRpm, curPeak=simData.peak;
+  const maxRpm=Math.max(...strats.map(s=>s.rpm),curRpm,500);
+  const maxPeak=Math.max(...strats.map(s=>s.peak),curPeak,10);
+
+  const groupW=iW/4, barW=groupW*0.32;
+  const groups=[{lbl:'현재',rpm:curRpm,peak:curPeak,col:'#94a3b8'},...strats];
+
+  // 그리드 배경
+  ctx.fillStyle='#f8fafc';ctx.fillRect(pad.l,pad.t,iW,iH);
+
+  groups.forEach((g,i)=>{
+    const cx=pad.l+i*groupW+groupW/2;
+    // RPM 막대 (좌)
+    const rh=iH*(g.rpm/maxRpm)*0.85;
+    const rx=cx-barW-2;
+    ctx.fillStyle=g.col+'bb';
+    ctx.fillRect(rx,pad.t+iH-rh,barW,rh);
+    ctx.fillStyle=g.col;ctx.font=F12B;ctx.textAlign='center';
+    ctx.fillText(g.rpm,rx+barW/2,pad.t+iH-rh-4);
+
+    // peak 막대 (우) — 단위 다르므로 %로 정규화
+    const ph=iH*(g.peak/maxPeak)*0.85;
+    const px2=cx+2;
+    ctx.fillStyle=g.col+'66';
+    ctx.fillRect(px2,pad.t+iH-ph,barW,ph);
+    ctx.fillStyle=g.col;ctx.font=F12;ctx.textAlign='center';
+    ctx.fillText(g.peak+'s',px2+barW/2,pad.t+iH-ph-4);
+
+    // X 레이블
+    ctx.fillStyle='#334155';ctx.font=F12B;ctx.textAlign='center';
+    ctx.fillText(g.lbl,cx,H-6);
+  });
+
+  // 범례
+  ctx.fillStyle='#1e3a5f';ctx.fillRect(pad.l,4,12,6);
+  ctx.fillStyle='#334155';ctx.font=F12;ctx.textAlign='left';ctx.fillText('RPM',pad.l+16,12);
+  ctx.fillStyle='#1e3a5f88';ctx.fillRect(pad.l+60,4,12,6);
+  ctx.fillText('유지(s)',pad.l+76,12);
+  // 현재 vs 최적 표시
+  ctx.fillStyle='#16a34a';ctx.font=F12B;ctx.textAlign='right';
+  ctx.fillText(`최적: RPM ${optData.s3.rpm} / ${optData.s3.peak}s`,W-pad.r,12);
+}
+
+function calcWA(t,hl,accel,peak,Sw){
   if(t<hl)return 0;
   if(t<=hl+accel){const f=(t-hl)/accel;return Sw*0.15*f*f;}
   if(t<=hl+accel+peak){const f=(t-hl-accel)/peak;return Sw*(0.15+0.82*f);}
@@ -781,173 +888,122 @@ function calcWaterAt(t,hl,accel,peak,Sw){
 /* ── 생산성 차트 ── */
 function renderProd(){
   if(!simData)return;
-  const{batch,cyc,perHour,per8h,ok,G,maxRpm,drumDia,accel,peak,brake,loadT,initM}=simData;
-  const cph=Math.floor(3600/cyc);
-  const deficit=Math.max(0,2000-per8h);
+  const{batch,cyc,perHour,per8h,ok,G,maxRpm,drumDia,accel,peak,initM,targetW,dw}=simData;
+  const cph=Math.floor(3600/cyc),deficit=Math.max(0,2000-per8h);
   const need=deficit>0?Math.ceil(2000*cyc/3600/8):batch;
-
   document.getElementById('prodGrid').innerHTML=[
     {l:'8h 처리량',v:per8h.toLocaleString(),u:'장'},
     {l:'시간당',v:perHour.toLocaleString(),u:'장/h'},
     {l:'사이클/h',v:cph,u:'회'},
-    {l:'총 사이클',v:cph*8,u:'회/8h'},
-  ].map(i=>`<div class="pi"><div class="pv">${i.v}</div><div class="pl">${i.l} (${i.u})</div></div>`).join('');
-
+    {l:'탈수율',v:dw.Sw+'%',u:`/ 목표 ${targetW}%`},
+  ].map(i=>`<div class="pi"><div class="pv">${i.v}</div><div class="pl">${i.l} ${i.u}</div></div>`).join('');
   document.getElementById('prodAlert').innerHTML=
-    `<div class="alert ${ok?'ok':'ng'}">${ok
-      ?`✅ 목표달성 — 2,000장 대비 <b>${(per8h-2000).toLocaleString()}장</b> 초과`
-      :`❌ ${deficit.toLocaleString()}장 부족 — 1회 투입 최소 <b>${need}장</b> 필요`}</div>`;
+    `<div class="alrt ${ok?'ok':'ng'}">${ok?`✅ 생산목표달성 — 2,000장 대비 <b>${(per8h-2000).toLocaleString()}장</b> 초과`:`❌ ${deficit.toLocaleString()}장 부족 — 1회 투입 최소 <b>${need}장</b> 필요`}</div>`;
   document.getElementById('prodNote').innerHTML=
-    `계산: 8h × ${cph}회/h × ${batch}장 = <b>${per8h.toLocaleString()}장</b> | G-force <b>${G.toFixed(1)}G</b>`+
-    ` | 휴식 10% 감안 실생산 ≈ <b>${Math.floor(per8h*.9).toLocaleString()}장</b>`;
+    `8h × ${cph}회/h × ${batch}장 = <b>${per8h.toLocaleString()}장</b> | G<b>${G.toFixed(1)}</b> | 휴식 10% 감안 ≈ <b>${Math.floor(per8h*.9).toLocaleString()}장</b>`;
 
-  /* 누적 처리량 막대 */
-  const pc=document.getElementById('prodChart');
-  if(!pc)return;
-  pc.width=pc.parentElement.offsetWidth||400;pc.height=160;
-  const ctx=pc.getContext('2d'),W=pc.width,H=160;
-  const pad={t:20,r:14,b:24,l:46};
-  const iW=W-pad.l-pad.r,iH=H-pad.t-pad.b;
+  // 누적 막대
+  const pc=document.getElementById('prodChart');if(!pc)return;
+  pc.width=pc.parentElement.offsetWidth||400;pc.height=170;
+  const ctx=pc.getContext('2d'),W2=pc.width,H2=170;
+  const pd={t:22,r:14,b:28,l:54};
+  const iW2=W2-pd.l-pd.r,iH2=H2-pd.t-pd.b;
   const hrs=8,data=Array.from({length:hrs},(_,i)=>perHour*(i+1));
   const maxV=Math.max(data[hrs-1],2000)*1.12;
-  const ty=v=>pad.t+iH-(v/maxV)*iH;
-  ctx.clearRect(0,0,W,H);
-
-  /* 목표선 */
-  ctx.strokeStyle='#dc2626';ctx.lineWidth=1.2;ctx.setLineDash([5,3]);
-  ctx.beginPath();ctx.moveTo(pad.l,ty(2000));ctx.lineTo(W-pad.r,ty(2000));ctx.stroke();
+  const ty2=v=>pd.t+iH2-(v/maxV)*iH2;
+  ctx.clearRect(0,0,W2,H2);
+  ctx.strokeStyle='#dc2626';ctx.lineWidth=1.5;ctx.setLineDash([5,3]);
+  ctx.beginPath();ctx.moveTo(pd.l,ty2(2000));ctx.lineTo(W2-pd.r,ty2(2000));ctx.stroke();
   ctx.setLineDash([]);
-  ctx.fillStyle='#dc2626';ctx.font='bold 10px Noto Sans KR';ctx.textAlign='left';
-  ctx.fillText('목표 2,000장',pad.l+2,ty(2000)-3);
-
-  /* Y그리드 */
+  ctx.fillStyle='#b91c1c';ctx.font=F12B;ctx.textAlign='left';
+  ctx.fillText('목표 2,000장',pd.l+2,ty2(2000)-4);
   ctx.strokeStyle='#e2e8f0';ctx.lineWidth=.5;
   [0,.25,.5,.75,1].forEach(f=>{
-    const y=ty(maxV*f);
-    ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(W-pad.r,y);ctx.stroke();
-    ctx.fillStyle='#475569';ctx.font='10px Noto Sans KR';ctx.textAlign='right';
-    ctx.fillText(Math.round(maxV*f).toLocaleString(),pad.l-3,y+3);
+    const y=ty2(maxV*f);
+    ctx.beginPath();ctx.moveTo(pd.l,y);ctx.lineTo(W2-pd.r,y);ctx.stroke();
+    ctx.fillStyle='#334155';ctx.font=F12;ctx.textAlign='right';
+    ctx.fillText(Math.round(maxV*f).toLocaleString(),pd.l-4,y+4);
   });
-
-  /* 막대 */
-  const bw=iW/hrs*0.62;
+  const bw=iW2/hrs*0.62;
   data.forEach((v,i)=>{
-    const x=pad.l+i*(iW/hrs)+(iW/hrs-bw)/2;
-    const bh=iH*(v/maxV);
+    const x=pd.l+i*(iW2/hrs)+(iW2/hrs-bw)/2,bh=iH2*(v/maxV);
     ctx.fillStyle=v>=2000?'#16a34a':'#2563a8';
-    ctx.fillRect(x,pad.t+iH-bh,bw,bh);
-    /* 막대 위 값 */
+    ctx.fillRect(x,pd.t+iH2-bh,bw,bh);
     ctx.fillStyle=v>=2000?'#166534':'#1d4ed8';
-    ctx.font='bold 10px Noto Sans KR';ctx.textAlign='center';
-    ctx.fillText(v.toLocaleString(),x+bw/2,pad.t+iH-bh-3);
-    /* X축 */
-    ctx.fillStyle='#64748b';ctx.font='10px Noto Sans KR';
-    ctx.fillText((i+1)+'h',x+bw/2,H-4);
+    ctx.font=F12B;ctx.textAlign='center';
+    ctx.fillText(v.toLocaleString(),x+bw/2,pd.t+iH2-bh-4);
+    ctx.fillStyle='#334155';ctx.font=F12;
+    ctx.fillText((i+1)+'h',x+bw/2,H2-6);
   });
 
-  /* 레이더 차트 */
   drawRadar(maxRpm,drumDia,batch,peak,initM,G);
 }
 
 function drawRadar(rpm,dia,batch,peak,initM,G){
-  const c=document.getElementById('radarChart');
-  if(!c)return;
-  c.width=c.parentElement.offsetWidth||600;c.height=220;
-  const ctx=c.getContext('2d'),W=c.width,H=220;
-  const cx=W/2,cy=H/2,R=Math.min(W,H)*0.38;
+  const c=document.getElementById('radarChart');if(!c)return;
+  c.width=c.parentElement.offsetWidth||600;c.height=230;
+  const ctx=c.getContext('2d'),W=c.width,H=230;
+  const cx=W/2,cy=H/2,R=Math.min(W,H)*0.36;
   const labels=['RPM','드럼직경','투입장수','최고속유지','초기수분','G-force'];
   const maxes=[2000,2000,60,300,95,30];
   const vals=[rpm,dia,batch,peak,initM,parseFloat(G)];
-  const N=labels.length;
-  const angle=i=>i*2*Math.PI/N-Math.PI/2;
-
+  const N=labels.length, ang=i=>i*2*Math.PI/N-Math.PI/2;
   ctx.clearRect(0,0,W,H);
-
-  /* 방사형 그리드 */
   [.2,.4,.6,.8,1].forEach(f=>{
     ctx.beginPath();ctx.strokeStyle=f===1?'#cbd5e1':'#e2e8f0';ctx.lineWidth=f===1?1:.6;
-    for(let i=0;i<N;i++){
-      const a=angle(i),x=cx+R*f*Math.cos(a),y=cy+R*f*Math.sin(a);
-      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
-    }
+    for(let i=0;i<N;i++){const a=ang(i),x=cx+R*f*Math.cos(a),y=cy+R*f*Math.sin(a);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);}
     ctx.closePath();ctx.stroke();
-    if(f===.5||f===1){
-      ctx.fillStyle='#475569';ctx.font='10px Noto Sans KR';ctx.textAlign='left';
-      ctx.fillText(Math.round(f*100)+'%',cx+R*f*Math.cos(angle(0))+3,cy+R*f*Math.sin(angle(0)));
-    }
+    if(f===.5||f===1){ctx.fillStyle='#64748b';ctx.font=F12;ctx.textAlign='left';ctx.fillText(Math.round(f*100)+'%',cx+R*f*Math.cos(ang(0))+4,cy+R*f*Math.sin(ang(0))+4);}
   });
-
-  /* 축선 */
   ctx.strokeStyle='#cbd5e1';ctx.lineWidth=.8;
-  for(let i=0;i<N;i++){
-    const a=angle(i);
-    ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+R*Math.cos(a),cy+R*Math.sin(a));ctx.stroke();
-  }
-
-  /* 데이터 영역 */
+  for(let i=0;i<N;i++){const a=ang(i);ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+R*Math.cos(a),cy+R*Math.sin(a));ctx.stroke();}
   const norm=vals.map((v,i)=>Math.min(1,v/maxes[i]));
   ctx.beginPath();ctx.fillStyle='rgba(37,99,168,.18)';ctx.strokeStyle='#2563a8';ctx.lineWidth=2;
-  norm.forEach((n,i)=>{
-    const a=angle(i),x=cx+R*n*Math.cos(a),y=cy+R*n*Math.sin(a);
-    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
-  });
+  norm.forEach((n,i)=>{const a=ang(i),x=cx+R*n*Math.cos(a),y=cy+R*n*Math.sin(a);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
   ctx.closePath();ctx.fill();ctx.stroke();
-
-  /* 데이터 포인트 + 값 라벨 */
   norm.forEach((n,i)=>{
-    const a=angle(i),x=cx+R*n*Math.cos(a),y=cy+R*n*Math.sin(a);
-    ctx.beginPath();ctx.arc(x,y,4,0,2*Math.PI);ctx.fillStyle='#1e3a5f';ctx.fill();
-    /* 값 표시 */
-    const lx=cx+(R*n+14)*Math.cos(a),ly=cy+(R*n+14)*Math.sin(a);
-    ctx.fillStyle='#1e3a5f';ctx.font='bold 10px Noto Sans KR';ctx.textAlign='center';
-    ctx.fillText(vals[i]+(i===5?'G':i===4?'%':i===3?'s':''),lx,ly+3);
+    const a=ang(i),x=cx+R*n*Math.cos(a),y=cy+R*n*Math.sin(a);
+    ctx.beginPath();ctx.arc(x,y,5,0,2*Math.PI);ctx.fillStyle='#1e3a5f';ctx.fill();
+    const lx=cx+(R*n+16)*Math.cos(a),ly=cy+(R*n+16)*Math.sin(a);
+    ctx.fillStyle='#1e3a5f';ctx.font=F12B;ctx.textAlign='center';
+    ctx.fillText(vals[i]+(i===5?'G':i===4||i===3?i===3?'s':'%':''),lx,ly+4);
   });
-
-  /* 축 레이블 */
-  ctx.fillStyle='#334155';ctx.font='bold 11px Noto Sans KR';
-  labels.forEach((l,i)=>{
-    const a=angle(i),lx=cx+(R+28)*Math.cos(a),ly=cy+(R+28)*Math.sin(a);
-    ctx.textAlign='center';
-    ctx.fillText(l,lx,ly+4);
-  });
+  ctx.fillStyle='#334155';ctx.font=F13B;
+  labels.forEach((l,i)=>{const a=ang(i);ctx.textAlign='center';ctx.fillText(l,cx+(R+32)*Math.cos(a),cy+(R+32)*Math.sin(a)+4);});
 }
 
 /* ── 애니메이션 ── */
 function playAnim(){
-  if(!simData){alert('먼저 시뮬레이션을 실행하세요.');return;}
+  if(!simData){alert('시뮬레이션을 먼저 실행하세요.');return;}
   resetAnim();
   ['playBtn','playBtnMob'].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=true;});
   const{maxRpm,accel,peak,brake,loadT,cyc,dw}=simData;
   const hl=loadT/2,Sw=parseFloat(dw.Sw);
   animStart=null;
-  const SPEED=15;
+  const SPD=15;
   function frame(ts){
     if(!animStart)animStart=ts;
-    const t=Math.min((ts-animStart)/1000*(cyc/SPEED),cyc);
+    const t=Math.min((ts-animStart)/1000*(cyc/SPD),cyc);
     let rpm=0,phase='';
     if(t<hl){rpm=0;phase='투입';}
     else if(t<hl+accel){rpm=maxRpm*(t-hl)/accel;phase='가속';}
     else if(t<hl+accel+peak){rpm=maxRpm;phase='최고속';}
     else if(t<hl+accel+peak+brake){rpm=maxRpm*(1-(t-hl-accel-peak)/brake);phase='감속';}
     else{rpm=0;phase='인출';}
-    const water=calcWaterAt(t,hl,accel,peak,Sw);
+    const water=calcWA(t,hl,accel,peak,Sw);
     const rp=(rpm/maxRpm)*100,tp=(t/cyc)*100;
-
-    setGauges(rp,tp,water,Math.round(rpm),t.toFixed(1),water.toFixed(1));
-    setDrum(rpm,maxRpm,phase);
-    setBadge(phase);
-
+    setG(rp,tp,water,Math.round(rpm),t.toFixed(1),water.toFixed(1));
+    setDrum(rpm,maxRpm,phase);setBadge(phase);
     if(t<cyc){animFrame=requestAnimationFrame(frame);}
     else{
-      ['drumEl','drumElMob'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('spinning');});
-      ['statusBadge','statusBadgeMob'].forEach(id=>{const el=document.getElementById(id);if(el){el.className='sbadge sd';el.textContent='완료';}});
+      ['drumEl','drumElMob'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('spin');});
+      ['statusBadge','statusBadgeMob'].forEach(id=>{const el=document.getElementById(id);if(el){el.className='badge b-done';el.textContent='완료';}});
       ['playBtn','playBtnMob'].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=false;});
     }
   }
   animFrame=requestAnimationFrame(frame);
 }
-
-function setGauges(rp,tp,water,rpm,tSec,wStr){
+function setG(rp,tp,water,rpm,tSec,wStr){
   ['rpmGauge','rpmGaugeMob'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.width=rp+'%';});
   ['timeGauge','timeGaugeMob'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.width=tp+'%';});
   ['waterGauge','waterGaugeMob'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.width=Math.min(100,water)+'%';});
@@ -958,71 +1014,42 @@ function setGauges(rp,tp,water,rpm,tSec,wStr){
 function setDrum(rpm,maxRpm,phase){
   ['drumEl','drumElMob'].forEach(id=>{
     const el=document.getElementById(id);if(!el)return;
-    if(rpm>10){el.style.setProperty('--spd',Math.max(.04,.8-(rpm/maxRpm)*.76)+'s');el.classList.add('spinning');}
-    else el.classList.remove('spinning');
+    if(rpm>10){el.style.setProperty('--spd',Math.max(.04,.8-(rpm/maxRpm)*.76)+'s');el.classList.add('spin');}
+    else el.classList.remove('spin');
   });
   ['drumLbl','drumLblMob'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=phase+'\n'+Math.round(rpm)+'\nRPM';});
 }
 function setBadge(phase){
-  const map={'투입':'si','가속':'sr2','최고속':'sp','감속':'sb2','인출':'si'};
-  ['statusBadge','statusBadgeMob'].forEach(id=>{
-    const el=document.getElementById(id);if(!el)return;
-    el.className='sbadge '+(map[phase]||'si');el.textContent=phase;
-  });
+  const m={'투입':'b-idle','가속':'b-accel','최고속':'b-peak','감속':'b-brake','인출':'b-idle'};
+  ['statusBadge','statusBadgeMob'].forEach(id=>{const el=document.getElementById(id);if(!el)return;el.className='badge '+(m[phase]||'b-idle');el.textContent=phase;});
 }
-
 function resetAnim(){
   if(animFrame)cancelAnimationFrame(animFrame);
-  setGauges(0,0,0,0,'0','0.0');
-  ['drumEl','drumElMob'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('spinning');});
+  setG(0,0,0,0,'0','0.0');
+  ['drumEl','drumElMob'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('spin');});
   ['drumLbl','drumLblMob'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='대기\n0\nRPM';});
-  ['statusBadge','statusBadgeMob'].forEach(id=>{const el=document.getElementById(id);if(el){el.className='sbadge si';el.textContent='대기';}});
+  ['statusBadge','statusBadgeMob'].forEach(id=>{const el=document.getElementById(id);if(el){el.className='badge b-idle';el.textContent='대기';}});
   ['playBtn','playBtnMob'].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=false;});
 }
 
-/* ── 탭 ── */
 function showTab(name,el){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
-  document.getElementById('tab-'+name).classList.add('on');
-  el.classList.add('on');
+  document.getElementById('tab-'+name).classList.add('on');el.classList.add('on');
   if(name==='prod'&&simData)setTimeout(renderProd,50);
 }
-
-/* ── 모드 전환 (PC/Mobile) ── */
 function setMode(mode){
   currentMode=mode;
-  const pcL=document.getElementById('pcLayout');
-  const mobL=document.getElementById('mobileLayout');
-  if(mode==='mobile'){
-    pcL.style.display='none';mobL.style.display='flex';
-    document.getElementById('modePC').classList.remove('on');
-    document.getElementById('modeMobile').classList.add('on');
-    if(simData) runSim(true);
-  }else{
-    pcL.style.display='grid';mobL.style.display='none';
-    document.getElementById('modePC').classList.add('on');
-    document.getElementById('modeMobile').classList.remove('on');
-    if(simData) runSim(true);
-  }
+  document.getElementById('pcLayout').style.display=mode==='pc'?'grid':'none';
+  document.getElementById('mobLayout').style.display=mode==='mob'?'flex':'none';
+  document.getElementById('modePC').classList.toggle('on',mode==='pc');
+  document.getElementById('modeMob').classList.toggle('on',mode==='mob');
+  if(simData)runSim(true);
 }
-
-function clearHist(){
-  if(!confirm('전체 기록을 삭제하시겠습니까?'))return;
-  if(window._fbClear)window._fbClear();
-}
-
-window.addEventListener('resize',()=>{if(simData){renderRpmChart('rpmChart');if(currentMode==='mobile')renderRpmChart('rpmChartMob');renderProd();}});
-
-/* 자동 감지 */
-if(window.innerWidth<=600) setMode('mobile');
-
-/* 초기 실행 */
+function clearHist(){if(!confirm('전체 삭제?'))return;if(window._fbClear)window._fbClear();}
+window.addEventListener('resize',()=>{if(simData){renderRpmChart('rpmChart');if(currentMode==='mob')renderRpmChart('rpmChartMob');if(optData){renderOptChart('optChart');if(currentMode==='mob')renderOptChart('optChartMob');}renderProd();}});
+if(window.innerWidth<=600)setMode('mob');
 setTimeout(()=>runSim(true),300);
 </script>
-
-<div style="text-align:center;padding:10px;font-size:10px;color:var(--sub);border-top:1px solid var(--border);margin-top:8px;background:var(--card)">
-  담당부서: 인시스 AI혁신 R&D센터 | ys.kim@in-sys.co.kr | v3.2
-</div>
 </body>
 </html>
