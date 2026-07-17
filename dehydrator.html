@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>패드 탈수기 시뮬레이션 v5.0 | 인시스 AI혁신 R&D센터</title>
+<title>패드 탈수기 시뮬레이션 v5.1 | 인시스 AI혁신 R&D센터</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -230,7 +230,7 @@ canvas{display:block;width:100%!important}
 <div class="topbar">
   <b>🏭 인시스 AI혁신 R&D센터 | 패드 탈수기 시뮬레이션</b>
   <div class="topbar-r">
-    <span class="ver-badge">v5.0</span>
+    <span class="ver-badge">v5.1</span>
     <div class="mtoggle">
       <button class="mbtn on" id="modePC" onclick="setMode('pc')">🖥 PC</button>
       <button class="mbtn" id="modeMob" onclick="setMode('mob')">📱 모바일</button>
@@ -255,7 +255,7 @@ canvas{display:block;width:100%!important}
   <!-- COL1: 입력 -->
   <div>
     <div class="card" style="margin-bottom:10px">
-      <div class="ch">⚙️ 탈수기 사양 <span class="cv">v5.0</span></div>
+      <div class="ch">⚙️ 탈수기 사양 <span class="cv">v5.1</span></div>
       <div class="cb" id="sl-mech-pc"></div>
     </div>
     <div class="card" style="margin-bottom:10px">
@@ -355,7 +355,7 @@ canvas{display:block;width:100%!important}
 
 <!-- MOBILE LAYOUT -->
 <div class="mob-layout" id="mobLayout" style="display:none">
-  <div class="card"><div class="ch">⚙️ 탈수기 사양 <span class="cv">v5.0</span></div>
+  <div class="card"><div class="ch">⚙️ 탈수기 사양 <span class="cv">v5.1</span></div>
     <div class="cb"><div class="sr-mob" id="sl-mech-mob"></div></div></div>
   <div class="card"><div class="ch">💧 수분 조건</div>
     <div class="cb"><div class="sr-mob" id="sl-water-mob"></div></div></div>
@@ -434,7 +434,7 @@ canvas{display:block;width:100%!important}
 <div class="panel" id="tab-phys">
 <div class="wrap">
   <div class="card">
-    <div class="ch">📐 수학·기계공학 공식 전체 검증 <span class="cv">v5.0</span></div>
+    <div class="ch">📐 수학·기계공학 공식 전체 검증 <span class="cv">v5.1</span></div>
     <div class="cb" id="physPanel">
       <span style="color:var(--mute);font-size:12px">시뮬레이션 실행 후 자동 업데이트됩니다</span>
     </div>
@@ -456,7 +456,7 @@ canvas{display:block;width:100%!important}
 
 <div class="footer">
   담당부서: 인시스 AI혁신 R&D센터 &nbsp;|&nbsp; ys.kim@in-sys.co.kr &nbsp;|&nbsp;
-  패드 탈수기 시뮬레이션 <b>v5.0</b> &nbsp;|&nbsp; 900×600×3mm 골판지 패드
+  패드 탈수기 시뮬레이션 <b>v5.1</b> &nbsp;|&nbsp; 900×600×3mm 골판지 패드
 </div>
 
 <!-- FIREBASE -->
@@ -578,22 +578,63 @@ function buildMob(arr,cid){
 function syncV(id,v){
   ['_r','_rm'].forEach(s=>{const e=document.getElementById(id+s);if(e)e.value=v;});
   ['_n','_nm'].forEach(s=>{const e=document.getElementById(id+s);if(e)e.value=v;});
+  updateFinalMTarget();
   if(window.simData)runSim(true);
 }
 function syncR(id,v){
   ['_r','_rm'].forEach(s=>{const e=document.getElementById(id+s);if(e)e.value=v;});
   ['_n','_nm'].forEach(s=>{const e=document.getElementById(id+s);if(e&&e!==event.target)e.value=v;});
+  updateFinalMTarget();
   if(window.simData)runSim(true);
+}
+function updateFinalMTarget(){
+  const initM=gv('initM'), tgt=gv('targetW');
+  const finalM=(initM-tgt).toFixed(1);
+  const color=finalM<15?'#b91c1c':finalM<25?'#b45309':'#15803d';
+  ['finalMTarget','finalMTargetMob'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    el.textContent=finalM;
+    el.style.color=color;
+    // 부모의 테두리 색도 조연
+    el.closest('div[style]').style.borderColor=finalM<15?'#fca5a5':finalM<25?'#fcd34d':'#bbf7d0';
+    el.closest('div[style]').style.background=finalM<15?'linear-gradient(90deg,#fff5f5,#fee2e2)':finalM<25?'linear-gradient(90deg,#fffbeb,#fef3c7)':'linear-gradient(90deg,#f0fdf4,#dcfce7)';
+  });
 }
 function gv(id){const e=document.getElementById(id+'_n')||document.getElementById(id+'_r');return e?parseFloat(e.value)||0:0;}
 
-buildPC(MECH,'sl-mech-pc'); buildPC(WATER,'sl-water-pc'); buildPC(TARGET,'sl-target-pc');
+buildPC(MECH,'sl-mech-pc'); buildPC(WATER,'sl-water-pc');
 buildMob(MECH,'sl-mech-mob'); buildMob(WATER,'sl-water-mob');
+
+/* 목표 탈수량 슬라이더 + 최종수분율 실시간 표시 (PC) */
+document.getElementById('sl-target-pc').innerHTML=`
+  <div class="sr tgt">
+    <label>목표 탈수량</label>
+    <input type="range" id="targetW_r" min="5" max="50" value="35" step="1" oninput="syncV('targetW',this.value)">
+    <div class="svbox"><input class="svn" type="number" id="targetW_n" value="35" min="5" max="50" step="1" oninput="syncR('targetW',this.value)"></div>
+    <span class="su">%p</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;margin-top:4px;padding:7px 10px;
+    background:linear-gradient(90deg,#f0fdf4,#dcfce7);border-radius:7px;border:1.5px solid #bbf7d0">
+    <span style="font-size:12px;color:var(--sub);font-weight:600;white-space:nowrap">최종 수분율</span>
+    <span style="font-size:12px;color:var(--mute)">= 초기 수분율 − 목표 탈수량</span>
+    <span style="margin-left:auto;font-size:18px;font-weight:900;color:var(--green)" id="finalMTarget">—</span>
+    <span style="font-size:13px;font-weight:700;color:var(--green)">%</span>
+  </div>`;
+
+/* 목표 탈수량 슬라이더 + 최종수분율 실시간 표시 (Mobile) */
 document.getElementById('sl-target-mob').innerHTML=`
   <div class="sr-m">
     <label style="color:var(--green);font-weight:800">🎯 목표 탈수량</label>
     <input type="range" id="targetW_rm" min="5" max="50" value="35" step="1" oninput="syncV('targetW',this.value)">
     <div class="vrow"><input class="svn" type="number" id="targetW_nm" value="35" min="5" max="50" style="border-color:#16a34a;color:var(--green)" oninput="syncR('targetW',this.value)"><span class="su">%p</span></div>
+  </div>
+  <div style="display:flex;align-items:center;gap:6px;margin-top:4px;padding:7px 10px;
+    background:linear-gradient(90deg,#f0fdf4,#dcfce7);border-radius:7px;border:1.5px solid #bbf7d0">
+    <span style="font-size:12px;color:var(--sub);font-weight:600">최종 수분율</span>
+    <span style="font-size:12px;color:var(--mute)">=초기 − 목표</span>
+    <span style="margin-left:auto;font-size:18px;font-weight:900;color:var(--green)" id="finalMTargetMob">—</span>
+    <span style="font-size:13px;font-weight:700;color:var(--green)">%</span>
   </div>`;
 
 /* ══ 물리 계산 핵심 함수 [공식 D·E·F] ══ */
@@ -1138,6 +1179,7 @@ function setMode(mode){
 function clearHist(){if(!confirm('전체 기록을 삭제하시겠습니까?'))return;if(window._fbClear)window._fbClear();}
 window.addEventListener('resize',()=>{if(simData){renderRpmChart('rpmChart');if(currentMode==='mob')renderRpmChart('rpmChartMob');renderProd();}});
 if(window.innerWidth<=600)setMode('mob');
+updateFinalMTarget();
 setTimeout(()=>runSim(true),300);
 </script>
 </body>
