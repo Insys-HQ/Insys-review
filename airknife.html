@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>에어나이프 1차 건조기 시뮬레이터 v1.0</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans KR',sans-serif;background:#f0f4f8;color:#2c3e50;font-size:14px;min-height:100vh}
+
+/* Header */
+.header{background:linear-gradient(135deg,#1a3a5c 0%,#2563a8 100%);color:#fff;padding:18px 0;text-align:center}
+.header-inner{max-width:1100px;margin:0 auto;padding:0 16px}
+.header h1{font-size:22px;font-weight:700;letter-spacing:-0.3px}
+.header .sub{font-size:12px;color:#b8d4f0;margin-top:4px;display:flex;justify-content:center;gap:16px}
+.ver-badge{background:rgba(255,255,255,0.15);border-radius:20px;padding:2px 10px;font-size:11px;font-weight:500}
+
+/* GitHub link bar */
+.github-bar{background:#0d1117;color:#58a6ff;text-align:center;padding:6px 16px;font-size:12px}
+.github-bar a{color:#58a6ff;text-decoration:none;font-weight:500}
+.github-bar a:hover{text-decoration:underline}
+
+/* Layout */
+.container{max-width:1100px;margin:0 auto;padding:16px}
+.grid-main{display:grid;grid-template-columns:340px 1fr;gap:14px;align-items:start}
+
+/* Cards */
+.card{background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.08);overflow:hidden}
+.card-header{background:#1a3a5c;color:#fff;padding:10px 14px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px}
+.card-header .icon{font-size:16px}
+.card-body{padding:14px}
+
+/* Section labels */
+.sec-label{font-size:11px;font-weight:700;color:#1a3a5c;text-transform:uppercase;letter-spacing:0.5px;margin:10px 0 6px;padding-bottom:3px;border-bottom:2px solid #e2ecf7}
+.sec-label:first-child{margin-top:0}
+
+/* Form controls */
+.field{margin-bottom:10px}
+.field label{display:block;font-size:12px;color:#4a5568;font-weight:500;margin-bottom:3px}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.field-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+
+input[type=number],select{
+  width:100%;padding:7px 10px;border:1.5px solid #cbd5e0;border-radius:6px;
+  font-family:'Noto Sans KR',sans-serif;font-size:13px;color:#2c3e50;
+  background:#f8fafc;transition:border-color .2s
+}
+input[type=number]:focus,select:focus{border-color:#2563a8;outline:none;background:#fff}
+.unit{font-size:11px;color:#718096;margin-left:4px}
+
+/* Range slider */
+.range-wrap{display:flex;align-items:center;gap:8px}
+input[type=range]{flex:1;height:4px;accent-color:#2563a8;cursor:pointer}
+.range-val{min-width:46px;text-align:right;font-size:13px;font-weight:700;color:#1a3a5c}
+
+/* Bar chart */
+.bar-section{margin-top:4px}
+.bar-item{margin-bottom:7px}
+.bar-label-row{display:flex;justify-content:space-between;margin-bottom:2px}
+.bar-label{font-size:11px;color:#4a5568}
+.bar-val{font-size:11px;font-weight:700;color:#1a3a5c}
+.bar-track{height:10px;background:#e8f0fa;border-radius:6px;overflow:hidden}
+.bar-fill{height:100%;border-radius:6px;transition:width .4s cubic-bezier(.4,0,.2,1)}
+.bar-removal{background:linear-gradient(90deg,#2563a8,#38bdf8)}
+.bar-velocity{background:linear-gradient(90deg,#059669,#34d399)}
+.bar-coverage{background:linear-gradient(90deg,#7c3aed,#a78bfa)}
+.bar-efficiency{background:linear-gradient(90deg,#d97706,#fbbf24)}
+.bar-power{background:linear-gradient(90deg,#dc2626,#f87171)}
+
+/* Score ring */
+.score-wrap{display:flex;align-items:center;gap:16px;margin-bottom:12px}
+.score-ring{position:relative;width:80px;height:80px;flex-shrink:0}
+.score-ring svg{transform:rotate(-90deg)}
+.score-ring .score-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#1a3a5c}
+.score-label{flex:1}
+.score-grade{font-size:18px;font-weight:700;margin-bottom:2px}
+.score-desc{font-size:12px;color:#4a5568;line-height:1.5}
+
+/* Recommend box */
+.rec-box{background:#e8f4fd;border-left:4px solid #2563a8;border-radius:0 8px 8px 0;padding:10px 12px;margin-top:10px}
+.rec-title{font-size:12px;font-weight:700;color:#1a3a5c;margin-bottom:6px}
+.rec-item{display:flex;align-items:flex-start;gap:6px;margin-bottom:4px;font-size:12px;color:#2c3e50}
+.rec-item::before{content:"▶";color:#2563a8;font-size:10px;margin-top:1px;flex-shrink:0}
+
+/* SVG diagram */
+.diagram-wrap{background:#0a1628;border-radius:8px;padding:12px;margin-top:8px}
+.diagram-wrap svg{width:100%;height:auto;display:block}
+
+/* Tabs */
+.tabs{display:flex;gap:4px;margin-bottom:12px}
+.tab{padding:7px 14px;border-radius:6px;border:none;cursor:pointer;font-family:'Noto Sans KR',sans-serif;font-size:12px;font-weight:500;background:#e2ecf7;color:#4a5568;transition:all .2s}
+.tab.active{background:#1a3a5c;color:#fff}
+
+/* Buttons */
+.btn-row{display:flex;gap:8px;margin-top:12px}
+.btn{padding:8px 16px;border:none;border-radius:6px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;font-size:13px;font-weight:600;transition:all .2s}
+.btn-primary{background:#1a3a5c;color:#fff}
+.btn-primary:hover{background:#2563a8}
+.btn-success{background:#059669;color:#fff}
+.btn-success:hover{background:#047857}
+.btn-secondary{background:#e2ecf7;color:#1a3a5c}
+.btn-secondary:hover{background:#bcd4ed}
+
+/* Computed info table */
+.info-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
+.info-table td{padding:5px 8px;border-bottom:1px solid #e8f0fa}
+.info-table td:first-child{color:#4a5568;width:55%}
+.info-table td:last-child{font-weight:600;color:#1a3a5c;text-align:right}
+
+/* Status */
+.status-bar{background:#1e293b;color:#94a3b8;font-size:11px;padding:6px 14px;border-radius:6px;margin-top:8px}
+.status-ok{color:#34d399}
+.status-warn{color:#fbbf24}
+.status-err{color:#f87171}
+
+/* responsive */
+@media(max-width:768px){.grid-main{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <h1>🌬️ 에어나이프 1차 건조기 최적화 시뮬레이터</h1>
+    <div class="sub">
+      <span>인시스 AI혁신 R&amp;D센터</span>
+      <span class="ver-badge">v1.0</span>
+      <span>Air-Knife Pre-Dryer Optimization</span>
+    </div>
+  </div>
+</div>
+<div class="github-bar">
+  🔗 GitHub Pages:
+  <a href="https://insys-hq.github.io/Insys-review/airknife.html" target="_blank">
+    https://insys-hq.github.io/Insys-review/airknife.html
+  </a>
+</div>
+
+<div class="container">
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('sim')">⚙️ 시뮬레이터</button>
+    <button class="tab" onclick="showTab('result')">📊 결과 분석</button>
+    <button class="tab" onclick="showTab('diagram')">🖼️ 구조 도면</button>
+  </div>
+
+  <!-- TAB: 시뮬레이터 -->
+  <div id="tab-sim">
+    <div class="grid-main">
+
+      <!-- Left: Input Panel -->
+      <div>
+        <!-- Tray Info -->
+        <div class="card" style="margin-bottom:12px">
+          <div class="card-header"><span class="icon">📦</span>트레이 사양 입력</div>
+          <div class="card-body">
+            <div class="sec-label">트레이 치수</div>
+            <div class="field-row">
+              <div class="field">
+                <label>가로 W <span class="unit">mm</span></label>
+                <input type="number" id="tray_w" value="600" min="100" max="2000" oninput="calc()">
+              </div>
+              <div class="field">
+                <label>세로 L <span class="unit">mm</span></label>
+                <input type="number" id="tray_l" value="400" min="100" max="2000" oninput="calc()">
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label>높이 H <span class="unit">mm</span></label>
+                <input type="number" id="tray_h" value="30" min="5" max="300" oninput="calc()">
+              </div>
+              <div class="field">
+                <label>포켓 수량 <span class="unit">ea</span></label>
+                <input type="number" id="pocket" value="24" min="1" max="500" oninput="calc()">
+              </div>
+            </div>
+            <div class="sec-label">채널 구성</div>
+            <div class="field-row">
+              <div class="field">
+                <label>채널 수</label>
+                <select id="ch_count" onchange="calc()">
+                  <option value="2" selected>2채널 (좌/우)</option>
+                  <option value="1">1채널</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>채널 간격 <span class="unit">mm</span></label>
+                <input type="number" id="ch_gap" value="80" min="20" max="300" oninput="calc()">
+              </div>
+            </div>
+            <div class="field">
+              <label>트레이 투입 방향</label>
+              <select id="tray_orient" onchange="calc()">
+                <option value="vertical" selected>세워서 투입 (수직)</option>
+                <option value="horizontal">눕혀서 투입 (수평)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- AirKnife Settings -->
+        <div class="card">
+          <div class="card-header"><span class="icon">🌬️</span>에어나이프 설정</div>
+          <div class="card-body">
+            <div class="sec-label">에어나이프 길이 (100mm 단위)</div>
+            <div class="field">
+              <label>에어나이프 길이 <span class="unit">mm</span></label>
+              <select id="ak_length" onchange="calc()"></select>
+              <div id="ak_length_info" style="font-size:11px;color:#2563a8;margin-top:3px"></div>
+            </div>
+
+            <div class="sec-label">슬릿 간격 (Gap)</div>
+            <div class="field">
+              <label>슬릿 간격 <span class="unit">mm</span></label>
+              <div class="range-wrap">
+                <input type="range" id="slit_gap" min="0.5" max="5" step="0.5" value="1.5" oninput="syncRange('slit_gap','slit_gap_v');calc()">
+                <span class="range-val" id="slit_gap_v">1.5</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:10px;color:#718096"><span>0.5mm (정밀)</span><span>5.0mm (광폭)</span></div>
+            </div>
+
+            <div class="sec-label">에어나이프 각도 (측면 기울기)</div>
+            <div class="field">
+              <label>측면 스윕 각도 θ1 <span class="unit">° (좌상→우하 방향)</span></label>
+              <div class="range-wrap">
+                <input type="range" id="angle_sweep" min="0" max="45" step="1" value="20" oninput="syncRange('angle_sweep','angle_sweep_v');calc()">
+                <span class="range-val" id="angle_sweep_v">20</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:10px;color:#718096"><span>0° (수직)</span><span>45° (최대 경사)</span></div>
+            </div>
+            <div class="field">
+              <label>슬릿 공기 분사 각도 θ2 <span class="unit">° (진행 반대방향)</span></label>
+              <div class="range-wrap">
+                <input type="range" id="angle_slit" min="0" max="60" step="5" value="30" oninput="syncRange('angle_slit','angle_slit_v');calc()">
+                <span class="range-val" id="angle_slit_v">30</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:10px;color:#718096"><span>0° (수직분사)</span><span>60° (최대역방향)</span></div>
+            </div>
+            <div class="field">
+              <label>에어나이프-트레이 간 거리 <span class="unit">mm</span></label>
+              <div class="range-wrap">
+                <input type="range" id="ak_dist" min="10" max="200" step="5" value="50" oninput="syncRange('ak_dist','ak_dist_v');calc()">
+                <span class="range-val" id="ak_dist_v">50</span>
+              </div>
+            </div>
+
+            <div class="sec-label">링 브로어</div>
+            <div class="field-row">
+              <div class="field">
+                <label>브로어 마력 <span class="unit">HP</span></label>
+                <select id="blower_hp" onchange="calc()">
+                  <option value="1">1 HP</option>
+                  <option value="2">2 HP</option>
+                  <option value="3" selected>3 HP</option>
+                  <option value="5">5 HP</option>
+                  <option value="7.5">7.5 HP</option>
+                  <option value="10">10 HP</option>
+                  <option value="15">15 HP</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>브로어 수량 <span class="unit">ea</span></label>
+                <select id="blower_qty" onchange="calc()">
+                  <option value="1">1대</option>
+                  <option value="2" selected>2대 (앞/뒤)</option>
+                  <option value="3">3대</option>
+                  <option value="4">4대</option>
+                </select>
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label>설치 위치</label>
+                <select id="ak_pos" onchange="calc()">
+                  <option value="both" selected>앞면+뒷면</option>
+                  <option value="front">앞면만</option>
+                  <option value="back">뒷면만</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>트레이 이송 속도 <span class="unit">m/min</span></label>
+                <input type="number" id="feed_speed" value="3" min="0.5" max="20" step="0.5" oninput="calc()">
+              </div>
+            </div>
+
+            <div class="btn-row">
+              <button class="btn btn-primary" onclick="calc()">🔄 시뮬레이션</button>
+              <button class="btn btn-success" onclick="saveToFirebase()">💾 저장</button>
+              <button class="btn btn-secondary" onclick="exportPDF()">📄 PDF</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Result Panel -->
+      <div>
+        <!-- Score -->
+        <div class="card" style="margin-bottom:12px">
+          <div class="card-header"><span class="icon">📈</span>종합 건조 효율 점수</div>
+          <div class="card-body">
+            <div class="score-wrap">
+              <div class="score-ring">
+                <svg width="80" height="80" viewBox="0 0 80 80">
+                  <circle cx="40" cy="40" r="34" fill="none" stroke="#e2ecf7" stroke-width="8"/>
+                  <circle id="score-arc" cx="40" cy="40" r="34" fill="none" stroke="#2563a8" stroke-width="8"
+                    stroke-dasharray="213.6" stroke-dashoffset="213.6" stroke-linecap="round"/>
+                </svg>
+                <div class="score-num" id="score-num">0</div>
+              </div>
+              <div class="score-label">
+                <div class="score-grade" id="score-grade">-</div>
+                <div class="score-desc" id="score-desc">파라미터를 입력하고 시뮬레이션을 실행하세요.</div>
+              </div>
+            </div>
+
+            <!-- Bar charts -->
+            <div class="bar-section" id="bars">
+              <div class="bar-item">
+                <div class="bar-label-row"><span class="bar-label">물기 제거율</span><span class="bar-val" id="bar-removal-v">-</span></div>
+                <div class="bar-track"><div class="bar-fill bar-removal" id="bar-removal" style="width:0%"></div></div>
+              </div>
+              <div class="bar-item">
+                <div class="bar-label-row"><span class="bar-label">에어 속도 효율</span><span class="bar-val" id="bar-velocity-v">-</span></div>
+                <div class="bar-track"><div class="bar-fill bar-velocity" id="bar-velocity" style="width:0%"></div></div>
+              </div>
+              <div class="bar-item">
+                <div class="bar-label-row"><span class="bar-label">면 커버리지</span><span class="bar-val" id="bar-coverage-v">-</span></div>
+                <div class="bar-track"><div class="bar-fill bar-coverage" id="bar-coverage" style="width:0%"></div></div>
+              </div>
+              <div class="bar-item">
+                <div class="bar-label-row"><span class="bar-label">에너지 효율</span><span class="bar-val" id="bar-efficiency-v">-</span></div>
+                <div class="bar-track"><div class="bar-fill bar-efficiency" id="bar-efficiency" style="width:0%"></div></div>
+              </div>
+              <div class="bar-item">
+                <div class="bar-label-row"><span class="bar-label">역방향 스윕 효과</span><span class="bar-val" id="bar-power-v">-</span></div>
+                <div class="bar-track"><div class="bar-fill bar-power" id="bar-power" style="width:0%"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Computed Values -->
+        <div class="card" style="margin-bottom:12px">
+          <div class="card-header"><span class="icon">🔢</span>계산 파라미터</div>
+          <div class="card-body">
+            <table class="info-table" id="info-table">
+              <tr><td>트레이 면적 (단면)</td><td id="iv-area">-</td></tr>
+              <tr><td>에어나이프 유효 길이</td><td id="iv-aklen">-</td></tr>
+              <tr><td>슬릿 면적</td><td id="iv-slit-area">-</td></tr>
+              <tr><td>총 브로어 출력</td><td id="iv-power">-</td></tr>
+              <tr><td>추정 에어 풍속</td><td id="iv-airspeed">-</td></tr>
+              <tr><td>트레이 통과 시간</td><td id="iv-passtime">-</td></tr>
+              <tr><td>에어나이프 스윕 폭</td><td id="iv-sweep">-</td></tr>
+              <tr><td>채널당 처리 폭</td><td id="iv-chwidth">-</td></tr>
+              <tr><td>포켓 물기 제거 예측</td><td id="iv-pocket">-</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <!-- Recommendation -->
+        <div class="card">
+          <div class="card-header"><span class="icon">💡</span>최적화 추천</div>
+          <div class="card-body">
+            <div id="rec-content">
+              <div class="rec-box">
+                <div class="rec-title">추천 사항</div>
+                <div class="rec-item">시뮬레이션을 실행하면 최적화 권고가 표시됩니다.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="status-bar" id="status-bar">⏳ 입력값을 확인하고 시뮬레이션을 실행하세요.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: 결과 분석 -->
+  <div id="tab-result" style="display:none">
+    <div class="card">
+      <div class="card-header"><span class="icon">📊</span>Firebase 저장 이력</div>
+      <div class="card-body">
+        <div id="history-list" style="font-size:13px;color:#4a5568">로딩 중...</div>
+        <div class="btn-row" style="margin-top:10px">
+          <button class="btn btn-secondary" onclick="loadHistory()">🔄 새로고침</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: 구조 도면 -->
+  <div id="tab-diagram" style="display:none">
+    <div class="card">
+      <div class="card-header"><span class="icon">🖼️</span>에어나이프 배치 구조도 (우측면 뷰)</div>
+      <div class="card-body">
+        <div class="diagram-wrap">
+          <svg id="struct-svg" viewBox="0 0 700 420" xmlns="http://www.w3.org/2000/svg">
+            <!-- background -->
+            <rect width="700" height="420" fill="#0a1628"/>
+            <!-- Grid lines -->
+            <g stroke="#1e3a5f" stroke-width="0.5">
+              <line x1="0" y1="60" x2="700" y2="60"/>
+              <line x1="0" y1="360" x2="700" y2="360"/>
+              <line x1="100" y1="0" x2="100" y2="420"/>
+              <line x1="600" y1="0" x2="600" y2="420"/>
+            </g>
+
+            <!-- Channel separator (격벽) -->
+            <rect x="330" y="40" width="8" height="340" fill="#4a90c4" rx="2"/>
+            <text x="334" y="30" fill="#4a90c4" font-size="10" text-anchor="middle" font-family="'Noto Sans KR',sans-serif">격벽</text>
+
+            <!-- Tray (vertical) - Left Channel -->
+            <rect id="tray-l" x="160" y="80" width="140" height="260" fill="none" stroke="#38bdf8" stroke-width="2" rx="3"/>
+            <text x="230" y="215" fill="#38bdf8" font-size="11" text-anchor="middle" font-family="'Noto Sans KR',sans-serif">L-CH</text>
+            <text x="230" y="230" fill="#94a3b8" font-size="9" text-anchor="middle" font-family="'Noto Sans KR',sans-serif">트레이</text>
+            <!-- Pockets -->
+            <g fill="none" stroke="#1e6ba8" stroke-width="0.8">
+              <rect x="165" y="88" width="28" height="18" rx="1"/>
+              <rect x="198" y="88" width="28" height="18" rx="1"/>
+              <rect x="231" y="88" width="28" height="18" rx="1"/>
+              <rect x="264" y="88" width="28" height="18" rx="1"/>
+              <rect x="165" y="112" width="28" height="18" rx="1"/>
+              <rect x="198" y="112" width="28" height="18" rx="1"/>
+              <rect x="231" y="112" width="28" height="18" rx="1"/>
+              <rect x="264" y="112" width="28" height="18" rx="1"/>
+            </g>
+
+            <!-- Tray (vertical) - Right Channel -->
+            <rect id="tray-r" x="400" y="80" width="140" height="260" fill="none" stroke="#34d399" stroke-width="2" rx="3"/>
+            <text x="470" y="215" fill="#34d399" font-size="11" text-anchor="middle" font-family="'Noto Sans KR',sans-serif">R-CH</text>
+            <text x="470" y="230" fill="#94a3b8" font-size="9" text-anchor="middle" font-family="'Noto Sans KR',sans-serif">트레이</text>
+            <g fill="none" stroke="#065f46" stroke-width="0.8">
+              <rect x="405" y="88" width="28" height="18" rx="1"/>
+              <rect x="438" y="88" width="28" height="18" rx="1"/>
+              <rect x="471" y="88" width="28" height="18" rx="1"/>
+              <rect x="504" y="88" width="28" height="18" rx="1"/>
+              <rect x="405" y="112" width="28" height="18" rx="1"/>
+              <rect x="438" y="112" width="28" height="18" rx="1"/>
+              <rect x="471" y="112" width="28" height="18" rx="1"/>
+              <rect x="504" y="112" width="28" height="18" rx="1"/>
+            </g>
+
+            <!-- Air knife front (Left CH) - angled -->
+            <g id="ak-front-l" transform="rotate(-20, 115, 210)">
+              <rect x="100" y="80" width="18" height="260" fill="#fbbf24" rx="3" opacity="0.9"/>
+              <text x="109" y="75" fill="#fbbf24" font-size="9" text-anchor="middle" font-family="'Noto Sans KR',sans-serif">AK앞</text>
+              <!-- slit lines -->
+              <line x1="118" y1="120" x2="155" y2="130" stroke="#fed7aa" stroke-width="1.5" stroke-dasharray="3,2"/>
+              <line x1="118" y1="160" x2="155" y2="170" stroke="#fed7aa" stroke-width="1.5" stroke-dasharray="3,2"/>
+              <line x1="118" y1="200" x2="155" y2="210" stroke="#fed7aa" stroke-width="1.5" stroke-dasharray="3,2"/>
+              <line x1="118" y1="240" x2="155" y2="250" stroke="#fed7aa" stroke-width="1.5" stroke-dasharray="3,2"/>
+              <line x1="118" y1="280" x2="155" y2="290" stroke="#fed7aa" stroke-width="1.5" stroke-dasharray="3,2"/>
+            </g>
+
+            <!-- Air knife back (Left CH) -->
+            <g id="ak-back-l" transform="rotate(20, 315, 210)">
+              <rect x="300" y="80" width="18" height="260" fill="#a78bfa" rx="3" opacity="0.9"/>
+              <text x="309" y="75" fill="#a78bfa" font-size="9" text-anchor="middle" font-family="'Noto Sans KR',sans-serif">AK뒤</text>
+              <line x1="300" y1="120" x2="263" y2="130" stroke="#ddd6fe" stroke-width="1.5" stroke-dasharray="3,2"/>
+              <line x1="300" y1="160" x2="263" y2="170" stroke="#ddd6fe" stroke-width="1.5" stroke-dasharray="3,2"/>
+              <line x1="300" y1="200" x2="263" y2="210" stroke="#ddd6fe" stroke-width="1.5" stroke-dasharray="3,2"/>
+              <line x1="300" y1="240" x2="263" y2="250" stroke="#ddd6fe" stroke-width="1.5" stroke-dasharray="3,2"/>
+              <line x1="300" y1="280" x2="263" y2="290" stroke="#ddd6fe" stroke-width="1.5" stroke-dasharray="3,2"/>
+            </g>
+
+            <!-- Water drip arrows -->
+            <g id="water-drips" fill="#60a5fa" opacity="0.7">
+              <polygon points="195,350 190,340 200,340"/>
+              <polygon points="230,360 225,348 235,348"/>
+              <polygon points="265,355 260,343 270,343"/>
+            </g>
+
+            <!-- Direction arrow -->
+            <defs>
+              <marker id="arr" markerWidth="8" markerHeight="6" refX="6" refY="3" orient="auto">
+                <polygon points="0 0, 8 3, 0 6" fill="#f59e0b"/>
+              </marker>
+            </defs>
+            <line x1="30" y1="210" x2="80" y2="210" stroke="#f59e0b" stroke-width="2" marker-end="url(#arr)"/>
+            <text x="30" y="200" fill="#f59e0b" font-size="10" font-family="'Noto Sans KR',sans-serif">이송</text>
+            <text x="30" y="215" fill="#f59e0b" font-size="10" font-family="'Noto Sans KR',sans-serif">방향</text>
+
+            <!-- Legend -->
+            <g font-family="'Noto Sans KR',sans-serif" font-size="10">
+              <rect x="10" y="375" width="10" height="8" fill="#fbbf24"/>
+              <text x="24" y="383" fill="#94a3b8">에어나이프(앞)</text>
+              <rect x="110" y="375" width="10" height="8" fill="#a78bfa"/>
+              <text x="124" y="383" fill="#94a3b8">에어나이프(뒤)</text>
+              <rect x="220" y="375" width="10" height="8" fill="#4a90c4"/>
+              <text x="234" y="383" fill="#94a3b8">격벽</text>
+              <rect x="280" y="375" width="10" height="8" fill="#38bdf8" opacity="0.3"/>
+              <text x="294" y="383" fill="#94a3b8">L-채널</text>
+              <rect x="360" y="375" width="10" height="8" fill="#34d399" opacity="0.3"/>
+              <text x="374" y="383" fill="#94a3b8">R-채널</text>
+              <text x="430" y="383" fill="#60a5fa">💧 배수</text>
+            </g>
+
+            <!-- Angle label -->
+            <text id="angle-label" x="350" y="16" fill="#f59e0b" font-size="11" text-anchor="middle" font-family="'Noto Sans KR',sans-serif">θ1=20° | θ2=30° | Gap=1.5mm</text>
+          </svg>
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:#4a5568;line-height:1.8">
+          <b>구조 설명:</b> 우측면에서 본 에어나이프 배치도입니다.<br>
+          · 격벽(중앙 청색 기둥): 좌/우 채널 물기 교차 방지<br>
+          · AK앞(황색): 트레이 앞면 에어나이프 — θ1 각도로 경사 설치<br>
+          · AK뒤(보라): 트레이 뒷면 에어나이프 — 역방향 θ1으로 대칭 설치<br>
+          · 점선 화살표: 슬릿 분사 방향 (θ2 각도로 진행 반대 방향)<br>
+          · 하단 파란 삼각형: 중력+에어 압력에 의한 배수 방향
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Firebase config
+const firebaseConfig = {
+  apiKey: "AIzaSyExample-replace-with-real-key",
+  authDomain: "insys-work.firebaseapp.com",
+  projectId: "insys-work",
+  storageBucket: "insys-work.appspot.com",
+  messagingSenderId: "000000000",
+  appId: "1:000000000:web:000000000"
+};
+
+let db = null;
+try {
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.firestore();
+} catch(e) { console.warn('Firebase init:', e.message); }
+
+// --- Air knife length options ---
+function populateAKLength() {
+  const sel = document.getElementById('ak_length');
+  sel.innerHTML = '';
+  const lengths = [];
+  for (let l = 200; l <= 3000; l += 100) lengths.push(l);
+  lengths.forEach(l => {
+    const opt = document.createElement('option');
+    opt.value = l;
+    opt.textContent = l + ' mm';
+    if (l === 600) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+populateAKLength();
+
+function syncRange(id, vid) {
+  document.getElementById(vid).textContent = document.getElementById(id).value;
+}
+
+function showTab(t) {
+  ['sim','result','diagram'].forEach(id => {
+    document.getElementById('tab-'+id).style.display = id===t ? 'block':'none';
+  });
+  document.querySelectorAll('.tab').forEach((el,i) => {
+    el.classList.toggle('active', ['sim','result','diagram'][i]===t);
+  });
+  if (t==='result') loadHistory();
+  if (t==='diagram') updateDiagram();
+}
+
+// ---- Main simulation ----
+function calc() {
+  const W = +document.getElementById('tray_w').value;
+  const L = +document.getElementById('tray_l').value;
+  const H = +document.getElementById('tray_h').value;
+  const pockets = +document.getElementById('pocket').value;
+  const chCount = +document.getElementById('ch_count').value;
+  const chGap = +document.getElementById('ch_gap').value;
+  const orient = document.getElementById('tray_orient').value;
+  const akLen = +document.getElementById('ak_length').value;
+  const slitGap = +document.getElementById('slit_gap').value;
+  const angleSweep = +document.getElementById('angle_sweep').value;
+  const angleSlit = +document.getElementById('angle_slit').value;
+  const akDist = +document.getElementById('ak_dist').value;
+  const blowerHP = +document.getElementById('blower_hp').value;
+  const blowerQty = +document.getElementById('blower_qty').value;
+  const akPos = document.getElementById('ak_pos').value;
+  const feedSpeed = +document.getElementById('feed_speed').value;
+
+  // Recommend AK length
+  const refDim = orient === 'vertical' ? L : W;
+  const minAK = Math.ceil(refDim / 100) * 100;
+  const recAK = Math.ceil(refDim * 1.1 / 100) * 100;
+  document.getElementById('ak_length_info').textContent =
+    `트레이 기준: 최소 ${minAK}mm / 권장 ${recAK}mm (트레이 ${orient==='vertical'?'세로':'가로'} ${refDim}mm)`;
+
+  // Computed
+  const trayArea = W * (orient==='vertical' ? L : H); // face area
+  const slitAreaPerMM = slitGap; // mm² per mm length
+  const slitArea = akLen * slitGap; // mm²
+  const totalKW = blowerHP * 0.7457 * blowerQty;
+  const faceCount = akPos === 'both' ? 2 : 1;
+
+  // Air velocity model: v = sqrt(2 * P / rho), P ~ kW / slitArea
+  // Simplified: higher HP, smaller slit → higher velocity
+  const powerPerSlit = (blowerHP * 746 * blowerQty) / (slitArea * faceCount + 1);
+  const airVelocity = Math.min(Math.sqrt(powerPerSlit * 0.02) * 10, 150); // m/s capped
+
+  const passTimeSec = (orient==='vertical' ? L : W) / (feedSpeed * 1000 / 60); // seconds
+
+  // Sweep width considering angle
+  const sweepWidth = akLen * Math.sin(angleSweep * Math.PI / 180);
+  const chWidth = (W - chGap * (chCount - 1)) / chCount;
+
+  // --- Score calculation ---
+  // 1. Water removal rate (function of airVelocity, slit gap, angle, distance)
+  const velocityScore = Math.min(airVelocity / 80, 1);
+  const slitScore = 1 - (slitGap - 1) / 5; // thinner = better (1mm optimal)
+  const sweepScore = Math.sin(angleSweep * Math.PI / 180);
+  const slitAngleScore = Math.sin(angleSlit * Math.PI / 180); // reverse = better
+  const distScore = Math.max(0, 1 - akDist / 150);
+
+  const removalPct = Math.min(100, (
+    velocityScore * 35 + slitScore * 20 + sweepScore * 20 + slitAngleScore * 15 + distScore * 10
+  ));
+
+  // 2. Velocity efficiency
+  const velEffPct = Math.min(100, velocityScore * 100);
+
+  // 3. Coverage (AK length vs tray dimension)
+  const coverageRatio = Math.min(akLen / refDim, 1.5);
+  const coveragePct = Math.min(100, coverageRatio * 70);
+
+  // 4. Energy efficiency (removal per kW)
+  const energyEff = Math.min(100, (removalPct / (totalKW + 0.1)) * 10);
+
+  // 5. Reverse sweep effect
+  const reversePct = Math.min(100, slitAngleScore * 100 * 0.7 + sweepScore * 100 * 0.3);
+
+  const overallScore = Math.round(
+    removalPct * 0.35 + velEffPct * 0.2 + coveragePct * 0.15 + energyEff * 0.15 + reversePct * 0.15
+  );
+
+  // Pocket drying
+  const pocketDepth = H;
+  const pocketDryPct = Math.min(100, removalPct * 0.6 + slitAngleScore * 40);
+
+  // Update UI
+  setBar('bar-removal', removalPct, removalPct.toFixed(1)+'%');
+  setBar('bar-velocity', velEffPct, airVelocity.toFixed(1)+' m/s');
+  setBar('bar-coverage', coveragePct, coveragePct.toFixed(1)+'%');
+  setBar('bar-efficiency', energyEff, energyEff.toFixed(1)+'%');
+  setBar('bar-power', reversePct, reversePct.toFixed(1)+'%');
+
+  // Score arc
+  const circ = 213.6;
+  const offset = circ - (circ * overallScore / 100);
+  document.getElementById('score-arc').setAttribute('stroke-dashoffset', offset);
+  document.getElementById('score-arc').setAttribute('stroke', scoreColor(overallScore));
+  document.getElementById('score-num').textContent = overallScore;
+
+  const grade = overallScore >= 85 ? '최우수 ★★★' : overallScore >= 70 ? '우수 ★★' : overallScore >= 55 ? '양호 ★' : '개선 필요';
+  const desc = overallScore >= 85 ? '현재 설정이 매우 최적화되어 있습니다.' :
+               overallScore >= 70 ? '양호하나 일부 파라미터 조정으로 향상 가능합니다.' :
+               overallScore >= 55 ? '주요 파라미터를 조정하여 효율을 높이세요.' :
+                                     '에어나이프 각도·슬릿간격·브로어 출력을 검토하세요.';
+  document.getElementById('score-grade').textContent = grade;
+  document.getElementById('score-grade').style.color = scoreColor(overallScore);
+  document.getElementById('score-desc').textContent = desc;
+
+  // Info table
+  document.getElementById('iv-area').textContent = (trayArea/1e6).toFixed(4)+' m²';
+  document.getElementById('iv-aklen').textContent = akLen+' mm';
+  document.getElementById('iv-slit-area').textContent = slitArea.toFixed(0)+' mm²';
+  document.getElementById('iv-power').textContent = totalKW.toFixed(2)+' kW ('+blowerHP+'HP × '+blowerQty+'대)';
+  document.getElementById('iv-airspeed').textContent = airVelocity.toFixed(1)+' m/s';
+  document.getElementById('iv-passtime').textContent = passTimeSec.toFixed(2)+' 초';
+  document.getElementById('iv-sweep').textContent = sweepWidth.toFixed(0)+' mm';
+  document.getElementById('iv-chwidth').textContent = chWidth.toFixed(0)+' mm / 채널';
+  document.getElementById('iv-pocket').textContent = pocketDryPct.toFixed(1)+'%';
+
+  // Recommendations
+  buildRecommendations(overallScore, {
+    velocityScore, slitScore, sweepScore, slitAngleScore, distScore,
+    airVelocity, angleSweep, angleSlit, slitGap, akDist, akLen, refDim, blowerHP
+  });
+
+  // Status
+  const st = document.getElementById('status-bar');
+  st.innerHTML = overallScore >= 70
+    ? `<span class="status-ok">✅ 시뮬레이션 완료</span> — 종합 점수 ${overallScore}점 | 물기제거 ${removalPct.toFixed(1)}% | 에어속도 ${airVelocity.toFixed(1)} m/s`
+    : `<span class="status-warn">⚠️ 개선 필요</span> — 종합 점수 ${overallScore}점 | 물기제거 ${removalPct.toFixed(1)}% | 아래 권고사항 확인`;
+
+  // Update diagram
+  updateDiagram();
+
+  // Store for PDF
+  window._lastResult = {W,L,H,pockets,chCount,akLen,slitGap,angleSweep,angleSlit,akDist,blowerHP,blowerQty,akPos,feedSpeed,
+    overallScore,removalPct,velEffPct,coveragePct,energyEff,reversePct,airVelocity,grade};
+}
+
+function setBar(id, pct, label) {
+  document.getElementById(id).style.width = Math.min(pct,100)+'%';
+  document.getElementById(id+'-v').textContent = label;
+}
+
+function scoreColor(s) {
+  return s >= 85 ? '#059669' : s >= 70 ? '#2563a8' : s >= 55 ? '#d97706' : '#dc2626';
+}
+
+function buildRecommendations(score, p) {
+  const recs = [];
+  if (p.airVelocity < 30) recs.push(`브로어 마력을 높이거나 슬릿 간격을 줄이세요 (현재 풍속 ${p.airVelocity.toFixed(1)} m/s → 목표 30 m/s 이상)`);
+  if (p.slitGap > 2) recs.push(`슬릿 간격을 1.0~1.5mm로 줄이면 집중 에어 속도가 증가합니다 (현재 ${p.slitGap}mm)`);
+  if (p.angleSweep < 15) recs.push(`에어나이프 측면 기울기(θ1)를 15~25°로 설정하면 우→좌 스윕 효과가 극대화됩니다`);
+  if (p.angleSlit < 20) recs.push(`슬릿 분사각(θ2)을 25~45°로 설정하여 역방향 수막 제거 효과를 높이세요`);
+  if (p.akDist > 80) recs.push(`에어나이프~트레이 거리를 30~60mm로 좁히면 에어 압력 손실이 감소합니다`);
+  if (p.akLen < p.refDim * 1.05) recs.push(`에어나이프 길이를 트레이 기준 치수(${p.refDim}mm)의 110% 이상으로 설정하세요`);
+  if (p.angleSweep >= 15 && p.angleSlit >= 25 && p.airVelocity >= 30) recs.push(`현재 각도 설정이 양호합니다. 슬릿 간격 미세 조정으로 추가 최적화 가능합니다`);
+  if (score >= 85) recs.push(`최적 조건입니다. 동일 조건으로 생산 적용을 권장합니다`);
+
+  const html = `<div class="rec-box"><div class="rec-title">💡 최적화 권고사항 (점수: ${score}점)</div>
+    ${recs.map(r=>`<div class="rec-item">${r}</div>`).join('')}
+  </div>`;
+  document.getElementById('rec-content').innerHTML = html;
+}
+
+function updateDiagram() {
+  const a1 = +document.getElementById('angle_sweep').value;
+  const a2 = +document.getElementById('angle_slit').value;
+  const gap = document.getElementById('slit_gap').value;
+  document.getElementById('angle-label').textContent = `θ1=${a1}° | θ2=${a2}° | Gap=${gap}mm`;
+  // Update front AK transform
+  document.getElementById('ak-front-l').setAttribute('transform', `rotate(-${a1}, 115, 210)`);
+  document.getElementById('ak-back-l').setAttribute('transform', `rotate(${a1}, 315, 210)`);
+}
+
+// ---- Firebase Save ----
+async function saveToFirebase() {
+  if (!window._lastResult) { alert('먼저 시뮬레이션을 실행하세요.'); return; }
+  if (!db) { alert('Firebase 연결 설정이 필요합니다.'); return; }
+  try {
+    await db.collection('airknife_sim').add({
+      ...window._lastResult,
+      savedAt: new Date().toISOString(),
+      savedBy: 'insys-rnd'
+    });
+    document.getElementById('status-bar').innerHTML = '<span class="status-ok">✅ Firebase에 저장되었습니다.</span>';
+  } catch(e) {
+    document.getElementById('status-bar').innerHTML = '<span class="status-warn">⚠️ 저장 실패: '+e.message+'</span>';
+  }
+}
+
+async function loadHistory() {
+  const el = document.getElementById('history-list');
+  if (!db) { el.textContent = 'Firebase 미연결 — 설정 키를 입력하세요.'; return; }
+  try {
+    const snap = await db.collection('airknife_sim').orderBy('savedAt','desc').limit(10).get();
+    if (snap.empty) { el.textContent = '저장된 데이터가 없습니다.'; return; }
+    let html = '<table style="width:100%;border-collapse:collapse;font-size:12px">';
+    html += '<tr style="background:#e2ecf7"><th style="padding:5px 8px">저장일시</th><th>점수</th><th>물기제거</th><th>풍속</th><th>θ1</th><th>θ2</th><th>슬릿</th><th>브로어</th></tr>';
+    snap.forEach(doc => {
+      const d = doc.data();
+      html += `<tr style="border-bottom:1px solid #e2ecf7">
+        <td style="padding:4px 8px">${d.savedAt?.substring(0,16)||'-'}</td>
+        <td style="text-align:center;font-weight:700;color:${scoreColor(d.overallScore)}">${d.overallScore}</td>
+        <td style="text-align:center">${d.removalPct?.toFixed(1)||'-'}%</td>
+        <td style="text-align:center">${d.airVelocity?.toFixed(1)||'-'} m/s</td>
+        <td style="text-align:center">${d.angleSweep||'-'}°</td>
+        <td style="text-align:center">${d.angleSlit||'-'}°</td>
+        <td style="text-align:center">${d.slitGap||'-'}mm</td>
+        <td style="text-align:center">${d.blowerHP||'-'}HP×${d.blowerQty||'-'}</td>
+      </tr>`;
+    });
+    html += '</table>';
+    el.innerHTML = html;
+  } catch(e) {
+    el.textContent = '로드 실패: ' + e.message;
+  }
+}
+
+// ---- PDF Export ----
+function exportPDF() {
+  const r = window._lastResult;
+  if (!r) { alert('먼저 시뮬레이션을 실행하세요.'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(16);
+  doc.setTextColor(26,58,92);
+  doc.text('Air-Knife Pre-Dryer Optimization Report', 105, 20, {align:'center'});
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica','normal');
+  doc.setTextColor(100,100,100);
+  doc.text('인시스 AI혁신 R&D센터  |  v1.0  |  ' + new Date().toLocaleDateString('ko-KR'), 105, 27, {align:'center'});
+
+  doc.setDrawColor(26,58,92);
+  doc.setLineWidth(0.5);
+  doc.line(14, 30, 196, 30);
+
+  // Score
+  doc.setFontSize(13);
+  doc.setFont('helvetica','bold');
+  doc.setTextColor(26,58,92);
+  doc.text('종합 효율 점수: ' + r.overallScore + '점  (' + r.grade + ')', 14, 40);
+
+  // Parameters table
+  const rows = [
+    ['트레이 가로 (W)', r.W+' mm', '트레이 세로 (L)', r.L+' mm'],
+    ['트레이 높이 (H)', r.H+' mm', '포켓 수량', r.pockets+' ea'],
+    ['에어나이프 길이', r.akLen+' mm', '슬릿 간격', r.slitGap+' mm'],
+    ['측면 기울기 θ1', r.angleSweep+'°', '분사각 θ2', r.angleSlit+'°'],
+    ['AK-트레이 거리', r.akDist+' mm', '이송 속도', r.feedSpeed+' m/min'],
+    ['브로어 마력', r.blowerHP+' HP', '브로어 수량', r.blowerQty+'대'],
+  ];
+
+  let y = 50;
+  doc.setFontSize(10);
+  doc.setFont('helvetica','bold');
+  doc.setFillColor(229,238,248);
+  doc.rect(14, y-5, 182, 8, 'F');
+  doc.setTextColor(26,58,92);
+  doc.text('입력 파라미터', 16, y);
+  y += 6;
+
+  doc.setFont('helvetica','normal');
+  doc.setTextColor(50,50,80);
+  rows.forEach(row => {
+    doc.setFillColor(248,250,252);
+    doc.rect(14, y-4, 182, 7, 'F');
+    doc.text(row[0], 16, y); doc.text(row[1], 70, y, {align:'right'});
+    doc.text(row[2], 108, y); doc.text(row[3], 193, y, {align:'right'});
+    doc.setDrawColor(220,230,240);
+    doc.line(14, y+3, 196, y+3);
+    y += 8;
+  });
+
+  y += 4;
+  doc.setFont('helvetica','bold');
+  doc.setFillColor(229,238,248);
+  doc.rect(14, y-5, 182, 8, 'F');
+  doc.setTextColor(26,58,92);
+  doc.text('시뮬레이션 결과', 16, y);
+  y += 6;
+
+  const results = [
+    ['물기 제거율', r.removalPct.toFixed(1)+'%'],
+    ['에어 속도 효율', r.velEffPct.toFixed(1)+'%'],
+    ['면 커버리지', r.coveragePct.toFixed(1)+'%'],
+    ['에너지 효율', r.energyEff.toFixed(1)+'%'],
+    ['역방향 스윕 효과', r.reversePct.toFixed(1)+'%'],
+    ['추정 에어 풍속', r.airVelocity.toFixed(1)+' m/s'],
+  ];
+
+  doc.setFont('helvetica','normal');
+  doc.setTextColor(50,50,80);
+  results.forEach(row => {
+    doc.setFillColor(248,250,252);
+    doc.rect(14, y-4, 182, 7, 'F');
+    doc.text(row[0], 16, y);
+    doc.setFont('helvetica','bold');
+    doc.text(row[1], 193, y, {align:'right'});
+    doc.setFont('helvetica','normal');
+    doc.setDrawColor(220,230,240);
+    doc.line(14, y+3, 196, y+3);
+    y += 8;
+  });
+
+  y += 4;
+  doc.setFontSize(8);
+  doc.setTextColor(120,120,140);
+  doc.text('본 보고서는 인시스 AI혁신 R&D센터 에어나이프 시뮬레이터에서 자동 생성되었습니다.', 105, y, {align:'center'});
+  doc.text('생성일: ' + new Date().toLocaleString('ko-KR'), 105, y+5, {align:'center'});
+
+  doc.save('airknife_report.pdf');
+}
+
+// Initial calc
+calc();
+</script>
+</body>
+</html>
