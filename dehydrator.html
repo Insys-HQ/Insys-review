@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>패드 탈수기 시뮬레이션 v5.3 | 인시스 AI혁신 R&D센터</title>
+<title>패드 탈수기 시뮬레이션 v5.4 | 인시스 AI혁신 R&D센터</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -230,7 +230,7 @@ canvas{display:block;width:100%!important}
 <div class="topbar">
   <b>🏭 인시스 AI혁신 R&D센터 | 패드 탈수기 시뮬레이션</b>
   <div class="topbar-r">
-    <span class="ver-badge">v5.3</span>
+    <span class="ver-badge">v5.4</span>
     <div class="mtoggle">
       <button class="mbtn on" id="modePC" onclick="setMode('pc')">🖥 PC</button>
       <button class="mbtn" id="modeMob" onclick="setMode('mob')">📱 모바일</button>
@@ -255,7 +255,7 @@ canvas{display:block;width:100%!important}
   <!-- COL1: 입력 -->
   <div>
     <div class="card" style="margin-bottom:10px">
-      <div class="ch">⚙️ 탈수기 사양 <span class="cv">v5.3</span></div>
+      <div class="ch">⚙️ 탈수기 사양 <span class="cv">v5.4</span></div>
       <div class="cb" id="sl-mech-pc"></div>
     </div>
     <div class="card" style="margin-bottom:10px">
@@ -355,7 +355,7 @@ canvas{display:block;width:100%!important}
 
 <!-- MOBILE LAYOUT -->
 <div class="mob-layout" id="mobLayout" style="display:none">
-  <div class="card"><div class="ch">⚙️ 탈수기 사양 <span class="cv">v5.3</span></div>
+  <div class="card"><div class="ch">⚙️ 탈수기 사양 <span class="cv">v5.4</span></div>
     <div class="cb"><div class="sr-mob" id="sl-mech-mob"></div></div></div>
   <div class="card"><div class="ch">💧 수분 조건</div>
     <div class="cb"><div class="sr-mob" id="sl-water-mob"></div></div></div>
@@ -434,7 +434,7 @@ canvas{display:block;width:100%!important}
 <div class="panel" id="tab-phys">
 <div class="wrap">
   <div class="card">
-    <div class="ch">📐 수학·기계공학 공식 전체 검증 <span class="cv">v5.3</span></div>
+    <div class="ch">📐 수학·기계공학 공식 전체 검증 <span class="cv">v5.4</span></div>
     <div class="cb" id="physPanel">
       <span style="color:var(--mute);font-size:12px">시뮬레이션 실행 후 자동 업데이트됩니다</span>
     </div>
@@ -456,7 +456,7 @@ canvas{display:block;width:100%!important}
 
 <div class="footer">
   담당부서: 인시스 AI혁신 R&D센터 &nbsp;|&nbsp; ys.kim@in-sys.co.kr &nbsp;|&nbsp;
-  패드 탈수기 시뮬레이션 <b>v5.3</b> &nbsp;|&nbsp; 900×600×3mm 골판지 패드
+  패드 탈수기 시뮬레이션 <b>v5.4</b> &nbsp;|&nbsp; 900×600×3mm 골판지 패드
 </div>
 
 <!-- FIREBASE -->
@@ -847,7 +847,7 @@ function renderFormula(dw,rpm,dia,peak){
     {n:'M최종',eq:'M₀-Sw',v:dw.finalM,u:'%'},
   ];
   return`<div class="formula-box">
-    <div class="formula-title">📐 단계별 계산값 — v5.3</div>
+    <div class="formula-title">📐 단계별 계산값 — v5.4</div>
     ${rows.map(r=>`<div class="formula-row">
       <span class="f-name">${r.n}</span>
       <span class="f-eq">= ${r.eq}</span>
@@ -1055,13 +1055,12 @@ function doOptimize(){
 }
 function renderOptChart(cid){
   const c=document.getElementById(cid);if(!c||!optData||!simData)return;
-  c.width=c.parentElement.offsetWidth||500;c.height=160;
-  const ctx=c.getContext('2d'),W=c.width,H=160;
-  const pd={t:28,r:14,b:30,l:46};
+  c.width=c.parentElement.offsetWidth||500;c.height=180;
+  const ctx=c.getContext('2d'),W=c.width,H=180;
+  const pd={t:36,r:70,b:30,l:46};
   const iW=W-pd.l-pd.r,iH=H-pd.t-pd.b;
   ctx.clearRect(0,0,W,H);
 
-  // 현재 + 3모드 비교
   const groups=[
     {lbl:'현재',   sw:parseFloat(optData.cur.sw), peak:parseFloat(optData.cur.peak||gv('peak')), ph:simData.perHour, col:'#94a3b8'},
     {lbl:'최대탈수',sw:parseFloat(optData.sA.sw),  peak:optData.sA.peak, ph:optData.sA.ph, col:'#15803d'},
@@ -1072,66 +1071,72 @@ function renderOptChart(cid){
   const maxPeak=Math.max(...groups.map(g=>g.peak),10);
   const maxPh=Math.max(...groups.map(g=>g.ph),1);
   const grpW=iW/groups.length;
-  const bw=grpW*0.28;
+  const bw=Math.min(grpW*0.22, 28); // 막대 너비 제한
+  const gap=3; // 막대 간격
 
   // Y 그리드
   ctx.strokeStyle='#e2e8f0';ctx.lineWidth=.5;
   [0,.5,1].forEach(f=>{
-    const y=pd.t+iH-iH*f;
+    const y=pd.t+iH*(1-f);
     ctx.beginPath();ctx.moveTo(pd.l,y);ctx.lineTo(W-pd.r,y);ctx.stroke();
   });
 
-  groups.forEach((g,i)=>{
-    const cx=pd.l+i*grpW+grpW/2;
-
-    // 막대1: 탈수량 Sw (짙은색)
-    const sh=iH*(g.sw/S_inf)*0.90;
-    const sx=cx-bw-2;
-    ctx.fillStyle=g.col+'dd';
-    ctx.fillRect(sx,pd.t+iH-sh,bw,sh);
-    ctx.fillStyle=g.col;ctx.font=F12B;ctx.textAlign='center';
-    ctx.fillText(g.sw+'%p',sx+bw/2,pd.t+iH-sh-4);
-
-    // 막대2: 유지시간 (연한색)
-    const ph2=iH*(g.peak/maxPeak)*0.90;
-    const px2=cx+2;
-    ctx.fillStyle=g.col+'55';
-    ctx.fillRect(px2,pd.t+iH-ph2,bw,ph2);
-    ctx.fillStyle=g.col;ctx.font=F12;ctx.textAlign='center';
-    ctx.fillText(g.peak+'s',px2+bw/2,pd.t+iH-ph2-4);
-
-    // 막대3: 시간당 처리량 (점선 테두리)
-    const qh=iH*(g.ph/maxPh)*0.90;
-    const qx=cx+bw+4;
-    ctx.strokeStyle=g.col;ctx.lineWidth=1.5;ctx.setLineDash([3,2]);
-    ctx.strokeRect(qx,pd.t+iH-qh,bw,qh);
-    ctx.setLineDash([]);
-    ctx.fillStyle=g.col;ctx.font=F12;ctx.textAlign='center';
-    ctx.fillText(g.ph+'장',qx+bw/2,pd.t+iH-qh-4);
-
-    // X 레이블
-    ctx.fillStyle=g.col==='#94a3b8'?'#64748b':g.col;
-    ctx.font=F12B;ctx.textAlign='center';
-    ctx.fillText(g.lbl,cx+bw/2,H-6);
-  });
-
-  // 범례
-  let lx=pd.l;
-  ctx.fillStyle='#334155';ctx.fillRect(lx,4,12,7);
-  ctx.fillStyle='#334155';ctx.font=F12;ctx.textAlign='left';ctx.fillText('탈수량',lx+16,13);lx+=64;
-  ctx.fillStyle='#33415555';ctx.fillRect(lx,4,12,7);
-  ctx.fillStyle='#334155';ctx.fillText('유지(s)',lx+16,13);lx+=62;
-  ctx.strokeStyle='#334155';ctx.lineWidth=1.5;ctx.setLineDash([3,2]);
-  ctx.strokeRect(lx,4,12,7);ctx.setLineDash([]);
-  ctx.fillStyle='#334155';ctx.fillText('장/h',lx+16,13);
-
-  // S∞ 표시선
-  const sInfY=pd.t+iH-iH*0.90;
-  ctx.strokeStyle='#b91c1c';ctx.lineWidth=1;ctx.setLineDash([4,3]);
+  // S∞ 기준선 (먼저 그려서 막대 뒤에 가도록)
+  const sInfY=pd.t+iH*(1-0.90);
+  ctx.strokeStyle='#b91c1c';ctx.lineWidth=1.2;ctx.setLineDash([4,3]);
   ctx.beginPath();ctx.moveTo(pd.l,sInfY);ctx.lineTo(W-pd.r,sInfY);ctx.stroke();
   ctx.setLineDash([]);
-  ctx.fillStyle='#b91c1c';ctx.font=F12B;ctx.textAlign='right';
-  ctx.fillText('S∞='+S_inf+'%p',W-pd.r-2,sInfY-3);
+  ctx.fillStyle='#b91c1c';ctx.font=F12B;ctx.textAlign='left';
+  ctx.fillText('S∞='+S_inf+'%p',W-pd.r+2,sInfY+4);
+
+  groups.forEach((g,i)=>{
+    const groupCx=pd.l+i*grpW+grpW/2;
+    // 3개 막대 중심 배치: 좌(-bw-gap), 중(0), 우(+bw+gap)
+    const x1=groupCx-bw-gap-bw/2; // 탈수량 막대 중심
+    const x2=groupCx;              // 유지시간 막대 중심
+    const x3=groupCx+bw+gap+bw/2; // 처리량 막대 중심
+
+    // ── 막대1: 탈수량 Sw
+    const sh=iH*(g.sw/S_inf)*0.88;
+    ctx.fillStyle=g.col+'ee';
+    ctx.fillRect(x1-bw/2, pd.t+iH-sh, bw, sh);
+    // 값: 막대 위 (막대가 낮으면 막대 안에)
+    ctx.fillStyle=g.col;ctx.font=F12B;ctx.textAlign='center';
+    const swY=sh>18 ? pd.t+iH-sh-4 : pd.t+iH-sh-14;
+    ctx.fillText(g.sw+'%p', x1, swY);
+
+    // ── 막대2: 유지시간
+    const ph2=iH*(g.peak/maxPeak)*0.88;
+    ctx.fillStyle=g.col+'55';
+    ctx.fillRect(x2-bw/2, pd.t+iH-ph2, bw, ph2);
+    ctx.fillStyle=g.col;ctx.font=F12;ctx.textAlign='center';
+    const pkY=ph2>18 ? pd.t+iH-ph2-4 : pd.t+iH-ph2-14;
+    ctx.fillText(g.peak+'s', x2, pkY);
+
+    // ── 막대3: 시간당 처리량 (테두리)
+    const qh=iH*(g.ph/maxPh)*0.88;
+    ctx.strokeStyle=g.col;ctx.lineWidth=1.5;ctx.setLineDash([3,2]);
+    ctx.strokeRect(x3-bw/2, pd.t+iH-qh, bw, qh);
+    ctx.setLineDash([]);
+    ctx.fillStyle=g.col;ctx.font=F12;ctx.textAlign='center';
+    const phY=qh>18 ? pd.t+iH-qh-4 : pd.t+iH-qh-14;
+    ctx.fillText(g.ph+'장', x3, phY);
+
+    // ── X 레이블 (그룹 중앙 아래)
+    ctx.fillStyle=g.col==='#94a3b8'?'#64748b':g.col;
+    ctx.font=F12B;ctx.textAlign='center';
+    ctx.fillText(g.lbl, groupCx, H-8);
+  });
+
+  // 범례 (상단)
+  let lx=pd.l;
+  ctx.fillStyle='#475569';ctx.fillRect(lx,4,12,8);
+  ctx.fillStyle='#334155';ctx.font=F12;ctx.textAlign='left';ctx.fillText('탈수량',lx+15,13);lx+=60;
+  ctx.fillStyle='#47556955';ctx.fillRect(lx,4,12,8);
+  ctx.fillStyle='#334155';ctx.fillText('유지(s)',lx+15,13);lx+=62;
+  ctx.strokeStyle='#475569';ctx.lineWidth=1.5;ctx.setLineDash([3,2]);
+  ctx.strokeRect(lx,4,12,8);ctx.setLineDash([]);
+  ctx.fillStyle='#334155';ctx.fillText('장/h',lx+15,13);
 }
 
 /* ══ 생산성 ══ */
