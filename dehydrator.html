@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>탈수기 시뮬레이션 | 인시스 AI혁신 R&D센터</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans KR',sans-serif;background:#f0f4f8;color:#1e293b;min-height:100vh}
+.top-bar{background:#1e3a5f;color:#fff;padding:10px 24px;display:flex;align-items:center;justify-content:space-between;font-size:12px}
+.top-bar .brand{font-weight:700;font-size:14px;letter-spacing:0.5px}
+.top-bar .version{opacity:0.7;font-size:11px}
+.header{background:linear-gradient(135deg,#1e3a5f 0%,#2563a8 100%);color:#fff;padding:20px 24px 16px}
+.header h1{font-size:20px;font-weight:700;margin-bottom:4px}
+.header p{font-size:12px;opacity:0.8}
+.container{max-width:1100px;margin:0 auto;padding:16px}
+
+/* 탭 */
+.tabs{display:flex;gap:4px;margin-bottom:16px;background:#fff;border-radius:10px;padding:6px;box-shadow:0 1px 4px rgba(0,0,0,0.08)}
+.tab{flex:1;padding:8px 12px;border:none;border-radius:7px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;font-size:13px;font-weight:500;background:transparent;color:#64748b;transition:all 0.2s}
+.tab.active{background:#1e3a5f;color:#fff;box-shadow:0 2px 6px rgba(30,58,95,0.3)}
+
+/* 카드 */
+.card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 6px rgba(0,0,0,0.07);margin-bottom:14px}
+.card-title{font-size:14px;font-weight:700;color:#1e3a5f;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid #e2e8f0;display:flex;align-items:center;gap:6px}
+.card-title .icon{font-size:16px}
+
+/* 입력 그리드 */
+.input-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.input-group{display:flex;flex-direction:column;gap:4px}
+.input-group label{font-size:11px;font-weight:600;color:#475569}
+.input-group input,
+.input-group select{padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:7px;font-family:'Noto Sans KR',sans-serif;font-size:13px;color:#1e293b;outline:none;transition:border-color 0.2s}
+.input-group input:focus,
+.input-group select:focus{border-color:#2563a8}
+.input-group .unit{font-size:10px;color:#94a3b8;margin-top:1px}
+
+/* 버튼 */
+.btn{padding:10px 20px;border:none;border-radius:8px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;font-weight:600;font-size:13px;transition:all 0.2s}
+.btn-primary{background:#1e3a5f;color:#fff;width:100%}
+.btn-primary:hover{background:#2563a8}
+.btn-secondary{background:#f1f5f9;color:#475569;border:1.5px solid #cbd5e1}
+.btn-danger{background:#dc2626;color:#fff}
+.btn-sm{padding:6px 12px;font-size:12px;border-radius:6px}
+
+/* 시뮬레이션 게이지 */
+.sim-panel{display:none}
+.sim-panel.active{display:block}
+
+.gauge-wrap{display:flex;flex-direction:column;align-items:center;margin:12px 0}
+.gauge-label{font-size:11px;color:#64748b;margin-bottom:6px;font-weight:600}
+.gauge-bar{width:100%;height:28px;background:#e2e8f0;border-radius:14px;overflow:hidden;position:relative}
+.gauge-fill{height:100%;border-radius:14px;transition:width 0.3s ease;display:flex;align-items:center;justify-content:flex-end;padding-right:10px}
+.gauge-fill span{color:#fff;font-size:11px;font-weight:700;white-space:nowrap}
+.rpm-fill{background:linear-gradient(90deg,#2563a8,#1e3a5f)}
+.time-fill{background:linear-gradient(90deg,#0891b2,#0e7490)}
+
+/* 원형 RPM 게이지 */
+.circle-gauge-wrap{display:flex;justify-content:center;gap:20px;margin:10px 0}
+.circle-gauge{position:relative;width:120px;height:120px}
+.circle-gauge svg{transform:rotate(-90deg)}
+.circle-gauge .circle-bg{fill:none;stroke:#e2e8f0;stroke-width:10}
+.circle-gauge .circle-val{fill:none;stroke-width:10;stroke-linecap:round;transition:stroke-dashoffset 0.5s ease}
+.circle-inner{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center}
+.circle-inner .val{font-size:22px;font-weight:900;color:#1e3a5f}
+.circle-inner .unit{font-size:10px;color:#64748b;font-weight:600}
+.circle-inner .lbl{font-size:10px;color:#94a3b8;margin-top:2px}
+
+/* 상태 배지 */
+.status-badge{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700}
+.badge-idle{background:#f1f5f9;color:#64748b}
+.badge-running{background:#dbeafe;color:#1d4ed8}
+.badge-peak{background:#fef3c7;color:#d97706}
+.badge-braking{background:#fee2e2;color:#dc2626}
+.badge-done{background:#dcfce7;color:#16a34a}
+
+/* 타임라인 */
+.timeline{display:flex;flex-direction:column;gap:0}
+.timeline-item{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #f1f5f9}
+.timeline-item:last-child{border-bottom:none}
+.tl-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;font-weight:700;margin-top:2px}
+.tl-accel{background:#dbeafe;color:#1d4ed8}
+.tl-peak{background:#fef3c7;color:#d97706}
+.tl-brake{background:#fee2e2;color:#dc2626}
+.tl-body{flex:1}
+.tl-title{font-size:13px;font-weight:600;color:#1e293b}
+.tl-desc{font-size:11px;color:#64748b;margin-top:2px}
+.tl-time{font-size:12px;font-weight:700;color:#2563a8;white-space:nowrap;align-self:center}
+
+/* 결과 요약 */
+.result-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.result-item{background:#f8fafc;border-radius:8px;padding:10px 12px;border-left:3px solid #2563a8}
+.result-item .r-label{font-size:10px;color:#64748b;font-weight:600;margin-bottom:4px}
+.result-item .r-val{font-size:18px;font-weight:800;color:#1e3a5f}
+.result-item .r-unit{font-size:11px;color:#94a3b8;margin-left:2px}
+
+/* 히스토리 */
+.history-item{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:12px}
+.history-item:last-child{border-bottom:none}
+.history-item .h-time{color:#94a3b8;width:80px;flex-shrink:0}
+.history-item .h-info{flex:1;color:#334155}
+.history-item .h-badge{font-size:10px;padding:2px 7px;border-radius:10px;background:#dbeafe;color:#1d4ed8;font-weight:700}
+
+/* 생산성 분석 */
+.prod-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.prod-item{background:#f8fafc;border-radius:8px;padding:10px;text-align:center}
+.prod-item .p-val{font-size:20px;font-weight:800;color:#1e3a5f}
+.prod-item .p-label{font-size:10px;color:#64748b;font-weight:600;margin-top:2px}
+
+/* 애니메이션 드럼 */
+.drum-visual{display:flex;justify-content:center;margin:10px 0}
+.drum{width:100px;height:100px;border:6px solid #1e3a5f;border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative;background:#f0f4f8}
+.drum-inner{width:70px;height:70px;border-radius:50%;background:linear-gradient(135deg,#2563a8,#1e3a5f);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;text-align:center;line-height:1.3}
+.drum.spinning{animation:spin var(--speed,0.5s) linear infinite}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+
+.loading{text-align:center;padding:20px;color:#94a3b8;font-size:13px}
+
+/* 반응형 */
+@media(max-width:600px){
+  .input-grid{grid-template-columns:1fr}
+  .result-grid{grid-template-columns:1fr}
+  .prod-grid{grid-template-columns:1fr}
+  .circle-gauge-wrap{gap:12px}
+  .circle-gauge{width:100px;height:100px}
+  .circle-inner .val{font-size:18px}
+}
+
+.firebase-status{font-size:10px;padding:3px 8px;border-radius:10px;font-weight:600}
+.fs-ok{background:#dcfce7;color:#16a34a}
+.fs-err{background:#fee2e2;color:#dc2626}
+.fs-loading{background:#fef3c7;color:#d97706}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <span class="brand">🏭 인시스 AI혁신 R&D센터</span>
+  <span style="display:flex;align-items:center;gap:8px">
+    <span class="firebase-status fs-loading" id="fbStatus">Firebase 연결 중...</span>
+    <span class="version">v1.0</span>
+  </span>
+</div>
+
+<div class="header">
+  <h1>🔄 패드 탈수기 시뮬레이션</h1>
+  <p>900×600×3mm 블루 패드 | 일 2,000장 생산 목표 분석</p>
+</div>
+
+<div class="container">
+
+  <!-- 탭 -->
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('sim')">⚙️ 시뮬레이션</button>
+    <button class="tab" onclick="showTab('prod')">📊 생산성 분석</button>
+    <button class="tab" onclick="showTab('history')">📋 기록 조회</button>
+  </div>
+
+  <!-- 시뮬레이션 탭 -->
+  <div id="tab-sim" class="sim-panel active">
+
+    <!-- 파라미터 입력 -->
+    <div class="card">
+      <div class="card-title"><span class="icon">⚙️</span>탈수기 사양 입력</div>
+      <div class="input-grid">
+        <div class="input-group">
+          <label>최고 회전수 (RPM)</label>
+          <input type="number" id="maxRpm" value="800" min="200" max="3000">
+          <span class="unit">권장: 600~1200 RPM (습식 패드 기준)</span>
+        </div>
+        <div class="input-group">
+          <label>드럼 직경 (mm)</label>
+          <input type="number" id="drumDia" value="1000" min="500" max="2000">
+          <span class="unit">패드 크기 고려 최소 900mm</span>
+        </div>
+        <div class="input-group">
+          <label>1회 투입 장수</label>
+          <input type="number" id="batchSize" value="10" min="1" max="50">
+          <span class="unit">적재 두께 및 무게 고려</span>
+        </div>
+        <div class="input-group">
+          <label>가속 시간 (초)</label>
+          <input type="number" id="accelTime" value="25" min="5" max="120">
+          <span class="unit">0 → 최고RPM 도달 시간</span>
+        </div>
+        <div class="input-group">
+          <label>최고속 유지 시간 (초)</label>
+          <input type="number" id="peakTime" value="45" min="10" max="300">
+          <span class="unit">탈수 효과 유지 구간</span>
+        </div>
+        <div class="input-group">
+          <label>감속(제동) 시간 (초)</label>
+          <input type="number" id="brakeTime" value="20" min="5" max="120">
+          <span class="unit">최고RPM → 정지 시간</span>
+        </div>
+        <div class="input-group">
+          <label>패드 적재/인출 시간 (초)</label>
+          <input type="number" id="loadTime" value="30" min="10" max="120">
+          <span class="unit">작업자 투입+꺼내기 포함</span>
+        </div>
+        <div class="input-group">
+          <label>패드 단위 무게 (g)</label>
+          <input type="number" id="padWeight" value="180" min="50" max="1000">
+          <span class="unit">900×600×3mm PP 기준 ~180g</span>
+        </div>
+      </div>
+      <div style="margin-top:12px">
+        <button class="btn btn-primary" onclick="runSimulation()">▶ 시뮬레이션 실행</button>
+      </div>
+    </div>
+
+    <!-- 결과 패널 (초기 숨김) -->
+    <div id="simResult" style="display:none">
+
+      <!-- 드럼 애니메이션 -->
+      <div class="card">
+        <div class="card-title"><span class="icon">🎯</span>작동 시각화</div>
+        <div class="drum-visual">
+          <div class="drum" id="drumEl">
+            <div class="drum-inner" id="drumLabel">대기</div>
+          </div>
+        </div>
+        <div style="text-align:center;margin-top:8px">
+          <span class="status-badge badge-idle" id="statusBadge">대기</span>
+        </div>
+        <div style="margin-top:12px">
+          <div class="gauge-label">RPM 게이지</div>
+          <div class="gauge-bar"><div class="gauge-fill rpm-fill" id="rpmGauge" style="width:0%"><span id="rpmVal">0 RPM</span></div></div>
+        </div>
+        <div style="margin-top:8px">
+          <div class="gauge-label">진행 시간</div>
+          <div class="gauge-bar"><div class="gauge-fill time-fill" id="timeGauge" style="width:0%"><span id="timeVal">0초</span></div></div>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px">
+          <button class="btn btn-primary" style="flex:1" onclick="playAnimation()" id="playBtn">▶ 애니메이션 재생</button>
+          <button class="btn btn-secondary btn-sm" onclick="resetAnimation()">↺ 초기화</button>
+        </div>
+      </div>
+
+      <!-- 사이클 요약 -->
+      <div class="card">
+        <div class="card-title"><span class="icon">⏱️</span>1사이클 시간 분석</div>
+        <div class="result-grid" id="cycleResult"></div>
+      </div>
+
+      <!-- 단계별 타임라인 -->
+      <div class="card">
+        <div class="card-title"><span class="icon">📈</span>단계별 타임라인</div>
+        <div class="timeline" id="timeline"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 생산성 분석 탭 -->
+  <div id="tab-prod" class="sim-panel">
+    <div class="card">
+      <div class="card-title"><span class="icon">📊</span>8시간 생산성 분석</div>
+      <div id="prodContent" class="loading">먼저 시뮬레이션을 실행해 주세요.</div>
+    </div>
+    <div class="card" id="prodChartCard" style="display:none">
+      <div class="card-title"><span class="icon">📉</span>RPM 프로파일 (1사이클)</div>
+      <canvas id="rpmChart" height="160"></canvas>
+    </div>
+  </div>
+
+  <!-- 기록 탭 -->
+  <div id="tab-history" class="sim-panel">
+    <div class="card">
+      <div class="card-title">
+        <span class="icon">📋</span>시뮬레이션 기록
+        <button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="clearHistory()">전체 삭제</button>
+      </div>
+      <div id="historyList" class="loading">Firebase에서 불러오는 중...</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, push, onValue, remove, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC_insys_dehydrator_placeholder",
+  authDomain: "insys-dehydrator.firebaseapp.com",
+  databaseURL: "https://insys-review-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "insys-review",
+  storageBucket: "insys-review.appspot.com",
+  messagingSenderId: "123456789",
+  appId: "1:123456789:web:abcdef"
+};
+
+// Firebase 초기화 (실제 프로젝트 config 적용 시 아래 주석 해제)
+let db = null;
+let historyRef = null;
+
+try {
+  const app = initializeApp(firebaseConfig);
+  db = getDatabase(app);
+  historyRef = ref(db, 'dehydrator_simulations');
+  document.getElementById('fbStatus').textContent = 'Firebase 연결됨';
+  document.getElementById('fbStatus').className = 'firebase-status fs-ok';
+  loadHistory();
+} catch(e) {
+  document.getElementById('fbStatus').textContent = 'Firebase 미연결 (로컬)';
+  document.getElementById('fbStatus').className = 'firebase-status fs-err';
+  loadLocalHistory();
+}
+
+// 전역 노출
+window._firebaseSave = async function(data) {
+  if (!db || !historyRef) {
+    // 로컬 저장
+    const local = JSON.parse(localStorage.getItem('dehydrator_history') || '[]');
+    local.unshift({...data, id: Date.now().toString()});
+    localStorage.setItem('dehydrator_history', JSON.stringify(local.slice(0,50)));
+    loadLocalHistory();
+    return;
+  }
+  try {
+    await push(historyRef, data);
+  } catch(e) {
+    console.warn('Firebase 저장 실패, 로컬 저장:', e);
+    const local = JSON.parse(localStorage.getItem('dehydrator_history') || '[]');
+    local.unshift({...data, id: Date.now().toString()});
+    localStorage.setItem('dehydrator_history', JSON.stringify(local.slice(0,50)));
+    loadLocalHistory();
+  }
+};
+
+window._clearFirebase = async function() {
+  if (db && historyRef) {
+    try { await set(historyRef, null); } catch(e) {}
+  }
+  localStorage.removeItem('dehydrator_history');
+  document.getElementById('historyList').innerHTML = '<div class="loading">기록 없음</div>';
+};
+
+function loadHistory() {
+  if (!historyRef) return loadLocalHistory();
+  onValue(historyRef, (snapshot) => {
+    const data = snapshot.val();
+    renderHistory(data ? Object.entries(data).reverse().slice(0,30).map(([k,v]) => ({id:k,...v})) : []);
+  }, () => loadLocalHistory());
+}
+
+function loadLocalHistory() {
+  const local = JSON.parse(localStorage.getItem('dehydrator_history') || '[]');
+  renderHistory(local);
+}
+
+function renderHistory(list) {
+  const el = document.getElementById('historyList');
+  if (!list || list.length === 0) {
+    el.innerHTML = '<div class="loading">저장된 기록이 없습니다.</div>';
+    return;
+  }
+  el.innerHTML = list.map(d => `
+    <div class="history-item">
+      <span class="h-time">${d.date||''}</span>
+      <span class="h-info">
+        <b>${d.batchSize}장/회</b> | ${d.maxRpm} RPM | 사이클 <b>${d.cycleTotal}초</b> | 시간당 <b>${d.perHour}장</b>
+      </span>
+      <span class="h-badge">${d.achievable ? '목표달성' : '목표미달'}</span>
+    </div>
+  `).join('');
+}
+</script>
+
+<script>
+let simData = null;
+let animFrame = null;
+let animStart = null;
+
+function showTab(name) {
+  document.querySelectorAll('.sim-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+function g(id) { return parseFloat(document.getElementById(id).value) || 0; }
+
+function runSimulation() {
+  const maxRpm    = g('maxRpm');
+  const drumDia   = g('drumDia');
+  const batch     = g('batchSize');
+  const accel     = g('accelTime');
+  const peak      = g('peakTime');
+  const brake     = g('brakeTime');
+  const load      = g('loadTime');
+  const padWt     = g('padWeight');
+
+  // 물리 계산
+  const r = drumDia / 2 / 1000; // m
+  const omega = maxRpm * 2 * Math.PI / 60;
+  const v_tip = omega * r; // m/s 드럼 끝단 속도
+  const g_force = (omega * omega * r) / 9.81; // G force
+
+  const cycleTotal = accel + peak + brake + load;
+  const batchWt = batch * padWt; // g
+  const perHour = Math.floor(3600 / cycleTotal * batch);
+  const per8h   = Math.floor(perHour * 8);
+  const achievable = per8h >= 2000;
+
+  // 단계 타임라인
+  const phases = [
+    { label:'투입', icon:'📥', dot:'tl-accel', title:`패드 ${batch}장 투입`, desc:`1회 투입량 ${batch}장 (${batchWt.toLocaleString()}g) — 작업자 적재`, sec:load/2, cum:load/2 },
+    { label:'가속', icon:'⬆️', dot:'tl-accel', title:`가속 구간`, desc:`0 → ${maxRpm} RPM / ${accel}초 / 원심가속도 ${g_force.toFixed(1)}G`, sec:accel, cum:load/2+accel },
+    { label:'최고속', icon:'💫', dot:'tl-peak', title:`최고속 유지`, desc:`${maxRpm} RPM 유지 ${peak}초 / 팁 속도 ${v_tip.toFixed(1)} m/s`, sec:peak, cum:load/2+accel+peak },
+    { label:'제동', icon:'⛔', dot:'tl-brake', title:`감속·정지`, desc:`${maxRpm} → 0 RPM / ${brake}초 / 브레이크 작동`, sec:brake, cum:load/2+accel+peak+brake },
+    { label:'인출', icon:'📤', dot:'tl-accel', title:`패드 인출`, desc:`탈수 완료 패드 꺼내기 / ${(load/2).toFixed(0)}초`, sec:load/2, cum:cycleTotal },
+  ];
+
+  simData = { maxRpm, drumDia, batch, accel, peak, brake, load, padWt, cycleTotal, batchWt, perHour, per8h, achievable, g_force, v_tip, phases };
+
+  // 결과 렌더
+  document.getElementById('cycleResult').innerHTML = [
+    { label:'1사이클 총 시간', val: cycleTotal, unit:'초' },
+    { label:'1회 투입 장수', val: batch, unit:'장' },
+    { label:'시간당 처리량', val: perHour.toLocaleString(), unit:'장/h' },
+    { label:'8시간 총 처리량', val: per8h.toLocaleString(), unit:'장' },
+    { label:'최고 원심가속도', val: g_force.toFixed(1), unit:'G' },
+    { label:'드럼 팁 속도', val: v_tip.toFixed(1), unit:'m/s' },
+    { label:'1회 적재 무게', val: batchWt.toLocaleString(), unit:'g' },
+    { label:'목표(2000장) 달성', val: achievable ? '✅ 달성' : '❌ 미달', unit:'' },
+  ].map(i => `
+    <div class="result-item">
+      <div class="r-label">${i.label}</div>
+      <div class="r-val">${i.val}<span class="r-unit">${i.unit}</span></div>
+    </div>
+  `).join('');
+
+  document.getElementById('timeline').innerHTML = phases.map((p,i) => `
+    <div class="timeline-item">
+      <div class="tl-dot ${p.dot}">${i+1}</div>
+      <div class="tl-body">
+        <div class="tl-title">${p.icon} ${p.title}</div>
+        <div class="tl-desc">${p.desc}</div>
+      </div>
+      <div class="tl-time">${p.sec}초</div>
+    </div>
+  `).join('');
+
+  document.getElementById('simResult').style.display = 'block';
+  resetAnimation();
+  renderProdAnalysis();
+  renderChart();
+
+  // Firebase 저장
+  const now = new Date();
+  const dateStr = `${now.getMonth()+1}/${now.getDate()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  if (window._firebaseSave) {
+    window._firebaseSave({ date: dateStr, maxRpm, drumDia, batchSize: batch, cycleTotal, perHour, per8h, achievable });
+  }
+}
+
+function renderProdAnalysis() {
+  if (!simData) return;
+  const { batch, cycleTotal, perHour, per8h, achievable, maxRpm, g_force } = simData;
+  const cyclesPerHour = Math.floor(3600 / cycleTotal);
+  const cycles8h = cyclesPerHour * 8;
+  const deficit = Math.max(0, 2000 - per8h);
+  const needBatch = deficit > 0 ? Math.ceil(2000 * cycleTotal / 3600 / 8) : batch;
+
+  document.getElementById('prodContent').innerHTML = `
+    <div class="prod-grid">
+      <div class="prod-item">
+        <div class="p-val" style="color:${achievable?'#16a34a':'#dc2626'}">${per8h.toLocaleString()}</div>
+        <div class="p-label">8시간 총 처리량 (장)</div>
+      </div>
+      <div class="prod-item">
+        <div class="p-val">${cyclesPerHour}</div>
+        <div class="p-label">시간당 사이클 횟수</div>
+      </div>
+      <div class="prod-item">
+        <div class="p-val">${cycles8h}</div>
+        <div class="p-label">8시간 총 사이클 횟수</div>
+      </div>
+      <div class="prod-item">
+        <div class="p-val">${perHour.toLocaleString()}</div>
+        <div class="p-label">시간당 처리 장수</div>
+      </div>
+    </div>
+    <div style="margin-top:12px;padding:12px;border-radius:8px;background:${achievable?'#dcfce7':'#fee2e2'};color:${achievable?'#166534':'#991b1b'}">
+      <b>${achievable ? '✅ 목표 달성 가능' : '❌ 목표 미달 — 조정 필요'}</b><br>
+      <span style="font-size:12px;margin-top:4px;display:block">
+        ${achievable
+          ? `일 2,000장 목표를 ${per8h-2000}장 초과 달성합니다.`
+          : `${deficit}장 부족. 1회 투입량을 최소 <b>${needBatch}장</b>으로 늘리거나, 최고속 유지시간 단축 필요.`
+        }
+      </span>
+    </div>
+    <div style="margin-top:10px;font-size:11px;color:#64748b;line-height:1.7">
+      ※ 계산 기준: 8시간 × ${cyclesPerHour}사이클/h × ${batch}장/사이클<br>
+      ※ 원심가속도 ${g_force.toFixed(1)}G — 패드 변형 및 적층 안전성 현장 검증 권고<br>
+      ※ 점검·휴식 시간(약 10%) 감안 시 실제 생산량 약 ${Math.floor(per8h*0.9).toLocaleString()}장 예상
+    </div>
+  `;
+  document.getElementById('prodChartCard').style.display = 'block';
+}
+
+function renderChart() {
+  if (!simData) return;
+  const { maxRpm, accel, peak, brake, load } = simData;
+  const canvas = document.getElementById('rpmChart');
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth || 600;
+  canvas.height = 160;
+
+  const W = canvas.width, H = canvas.height;
+  const pad = { top:20, right:20, bottom:30, left:50 };
+  const total = accel + peak + brake + load;
+  const iW = W - pad.left - pad.right;
+  const iH = H - pad.top - pad.bottom;
+
+  // 포인트: 투입(0,0) → 가속완료 → 피크끝 → 정지 → 인출완료
+  const pts = [
+    [0, 0],
+    [load/2, 0],
+    [load/2 + accel, maxRpm],
+    [load/2 + accel + peak, maxRpm],
+    [load/2 + accel + peak + brake, 0],
+    [total, 0],
+  ];
+
+  const tx = t => pad.left + (t / total) * iW;
+  const ty = r => pad.top + iH - (r / maxRpm) * iH;
+
+  ctx.clearRect(0,0,W,H);
+
+  // 배경 영역 색
+  const phases = [
+    [0, load/2, '#f0f9ff'],
+    [load/2, load/2+accel, '#dbeafe'],
+    [load/2+accel, load/2+accel+peak, '#fef3c7'],
+    [load/2+accel+peak, load/2+accel+peak+brake, '#fee2e2'],
+    [load/2+accel+peak+brake, total, '#f0f9ff'],
+  ];
+  phases.forEach(([s,e,c]) => {
+    ctx.fillStyle = c;
+    ctx.fillRect(tx(s), pad.top, tx(e)-tx(s), iH);
+  });
+
+  // 그리드
+  ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 0.8;
+  [0, maxRpm*0.25, maxRpm*0.5, maxRpm*0.75, maxRpm].forEach(r => {
+    ctx.beginPath(); ctx.moveTo(pad.left, ty(r)); ctx.lineTo(W-pad.right, ty(r)); ctx.stroke();
+    ctx.fillStyle='#94a3b8'; ctx.font='10px Noto Sans KR'; ctx.textAlign='right';
+    ctx.fillText(Math.round(r), pad.left-4, ty(r)+4);
+  });
+
+  // 곡선
+  ctx.beginPath(); ctx.strokeStyle='#2563a8'; ctx.lineWidth=2.5;
+  pts.forEach(([t,r],i) => i===0 ? ctx.moveTo(tx(t),ty(r)) : ctx.lineTo(tx(t),ty(r)));
+  ctx.stroke();
+
+  // 포인트
+  pts.forEach(([t,r]) => {
+    ctx.beginPath(); ctx.arc(tx(t),ty(r),4,0,Math.PI*2);
+    ctx.fillStyle='#1e3a5f'; ctx.fill();
+  });
+
+  // X축 레이블
+  ctx.fillStyle='#64748b'; ctx.font='10px Noto Sans KR'; ctx.textAlign='center';
+  ['투입', '가속', '최고속', '감속', '인출'].forEach((lbl,i) => {
+    const ts = [0, load/2, load/2+accel, load/2+accel+peak, load/2+accel+peak+brake];
+    const te = [load/2, load/2+accel, load/2+accel+peak, load/2+accel+peak+brake, total];
+    ctx.fillText(lbl, tx((ts[i]+te[i])/2), H-6);
+  });
+
+  // Y축 라벨
+  ctx.save(); ctx.translate(12, pad.top+iH/2); ctx.rotate(-Math.PI/2);
+  ctx.fillStyle='#64748b'; ctx.font='10px Noto Sans KR'; ctx.textAlign='center';
+  ctx.fillText('RPM', 0, 0); ctx.restore();
+}
+
+// 애니메이션
+function playAnimation() {
+  if (!simData) return;
+  resetAnimation();
+  document.getElementById('playBtn').disabled = true;
+  const { maxRpm, accel, peak, brake, load, cycleTotal } = simData;
+  const halfLoad = load / 2;
+
+  animStart = null;
+  function frame(ts) {
+    if (!animStart) animStart = ts;
+    const elapsed = (ts - animStart) / 1000; // seconds (real time scaled 1:1, can scale down)
+    const scale = Math.min(cycleTotal / 15, 1); // speed up for long cycles
+    const t = Math.min(elapsed * (cycleTotal / 15), cycleTotal);
+
+    let rpm = 0;
+    let phase = '';
+    if (t < halfLoad) { rpm = 0; phase = '투입'; }
+    else if (t < halfLoad + accel) { rpm = maxRpm * (t - halfLoad) / accel; phase = '가속'; }
+    else if (t < halfLoad + accel + peak) { rpm = maxRpm; phase = '최고속'; }
+    else if (t < halfLoad + accel + peak + brake) { rpm = maxRpm * (1 - (t - halfLoad - accel - peak) / brake); phase = '감속'; }
+    else { rpm = 0; phase = '인출'; }
+
+    const pct = Math.min(100, (t / cycleTotal) * 100);
+    const rpmPct = (rpm / maxRpm) * 100;
+    document.getElementById('rpmGauge').style.width = rpmPct + '%';
+    document.getElementById('rpmVal').textContent = Math.round(rpm) + ' RPM';
+    document.getElementById('timeGauge').style.width = pct + '%';
+    document.getElementById('timeVal').textContent = t.toFixed(1) + '초';
+
+    // 드럼 애니메이션
+    const drum = document.getElementById('drumEl');
+    if (rpm > 10) {
+      const spd = Math.max(0.05, 0.8 - (rpm / maxRpm) * 0.75);
+      drum.style.setProperty('--speed', spd + 's');
+      drum.classList.add('spinning');
+    } else {
+      drum.classList.remove('spinning');
+    }
+    document.getElementById('drumLabel').textContent = phase + '\n' + Math.round(rpm) + '\nRPM';
+
+    // 배지
+    const badge = document.getElementById('statusBadge');
+    const badgeMap = { '투입':'badge-idle', '가속':'badge-running', '최고속':'badge-peak', '감속':'badge-braking', '인출':'badge-idle' };
+    badge.className = 'status-badge ' + (badgeMap[phase]||'badge-idle');
+    badge.textContent = phase;
+
+    if (t < cycleTotal) {
+      animFrame = requestAnimationFrame(frame);
+    } else {
+      drum.classList.remove('spinning');
+      badge.className = 'status-badge badge-done';
+      badge.textContent = '완료';
+      document.getElementById('playBtn').disabled = false;
+    }
+  }
+  animFrame = requestAnimationFrame(frame);
+}
+
+function resetAnimation() {
+  if (animFrame) cancelAnimationFrame(animFrame);
+  document.getElementById('rpmGauge').style.width = '0%';
+  document.getElementById('rpmVal').textContent = '0 RPM';
+  document.getElementById('timeGauge').style.width = '0%';
+  document.getElementById('timeVal').textContent = '0초';
+  document.getElementById('drumEl').classList.remove('spinning');
+  document.getElementById('drumLabel').textContent = '대기';
+  document.getElementById('statusBadge').className = 'status-badge badge-idle';
+  document.getElementById('statusBadge').textContent = '대기';
+  if (document.getElementById('playBtn')) document.getElementById('playBtn').disabled = false;
+}
+
+function clearHistory() {
+  if (!confirm('모든 기록을 삭제하시겠습니까?')) return;
+  if (window._clearFirebase) window._clearFirebase();
+}
+
+window.addEventListener('resize', () => { if (simData) renderChart(); });
+</script>
+</body>
+</html>
