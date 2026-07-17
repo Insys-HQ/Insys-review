@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>패드 탈수기 시뮬레이션 v5.2 | 인시스 AI혁신 R&D센터</title>
+<title>패드 탈수기 시뮬레이션 v5.3 | 인시스 AI혁신 R&D센터</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -230,7 +230,7 @@ canvas{display:block;width:100%!important}
 <div class="topbar">
   <b>🏭 인시스 AI혁신 R&D센터 | 패드 탈수기 시뮬레이션</b>
   <div class="topbar-r">
-    <span class="ver-badge">v5.2</span>
+    <span class="ver-badge">v5.3</span>
     <div class="mtoggle">
       <button class="mbtn on" id="modePC" onclick="setMode('pc')">🖥 PC</button>
       <button class="mbtn" id="modeMob" onclick="setMode('mob')">📱 모바일</button>
@@ -255,7 +255,7 @@ canvas{display:block;width:100%!important}
   <!-- COL1: 입력 -->
   <div>
     <div class="card" style="margin-bottom:10px">
-      <div class="ch">⚙️ 탈수기 사양 <span class="cv">v5.2</span></div>
+      <div class="ch">⚙️ 탈수기 사양 <span class="cv">v5.3</span></div>
       <div class="cb" id="sl-mech-pc"></div>
     </div>
     <div class="card" style="margin-bottom:10px">
@@ -355,7 +355,7 @@ canvas{display:block;width:100%!important}
 
 <!-- MOBILE LAYOUT -->
 <div class="mob-layout" id="mobLayout" style="display:none">
-  <div class="card"><div class="ch">⚙️ 탈수기 사양 <span class="cv">v5.2</span></div>
+  <div class="card"><div class="ch">⚙️ 탈수기 사양 <span class="cv">v5.3</span></div>
     <div class="cb"><div class="sr-mob" id="sl-mech-mob"></div></div></div>
   <div class="card"><div class="ch">💧 수분 조건</div>
     <div class="cb"><div class="sr-mob" id="sl-water-mob"></div></div></div>
@@ -434,7 +434,7 @@ canvas{display:block;width:100%!important}
 <div class="panel" id="tab-phys">
 <div class="wrap">
   <div class="card">
-    <div class="ch">📐 수학·기계공학 공식 전체 검증 <span class="cv">v5.2</span></div>
+    <div class="ch">📐 수학·기계공학 공식 전체 검증 <span class="cv">v5.3</span></div>
     <div class="cb" id="physPanel">
       <span style="color:var(--mute);font-size:12px">시뮬레이션 실행 후 자동 업데이트됩니다</span>
     </div>
@@ -456,7 +456,7 @@ canvas{display:block;width:100%!important}
 
 <div class="footer">
   담당부서: 인시스 AI혁신 R&D센터 &nbsp;|&nbsp; ys.kim@in-sys.co.kr &nbsp;|&nbsp;
-  패드 탈수기 시뮬레이션 <b>v5.2</b> &nbsp;|&nbsp; 900×600×3mm 골판지 패드
+  패드 탈수기 시뮬레이션 <b>v5.3</b> &nbsp;|&nbsp; 900×600×3mm 골판지 패드
 </div>
 
 <!-- FIREBASE -->
@@ -675,38 +675,76 @@ function calcDW(maxRpm,drumDia,peakSec,initM,padThk,corrDep,fbrDens){
   };
 }
 
-/* ══ 역산 [공식 G] ══ */
+/* ══ 역산 [공식 G] — 3가지 최적화 모드 ══
+   모드A: 최대 탈수 — 허용 사이클 내 유지시간 최대화 → 탈수율 극대화
+   모드B: 생산성 우선 — 목표 탈수량 달성하는 최소 유지시간 (사이클 단축)
+   모드C: 균형 — 탈수율 95% × 생산성 최적 교점
+   ══ */
 function calcOptimal(targetW,initM,padThk,corrDep,fbrDens,curRpm,curDia,curBatch,curAccel,curBrake,curLoadT){
   const r1=curDia/2/1000;
-  const corrF=Math.min(1.35, 1+corrDep/padThk*0.45);
-  const densRes=Math.max(0.6, 1-(fbrDens-200)/800);
-  const minResidual=Math.max(10, initM*0.28);
+  const corrF=Math.min(1.35,1+corrDep/padThk*0.45);
+  const densRes=Math.max(0.6,1-(fbrDens-200)/800);
+  const minResidual=Math.max(10,initM*0.28);
   const S_inf=initM-minResidual;
   const k=0.0025*densRes;
-  if(targetW>=S_inf*0.99){
-    return{error:`목표 탈수량 ${targetW}%p가 이론 한계 ${S_inf.toFixed(1)}%p 에 근접/초과합니다.\n목표를 ${Math.floor(S_inf*0.90)}%p 이하로 낮추세요.\n(잔류 결합수 ${minResidual.toFixed(1)}% 는 원심력 제거 불가)`};
-  }
-  const lnPart=-Math.log(1-targetW/S_inf);     // -ln(1-Sw/S_inf)
-  // 전략1: 현재 RPM 유지, 유지시간 연장
   const omega1=curRpm*2*Math.PI/60;
   const G1=Math.min(omega1*omega1*r1/9.81*corrF,150);
-  const peakS1=Math.max(45, Math.ceil(G1>0 ? lnPart/(k*Math.pow(G1,0.60)) : 9999));
-  // 전략2: 유지시간 고정, RPM 역산
-  const peakCur=Math.max(45,gv('peak'));
-  const GneedRaw=Math.pow(lnPart/(k*peakCur),1/0.60);
-  const Gneed=GneedRaw/corrF;
-  const rpmNeed=(Gneed>0&&Gneed<=150)?Math.sqrt(Gneed*9.81/r1)*60/(2*Math.PI):9999;
-  // 전략3: RPM 10% 상향
-  const rpmOpt=Math.min(550,Math.round(curRpm*1.10/10)*10);
-  const omegaOpt=rpmOpt*2*Math.PI/60;
-  const GOpt=Math.min(omegaOpt*omegaOpt*r1/9.81*corrF,150);
-  const peakS3=Math.max(45,Math.ceil(GOpt>0?lnPart/(k*Math.pow(GOpt,0.60)):9999));
+
+  if(targetW>=S_inf*0.99){
+    return{error:`목표 탈수량 ${targetW}%p가 이론 한계 ${S_inf.toFixed(1)}%p에 근접/초과합니다.\n목표를 ${Math.floor(S_inf*0.90)}%p 이하로 낮추세요.\n(잔류 결합수 ${minResidual.toFixed(1)}% 는 원심력 제거 불가)`};
+  }
+
+  // ── 헬퍼: Suter로 유지시간→탈수량 계산
+  function swAt(peak){ return S_inf*(1-Math.exp(-k*Math.pow(G1,0.60)*peak)); }
+  // ── 헬퍼: 목표 달성 필요 최소 유지시간 역산
+  const lnPart=-Math.log(1-targetW/S_inf);
+  const peakMin=Math.max(45, Math.ceil(G1>0 ? lnPart/(k*Math.pow(G1,0.60)) : 9999));
+
+  /* 모드A: 최대 탈수 ─────────────────────────────────────────
+     전략: 현재 RPM 유지 + 유지시간을 최대(600초)로 설정
+     → S∞의 97% 수준 달성에 필요한 시간 계산 (이론 한계에 최대 근접)  */
+  const swTarget97=S_inf*0.97;
+  const lnPart97=-Math.log(1-swTarget97/S_inf);
+  const peakMax=Math.min(600, Math.max(120, Math.ceil(G1>0?lnPart97/(k*Math.pow(G1,0.60)):600)));
+  const swA=swAt(peakMax);
+  const cycA=peakMax+curAccel+curBrake+curLoadT;
+  const phA=Math.floor(3600/cycA*curBatch);
+
+  /* 모드B: 생산성 우선 ─────────────────────────────────────
+     전략: 목표 탈수량(%p) 달성하는 최소 유지시간
+     → 사이클 단축으로 시간당 처리량 극대화               */
+  const swB=swAt(peakMin);
+  const cycB=peakMin+curAccel+curBrake+curLoadT;
+  const phB=Math.floor(3600/cycB*curBatch);
+
+  /* 모드C: 균형 ───────────────────────────────────────────
+     전략: 탈수율 S∞×80% 달성 + 생산성 교점
+     → 품질과 생산성의 최적 균형점                         */
+  const swTargetC=S_inf*0.80;
+  const lnPartC=-Math.log(1-swTargetC/S_inf);
+  const peakC=Math.max(45, Math.ceil(G1>0?lnPartC/(k*Math.pow(G1,0.60)):300));
+  const swC=swAt(peakC);
+  const cycC=peakC+curAccel+curBrake+curLoadT;
+  const phC=Math.floor(3600/cycC*curBatch);
+
   return{
-    s1:{rpm:curRpm,peak:peakS1,cyc:peakS1+curAccel+curBrake+curLoadT,label:'최고속 연장'},
-    s2:{rpm:Math.min(550,Math.ceil(rpmNeed/10)*10),peak:peakCur,cyc:peakCur+curAccel+curBrake+curLoadT,label:'RPM 증가'},
-    s3:{rpm:rpmOpt,peak:peakS3,cyc:peakS3+curAccel+curBrake+curLoadT,label:'복합 최적'},
-    targetW, S_inf:S_inf.toFixed(1), k:k.toFixed(6), lnPart:lnPart.toFixed(4),
-    minResidual:minResidual.toFixed(1)
+    // 모드A: 최대 탈수 (권장)
+    sA:{rpm:curRpm, peak:peakMax, cyc:cycA, ph:phA,
+        sw:swA.toFixed(1), finalM:(initM-swA).toFixed(1),
+        label:'최대 탈수', desc:`유지 ${peakMax}초 → 탈수량 ${swA.toFixed(1)}%p · 최종수분 ${(initM-swA).toFixed(1)}%`},
+    // 모드B: 생산성 우선
+    sB:{rpm:curRpm, peak:peakMin, cyc:cycB, ph:phB,
+        sw:swB.toFixed(1), finalM:(initM-swB).toFixed(1),
+        label:'생산성 우선', desc:`유지 ${peakMin}초 → 탈수량 ${swB.toFixed(1)}%p · ${phB}장/h`},
+    // 모드C: 균형
+    sC:{rpm:curRpm, peak:peakC, cyc:cycC, ph:phC,
+        sw:swC.toFixed(1), finalM:(initM-swC).toFixed(1),
+        label:'품질·생산 균형', desc:`유지 ${peakC}초 → 탈수량 ${swC.toFixed(1)}%p · ${phC}장/h`},
+    // 현재
+    cur:{rpm:curRpm, peak:gv('peak'), sw:swAt(gv('peak')).toFixed(1),
+         finalM:(initM-swAt(gv('peak'))).toFixed(1)},
+    targetW, S_inf:S_inf.toFixed(1), k:k.toFixed(6),
+    minResidual:minResidual.toFixed(1), G:G1.toFixed(1)
   };
 }
 
@@ -809,7 +847,7 @@ function renderFormula(dw,rpm,dia,peak){
     {n:'M최종',eq:'M₀-Sw',v:dw.finalM,u:'%'},
   ];
   return`<div class="formula-box">
-    <div class="formula-title">📐 단계별 계산값 — v5.2</div>
+    <div class="formula-title">📐 단계별 계산값 — v5.3</div>
     ${rows.map(r=>`<div class="formula-row">
       <span class="f-name">${r.n}</span>
       <span class="f-eq">= ${r.eq}</span>
@@ -977,53 +1015,123 @@ function doOptimize(){
   if(!opt){alert('물리적 한계 초과');return;}
   if(opt.error){alert(opt.error);return;}
   optData=opt;
-  syncV('maxRpm',opt.s3.rpm); syncV('peak',opt.s3.peak);
-  const batch=gv('batchSz');
-  const html=`<div class="opt-grid">
-    ${[['전략',opt.s3.label],['최적 RPM',opt.s3.rpm+' RPM'],
-       ['최고속 유지',opt.s3.peak+' 초'],['1사이클',opt.s3.cyc+' 초'],
-       ['시간당',Math.floor(3600/opt.s3.cyc*batch)+'장/h'],['목표',targetW+'%p']
-      ].map(([k,v])=>`<div class="opt-item"><span class="ok-lbl">${k}</span><span class="ok-val">${v}</span></div>`).join('')}
-  </div>
-  <div class="note" style="margin-top:8px">
-    이론한계 ${opt.S_inf}%p | 잔류수분 최소 ${opt.minResidual}% | k=${opt.k}<br>
-    역산: -ln(1-${targetW}/${opt.S_inf})=${opt.lnPart} → 복합 최적 전략 슬라이더 반영
-  </div>`;
+
+  // 모드A(최대탈수)를 기본으로 슬라이더 반영
+  syncV('peak', opt.sA.peak);
+
+  const mkRow=(mode,s,accent)=>`
+    <div style="background:${accent}08;border:1.5px solid ${accent}44;border-radius:8px;padding:8px 10px;margin-bottom:6px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+        <span style="font-size:13px;font-weight:800;color:${accent}">${mode}</span>
+        <span style="font-size:12px;color:var(--sub)">${s.ph}장/h · 사이클 ${s.cyc}초</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px">
+        ${[['유지시간',s.peak+'초'],['탈수량',s.sw+'%p'],['최종수분',s.finalM+'%'],['시간당',s.ph+'장/h']]
+          .map(([k,v])=>`<div style="background:#fff;border-radius:5px;padding:4px 6px;text-align:center">
+            <div style="font-size:12px;font-weight:800;color:${accent}">${v}</div>
+            <div style="font-size:12px;color:var(--mute)">${k}</div>
+          </div>`).join('')}
+      </div>
+      <div style="font-size:12px;color:var(--sub);margin-top:5px">${s.desc}</div>
+    </div>`;
+
+  const html=`
+    <div style="font-size:12px;color:var(--sub);margin-bottom:8px;padding:6px 8px;
+      background:#fef3c7;border-radius:6px;border-left:3px solid #d97706">
+      ⚡ <b>모드A(최대 탈수)</b>가 슬라이더에 반영됨 — 유지시간을 최대화하여 탈수율을 극대화합니다
+    </div>
+    ${mkRow('🟢 모드A: 최대 탈수 (권장)', opt.sA, '#15803d')}
+    ${mkRow('🔵 모드B: 생산성 우선', opt.sB, '#2563a8')}
+    ${mkRow('🟡 모드C: 품질·생산 균형', opt.sC, '#b45309')}
+    <div style="font-size:12px;color:var(--mute);margin-top:6px;line-height:1.6">
+      이론한계 S∞=${opt.S_inf}%p | G_eff=${opt.G}G | k=${opt.k}<br>
+      잔류 결합수 ${opt.minResidual}% 는 원심력으로 제거 불가<br>
+      ※ 다른 모드 적용: 해당 유지시간을 슬라이더에 직접 입력
+    </div>`;
+
   ['optResult-pc','optResult-mob'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=html;});
   renderOptChart('optChart');
   runSim(true);
 }
 function renderOptChart(cid){
   const c=document.getElementById(cid);if(!c||!optData||!simData)return;
-  c.width=c.parentElement.offsetWidth||500;c.height=140;
-  const ctx=c.getContext('2d'),W=c.width,H=140;
-  const pd={t:24,r:16,b:28,l:16};
+  c.width=c.parentElement.offsetWidth||500;c.height=160;
+  const ctx=c.getContext('2d'),W=c.width,H=160;
+  const pd={t:28,r:14,b:30,l:46};
   const iW=W-pd.l-pd.r,iH=H-pd.t-pd.b;
   ctx.clearRect(0,0,W,H);
-  const strats=[
-    {lbl:'현재',rpm:simData.maxRpm,peak:simData.peak,col:'#94a3b8'},
-    {lbl:optData.s1.label,rpm:optData.s1.rpm,peak:optData.s1.peak,col:'#2563a8'},
-    {lbl:optData.s2.label,rpm:optData.s2.rpm,peak:optData.s2.peak,col:'#0891b2'},
-    {lbl:optData.s3.label,rpm:optData.s3.rpm,peak:optData.s3.peak,col:'#16a34a'},
+
+  // 현재 + 3모드 비교
+  const groups=[
+    {lbl:'현재',   sw:parseFloat(optData.cur.sw), peak:parseFloat(optData.cur.peak||gv('peak')), ph:simData.perHour, col:'#94a3b8'},
+    {lbl:'최대탈수',sw:parseFloat(optData.sA.sw),  peak:optData.sA.peak, ph:optData.sA.ph, col:'#15803d'},
+    {lbl:'생산우선',sw:parseFloat(optData.sB.sw),  peak:optData.sB.peak, ph:optData.sB.ph, col:'#2563a8'},
+    {lbl:'균형',   sw:parseFloat(optData.sC.sw),  peak:optData.sC.peak, ph:optData.sC.ph, col:'#b45309'},
   ];
-  const maxRpm2=Math.max(...strats.map(s=>s.rpm),100);
-  const maxPeak=Math.max(...strats.map(s=>s.peak),10);
-  const bw=iW/strats.length*0.32;
-  strats.forEach((g,i)=>{
-    const cx=pd.l+i*(iW/strats.length)+iW/strats.length/2;
-    const rh=iH*(g.rpm/maxRpm2)*0.85;
-    ctx.fillStyle=g.col+'bb';ctx.fillRect(cx-bw-2,pd.t+iH-rh,bw,rh);
-    ctx.fillStyle=g.col;ctx.font=F12B;ctx.textAlign='center';
-    ctx.fillText(g.rpm,cx-bw/2-2,pd.t+iH-rh-4);
-    const ph=iH*(g.peak/maxPeak)*0.85;
-    ctx.fillStyle=g.col+'66';ctx.fillRect(cx+2,pd.t+iH-ph,bw,ph);
-    ctx.fillStyle=g.col;ctx.font=F12;ctx.fillText(g.peak+'s',cx+bw/2+2,pd.t+iH-ph-4);
-    ctx.fillStyle='#334155';ctx.font=F12B;ctx.fillText(g.lbl,cx,H-6);
+  const S_inf=parseFloat(optData.S_inf);
+  const maxPeak=Math.max(...groups.map(g=>g.peak),10);
+  const maxPh=Math.max(...groups.map(g=>g.ph),1);
+  const grpW=iW/groups.length;
+  const bw=grpW*0.28;
+
+  // Y 그리드
+  ctx.strokeStyle='#e2e8f0';ctx.lineWidth=.5;
+  [0,.5,1].forEach(f=>{
+    const y=pd.t+iH-iH*f;
+    ctx.beginPath();ctx.moveTo(pd.l,y);ctx.lineTo(W-pd.r,y);ctx.stroke();
   });
-  ctx.fillStyle='#1e3a5f';ctx.fillRect(pd.l,4,12,6);
-  ctx.fillStyle='#334155';ctx.font=F12;ctx.textAlign='left';ctx.fillText('RPM',pd.l+16,12);
-  ctx.fillStyle='#1e3a5f44';ctx.fillRect(pd.l+56,4,12,6);
-  ctx.fillText('유지(s)',pd.l+72,12);
+
+  groups.forEach((g,i)=>{
+    const cx=pd.l+i*grpW+grpW/2;
+
+    // 막대1: 탈수량 Sw (짙은색)
+    const sh=iH*(g.sw/S_inf)*0.90;
+    const sx=cx-bw-2;
+    ctx.fillStyle=g.col+'dd';
+    ctx.fillRect(sx,pd.t+iH-sh,bw,sh);
+    ctx.fillStyle=g.col;ctx.font=F12B;ctx.textAlign='center';
+    ctx.fillText(g.sw+'%p',sx+bw/2,pd.t+iH-sh-4);
+
+    // 막대2: 유지시간 (연한색)
+    const ph2=iH*(g.peak/maxPeak)*0.90;
+    const px2=cx+2;
+    ctx.fillStyle=g.col+'55';
+    ctx.fillRect(px2,pd.t+iH-ph2,bw,ph2);
+    ctx.fillStyle=g.col;ctx.font=F12;ctx.textAlign='center';
+    ctx.fillText(g.peak+'s',px2+bw/2,pd.t+iH-ph2-4);
+
+    // 막대3: 시간당 처리량 (점선 테두리)
+    const qh=iH*(g.ph/maxPh)*0.90;
+    const qx=cx+bw+4;
+    ctx.strokeStyle=g.col;ctx.lineWidth=1.5;ctx.setLineDash([3,2]);
+    ctx.strokeRect(qx,pd.t+iH-qh,bw,qh);
+    ctx.setLineDash([]);
+    ctx.fillStyle=g.col;ctx.font=F12;ctx.textAlign='center';
+    ctx.fillText(g.ph+'장',qx+bw/2,pd.t+iH-qh-4);
+
+    // X 레이블
+    ctx.fillStyle=g.col==='#94a3b8'?'#64748b':g.col;
+    ctx.font=F12B;ctx.textAlign='center';
+    ctx.fillText(g.lbl,cx+bw/2,H-6);
+  });
+
+  // 범례
+  let lx=pd.l;
+  ctx.fillStyle='#334155';ctx.fillRect(lx,4,12,7);
+  ctx.fillStyle='#334155';ctx.font=F12;ctx.textAlign='left';ctx.fillText('탈수량',lx+16,13);lx+=64;
+  ctx.fillStyle='#33415555';ctx.fillRect(lx,4,12,7);
+  ctx.fillStyle='#334155';ctx.fillText('유지(s)',lx+16,13);lx+=62;
+  ctx.strokeStyle='#334155';ctx.lineWidth=1.5;ctx.setLineDash([3,2]);
+  ctx.strokeRect(lx,4,12,7);ctx.setLineDash([]);
+  ctx.fillStyle='#334155';ctx.fillText('장/h',lx+16,13);
+
+  // S∞ 표시선
+  const sInfY=pd.t+iH-iH*0.90;
+  ctx.strokeStyle='#b91c1c';ctx.lineWidth=1;ctx.setLineDash([4,3]);
+  ctx.beginPath();ctx.moveTo(pd.l,sInfY);ctx.lineTo(W-pd.r,sInfY);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='#b91c1c';ctx.font=F12B;ctx.textAlign='right';
+  ctx.fillText('S∞='+S_inf+'%p',W-pd.r-2,sInfY-3);
 }
 
 /* ══ 생산성 ══ */
