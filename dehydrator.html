@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>패드 탈수기 시뮬레이션 v6.1 | 인시스 AI혁신 R&D센터</title>
+<title>패드 탈수기 시뮬레이션 v6.2 | 인시스 AI혁신 R&D센터</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -230,7 +230,7 @@ canvas{display:block;width:100%!important}
 <div class="topbar">
   <b>🏭 인시스 AI혁신 R&D센터 | 패드 탈수기 시뮬레이션</b>
   <div class="topbar-r">
-    <span class="ver-badge">v6.1</span>
+    <span class="ver-badge">v6.2</span>
     <div class="mtoggle">
       <button class="mbtn on" id="modePC" onclick="setMode('pc')">🖥 PC</button>
       <button class="mbtn" id="modeMob" onclick="setMode('mob')">📱 모바일</button>
@@ -255,7 +255,7 @@ canvas{display:block;width:100%!important}
   <!-- COL1: 입력 -->
   <div>
     <div class="card" style="margin-bottom:10px">
-      <div class="ch">⚙️ 탈수기 사양 <span class="cv">v6.1</span></div>
+      <div class="ch">⚙️ 탈수기 사양 <span class="cv">v6.2</span></div>
       <div class="cb" id="sl-mech-pc"></div>
     </div>
     <div class="card" style="margin-bottom:10px">
@@ -364,7 +364,7 @@ canvas{display:block;width:100%!important}
 
 <!-- MOBILE LAYOUT -->
 <div class="mob-layout" id="mobLayout" style="display:none">
-  <div class="card"><div class="ch">⚙️ 탈수기 사양 <span class="cv">v6.1</span></div>
+  <div class="card"><div class="ch">⚙️ 탈수기 사양 <span class="cv">v6.2</span></div>
     <div class="cb"><div class="sr-mob" id="sl-mech-mob"></div></div></div>
   <div class="card"><div class="ch">💧 수분 조건</div>
     <div class="cb"><div class="sr-mob" id="sl-water-mob"></div></div></div>
@@ -452,7 +452,7 @@ canvas{display:block;width:100%!important}
 <div class="panel" id="tab-phys">
 <div class="wrap">
   <div class="card">
-    <div class="ch">📐 수학·기계공학 공식 전체 검증 <span class="cv">v6.1</span></div>
+    <div class="ch">📐 수학·기계공학 공식 전체 검증 <span class="cv">v6.2</span></div>
     <div class="cb" id="physPanel">
       <span style="color:var(--mute);font-size:12px">시뮬레이션 실행 후 자동 업데이트됩니다</span>
     </div>
@@ -474,7 +474,7 @@ canvas{display:block;width:100%!important}
 
 <div class="footer">
   담당부서: 인시스 AI혁신 R&D센터 &nbsp;|&nbsp; ys.kim@in-sys.co.kr &nbsp;|&nbsp;
-  패드 탈수기 시뮬레이션 <b>v6.1</b> &nbsp;|&nbsp; 900×600×3mm 골판지 패드
+  패드 탈수기 시뮬레이션 <b>v6.2</b> &nbsp;|&nbsp; 900×600×3mm 골판지 패드
 </div>
 
 <!-- FIREBASE -->
@@ -666,28 +666,69 @@ document.getElementById('sl-target-mob').innerHTML=`
     <span style="font-size:13px;font-weight:700;color:var(--green)">%</span>
   </div>`;
 
-/* ══ 열풍 보조 건조 물리 계산
-   ΔSw_hot = k_hot×(T-20)×(Q/1000)×t×(1-Sw_cent/S_inf)
-   k_hot=0.0008, 상한=잔류자유수의 40%, 결합수 제거 불가 유지
-   히터검증: Q_need = P×3600/(ρ×Cp×ΔT×0.001) m³/h ══ */
+/* ══ 열풍 보조 건조 물리 계산 (v6.2 검증)
+   ─────────────────────────────────────────────────────────────
+   [1] 공기 질량유량   ṁ = Q[m³/h] × ρ / 3600        [kg/s]
+   [2] 히터 달성 온도  T_heat = T_amb + P_kW×1000 / (ṁ×Cp)  [°C]
+   [3] 실제 열풍 온도  T_actual = min(T_설정, T_heat)
+       → 히터 출력 부족 시 설정 온도 미달 → 탈수율 감소
+       → 히터 출력 0 시 T_actual = T_amb → 열풍 효과 없음
+   [4] 대류 건조 탈수량
+       ΔSw_hot = k_dry × (T_actual - T_amb) × (Q/1000) × t × residualFree
+       k_dry = 0.0012  [%p/(K·(m³/h)·s)]
+       residualFree = 1 - Sw_cent/S_inf  (원심 후 잔류 자유수 비율)
+   [5] 상한: 잔류 자유수의 60% (결합수 제거 불가 유지)
+   ρ_air=1.2 kg/m³,  Cp=1005 J/(kg·K),  T_amb=20°C
+   ─────────────────────────────────────────────────────────────*/
 function calcHot(hotFlow,hotTemp,hotKW,peakSec,Sw_cent,S_inf,initM){
-  if(hotFlow<=0||hotTemp<=20)return{SwHot:'0.0',finalMHot:(initM-Sw_cent).toFixed(1),heatOk:true,heatNote:'열풍기 미사용',residualFree:'1.000',maxHot:'0.0'};
-  const dT=hotTemp-20,rho=1.2,Cp=1005;
-  const k_hot=0.0008;
-  const residualFree=Math.max(0,1-Sw_cent/S_inf);
-  const SwHotRaw=k_hot*dT*(hotFlow/1000)*peakSec*residualFree;
-  const maxHot=(S_inf-Sw_cent)*0.40;
-  const SwHot=Math.min(SwHotRaw,maxHot);
-  const finalMHot=Math.max(initM*0.28,(initM-Sw_cent)-SwHot);
-  const Q_need=hotKW>0?hotKW*3600/(rho*Cp*dT*0.001)*1000:0;
-  const heatOk=hotKW===0||hotFlow<=Q_need*1.3;
-  const heatNote=hotKW>0
-    ?(heatOk?`히터 ${hotKW}kW → 적정 풍량 ${Q_need.toFixed(0)}m³/h ✅`
-            :`⚠️ 히터 ${hotKW}kW 대비 풍량 과다 — 적정 ${Q_need.toFixed(0)}m³/h`)
-    :'히터 출력 미입력';
-  return{SwHot:SwHot.toFixed(1),finalMHot:finalMHot.toFixed(1),
-    SwHotRaw:SwHotRaw.toFixed(2),maxHot:maxHot.toFixed(1),
-    heatOk,heatNote,Q_need:Q_need.toFixed(0),dT,residualFree:residualFree.toFixed(3)};
+  const rho=1.2, Cp=1005, T_amb=20;
+  const k_dry=0.0012;
+
+  // 풍량 0 또는 히터 0 → 열풍 효과 없음
+  if(hotFlow<=0||hotKW<=0){
+    return{SwHot:'0.0',finalMHot:(initM-Sw_cent).toFixed(1),
+      T_actual:T_amb,T_heat:T_amb,heatOk:true,
+      heatNote:'히터 출력 또는 풍량이 0 — 열풍 효과 없음',
+      residualFree:'1.000',maxHot:'0.0',Q_need:'0'};
+  }
+
+  // [1] 공기 질량유량
+  const m_dot = hotFlow * rho / 3600;        // kg/s
+
+  // [2] 히터로 달성 가능한 온도
+  const T_heat = T_amb + (hotKW*1000) / (m_dot * Cp);
+
+  // [3] 실제 열풍 온도 (설정값과 히터 한계 중 낮은 값)
+  const T_actual = Math.min(hotTemp, T_heat);
+  const dT = Math.max(0, T_actual - T_amb);
+
+  // [4] 대류 건조 탈수량
+  const residualFree = Math.max(0, 1 - Sw_cent/S_inf);
+  const SwHotRaw = k_dry * dT * (hotFlow/1000) * peakSec * residualFree;
+
+  // [5] 상한: 잔류 자유수의 60%
+  const maxHot = (S_inf - Sw_cent) * 0.60;
+  const SwHot = Math.min(SwHotRaw, maxHot);
+
+  // 최종 수분율
+  const finalMHot = Math.max(initM*0.28, (initM - Sw_cent) - SwHot);
+
+  // 필요 히터 출력 계산 (설정 온도 달성용)
+  const kW_need = m_dot * Cp * (hotTemp - T_amb) / 1000;
+  const heatOk = hotKW >= kW_need * 0.95;
+  const heatNote = heatOk
+    ? `✅ 설정온도 ${hotTemp}°C 달성 (실제 ${T_actual.toFixed(1)}°C)`
+    : `⚠️ 히터 부족 — 실제온도 ${T_actual.toFixed(1)}°C (설정 ${hotTemp}°C 미달, 필요 ${kW_need.toFixed(1)}kW)`;
+
+  return{
+    SwHot:SwHot.toFixed(1), finalMHot:finalMHot.toFixed(1),
+    SwHotRaw:SwHotRaw.toFixed(2), maxHot:maxHot.toFixed(1),
+    T_actual:T_actual.toFixed(1), T_heat:T_heat.toFixed(1),
+    kW_need:kW_need.toFixed(1), dT:dT.toFixed(1),
+    heatOk, heatNote,
+    residualFree:residualFree.toFixed(3),
+    Q_need:kW_need.toFixed(1)  // kW 단위로 통일
+  };
 }
 
 /* ══ 물리 계산 핵심 함수 [공식 D·E·F] ══ */
@@ -858,17 +899,21 @@ function runSim(silent=false){
     +'※ Suter 모델 · k='+dw.k+' · G상한 150G | 열풍 k_hot=0.0008';
 
   // 열풍기 결과 패널
-  const hotHTML=hotFlow>0?`
+  const hotHTML=hotFlow>0&&hotKW>0?`
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:7px">
-      ${[['원심 탈수',dw.Sw+'%p'],['+열풍','+'+hot.SwHot+'%p'],
-         ['총 탈수',SwTotal.toFixed(1)+'%p'],['최종 수분',finalMTotal.toFixed(1)+'%']]
+      ${[['설정 온도',hotTemp+'°C'],['실제 온도',hot.T_actual+'°C'],
+         ['원심 탈수',dw.Sw+'%p'],['+열풍','+'+hot.SwHot+'%p'],
+         ['총 탈수량',SwTotal.toFixed(1)+'%p'],['최종 수분',finalMTotal.toFixed(1)+'%']]
         .map(([k,v])=>`<div style="background:#fff;border-radius:5px;padding:5px 7px">
           <div style="font-size:14px;font-weight:800;color:#dc6b19">${v}</div>
           <div style="font-size:12px;color:var(--mute)">${k}</div>
         </div>`).join('')}
     </div>
-    <div style="font-size:12px;color:${hot.heatOk?'#15803d':'#b91c1c'}">${hot.heatNote}</div>`
-    :`<span style="color:var(--mute)">풍량을 0 초과로 설정하면 열풍 효과가 계산됩니다</span>`;
+    <div style="font-size:12px;color:${hot.heatOk?'#15803d':'#b91c1c'};font-weight:600">${hot.heatNote}</div>
+    <div style="font-size:12px;color:var(--mute);margin-top:4px">
+      ṁ_air=${(hotFlow*1.2/3600).toFixed(3)}kg/s · 달성가능온도 ${hot.T_heat}°C · 필요출력 ${hot.kW_need}kW
+    </div>`
+    :`<span style="color:var(--mute)">${hotFlow<=0?'풍량을 0 초과로 설정하면':'히터 출력을 0 초과로 설정하면'} 열풍 효과가 계산됩니다</span>`;
   ['hotResult-pc','hotResult-mob'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=hotHTML;});
 
   // 공식 계산값 패널
