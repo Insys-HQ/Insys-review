@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>패드 탈수기 시뮬레이션 v6.4 | 인시스 AI혁신 R&D센터</title>
+<title>패드 탈수기 시뮬레이션 v6.5 | 인시스 AI혁신 R&D센터</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -230,7 +230,7 @@ canvas{display:block;width:100%!important}
 <div class="topbar">
   <b>🏭 인시스 AI혁신 R&D센터 | 패드 탈수기 시뮬레이션</b>
   <div class="topbar-r">
-    <span class="ver-badge">v6.4</span>
+    <span class="ver-badge">v6.5</span>
     <div class="mtoggle">
       <button class="mbtn on" id="modePC" onclick="setMode('pc')">🖥 PC</button>
       <button class="mbtn" id="modeMob" onclick="setMode('mob')">📱 모바일</button>
@@ -255,7 +255,7 @@ canvas{display:block;width:100%!important}
   <!-- COL1: 입력 -->
   <div>
     <div class="card" style="margin-bottom:10px">
-      <div class="ch">⚙️ 탈수기 사양 <span class="cv">v6.4</span></div>
+      <div class="ch">⚙️ 탈수기 사양 <span class="cv">v6.5</span></div>
       <div class="cb" id="sl-mech-pc"></div>
     </div>
     <div class="card" style="margin-bottom:10px">
@@ -364,7 +364,7 @@ canvas{display:block;width:100%!important}
 
 <!-- MOBILE LAYOUT -->
 <div class="mob-layout" id="mobLayout" style="display:none">
-  <div class="card"><div class="ch">⚙️ 탈수기 사양 <span class="cv">v6.4</span></div>
+  <div class="card"><div class="ch">⚙️ 탈수기 사양 <span class="cv">v6.5</span></div>
     <div class="cb"><div class="sr-mob" id="sl-mech-mob"></div></div></div>
   <div class="card"><div class="ch">💧 수분 조건</div>
     <div class="cb"><div class="sr-mob" id="sl-water-mob"></div></div></div>
@@ -452,7 +452,7 @@ canvas{display:block;width:100%!important}
 <div class="panel" id="tab-phys">
 <div class="wrap">
   <div class="card">
-    <div class="ch">📐 수학·기계공학 공식 전체 검증 <span class="cv">v6.4</span></div>
+    <div class="ch">📐 수학·기계공학 공식 전체 검증 <span class="cv">v6.5</span></div>
     <div class="cb" id="physPanel">
       <span style="color:var(--mute);font-size:12px">시뮬레이션 실행 후 자동 업데이트됩니다</span>
     </div>
@@ -474,7 +474,7 @@ canvas{display:block;width:100%!important}
 
 <div class="footer">
   담당부서: 인시스 AI혁신 R&D센터 &nbsp;|&nbsp; ys.kim@in-sys.co.kr &nbsp;|&nbsp;
-  패드 탈수기 시뮬레이션 <b>v6.4</b> &nbsp;|&nbsp; 900×600×3mm 골판지 패드
+  패드 탈수기 시뮬레이션 <b>v6.5</b> &nbsp;|&nbsp; 900×600×3mm 골판지 패드
 </div>
 
 <!-- FIREBASE -->
@@ -856,6 +856,50 @@ function calcOptimal(targetW,initM,padThk,corrDep,fbrDens,curRpm,curDia,curBatch
 
 let simData=null,optData=null,animFrame=null,animStart=null,currentMode='pc';
 
+/* ══ 모터 출력 추천 계산 (380V/60Hz/3상 유도전동기) ══───────────
+   T_accel = J_total × α   (가속 시 최대 토크)
+   J_drum  = ½ × m_drum × r²   (원통 관성모멘트)
+   J_pad   = m_pad_wet × r²    (드럼 내벽 분포 질량)
+   m_drum  = ρ_steel × (π×D×L + π/2×D²) × t_wall
+   P_peak  = T_max × ω_max
+   P_design = P_peak/(η_m×η_vfd) × SF(1.5)
+   표준 정격: 0.4/0.75/1.5/2.2/3.7/5.5/7.5/11/15/22/30 kW
+   VFD 필수: DOL 기동전류 6~8배 → 드럼 손상 위험  ══*/
+function calcMotor(rpm, drumDia, batch, padWt, accelTime){
+  const r=drumDia/2/1000;
+  const omega=rpm*2*Math.PI/60;
+  const alpha=omega/accelTime;
+  const rhoSteel=7800, tWall=0.006, L=0.8;
+  const D=drumDia/1000;
+  const mDrum=rhoSteel*(Math.PI*D*L + Math.PI/2*D*D)*tWall;
+  const mPadWet=batch*padWt/1000*1.65;
+  const Jdrum=0.5*mDrum*r*r;
+  const Jpad=mPadWet*r*r;
+  const Jtotal=Jdrum+Jpad;
+  const Taccel=Jtotal*alpha;
+  const Tfric=0.002*(mDrum+mPadWet)*9.81*r*0.5;
+  const Tmax=Taccel+Tfric;
+  const Ppeak=Tmax*omega/1000; // kW
+  const Pdesign=Ppeak/(0.88*0.97)*1.5; // SF=1.5
+  const std=[0.4,0.75,1.5,2.2,3.7,5.5,7.5,11,15,22,30,37,45];
+  const sel=std.find(p=>p>=Pdesign)||std[std.length-1];
+  const vfdSel=std.find(p=>p>=sel*1.1)||std[std.length-1];
+  const Irated=sel*1000/(Math.sqrt(3)*380*0.85*0.88);
+  const poles=rpm<=900?8:rpm<=1200?6:rpm<=1800?4:2;
+  const syncRpm=[750,1000,1500,3000];
+  const syncR=syncRpm[Math.floor((poles-2)/2)];
+  return{
+    mDrum:mDrum.toFixed(1), mPadWet:mPadWet.toFixed(2),
+    Jtotal:Jtotal.toFixed(3), Taccel:Taccel.toFixed(1),
+    Tmax:Tmax.toFixed(1), Ppeak:Ppeak.toFixed(2),
+    Pdesign:Pdesign.toFixed(2), sel, vfdSel,
+    Irated:Irated.toFixed(1),
+    Ivfd:(Irated*1.5).toFixed(1),
+    poles, syncRpm:syncR,
+    slip:((syncR-rpm)/syncR*100).toFixed(1)
+  };
+}
+
 /* ══ 시뮬레이션 실행 ══ */
 function runSim(silent=false){
   const maxRpm=gv('maxRpm'),drumDia=gv('drumDia'),batch=gv('batchSz');
@@ -1193,6 +1237,9 @@ function doOptimize(){
       <div style="font-size:12px;color:var(--sub);margin-top:5px">${s.desc}</div>
     </div>`;
 
+  // 모터 추천 계산
+  const mot=calcMotor(curRpm, curDia, curBatch, gv('padWt'), curAccel);
+
   const html=`
     <div style="font-size:12px;color:var(--sub);margin-bottom:8px;padding:6px 8px;
       background:#fef3c7;border-radius:6px;border-left:3px solid #d97706">
@@ -1201,10 +1248,39 @@ function doOptimize(){
     ${mkRow('🟢 모드A: 최대 탈수 (권장)', opt.sA, '#15803d')}
     ${mkRow('🔵 모드B: 생산성 우선', opt.sB, '#2563a8')}
     ${mkRow('🟡 모드C: 품질·생산 균형', opt.sC, '#b45309')}
-    <div style="font-size:12px;color:var(--mute);margin-top:6px;line-height:1.6">
+    <div style="font-size:12px;color:var(--mute);margin-top:6px;line-height:1.6;margin-bottom:10px">
       이론한계 S∞=${opt.S_inf}%p | G_eff=${opt.G}G | k=${opt.k}<br>
       잔류 결합수 ${opt.minResidual}% 는 원심력으로 제거 불가<br>
       ※ 다른 모드 적용: 해당 유지시간을 슬라이더에 직접 입력
+    </div>
+
+    <!-- 모터 추천 카드 -->
+    <div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:8px;padding:10px 12px;margin-bottom:6px">
+      <div style="font-size:13px;font-weight:800;color:#1e3a5f;margin-bottom:8px">
+        ⚡ 구동 모터 추천 — 380V/60Hz/3상
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px">
+        ${[
+          ['★ 추천 모터',mot.sel+' kW','#1e3a5f'],
+          ['★ VFD 인버터',mot.vfdSel+' kW','#1e3a5f'],
+          ['극수/동기속도',mot.poles+'극 / '+mot.syncRpm+' RPM','#334155'],
+          ['슬립률',mot.slip+'%','#334155'],
+          ['정격 전류',mot.Irated+' A','#334155'],
+          ['VFD 기동전류',mot.Ivfd+' A','#334155'],
+        ].map(([k,v,c])=>`<div style="background:#fff;border-radius:5px;padding:5px 8px">
+          <div style="font-size:14px;font-weight:800;color:${c}">${v}</div>
+          <div style="font-size:12px;color:var(--mute)">${k}</div>
+        </div>`).join('')}
+      </div>
+      <div style="font-size:12px;color:#334155;line-height:1.7">
+        <b>계산 근거:</b><br>
+        · 드럼 질량 ${mot.mDrum}kg (SUS304 6mm 두께)<br>
+        · 젖은 패드 ${mot.mPadWet}kg · 관성모멘트 J=${mot.Jtotal} kg·m²<br>
+        · 가속 토크 ${mot.Taccel}N·m → 최대 토크 ${mot.Tmax}N·m<br>
+        · 가속 피크 동력 ${mot.Ppeak}kW → 설계 동력(SF×1.5) ${mot.Pdesign}kW<br>
+        · 모터 효율 88% / VFD 효율 97% 적용<br>
+        <b style="color:#b91c1c">⚠️ VFD(인버터) 필수</b> — DOL 직입 기동 시 전류 ${mot.Irated}A×7배 충격으로 드럼 손상 위험
+      </div>
     </div>`;
 
   ['optResult-pc','optResult-mob'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=html;});
