@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>시로코팬 사양 선정 시뮬레이터 v1.0</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyD-placeholder-key",
+    authDomain: "insys-work.firebaseapp.com",
+    projectId: "insys-work",
+    storageBucket: "insys-work.appspot.com",
+    messagingSenderId: "000000000000",
+    appId: "1:000000000000:web:placeholder"
+  };
+
+  let db;
+  try {
+    const app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+    console.log("Firebase initialized");
+  } catch(e) {
+    console.warn("Firebase init failed - offline mode:", e.message);
+  }
+
+  window.saveToFirebase = async function(data) {
+    if (!db) { showToast("⚠️ Firebase 미연결 - 로컬 저장만 됩니다", "warn"); return; }
+    try {
+      await addDoc(collection(db, "sirocco_simulations"), {
+        ...data,
+        savedAt: new Date().toISOString(),
+        version: "1.0"
+      });
+      showToast("✅ Firebase 저장 완료");
+    } catch(e) {
+      showToast("⚠️ Firebase 저장 실패: " + e.message, "warn");
+    }
+  };
+
+  window.loadLastFromFirebase = async function() {
+    if (!db) { showToast("⚠️ Firebase 미연결", "warn"); return null; }
+    try {
+      const q = query(collection(db, "sirocco_simulations"), orderBy("savedAt", "desc"), limit(1));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        return snap.docs[0].data();
+      }
+    } catch(e) {
+      showToast("불러오기 실패: " + e.message, "warn");
+    }
+    return null;
+  };
+
+  function showToast(msg, type="ok") {
+    const t = document.getElementById("toast");
+    if(!t) return;
+    t.textContent = msg;
+    t.style.background = type==="warn" ? "#e67e22" : "#27ae60";
+    t.style.opacity = "1";
+    setTimeout(()=>{ t.style.opacity="0"; }, 3000);
+  }
+</script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f0f4f8;
+  --surface: #ffffff;
+  --surface2: #f7f9fc;
+  --border: #d1dae6;
+  --primary: #1a4f8a;
+  --primary-light: #2563a8;
+  --accent: #0e7c6b;
+  --accent-light: #e6f4f1;
+  --warn: #d97706;
+  --danger: #c0392b;
+  --text: #1e2a3a;
+  --text2: #4a5568;
+  --text3: #718096;
+  --radius: 10px;
+  --shadow: 0 2px 12px rgba(26,79,138,0.10);
+}
+body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; min-height: 100vh; }
+
+/* HEADER */
+.app-header {
+  background: linear-gradient(135deg, #1a4f8a 0%, #0d3366 100%);
+  color: #fff;
+  padding: 18px 24px 14px;
+  display: flex; align-items: center; justify-content: space-between;
+  box-shadow: 0 3px 14px rgba(13,51,102,0.25);
+  position: sticky; top: 0; z-index: 100;
+}
+.app-header .title-area h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+.app-header .title-area p { font-size: 11px; color: #a8c4e0; margin-top: 2px; }
+.app-header .badge { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); border-radius: 20px; padding: 3px 10px; font-size: 11px; color: #dceeff; }
+
+/* TOAST */
+#toast { position: fixed; bottom: 24px; right: 24px; background: #27ae60; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 500; opacity: 0; transition: opacity 0.3s; z-index: 9999; pointer-events: none; }
+
+/* LAYOUT */
+.container { max-width: 1100px; margin: 0 auto; padding: 20px 16px 40px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+/* CARD */
+.card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); border: 1px solid var(--border); overflow: hidden; }
+.card-header { background: linear-gradient(90deg, #1a4f8a11 0%, #0e7c6b08 100%); border-bottom: 1px solid var(--border); padding: 12px 16px; display: flex; align-items: center; gap: 8px; }
+.card-header .icon { width: 28px; height: 28px; border-radius: 7px; background: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+.card-header h2 { font-size: 13px; font-weight: 700; color: var(--primary); }
+.card-header .subtitle { font-size: 11px; color: var(--text3); margin-left: auto; }
+.card-body { padding: 16px; }
+
+/* FORM */
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.form-row.three { grid-template-columns: 1fr 1fr 1fr; }
+.form-group label { display: block; font-size: 11px; font-weight: 500; color: var(--text2); margin-bottom: 4px; }
+.form-group input, .form-group select {
+  width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 7px;
+  font-family: 'Noto Sans KR', sans-serif; font-size: 13px; color: var(--text);
+  background: var(--surface2); transition: border 0.2s;
+}
+.form-group input:focus, .form-group select:focus { outline: none; border-color: var(--primary-light); background: #fff; }
+.unit-hint { font-size: 10px; color: var(--text3); margin-top: 2px; }
+
+/* RESULT GRID */
+.result-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+.result-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 10px; text-align: center; }
+.result-card .val { font-size: 22px; font-weight: 700; color: var(--primary); line-height: 1; }
+.result-card .val.green { color: var(--accent); }
+.result-card .val.orange { color: var(--warn); }
+.result-card .lbl { font-size: 10px; color: var(--text3); margin-top: 4px; }
+
+/* FAN SPEC TABLE */
+.spec-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.spec-table th { background: #dce8f5; color: var(--primary); font-weight: 700; padding: 8px 10px; text-align: left; border-bottom: 2px solid var(--primary); }
+.spec-table td { padding: 7px 10px; border-bottom: 1px solid var(--border); color: var(--text); }
+.spec-table tr:last-child td { border-bottom: none; }
+.spec-table tr:hover td { background: #f0f6ff; }
+.badge-ok { background: #e6f4f1; color: #0e7c6b; border-radius: 5px; padding: 2px 7px; font-size: 10px; font-weight: 700; }
+.badge-warn { background: #fef3cd; color: #856404; border-radius: 5px; padding: 2px 7px; font-size: 10px; font-weight: 700; }
+.badge-critical { background: #fde8e8; color: #c0392b; border-radius: 5px; padding: 2px 7px; font-size: 10px; font-weight: 700; }
+
+/* TEMP TABS */
+.temp-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+.temp-tab { padding: 6px 14px; border-radius: 20px; border: 1.5px solid var(--border); font-size: 12px; font-weight: 500; cursor: pointer; background: var(--surface2); color: var(--text2); transition: all 0.2s; }
+.temp-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.temp-tab:hover:not(.active) { border-color: var(--primary-light); color: var(--primary); }
+
+/* BUTTONS */
+.btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+.btn { padding: 9px 18px; border-radius: 8px; border: none; font-family: 'Noto Sans KR', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px; }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-light); transform: translateY(-1px); }
+.btn-success { background: var(--accent); color: #fff; }
+.btn-success:hover { background: #0a6659; transform: translateY(-1px); }
+.btn-outline { background: var(--surface); color: var(--primary); border: 1.5px solid var(--primary); }
+.btn-outline:hover { background: #eaf0fa; }
+.btn-warn { background: var(--warn); color: #fff; }
+.btn-warn:hover { background: #b85c00; }
+
+/* CHART WRAPPER */
+.chart-wrap { position: relative; width: 100%; height: 240px; }
+
+/* RECIRCULATION BANNER */
+.recirc-banner { background: linear-gradient(90deg, #e6f4f1, #f0f9f7); border: 1.5px solid #0e7c6b44; border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+.recirc-banner .ico { font-size: 22px; }
+.recirc-banner .txt h3 { font-size: 12px; font-weight: 700; color: var(--accent); }
+.recirc-banner .txt p { font-size: 11px; color: var(--text2); margin-top: 2px; }
+.recirc-pct { font-size: 28px; font-weight: 900; color: var(--accent); margin-left: auto; }
+.recirc-pct span { font-size: 12px; font-weight: 500; }
+
+/* OPTIMIZATION BOX */
+.opt-box { background: linear-gradient(135deg, #f0f6ff, #f7f9fc); border: 1.5px solid var(--primary); border-radius: 10px; padding: 16px; margin-top: 16px; }
+.opt-box h3 { font-size: 13px; font-weight: 700; color: var(--primary); margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+.opt-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.opt-item { background: #fff; border-radius: 8px; padding: 10px; border: 1px solid #c0d4f0; text-align: center; }
+.opt-item .ov { font-size: 16px; font-weight: 700; color: var(--primary); }
+.opt-item .ol { font-size: 10px; color: var(--text3); margin-top: 3px; }
+
+/* DIVIDER */
+.divider { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+
+/* SECTION LABEL */
+.sec-label { font-size: 11px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+
+/* INFO CHIP */
+.info-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.chip { background: #eaf0fa; color: var(--primary); border-radius: 20px; padding: 3px 10px; font-size: 11px; font-weight: 500; }
+.chip.green { background: #e6f4f1; color: var(--accent); }
+.chip.orange { background: #fef3cd; color: #856404; }
+
+/* FOOTER */
+.app-footer { text-align: center; color: var(--text3); font-size: 11px; padding: 16px; border-top: 1px solid var(--border); margin-top: 20px; }
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="title-area">
+    <h1>🌀 시로코팬 사양 선정 시뮬레이터</h1>
+    <p>인시스 AI혁신 R&D센터 · 건조실 열풍 순환 최적화 시스템</p>
+  </div>
+  <div class="badge">v1.0</div>
+</div>
+
+<div id="toast"></div>
+
+<div class="container">
+
+  <!-- ROW 1: 입력 -->
+  <div class="grid-2" style="margin-bottom:16px;">
+
+    <!-- 건조실 제원 입력 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="icon">📐</div>
+        <h2>건조실 제원 입력</h2>
+        <span class="subtitle">내부 치수 기준</span>
+      </div>
+      <div class="card-body">
+        <div class="form-row three">
+          <div class="form-group">
+            <label>길이 (L)</label>
+            <input type="number" id="inp_length" value="4.0" step="0.1" min="0.5" onchange="simulate()">
+            <div class="unit-hint">단위: m</div>
+          </div>
+          <div class="form-group">
+            <label>폭 (W)</label>
+            <input type="number" id="inp_width" value="1.2" step="0.1" min="0.5" onchange="simulate()">
+            <div class="unit-hint">단위: m</div>
+          </div>
+          <div class="form-group">
+            <label>높이 (H)</label>
+            <input type="number" id="inp_height" value="1.6" step="0.1" min="0.5" onchange="simulate()">
+            <div class="unit-hint">단위: m</div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>팬 설치 대수</label>
+            <select id="inp_fancount" onchange="simulate()">
+              <option value="2">2대</option>
+              <option value="3" selected>3대</option>
+              <option value="4">4대</option>
+              <option value="6">6대</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>덕트 구성</label>
+            <select id="inp_duct" onchange="simulate()">
+              <option value="1.0">직결 (저항 없음)</option>
+              <option value="1.2" selected>단순 덕트</option>
+              <option value="1.4">엘보 2개 이상</option>
+              <option value="1.6">복잡 덕트</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>건조물 종류</label>
+            <select id="inp_load" onchange="simulate()">
+              <option value="1.0">경량 (패드·직물)</option>
+              <option value="1.15">중량 (작업복·두꺼운 직물)</option>
+              <option value="1.3">중습 (세탁 직후 고함수)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>히터 정격 용량</label>
+            <input type="number" id="inp_heater" value="3000" step="100" min="500" onchange="simulate()">
+            <div class="unit-hint">단위: W (총 합산)</div>
+          </div>
+        </div>
+        <hr class="divider">
+        <div class="form-group">
+          <label>열기 회수 재순환 적용 여부</label>
+          <select id="inp_recirc" onchange="simulate()">
+            <option value="0">미적용 (단방향 배기)</option>
+            <option value="1" selected>적용 (상부 개구 → 팬 입구 회수)</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-top:10px;">
+          <label>회수 개구부 면적 비율</label>
+          <select id="inp_recircRatio" onchange="simulate()">
+            <option value="0.3">30% (소형 개구)</option>
+            <option value="0.5" selected>50% (표준 권장)</option>
+            <option value="0.7">70% (최대 회수)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- 온도 및 운전 조건 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="icon">🌡️</div>
+        <h2>온도 · 운전 조건</h2>
+        <span class="subtitle">복수 온도 비교 가능</span>
+      </div>
+      <div class="card-body">
+        <div class="sec-label">비교 온도 선택</div>
+        <div class="temp-tabs">
+          <div class="temp-tab" id="tab40" onclick="setTempMode('40')">40°C</div>
+          <div class="temp-tab active" id="tab50" onclick="setTempMode('50')">50°C</div>
+          <div class="temp-tab" id="tab60" onclick="setTempMode('60')">60°C</div>
+          <div class="temp-tab" id="tabAll" onclick="setTempMode('all')">전체 비교</div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>외기 온도</label>
+            <input type="number" id="inp_ambientTemp" value="25" step="1" onchange="simulate()">
+            <div class="unit-hint">단위: °C</div>
+          </div>
+          <div class="form-group">
+            <label>목표 건조 온도</label>
+            <input type="number" id="inp_targetTemp" value="50" step="5" min="30" max="80" onchange="simulate()">
+            <div class="unit-hint">단위: °C (현재 탭)</div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>1일 운전 시간</label>
+            <input type="number" id="inp_opHours" value="8" step="0.5" min="1" max="24" onchange="simulate()">
+            <div class="unit-hint">시간/일</div>
+          </div>
+          <div class="form-group">
+            <label>월 운전 일수</label>
+            <input type="number" id="inp_opDays" value="22" step="1" min="1" max="31" onchange="simulate()">
+            <div class="unit-hint">일/월</div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>전력 단가</label>
+            <input type="number" id="inp_elecCost" value="120" step="10" onchange="simulate()">
+            <div class="unit-hint">원/kWh</div>
+          </div>
+          <div class="form-group">
+            <label>안전율 (여유계수)</label>
+            <select id="inp_safety" onchange="simulate()">
+              <option value="1.1">1.1 (적정)</option>
+              <option value="1.2" selected>1.2 (표준)</option>
+              <option value="1.3">1.3 (여유)</option>
+            </select>
+          </div>
+        </div>
+        <hr class="divider">
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="simulate()">🔄 시뮬레이션 실행</button>
+          <button class="btn btn-warn" onclick="optimize()">⚡ 최적화 추천</button>
+          <button class="btn btn-success" onclick="saveResult()">💾 Firebase 저장</button>
+          <button class="btn btn-outline" onclick="loadResult()">📂 불러오기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 2: 결과 요약 -->
+  <div class="card" style="margin-bottom:16px;">
+    <div class="card-header">
+      <div class="icon">📊</div>
+      <h2>시뮬레이션 결과 요약</h2>
+      <span class="subtitle" id="result-label">50°C 기준</span>
+    </div>
+    <div class="card-body">
+      <div class="result-grid">
+        <div class="result-card">
+          <div class="val" id="r_volume">7.68</div>
+          <div class="lbl">건조실 체적 (m³)</div>
+        </div>
+        <div class="result-card">
+          <div class="val" id="r_totalFlow">480</div>
+          <div class="lbl">총 필요 풍량 (m³/h)</div>
+        </div>
+        <div class="result-card">
+          <div class="val" id="r_fanFlow">160</div>
+          <div class="lbl">팬 1대 풍량 (m³/h)</div>
+        </div>
+        <div class="result-card">
+          <div class="val" id="r_staticP">80</div>
+          <div class="lbl">필요 정압 (Pa)</div>
+        </div>
+        <div class="result-card">
+          <div class="val" id="r_motorW">60</div>
+          <div class="lbl">팬 모터 출력 (W/대)</div>
+        </div>
+        <div class="result-card">
+          <div class="val green" id="r_saving">—</div>
+          <div class="lbl">히터 절감률 (%)</div>
+        </div>
+        <div class="result-card">
+          <div class="val green" id="r_savingW">—</div>
+          <div class="lbl">절감 전력 (W)</div>
+        </div>
+        <div class="result-card">
+          <div class="val orange" id="r_monthlyCost">—</div>
+          <div class="lbl">월 절감 전기요금 (원)</div>
+        </div>
+      </div>
+
+      <!-- 재순환 효과 배너 -->
+      <div class="recirc-banner" id="recirc-banner">
+        <div class="ico">♻️</div>
+        <div class="txt">
+          <h3>열기 재순환 회수 효과</h3>
+          <p id="recirc-desc">상부 개구 → 팬 입구 회수 방식으로 히터 가동 시간 단축</p>
+        </div>
+        <div class="recirc-pct"><span id="recirc-pct-val">0</span><span>%</span></div>
+      </div>
+
+      <div class="info-row" id="info-chips"></div>
+
+      <!-- 권장 사양 표 -->
+      <div class="sec-label">팬 사양 상세 (대당 기준)</div>
+      <table class="spec-table" id="spec-table">
+        <thead>
+          <tr>
+            <th>항목</th>
+            <th>40°C</th>
+            <th>50°C</th>
+            <th>60°C</th>
+            <th>비고</th>
+          </tr>
+        </thead>
+        <tbody id="spec-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ROW 3: 차트 -->
+  <div class="grid-2" style="margin-bottom:16px;">
+    <div class="card">
+      <div class="card-header">
+        <div class="icon">📈</div>
+        <h2>온도별 풍량 · 정압 비교</h2>
+      </div>
+      <div class="card-body">
+        <div class="chart-wrap"><canvas id="chart1"></canvas></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="icon">⚡</div>
+        <h2>히터 전력 절감 효과 (재순환 적용)</h2>
+      </div>
+      <div class="card-body">
+        <div class="chart-wrap"><canvas id="chart2"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:16px;">
+    <div class="card">
+      <div class="card-header">
+        <div class="icon">💰</div>
+        <h2>월간 전력비 절감 분석</h2>
+      </div>
+      <div class="card-body">
+        <div class="chart-wrap"><canvas id="chart3"></canvas></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="icon">🌀</div>
+        <h2>팬 대수별 총 풍량 비교</h2>
+      </div>
+      <div class="card-body">
+        <div class="chart-wrap"><canvas id="chart4"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 최적화 결과 -->
+  <div class="card" id="opt-card" style="display:none;margin-bottom:16px;">
+    <div class="card-header">
+      <div class="icon">⚡</div>
+      <h2>최적화 추천 결과</h2>
+      <span class="subtitle">입력 조건 기반 자동 산출</span>
+    </div>
+    <div class="card-body">
+      <div class="opt-box">
+        <h3>🎯 최적 시로코팬 사양 (대당)</h3>
+        <div class="opt-row" id="opt-row"></div>
+      </div>
+      <div style="margin-top:14px;" id="opt-desc"></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="app-footer">
+  인시스 AI혁신 R&D센터 · 시로코팬 사양 선정 시뮬레이터 v1.0 · 2026
+</div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+let tempMode = '50';
+let charts = {};
+
+function setTempMode(m) {
+  tempMode = m;
+  document.querySelectorAll('.temp-tab').forEach(t => t.classList.remove('active'));
+  const tabId = m === 'all' ? 'tabAll' : 'tab' + m;
+  document.getElementById(tabId).classList.add('active');
+  if (m !== 'all') {
+    document.getElementById('inp_targetTemp').value = m;
+  }
+  simulate();
+}
+
+// ============================================================
+// CORE CALCULATION
+// ============================================================
+function getInputs() {
+  return {
+    L: parseFloat(document.getElementById('inp_length').value) || 4.0,
+    W: parseFloat(document.getElementById('inp_width').value) || 1.2,
+    H: parseFloat(document.getElementById('inp_height').value) || 1.6,
+    fanCount: parseInt(document.getElementById('inp_fancount').value) || 3,
+    ductFactor: parseFloat(document.getElementById('inp_duct').value) || 1.2,
+    loadFactor: parseFloat(document.getElementById('inp_load').value) || 1.0,
+    heaterW: parseFloat(document.getElementById('inp_heater').value) || 3000,
+    recircOn: parseInt(document.getElementById('inp_recirc').value) === 1,
+    recircRatio: parseFloat(document.getElementById('inp_recircRatio').value) || 0.5,
+    ambientTemp: parseFloat(document.getElementById('inp_ambientTemp').value) || 25,
+    targetTemp: parseFloat(document.getElementById('inp_targetTemp').value) || 50,
+    opHours: parseFloat(document.getElementById('inp_opHours').value) || 8,
+    opDays: parseFloat(document.getElementById('inp_opDays').value) || 22,
+    elecCost: parseFloat(document.getElementById('inp_elecCost').value) || 120,
+    safety: parseFloat(document.getElementById('inp_safety').value) || 1.2
+  };
+}
+
+function calcForTemp(inp, temp) {
+  const vol = inp.L * inp.W * inp.H;
+  // 온도에 따른 순환 횟수 (회/h)
+  const turnover = temp <= 40 ? 35 : temp <= 50 ? 45 : 55;
+  const totalFlow_base = vol * turnover;           // m³/h 기본
+  const totalFlow = totalFlow_base * inp.loadFactor * inp.safety;
+  const fanFlow = totalFlow / inp.fanCount;
+
+  // 정압: 덕트 복잡도 + 온도 보정
+  const baseP = temp <= 40 ? 50 : temp <= 50 ? 70 : 90;
+  const staticP = Math.round(baseP * inp.ductFactor);
+
+  // 모터 출력 (풍량·정압 기반 간이식)
+  const motorW = Math.round(fanFlow * staticP / 3600 / 0.45 * 1.15); // 효율 45%
+
+  // 내열 등급
+  const heatClass = temp >= 60 ? 'F종 필수' : 'B종 이상';
+  const bearing = temp >= 60 ? '내열 그리스' : '표준';
+
+  // 재순환 절감률 계산
+  let savingPct = 0;
+  if (inp.recircOn) {
+    const deltaT = temp - inp.ambientTemp;         // 온도 상승 필요분
+    const recircHeat = deltaT * inp.recircRatio * 0.85;  // 회수 효율 85%
+    savingPct = Math.min((recircHeat / deltaT) * 100, 65); // 최대 65%
+    savingPct = Math.round(savingPct * 10) / 10;
+  }
+  const savingW = Math.round(inp.heaterW * savingPct / 100);
+
+  // 월간 비용
+  const baseMonthlyKwh = (inp.heaterW / 1000) * inp.opHours * inp.opDays;
+  const savingKwh = (savingW / 1000) * inp.opHours * inp.opDays;
+  const monthlySaving = Math.round(savingKwh * inp.elecCost);
+
+  return { vol, turnover, totalFlow: Math.round(totalFlow), fanFlow: Math.round(fanFlow),
+    staticP, motorW, heatClass, bearing, savingPct, savingW, monthlySaving, baseMonthlyKwh };
+}
+
+// ============================================================
+// SIMULATE
+// ============================================================
+function simulate() {
+  const inp = getInputs();
+  const temps = tempMode === 'all' ? [40, 50, 60] : [parseInt(inp.targetTemp)];
+  const primary = calcForTemp(inp, parseInt(inp.targetTemp));
+
+  // 결과 카드 업데이트
+  setText('r_volume', inp.L * inp.W * inp.H.toFixed ? (inp.L * inp.W * inp.H).toFixed(2) : '—');
+  setText('r_totalFlow', primary.totalFlow);
+  setText('r_fanFlow', primary.fanFlow);
+  setText('r_staticP', primary.staticP);
+  setText('r_motorW', primary.motorW);
+  setText('r_saving', inp.recircOn ? primary.savingPct + '%' : '미적용');
+  setText('r_savingW', inp.recircOn ? primary.savingW + 'W' : '—');
+  setText('r_monthlyCost', inp.recircOn ? primary.monthlySaving.toLocaleString() + '원' : '—');
+  setText('result-label', inp.targetTemp + '°C 기준');
+
+  // 재순환 배너
+  const banner = document.getElementById('recirc-banner');
+  const recircVal = document.getElementById('recirc-pct-val');
+  if (inp.recircOn) {
+    banner.style.display = 'flex';
+    recircVal.textContent = primary.savingPct;
+    setText('recirc-desc', `상부 ${Math.round(inp.recircRatio*100)}% 개구 회수 → 히터 가동률 ${(100-primary.savingPct).toFixed(1)}%로 감소`);
+  } else {
+    banner.style.display = 'none';
+  }
+
+  // 정보 칩
+  const chips = document.getElementById('info-chips');
+  chips.innerHTML = `
+    <span class="chip">체적 ${(inp.L*inp.W*inp.H).toFixed(2)} m³</span>
+    <span class="chip">순환 ${primary.turnover}회/h</span>
+    <span class="chip">안전율 ×${inp.safety}</span>
+    <span class="${primary.savingPct>40?'chip green':'chip orange'}">재순환 절감 ${inp.recircOn?primary.savingPct+'%':'미적용'}</span>
+    <span class="chip">${primary.heatClass}</span>
+  `;
+
+  // 사양 표
+  const r40 = calcForTemp(inp, 40);
+  const r50 = calcForTemp(inp, 50);
+  const r60 = calcForTemp(inp, 60);
+  const rows = [
+    ['풍량 (m³/h)', r40.fanFlow, r50.fanFlow, r60.fanFlow, '팬 1대 기준'],
+    ['정압 (Pa)', r40.staticP, r50.staticP, r60.staticP, '덕트 손실 포함'],
+    ['모터 출력 (W)', r40.motorW, r50.motorW, r60.motorW, '대당'],
+    ['순환 횟수 (회/h)', r40.turnover, r50.turnover, r60.turnover, ''],
+    ['내열 등급', r40.heatClass, r50.heatClass, `<span class="badge-critical">${r60.heatClass}</span>`, '모터 사양'],
+    ['베어링', r40.bearing, r50.bearing, `<span class="badge-warn">${r60.bearing}</span>`, '윤활 방식'],
+    ['히터 절감 (%)', inp.recircOn?r40.savingPct+'%':'미적용', inp.recircOn?r50.savingPct+'%':'미적용', inp.recircOn?r60.savingPct+'%':'미적용', '재순환 효과'],
+    ['월 절감 요금 (원)', inp.recircOn?r40.monthlySaving.toLocaleString():'-', inp.recircOn?r50.monthlySaving.toLocaleString():'-', inp.recircOn?r60.monthlySaving.toLocaleString():'-', ''],
+  ];
+  const tbody = document.getElementById('spec-tbody');
+  tbody.innerHTML = rows.map(r => `<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td style="color:var(--text3);font-size:11px;">${r[4]}</td></tr>`).join('');
+
+  // 차트 업데이트
+  updateCharts(inp, r40, r50, r60);
+}
+
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+// ============================================================
+// CHARTS
+// ============================================================
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+
+function updateCharts(inp, r40, r50, r60) {
+  // Chart 1: 풍량 + 정압
+  destroyChart('c1');
+  const ctx1 = document.getElementById('chart1').getContext('2d');
+  charts['c1'] = new Chart(ctx1, {
+    type: 'bar',
+    data: {
+      labels: ['40°C', '50°C', '60°C'],
+      datasets: [
+        { label: '팬 1대 풍량 (m³/h)', data: [r40.fanFlow, r50.fanFlow, r60.fanFlow], backgroundColor: ['#3498db88','#2563a888','#1a4f8a88'], borderColor: ['#3498db','#2563a8','#1a4f8a'], borderWidth: 2, yAxisID: 'y', borderRadius: 5 },
+        { label: '필요 정압 (Pa)', data: [r40.staticP, r50.staticP, r60.staticP], type: 'line', borderColor: '#e67e22', backgroundColor: '#e67e2220', pointBackgroundColor: '#e67e22', tension: 0.4, yAxisID: 'y2', borderWidth: 2.5 }
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { font: { family: 'Noto Sans KR', size: 11 } } } }, scales: { y: { title: { display: true, text: '풍량 (m³/h)', font: { size: 11 } } }, y2: { position: 'right', title: { display: true, text: '정압 (Pa)', font: { size: 11 } }, grid: { drawOnChartArea: false } } } }
+  });
+
+  // Chart 2: 히터 절감
+  destroyChart('c2');
+  const ctx2 = document.getElementById('chart2').getContext('2d');
+  const s40 = inp.recircOn ? r40.savingPct : 0;
+  const s50 = inp.recircOn ? r50.savingPct : 0;
+  const s60 = inp.recircOn ? r60.savingPct : 0;
+  charts['c2'] = new Chart(ctx2, {
+    type: 'bar',
+    data: {
+      labels: ['40°C', '50°C', '60°C'],
+      datasets: [
+        { label: '절감률 (%)', data: [s40, s50, s60], backgroundColor: ['#0e7c6b66','#0e7c6b99','#0e7c6bcc'], borderColor: '#0e7c6b', borderWidth: 2, borderRadius: 5 },
+        { label: '잔여 히터 가동 (%)', data: [100-s40, 100-s50, 100-s60], backgroundColor: ['#c0392b33','#c0392b55','#c0392b77'], borderColor: '#c0392b', borderWidth: 1.5, borderRadius: 5 }
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { font: { family: 'Noto Sans KR', size: 11 } } } }, scales: { x: { stacked: true }, y: { stacked: true, max: 100, title: { display: true, text: '비율 (%)' } } } }
+  });
+
+  // Chart 3: 월간 비용
+  destroyChart('c3');
+  const ctx3 = document.getElementById('chart3').getContext('2d');
+  const mc40 = inp.recircOn ? r40.monthlySaving : 0;
+  const mc50 = inp.recircOn ? r50.monthlySaving : 0;
+  const mc60 = inp.recircOn ? r60.monthlySaving : 0;
+  const base = Math.round(inp.heaterW/1000 * inp.opHours * inp.opDays * inp.elecCost);
+  charts['c3'] = new Chart(ctx3, {
+    type: 'bar',
+    data: {
+      labels: ['40°C', '50°C', '60°C'],
+      datasets: [
+        { label: '절감 요금 (원/월)', data: [mc40, mc50, mc60], backgroundColor: '#0e7c6b88', borderColor: '#0e7c6b', borderWidth: 2, borderRadius: 5 },
+        { label: '기준 히터 비용 (원/월)', data: [base, base, base], type: 'line', borderColor: '#c0392b', backgroundColor: 'transparent', borderDash: [6,3], pointRadius: 0, borderWidth: 2 }
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { font: { family: 'Noto Sans KR', size: 11 } } } }, scales: { y: { title: { display: true, text: '요금 (원)' } } } }
+  });
+
+  // Chart 4: 팬 대수별 풍량
+  destroyChart('c4');
+  const ctx4 = document.getElementById('chart4').getContext('2d');
+  const fanCounts = [2, 3, 4, 6];
+  const temp = parseInt(inp.targetTemp) || 50;
+  const vol = inp.L * inp.W * inp.H;
+  const turnover = temp <= 40 ? 35 : temp <= 50 ? 45 : 55;
+  const totalNeeded = vol * turnover * inp.loadFactor * inp.safety;
+  charts['c4'] = new Chart(ctx4, {
+    type: 'line',
+    data: {
+      labels: fanCounts.map(n => n + '대'),
+      datasets: [
+        { label: '팬 1대 풍량 (m³/h)', data: fanCounts.map(n => Math.round(totalNeeded/n)), borderColor: '#2563a8', backgroundColor: '#2563a820', tension: 0.4, fill: true, borderWidth: 2.5 },
+        { label: '총 필요 풍량 기준', data: fanCounts.map(() => Math.round(totalNeeded)), borderColor: '#e67e22', borderDash: [6,3], tension: 0, pointRadius: 0, borderWidth: 2 }
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { font: { family: 'Noto Sans KR', size: 11 } } } }, scales: { y: { title: { display: true, text: '풍량 (m³/h)' } } } }
+  });
+}
+
+// ============================================================
+// OPTIMIZE
+// ============================================================
+function optimize() {
+  const inp = getInputs();
+  const temp = parseInt(inp.targetTemp);
+  const r = calcForTemp(inp, temp);
+
+  // 최적 임펠러 크기 선정
+  const dia = r.fanFlow <= 120 ? 'φ150mm' : r.fanFlow <= 180 ? 'φ180mm' : 'φ200mm';
+  // 최적 모터 규격 (시판 표준)
+  const motorStd = r.motorW <= 40 ? '40W (1/20HP)' : r.motorW <= 60 ? '60W (1/12HP)' : r.motorW <= 90 ? '90W (1/8HP)' : '120W (1/6HP)';
+  // 배치 권장
+  const spacing = (inp.L / inp.fanCount).toFixed(1);
+
+  const optCard = document.getElementById('opt-card');
+  const optRow = document.getElementById('opt-row');
+  const optDesc = document.getElementById('opt-desc');
+  optCard.style.display = 'block';
+
+  optRow.innerHTML = [
+    ['풍량', r.fanFlow + ' m³/h'],
+    ['정압', r.staticP + ' Pa'],
+    ['모터 출력', motorStd],
+    ['임펠러', dia],
+    ['내열 등급', r.heatClass],
+    ['베어링', r.bearing],
+  ].map(([l,v]) => `<div class="opt-item"><div class="ov">${v}</div><div class="ol">${l}</div></div>`).join('');
+
+  optDesc.innerHTML = `
+    <div class="info-row">
+      <span class="chip">팬 배치 간격 ${spacing}m</span>
+      <span class="chip">전압 AC 220V 단상</span>
+      <span class="chip green">히터 절감 ${r.savingPct}%</span>
+      <span class="chip orange">월 절감 ${r.monthlySaving.toLocaleString()}원</span>
+    </div>
+    <p style="font-size:12px;color:var(--text2);margin-top:8px;line-height:1.7;">
+      ✅ <b>${temp}°C 운전</b> 기준 최적 사양입니다.<br>
+      ✅ 팬 ${inp.fanCount}대를 길이 방향으로 ${spacing}m 간격 균등 배치하면 온도 편차 최소화.<br>
+      ${inp.recircOn ? `✅ 상부 ${Math.round(inp.recircRatio*100)}% 개구 열기 회수 시 히터 가동시간 <b>${(100-r.savingPct).toFixed(1)}%</b>로 단축.` : '⚠️ 재순환 미적용 — 적용 시 추가 절감 가능.'}
+      ${temp >= 60 ? '<br>⚠️ 60°C 이상: F종 내열 모터 및 내열 그리스 베어링 반드시 선택' : ''}
+    </p>
+  `;
+  optCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ============================================================
+// SAVE / LOAD
+// ============================================================
+function saveResult() {
+  const inp = getInputs();
+  const r = calcForTemp(inp, parseInt(inp.targetTemp));
+  const data = { inputs: inp, result: r, tempMode, timestamp: new Date().toISOString() };
+  localStorage.setItem('sirocco_last', JSON.stringify(data));
+  if (typeof window.saveToFirebase === 'function') {
+    window.saveToFirebase(data);
+  }
+  showToastLocal("✅ 저장 완료 (로컬 + Firebase)");
+}
+
+function loadResult() {
+  const raw = localStorage.getItem('sirocco_last');
+  if (!raw) { showToastLocal("저장된 데이터 없음", "warn"); return; }
+  try {
+    const data = JSON.parse(raw);
+    const i = data.inputs;
+    setValue('inp_length', i.L);
+    setValue('inp_width', i.W);
+    setValue('inp_height', i.H);
+    setValue('inp_fancount', i.fanCount);
+    setValue('inp_duct', i.ductFactor);
+    setValue('inp_load', i.loadFactor);
+    setValue('inp_heater', i.heaterW);
+    setValue('inp_recirc', i.recircOn ? 1 : 0);
+    setValue('inp_recircRatio', i.recircRatio);
+    setValue('inp_targetTemp', i.targetTemp);
+    setValue('inp_ambientTemp', i.ambientTemp);
+    setValue('inp_opHours', i.opHours);
+    setValue('inp_opDays', i.opDays);
+    setValue('inp_elecCost', i.elecCost);
+    setValue('inp_safety', i.safety);
+    showToastLocal("📂 불러오기 완료");
+    simulate();
+  } catch(e) {
+    showToastLocal("불러오기 오류", "warn");
+  }
+}
+
+function setValue(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.value = val;
+}
+
+function showToastLocal(msg, type="ok") {
+  const t = document.getElementById("toast");
+  if (!t) return;
+  t.textContent = msg;
+  t.style.background = type === "warn" ? "#e67e22" : "#27ae60";
+  t.style.opacity = "1";
+  setTimeout(() => { t.style.opacity = "0"; }, 3000);
+}
+
+// ============================================================
+// INIT
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+  simulate();
+});
+</script>
+</body>
+</html>
