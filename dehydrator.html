@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>패드 탈수기 시뮬레이션 v6.2 | 인시스 AI혁신 R&D센터</title>
+<title>패드 탈수기 시뮬레이션 v6.3 | 인시스 AI혁신 R&D센터</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -230,7 +230,7 @@ canvas{display:block;width:100%!important}
 <div class="topbar">
   <b>🏭 인시스 AI혁신 R&D센터 | 패드 탈수기 시뮬레이션</b>
   <div class="topbar-r">
-    <span class="ver-badge">v6.2</span>
+    <span class="ver-badge">v6.3</span>
     <div class="mtoggle">
       <button class="mbtn on" id="modePC" onclick="setMode('pc')">🖥 PC</button>
       <button class="mbtn" id="modeMob" onclick="setMode('mob')">📱 모바일</button>
@@ -255,7 +255,7 @@ canvas{display:block;width:100%!important}
   <!-- COL1: 입력 -->
   <div>
     <div class="card" style="margin-bottom:10px">
-      <div class="ch">⚙️ 탈수기 사양 <span class="cv">v6.2</span></div>
+      <div class="ch">⚙️ 탈수기 사양 <span class="cv">v6.3</span></div>
       <div class="cb" id="sl-mech-pc"></div>
     </div>
     <div class="card" style="margin-bottom:10px">
@@ -364,7 +364,7 @@ canvas{display:block;width:100%!important}
 
 <!-- MOBILE LAYOUT -->
 <div class="mob-layout" id="mobLayout" style="display:none">
-  <div class="card"><div class="ch">⚙️ 탈수기 사양 <span class="cv">v6.2</span></div>
+  <div class="card"><div class="ch">⚙️ 탈수기 사양 <span class="cv">v6.3</span></div>
     <div class="cb"><div class="sr-mob" id="sl-mech-mob"></div></div></div>
   <div class="card"><div class="ch">💧 수분 조건</div>
     <div class="cb"><div class="sr-mob" id="sl-water-mob"></div></div></div>
@@ -452,7 +452,7 @@ canvas{display:block;width:100%!important}
 <div class="panel" id="tab-phys">
 <div class="wrap">
   <div class="card">
-    <div class="ch">📐 수학·기계공학 공식 전체 검증 <span class="cv">v6.2</span></div>
+    <div class="ch">📐 수학·기계공학 공식 전체 검증 <span class="cv">v6.3</span></div>
     <div class="cb" id="physPanel">
       <span style="color:var(--mute);font-size:12px">시뮬레이션 실행 후 자동 업데이트됩니다</span>
     </div>
@@ -474,7 +474,7 @@ canvas{display:block;width:100%!important}
 
 <div class="footer">
   담당부서: 인시스 AI혁신 R&D센터 &nbsp;|&nbsp; ys.kim@in-sys.co.kr &nbsp;|&nbsp;
-  패드 탈수기 시뮬레이션 <b>v6.2</b> &nbsp;|&nbsp; 900×600×3mm 골판지 패드
+  패드 탈수기 시뮬레이션 <b>v6.3</b> &nbsp;|&nbsp; 900×600×3mm 골판지 패드
 </div>
 
 <!-- FIREBASE -->
@@ -926,9 +926,9 @@ function runSim(silent=false){
   const tlHTML=[
     {dot:'td-a',t:`📥 패드 ${batch}장 투입`,d:`적재 ${batchWt.toLocaleString()}g · 초기 수분 M₀=${initM}%`,s:hl},
     {dot:'td-a',t:`⬆️ 가속`,d:`0→${maxRpm} RPM · ω=${dw.omega} rad/s · G=${dw.G}G · v팁=${dw.tipSpeed}m/s`,s:accel},
-    {dot:'td-p',t:`💫 최고속 유지`,d:`${maxRpm} RPM × ${peak}s · Sw=${dw.Sw}%p 달성 (목표 ${targetW}%p) ${targetOk?'✅':'❌'}`,s:peak},
+    {dot:'td-p',t:`💫 최고속 유지`,d:`${maxRpm} RPM × ${peak}s · 원심 ${dw.Sw}%p + 열풍 ${hot?hot.SwHot:'0'}%p = 총 ${SwTotal.toFixed(1)}%p (목표 ${targetW}%p) ${targetOk?'✅':'❌'}`,s:peak},
     {dot:'td-b',t:`⛔ 감속·정지`,d:`${maxRpm}→0 RPM · ${brake}s`,s:brake},
-    {dot:'td-a',t:`📤 패드 인출`,d:`최종 수분 ${dw.finalM}% · 제거 ${dw.Sw}%p`,s:hl},
+    {dot:'td-a',t:`📤 패드 인출`,d:`최종 수분 ${finalMTotal.toFixed(1)}% · 원심 ${dw.Sw}%p + 열풍 ${hot?hot.SwHot:'0'}%p = 총 ${SwTotal.toFixed(1)}%p`,s:hl},
   ].map((p,i)=>`<div class="tl-item"><div class="tl-dot ${p.dot}">${i+1}</div>
     <div class="tl-body"><div class="tl-t">${p.t}</div><div class="tl-d">${p.d}</div></div>
     <div class="tl-s">${p.s}s</div></div>`).join('');
@@ -1039,32 +1039,34 @@ function renderPhysPanel(dw,rpm,dia,peak,initM,targetW,accel,brake,loadT){
 }
 
 /* ══ RPM + 탈수량 + 목표선 차트 ══ */
-function calcWA(t,hl,accel,peak,S_inf){
+function calcWA(t,hl,accel,peak,Sw_final){
   if(t<hl)return 0;
-  if(t<=hl+accel){const f=(t-hl)/accel;return S_inf*0.10*f*f;}
-  if(t<=hl+accel+peak){const f=(t-hl-accel)/peak;return S_inf*(0.10+0.88*f);}
-  return S_inf;
+  if(t<=hl+accel){const f=(t-hl)/accel;return Sw_final*0.10*f*f;}
+  if(t<=hl+accel+peak){const f=(t-hl-accel)/peak;return Sw_final*(0.10+0.88*f);}
+  return Sw_final;
 }
 function renderRpmChart(cid){
   if(!simData)return;
   const c=document.getElementById(cid);if(!c)return;
   c.width=c.parentElement.offsetWidth||500;
-  const{maxRpm,accel,peak,brake,loadT,cyc,dw,targetW,Sw}=simData;
+  const{maxRpm,accel,peak,brake,loadT,cyc,dw,targetW,Sw,SwTotal,hot}=simData;
   const H=240;c.height=H;
   const ctx=c.getContext('2d');
-  const W=c.width,pd={t:20,r:50,b:28,l:50};
+  const W=c.width,pd={t:20,r:56,b:28,l:50};
   const iW=W-pd.l-pd.r,iH=H-pd.t-pd.b;
   const hl=loadT/2;
-  const S_inf=parseFloat(dw.S_inf);
+  const SwHot=parseFloat(hot?hot.SwHot:0);
+  // Y축: SwTotal 기준 여유 있게
+  const yMax=Math.max(parseFloat(dw.S_inf),SwTotal)*1.10;
   const tx=t=>pd.l+(t/cyc)*iW;
   const tY=r=>pd.t+iH-(r/maxRpm)*iH;
-  const wY=w=>pd.t+iH-(w/S_inf)*iH;
+  const wY=w=>pd.t+iH-(Math.max(0,w)/yMax)*iH;
   ctx.clearRect(0,0,W,H);
-  // 배경
+  // 배경 구간
   [[0,hl,'#f0f9ff'],[hl,hl+accel,'#dbeafe'],[hl+accel,hl+accel+peak,'#fef3c7'],
    [hl+accel+peak,hl+accel+peak+brake,'#fee2e2'],[hl+accel+peak+brake,cyc,'#f0f9ff']]
   .forEach(([s,e,col])=>{ctx.fillStyle=col;ctx.fillRect(tx(s),pd.t,tx(e)-tx(s),iH);});
-  // Y 그리드 (RPM)
+  // Y 그리드 (RPM 좌)
   ctx.strokeStyle='#e2e8f0';ctx.lineWidth=.6;
   [0,.25,.5,.75,1].forEach(f=>{
     const y=tY(maxRpm*f);
@@ -1072,9 +1074,9 @@ function renderRpmChart(cid){
     ctx.fillStyle='#334155';ctx.font=F12;ctx.textAlign='right';
     ctx.fillText(Math.round(maxRpm*f),pd.l-4,y+4);
   });
-  // Y 오른쪽 (탈수량 %p)
+  // Y 우측 (탈수량 %p)
   ctx.fillStyle='#166534';ctx.font=F12;ctx.textAlign='left';
-  [0,S_inf*0.25,S_inf*0.5,S_inf*0.75,S_inf].forEach(w=>{
+  [0,yMax*0.25,yMax*0.5,yMax*0.75,yMax].forEach(w=>{
     ctx.fillText(w.toFixed(0)+'%p',W-pd.r+4,wY(w)+4);
   });
   // 목표선
@@ -1084,9 +1086,9 @@ function renderRpmChart(cid){
   ctx.setLineDash([]);
   ctx.fillStyle='#b91c1c';ctx.font=F12B;ctx.textAlign='right';
   ctx.fillText('목표 '+targetW+'%p',W-pd.r-2,tyLine-5);ctx.restore();
-  // 탈수량 곡선
+  // 원심 탈수 곡선 (녹색)
   const wPts=[];
-  for(let i=0;i<=80;i++){const t=cyc*i/80;wPts.push([tx(t),wY(calcWA(t,hl,accel,peak,S_inf))]);}
+  for(let i=0;i<=80;i++){const t=cyc*i/80;wPts.push([tx(t),wY(calcWA(t,hl,accel,peak,Sw))]);}
   ctx.beginPath();ctx.moveTo(wPts[0][0],pd.t+iH);
   wPts.forEach(([x,y])=>ctx.lineTo(x,y));
   ctx.lineTo(wPts[wPts.length-1][0],pd.t+iH);ctx.closePath();
@@ -1094,12 +1096,29 @@ function renderRpmChart(cid){
   ctx.beginPath();ctx.strokeStyle='#16a34a';ctx.lineWidth=2.2;ctx.setLineDash([5,3]);
   wPts.forEach(([x,y],i)=>i===0?ctx.moveTo(x,y):ctx.lineTo(x,y));
   ctx.stroke();ctx.setLineDash([]);
-  // 달성값
-  const px=tx(hl+accel+peak),py=wY(Sw);
-  ctx.fillStyle='#15803d';ctx.font=F13B;ctx.textAlign='left';ctx.fillText(Sw+'%p',px+4,py+4);
-  const diff=(Sw-targetW).toFixed(1);
-  ctx.fillStyle=Sw>=targetW?'#166534':'#b91c1c';ctx.font=F12;
-  ctx.fillText((Sw>=targetW?'▲+':'▼')+diff+'%p',px+4,py+18);
+  // 열풍 추가 탈수 — 최고속 구간 주황 영역
+  if(SwHot>0){
+    const x1=tx(hl+accel),x2=tx(hl+accel+peak);
+    ctx.beginPath();
+    ctx.moveTo(x1,wY(Sw*0.10));
+    ctx.lineTo(x2,wY(Sw));
+    ctx.lineTo(x2,wY(SwTotal));
+    ctx.lineTo(x1,wY(Sw*0.10+SwHot*0.10));
+    ctx.closePath();
+    ctx.fillStyle='rgba(220,107,25,.20)';ctx.fill();
+    ctx.strokeStyle='#dc6b19';ctx.lineWidth=1.8;ctx.setLineDash([4,3]);
+    ctx.beginPath();ctx.moveTo(x1,wY(Sw*0.10+SwHot*0.10));ctx.lineTo(x2,wY(SwTotal));ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='#dc6b19';ctx.font=F12B;ctx.textAlign='left';
+    ctx.fillText('+'+SwHot+'%p',x2+4,wY(SwTotal)+4);
+  }
+  // 총 탈수량 달성값 + 목표 대비
+  const px=tx(hl+accel+peak),py=wY(SwTotal);
+  ctx.fillStyle='#15803d';ctx.font=F13B;ctx.textAlign='left';
+  ctx.fillText(SwTotal.toFixed(1)+'%p',px+4,py+4);
+  const diff=(SwTotal-targetW).toFixed(1);
+  ctx.fillStyle=SwTotal>=targetW?'#166534':'#b91c1c';ctx.font=F12;
+  ctx.fillText((SwTotal>=targetW?'▲+':'▼')+diff+'%p',px+4,py+18);
   // RPM 곡선
   const rpts=[[0,0],[hl,0],[hl+accel,maxRpm],[hl+accel+peak,maxRpm],[hl+accel+peak+brake,0],[cyc,0]];
   ctx.beginPath();ctx.strokeStyle='#2563a8';ctx.lineWidth=2.5;
@@ -1109,13 +1128,18 @@ function renderRpmChart(cid){
   // 범례
   let lx=pd.l;
   ctx.fillStyle='#2563a8';ctx.fillRect(lx,4,16,6);
-  ctx.fillStyle='#1e3a5f';ctx.font=F12;ctx.textAlign='left';ctx.fillText('RPM (좌)',lx+20,12);lx+=80;
+  ctx.fillStyle='#1e3a5f';ctx.font=F12;ctx.textAlign='left';ctx.fillText('RPM(좌)',lx+20,12);lx+=72;
   ctx.strokeStyle='#16a34a';ctx.setLineDash([5,3]);ctx.lineWidth=2;
   ctx.beginPath();ctx.moveTo(lx,7);ctx.lineTo(lx+16,7);ctx.stroke();ctx.setLineDash([]);
-  ctx.fillStyle='#15803d';ctx.fillText('탈수량 Sw (우)',lx+20,12);lx+=100;
-  ctx.strokeStyle='#b91c1c';ctx.setLineDash([6,3]);
+  ctx.fillStyle='#15803d';ctx.fillText('원심 Sw(우)',lx+20,12);lx+=88;
+  if(SwHot>0){
+    ctx.strokeStyle='#dc6b19';ctx.setLineDash([4,3]);
+    ctx.beginPath();ctx.moveTo(lx,7);ctx.lineTo(lx+16,7);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#dc6b19';ctx.fillText('+열풍',lx+20,12);lx+=56;
+  }
+  ctx.strokeStyle='#b91c1c';ctx.setLineDash([6,3]);ctx.lineWidth=2;
   ctx.beginPath();ctx.moveTo(lx,7);ctx.lineTo(lx+16,7);ctx.stroke();ctx.setLineDash([]);
-  ctx.fillStyle='#b91c1c';ctx.fillText(`목표 ${targetW}%p`,lx+20,12);
+  ctx.fillStyle='#b91c1c';ctx.fillText('목표 '+targetW+'%p',lx+20,12);
   // X 레이블
   ctx.fillStyle='#334155';ctx.font=F12;ctx.textAlign='center';
   [['투입',0,hl],['가속',hl,hl+accel],['최고속',hl+accel,hl+accel+peak],
