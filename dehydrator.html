@@ -449,7 +449,7 @@ canvas{display:block;width:100%!important}
   </div>
   <div class="card" style="margin-top:10px">
     <div class="ch">📐 파라미터 레이더 차트</div>
-    <div class="cb" style="padding:8px 12px"><canvas id="radarChart" height="230"></canvas></div>
+    <div class="cb" style="padding:8px 12px"><canvas id="radarChart" height="380"></canvas></div>
   </div>
 </div>
 </div>
@@ -1267,35 +1267,102 @@ function renderProd(){
 }
 function drawRadar(G,dia,batch,peak,initM,rpm){
   const c=document.getElementById('radarChart');if(!c)return;
-  c.width=c.parentElement.offsetWidth||600;c.height=230;
-  const ctx=c.getContext('2d'),W=c.width,H=230;
-  const cx=W/2,cy=H/2,R=Math.min(W,H)*0.35;
+  c.width=c.parentElement.offsetWidth||700;
+  const H=380;c.height=H;
+  const ctx=c.getContext('2d'),W=c.width;
+  const cx=W/2, cy=H/2;
+  // 레이블 여백 확보: 반경을 화면 크기에 맞게 자동 조정
+  const R=Math.min(W*0.32, H*0.32);
+  const LABEL_R=R+52; // 레이블까지 거리
+  const VAL_OFFSET=18; // 데이터 포인트 옆 값 표시 거리
+
   const labels=['RPM','드럼직경','투입장수','최고속유지','초기수분','G-force'];
+  const units=['RPM','mm','장','초','%','G'];
   const maxes=[600,2000,60,600,95,150];
   const vals=[rpm,dia,batch,peak,initM,G];
-  const N=labels.length,ang=i=>i*2*Math.PI/N-Math.PI/2;
+  const N=6;
+  const ang=i=>i*2*Math.PI/N-Math.PI/2;
+
   ctx.clearRect(0,0,W,H);
-  [.2,.4,.6,.8,1].forEach(f=>{
-    ctx.beginPath();ctx.strokeStyle=f===1?'#cbd5e1':'#e2e8f0';ctx.lineWidth=f===1?1:.6;
-    for(let i=0;i<N;i++){const a=ang(i),x=cx+R*f*Math.cos(a),y=cy+R*f*Math.sin(a);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);}
-    ctx.closePath();ctx.stroke();
-    if(f===.5||f===1){ctx.fillStyle='#64748b';ctx.font=F12;ctx.textAlign='left';ctx.fillText(Math.round(f*100)+'%',cx+R*f*Math.cos(ang(0))+4,cy+R*f*Math.sin(ang(0))+4);}
+
+  // 배경 채우기 (격자 레벨별)
+  const bgColors=['#f8fafc','#f1f5f9','#e9eef5','#dce4ef','#cdd8ea'];
+  [1,.8,.6,.4,.2].forEach((f,fi)=>{
+    ctx.beginPath();
+    for(let i=0;i<N;i++){
+      const a=ang(i),x=cx+R*f*Math.cos(a),y=cy+R*f*Math.sin(a);
+      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    }
+    ctx.closePath();
+    ctx.fillStyle=bgColors[fi];ctx.fill();
   });
-  for(let i=0;i<N;i++){const a=ang(i);ctx.beginPath();ctx.strokeStyle='#cbd5e1';ctx.lineWidth=.8;ctx.moveTo(cx,cy);ctx.lineTo(cx+R*Math.cos(a),cy+R*Math.sin(a));ctx.stroke();}
-  const norm=vals.map((v,i)=>Math.min(1,v/maxes[i]));
-  ctx.beginPath();ctx.fillStyle='rgba(37,99,168,.18)';ctx.strokeStyle='#2563a8';ctx.lineWidth=2;
-  norm.forEach((n,i)=>{const a=ang(i),x=cx+R*n*Math.cos(a),y=cy+R*n*Math.sin(a);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
-  ctx.closePath();ctx.fill();ctx.stroke();
+
+  // 격자선 + 비율 레이블
+  [.2,.4,.6,.8,1].forEach(f=>{
+    ctx.beginPath();
+    ctx.strokeStyle=f===1?'#94a3b8':'#cbd5e1';
+    ctx.lineWidth=f===1?1.2:.7;
+    for(let i=0;i<N;i++){
+      const a=ang(i),x=cx+R*f*Math.cos(a),y=cy+R*f*Math.sin(a);
+      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    }
+    ctx.closePath();ctx.stroke();
+    // 비율 % 레이블 — 상단 축(i=0, RPM) 방향에만 표시
+    const px=cx+R*f*Math.cos(ang(0));
+    const py=cy+R*f*Math.sin(ang(0));
+    ctx.fillStyle='#64748b';ctx.font=`bold 12px ${FONT}`;ctx.textAlign='center';
+    ctx.fillText(Math.round(f*100)+'%',px,py-8);
+  });
+
+  // 축선
+  for(let i=0;i<N;i++){
+    const a=ang(i);
+    ctx.beginPath();ctx.strokeStyle='#94a3b8';ctx.lineWidth=1;
+    ctx.moveTo(cx,cy);ctx.lineTo(cx+R*Math.cos(a),cy+R*Math.sin(a));
+    ctx.stroke();
+  }
+
+  // 데이터 영역 (채우기)
+  const norm=vals.map((v,i)=>Math.min(1,Math.max(0,v/maxes[i])));
+  ctx.beginPath();
   norm.forEach((n,i)=>{
     const a=ang(i),x=cx+R*n*Math.cos(a),y=cy+R*n*Math.sin(a);
-    ctx.beginPath();ctx.arc(x,y,5,0,2*Math.PI);ctx.fillStyle='#1e3a5f';ctx.fill();
-    const lx=cx+(R*n+16)*Math.cos(a),ly=cy+(R*n+16)*Math.sin(a);
-    ctx.fillStyle='#1e3a5f';ctx.font=F12B;ctx.textAlign='center';
-    const suffix=i===5?'G':i===4?'%':i===3?'s':i===1?'mm':'';
-    ctx.fillText(vals[i]+suffix,lx,ly+4);
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
   });
-  ctx.fillStyle='#334155';ctx.font=F13B;
-  labels.forEach((l,i)=>{const a=ang(i);ctx.textAlign='center';ctx.fillText(l,cx+(R+32)*Math.cos(a),cy+(R+32)*Math.sin(a)+4);});
+  ctx.closePath();
+  ctx.fillStyle='rgba(37,99,168,.22)';ctx.fill();
+  ctx.strokeStyle='#2563a8';ctx.lineWidth=2.5;ctx.stroke();
+
+  // 데이터 포인트 + 현재값 표시
+  norm.forEach((n,i)=>{
+    const a=ang(i);
+    const px=cx+R*n*Math.cos(a), py=cy+R*n*Math.sin(a);
+    // 점
+    ctx.beginPath();ctx.arc(px,py,6,0,2*Math.PI);
+    ctx.fillStyle='#1e3a5f';ctx.fill();
+    ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
+    // 값 레이블 (포인트 바깥쪽)
+    const vx=cx+(R*n+VAL_OFFSET)*Math.cos(a);
+    const vy=cy+(R*n+VAL_OFFSET)*Math.sin(a);
+    ctx.fillStyle='#1e3a5f';ctx.font=`bold 13px ${FONT}`;ctx.textAlign='center';
+    ctx.fillText(vals[i]+units[i], vx, vy+5);
+  });
+
+  // 축 레이블 (바깥쪽, 크고 명확하게)
+  labels.forEach((l,i)=>{
+    const a=ang(i);
+    const lx=cx+LABEL_R*Math.cos(a);
+    const ly=cy+LABEL_R*Math.sin(a);
+    ctx.fillStyle='#1e3a5f';
+    ctx.font=`bold 14px ${FONT}`;
+    ctx.textAlign='center';
+    // 줄바꿈 처리 (두 줄짜리 레이블)
+    ctx.fillText(l, lx, ly+5);
+  });
+
+  // 중앙 타이틀
+  ctx.fillStyle='#94a3b8';ctx.font=`12px ${FONT}`;ctx.textAlign='center';
+  ctx.fillText('파라미터 분포 (최대값 대비 %)',cx,H-10);
 }
 
 /* ══ 애니메이션 ══ */
