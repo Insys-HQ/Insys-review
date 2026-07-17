@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>패드 탈수기 시뮬레이션 v5.4 | 인시스 AI혁신 R&D센터</title>
+<title>패드 탈수기 시뮬레이션 v6.0 | 인시스 AI혁신 R&D센터</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -230,7 +230,7 @@ canvas{display:block;width:100%!important}
 <div class="topbar">
   <b>🏭 인시스 AI혁신 R&D센터 | 패드 탈수기 시뮬레이션</b>
   <div class="topbar-r">
-    <span class="ver-badge">v5.4</span>
+    <span class="ver-badge">v6.0</span>
     <div class="mtoggle">
       <button class="mbtn on" id="modePC" onclick="setMode('pc')">🖥 PC</button>
       <button class="mbtn" id="modeMob" onclick="setMode('mob')">📱 모바일</button>
@@ -255,7 +255,7 @@ canvas{display:block;width:100%!important}
   <!-- COL1: 입력 -->
   <div>
     <div class="card" style="margin-bottom:10px">
-      <div class="ch">⚙️ 탈수기 사양 <span class="cv">v5.4</span></div>
+      <div class="ch">⚙️ 탈수기 사양 <span class="cv">v6.0</span></div>
       <div class="cb" id="sl-mech-pc"></div>
     </div>
     <div class="card" style="margin-bottom:10px">
@@ -270,7 +270,6 @@ canvas{display:block;width:100%!important}
         <div id="optResult-pc"></div>
       </div>
     </div>
-    <button class="btn btn-run" onclick="runSim()">▶ 시뮬레이션 실행</button>
   </div>
 
   <!-- COL2: 시각화 + 차트 -->
@@ -355,7 +354,7 @@ canvas{display:block;width:100%!important}
 
 <!-- MOBILE LAYOUT -->
 <div class="mob-layout" id="mobLayout" style="display:none">
-  <div class="card"><div class="ch">⚙️ 탈수기 사양 <span class="cv">v5.4</span></div>
+  <div class="card"><div class="ch">⚙️ 탈수기 사양 <span class="cv">v6.0</span></div>
     <div class="cb"><div class="sr-mob" id="sl-mech-mob"></div></div></div>
   <div class="card"><div class="ch">💧 수분 조건</div>
     <div class="cb"><div class="sr-mob" id="sl-water-mob"></div></div></div>
@@ -367,7 +366,6 @@ canvas{display:block;width:100%!important}
       <div id="optResult-mob"></div>
     </div>
   </div>
-  <button class="btn btn-run" onclick="runSim()">▶ 시뮬레이션 실행</button>
   <div class="card">
     <div class="ch">🎯 작동 시각화 <span id="statusBadgeMob" class="badge b-idle" style="margin-left:auto">대기</span></div>
     <div class="cb">
@@ -434,7 +432,7 @@ canvas{display:block;width:100%!important}
 <div class="panel" id="tab-phys">
 <div class="wrap">
   <div class="card">
-    <div class="ch">📐 수학·기계공학 공식 전체 검증 <span class="cv">v5.4</span></div>
+    <div class="ch">📐 수학·기계공학 공식 전체 검증 <span class="cv">v6.0</span></div>
     <div class="cb" id="physPanel">
       <span style="color:var(--mute);font-size:12px">시뮬레이션 실행 후 자동 업데이트됩니다</span>
     </div>
@@ -456,7 +454,7 @@ canvas{display:block;width:100%!important}
 
 <div class="footer">
   담당부서: 인시스 AI혁신 R&D센터 &nbsp;|&nbsp; ys.kim@in-sys.co.kr &nbsp;|&nbsp;
-  패드 탈수기 시뮬레이션 <b>v5.4</b> &nbsp;|&nbsp; 900×600×3mm 골판지 패드
+  패드 탈수기 시뮬레이션 <b>v6.0</b> &nbsp;|&nbsp; 900×600×3mm 골판지 패드
 </div>
 
 <!-- FIREBASE -->
@@ -538,7 +536,6 @@ const F12=`12px ${FONT}`, F13=`13px ${FONT}`, F12B=`bold 12px ${FONT}`, F13B=`bo
 
 /* 슬라이더 정의 — 900×600×3mm 패드 기준 현실값 */
 const MECH=[
-  // 팁속도 15~25 m/s 기준: 드럼 1200mm → RPM 240~398
   {id:'maxRpm', label:'최고 RPM',    min:100, max:600, val:350, step:10,  unit:'RPM'},
   {id:'drumDia',label:'드럼 직경',   min:900, max:2000,val:1200,step:50,  unit:'mm'},
   {id:'batchSz',label:'1회 투입',    min:1,   max:60,  val:10,  step:1,   unit:'장'},
@@ -556,6 +553,19 @@ const WATER=[
 ];
 const TARGET=[
   {id:'targetW',label:'목표 탈수량', min:5,   max:50,  val:35,  step:1,   unit:'%p', cls:'tgt'},
+];
+/* 열풍기 슬라이더 ─────────────────────────────────────────
+   물리 모델: 열풍 보조 건조
+   ΔSw_hot = η_hot × (T_air - T_amb) × Q_air × t_peak / (ρ_water × L_v × V_pad)
+   단순화 경험식:
+   ΔSw_hot = k_hot × (T_air - 20) × (Q_air/1000) × t_peak × (1 - Sw_cent/S_inf)
+   k_hot = 0.0008  [%p·K⁻¹·(m³/h)⁻¹·s⁻¹] 열풍 탈수 계수
+   ─ 고온 + 고풍량 → 잔류 결합수 일부 추가 제거 가능
+   ─ 원심 탈수 후 잔류수분에서 추가 열풍 건조 효과 가산  */
+const HOT=[
+  {id:'hotFlow', label:'열풍 풍량',  min:0,   max:3000,val:500, step:50,  unit:'m³/h'},
+  {id:'hotTemp', label:'열풍 온도',  min:20,  max:150, val:80,  step:5,   unit:'°C'},
+  {id:'hotKW',   label:'히터 출력', min:0,   max:30,  val:5,   step:0.5, unit:'kW'},
 ];
 
 function buildPC(arr,cid){
@@ -607,6 +617,7 @@ function gv(id){const e=document.getElementById(id+'_n')||document.getElementByI
 
 buildPC(MECH,'sl-mech-pc'); buildPC(WATER,'sl-water-pc');
 buildMob(MECH,'sl-mech-mob'); buildMob(WATER,'sl-water-mob');
+buildPC(HOT,'sl-hot-pc'); buildMob(HOT,'sl-hot-mob');
 
 /* 목표 탈수량 슬라이더 + 최종수분율 실시간 표시 (PC) */
 document.getElementById('sl-target-pc').innerHTML=`
@@ -639,13 +650,57 @@ document.getElementById('sl-target-mob').innerHTML=`
     <span style="font-size:13px;font-weight:700;color:var(--green)">%</span>
   </div>`;
 
+/* ══ 열풍 보조 건조 물리 모델 ══────────────────────────────────
+   원리: 탈수기 커버 내부 열풍 → 원심 탈수 중 동시 열풍 건조
+   공식: ΔSw_hot = k_hot × (T_air-T_amb) × (Q/1000) × t × (1-Sw_cent/S_inf)
+     k_hot  = 0.0008  [%p/(K·m³h⁻¹·s)]  열풍 탈수 계수 (실험 기반)
+     T_air  = 열풍 온도 [°C]
+     T_amb  = 20°C  (기준 상온)
+     Q      = 열풍 풍량 [m³/h]
+     t      = 최고속 유지시간 [s]
+     (1-Sw_cent/S_inf) = 원심 후 잔류 비율 보정 (남아있는 수분에만 효과)
+   히터 출력 검증: Q_required = P_kW×3600 / (ρ_air×Cp_air×ΔT)
+     → 입력 풍량과 히터 출력이 물리적으로 정합한지 검증
+     ρ_air=1.2 kg/m³, Cp_air=1005 J/(kg·K)
+   최대 추가 탈수: 잔류 자유수의 40% (결합수 제거 불가 유지)  ══ */
+function calcHot(hotFlow, hotTemp, hotKW, peakSec, Sw_cent, S_inf, initM){
+  if(hotFlow<=0 || hotTemp<=20) return{SwHot:0,finalMHot:0,heatOk:true,heatNote:'열풍기 미사용'};
+  const T_amb=20, rho=1.2, Cp=1005;
+  const dT=hotTemp-T_amb;
+  const k_hot=0.0008;
+  // 원심 후 잔류 수분 중 자유수 비율 보정
+  const residualFree=Math.max(0, 1-Sw_cent/S_inf);
+  const SwHotRaw=k_hot*dT*(hotFlow/1000)*peakSec*residualFree;
+  // 최대 추가 탈수: 잔류 자유수(S_inf-Sw_cent)의 40%
+  const maxHot=(S_inf-Sw_cent)*0.40;
+  const SwHot=Math.min(SwHotRaw, maxHot);
+  const finalMHot=Math.max(initM*0.28, (initM-Sw_cent)-SwHot); // 결합수 이하 불가
+  // 히터 출력 적정성 검증
+  const Q_need=hotKW*3600/(rho*Cp*dT/1000)*1000; // m³/h
+  const heatOk=hotKW===0||hotFlow<=Q_need*1.3;
+  const heatNote=hotKW>0
+    ? (heatOk
+        ? `히터 ${hotKW}kW → 적정 풍량 ${Q_need.toFixed(0)}m³/h ✅`
+        : `⚠️ 히터 ${hotKW}kW 대비 풍량 과다 — 적정 풍량 ${Q_need.toFixed(0)}m³/h`)
+    : '히터 출력 미입력';
+  return{
+    SwHot:SwHot.toFixed(1),
+    finalMHot:finalMHot.toFixed(1),
+    SwHotRaw:SwHotRaw.toFixed(2),
+    maxHot:maxHot.toFixed(1),
+    heatOk, heatNote,
+    Q_need:Q_need.toFixed(0),
+    dT, residualFree:residualFree.toFixed(3)
+  };
+}
+
 /* ══ 물리 계산 핵심 함수 [공식 D·E·F] ══ */
 function calcDW(maxRpm,drumDia,peakSec,initM,padThk,corrDep,fbrDens){
   // [A] 기본 회전 역학
-  const r=drumDia/2/1000;                       // 반경 [m]
-  const omega=maxRpm*2*Math.PI/60;              // 각속도 [rad/s]
-  const G=omega*omega*r/9.81;                   // G-force [-]
-  const tipSpeed=omega*r;                        // 팁속도 [m/s]
+  const r=drumDia/2/1000;
+  const omega=maxRpm*2*Math.PI/60;
+  const G=omega*omega*r/9.81;
+  const tipSpeed=omega*r;
   // [B] 골판지 채널 보정
   const corrF=Math.min(1.35, 1+corrDep/padThk*0.45);
   const effectG=G*corrF;
@@ -653,14 +708,14 @@ function calcDW(maxRpm,drumDia,peakSec,initM,padThk,corrDep,fbrDens){
   const densRes=Math.max(0.6, 1-(fbrDens-200)/800);
   // [D] 최대 제거 가능 수분량
   const minResidual=Math.max(10, initM*0.28);
-  const S_inf=initM-minResidual;                // [%p] 절대량
-  // [E] Suter 모델
+  const S_inf=initM-minResidual;
+  // [E] Suter 모델 (원심)
   const k=0.0025*densRes;
   const effG=Math.min(effectG,150);
   const expArg=k*Math.pow(effG,0.60)*peakSec;
-  const Sw=S_inf*(1-Math.exp(-expArg));         // [%p] 제거된 수분량
-  // [F] 최종 수분율
-  const finalM=initM-Sw;                        // [%]
+  const Sw=S_inf*(1-Math.exp(-expArg));
+  // [F] 최종 수분율 (원심만)
+  const finalM=initM-Sw;
   const gWarn=G>130?`⚠️ G=${G.toFixed(0)}G 패드 변형 위험`
              :G>100?`⚡ G=${G.toFixed(0)}G 고G 운전 주의`:'';
   return{
@@ -670,8 +725,7 @@ function calcDW(maxRpm,drumDia,peakSec,initM,padThk,corrDep,fbrDens){
     minResidual:minResidual.toFixed(1), S_inf:S_inf.toFixed(1),
     k:k.toFixed(6), effG:effG.toFixed(1), expArg:expArg.toFixed(4),
     Sw:Sw.toFixed(1), finalM:finalM.toFixed(1),
-    removed:Sw.toFixed(1),
-    initM:initM.toFixed(1), gWarn
+    removed:Sw.toFixed(1), initM:initM.toFixed(1), gWarn
   };
 }
 
@@ -757,14 +811,22 @@ function runSim(silent=false){
   const padWt=gv('padWt'),initM=gv('initM');
   const padThk=gv('padThk'),corrDep=gv('corrDep'),fbrDens=gv('fbrDens');
   const targetW=gv('targetW');
+  const hotFlow=gv('hotFlow'),hotTemp=gv('hotTemp'),hotKW=gv('hotKW');
   const cyc=accel+peak+brake+loadT;
   const batchWt=batch*padWt;
   const perHour=Math.floor(3600/cyc*batch);
   const per8h=perHour*8, ok=per8h>=2000;
   const dw=calcDW(maxRpm,drumDia,peak,initM,padThk,corrDep,fbrDens);
-  const Sw=parseFloat(dw.Sw), targetOk=Sw>=targetW;
+  const Sw=parseFloat(dw.Sw);
+  const S_inf=parseFloat(dw.S_inf);
+  // 열풍 보조 탈수 계산
+  const hot=calcHot(hotFlow,hotTemp,hotKW,peak,Sw,S_inf,initM);
+  const SwTotal=(Sw+parseFloat(hot.SwHot));
+  const finalMTotal=parseFloat(hot.SwHot)>0 ? parseFloat(hot.finalMHot) : parseFloat(dw.finalM);
+  const targetOk=SwTotal>=targetW;
   simData={maxRpm,drumDia,batch,accel,peak,brake,loadT,padWt,
-    cyc,batchWt,perHour,per8h,ok,dw,initM,peak,targetW,targetOk,Sw};
+    cyc,batchWt,perHour,per8h,ok,dw,initM,peak,targetW,targetOk,
+    Sw,SwTotal,hot,hotFlow,hotTemp,hotKW};
 
   // 사이클 결과
   const G=parseFloat(dw.G), tip=parseFloat(dw.tipSpeed);
@@ -780,23 +842,43 @@ function runSim(silent=false){
   ].map(i=>`<div class="ri${i.w?' warn':i.g?' good':''}"><span class="rl">${i.l}</span><span class="rv">${i.v}</span></div>`).join('');
   ['cycleResult','cycleResultMob'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=riHTML;});
 
-  // 탈수 분석
+  // 탈수 분석 — 원심 + 열풍 복합
   const wHTML=[
     {k:'초기 수분율 M₀',v:dw.initM+'%',c:''},
     {k:'잔류 결합수 W잔',v:dw.minResidual+'%',c:'a'},
     {k:'이론 한계 S∞',v:dw.S_inf+'%p',c:'a'},
-    {k:'제거 수분 Sw',v:dw.Sw+'%p',c:targetOk?'g':'r'},
-    {k:'최종 수분율',v:dw.finalM+'%',c:''},
-    {k:'목표 탈수량',v:targetW+'%p',c:''},
+    {k:'원심 탈수 Sw',v:dw.Sw+'%p',c:''},
+    {k:'열풍 추가 탈수',v:'+'+hot.SwHot+'%p',c:parseFloat(hot.SwHot)>0?'g':''},
+    {k:'총 탈수량',v:SwTotal.toFixed(1)+'%p',c:targetOk?'g':'r'},
+    {k:'최종 수분율',v:finalMTotal.toFixed(1)+'%',c:''},
     {k:'목표 달성',v:targetOk?'✅ 달성':'❌ 미달',c:targetOk?'g':'r'},
     {k:'유효 G_eff',v:dw.effectG+' G',c:''},
   ].map(r=>`<div class="wrow"><span class="wk">${r.k}</span><span class="wv ${r.c}">${r.v}</span></div>`).join('');
-  ['waterFill','waterFillMob'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.height=Math.min(Sw/parseFloat(dw.S_inf)*100,100)+'%';});
-  ['waterTankLbl','waterTankLblMob'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=dw.Sw+'%p<br>제거';});
+  ['waterFill','waterFillMob'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.height=Math.min(SwTotal/S_inf*100,100)+'%';});
+  ['waterTankLbl','waterTankLblMob'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=SwTotal.toFixed(1)+'%p<br>제거';});
   ['waterRows','waterRowsMob'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=wHTML;});
   const wn=document.getElementById('waterNote');
-  if(wn)wn.innerHTML=dw.gWarn?`<span style="color:var(--red);font-weight:700">${dw.gWarn}</span><br>`:'';
-  if(wn)wn.innerHTML+='※ Suter 모델 · k='+dw.k+' · G상한 150G · 결합수 28% 제거 불가';
+  if(wn)wn.innerHTML=(dw.gWarn?`<span style="color:var(--red);font-weight:700">${dw.gWarn}</span><br>`:'')
+    +'※ 원심 Suter 모델 + 열풍 보조 건조 복합 계산 | k='+dw.k;
+
+  // 열풍기 결과 패널
+  const hotColor=parseFloat(hot.SwHot)>0?'#dc6b19':'#64748b';
+  const hotHTML=hotFlow>0?`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:7px">
+      ${[['원심 탈수',dw.Sw+'%p'],['열풍 추가','+'+hot.SwHot+'%p'],
+         ['총 탈수량',SwTotal.toFixed(1)+'%p'],['최종 수분',finalMTotal.toFixed(1)+'%'],
+         ['열풍 효과','원심 대비 +'+(SwTotal-Sw).toFixed(1)+'%p'],['히터 검증',hot.heatNote.split(' ✅')[0].split('⚠️ ')[0]]
+        ].map(([k,v])=>`<div style="background:#fff;border-radius:5px;padding:5px 7px">
+          <div style="font-size:13px;font-weight:800;color:${hotColor}">${v}</div>
+          <div style="font-size:12px;color:var(--mute)">${k}</div>
+        </div>`).join('')}
+    </div>
+    <div style="font-size:12px;color:${hot.heatOk?'#15803d':'#b91c1c'}">${hot.heatNote}</div>
+    <div style="font-size:12px;color:var(--mute);margin-top:4px">
+      잔류자유수 보정: ${(parseFloat(hot.residualFree)*100).toFixed(1)}% | 최대 추가탈수 한계: ${hot.maxHot}%p
+    </div>`
+    :`<span style="color:var(--mute)">풍량을 0 초과로 설정하면 열풍 효과가 계산됩니다</span>`;
+  ['hotResult-pc','hotResult-mob'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=hotHTML;});
 
   // 공식 계산값 패널
   const fHTML=renderFormula(dw,maxRpm,drumDia,peak);
@@ -847,7 +929,7 @@ function renderFormula(dw,rpm,dia,peak){
     {n:'M최종',eq:'M₀-Sw',v:dw.finalM,u:'%'},
   ];
   return`<div class="formula-box">
-    <div class="formula-title">📐 단계별 계산값 — v5.4</div>
+    <div class="formula-title">📐 단계별 계산값 — v6.0</div>
     ${rows.map(r=>`<div class="formula-row">
       <span class="f-name">${r.n}</span>
       <span class="f-eq">= ${r.eq}</span>
@@ -1011,12 +1093,24 @@ function doOptimize(){
   const initM=gv('initM'),padThk=gv('padThk'),corrDep=gv('corrDep'),fbrDens=gv('fbrDens');
   const curRpm=gv('maxRpm'),curDia=gv('drumDia'),curBatch=gv('batchSz');
   const curAccel=gv('accel'),curBrake=gv('brake'),curLoadT=gv('loadT');
+  const hotFlow=gv('hotFlow'),hotTemp=gv('hotTemp'),hotKW=gv('hotKW');
   const opt=calcOptimal(targetW,initM,padThk,corrDep,fbrDens,curRpm,curDia,curBatch,curAccel,curBrake,curLoadT);
   if(!opt){alert('물리적 한계 초과');return;}
   if(opt.error){alert(opt.error);return;}
   optData=opt;
 
-  // 모드A(최대탈수)를 기본으로 슬라이더 반영
+  // 각 모드에 열풍 효과 추가 계산
+  const S_inf=parseFloat(opt.S_inf);
+  function withHot(s){
+    const h=calcHot(hotFlow,hotTemp,hotKW,s.peak,parseFloat(s.sw),S_inf,initM);
+    const total=(parseFloat(s.sw)+parseFloat(h.SwHot));
+    return{...s, swHot:h.SwHot, swTotal:total.toFixed(1),
+      finalMTotal:Math.max(initM*0.28,initM-total).toFixed(1)};
+  }
+  const sA2=withHot(opt.sA), sB2=withHot(opt.sB), sC2=withHot(opt.sC);
+  const hotOn=hotFlow>0;
+
+  // 모드A(최대탈수)를 슬라이더에 반영
   syncV('peak', opt.sA.peak);
 
   const mkRow=(mode,s,accent)=>`
@@ -1025,10 +1119,13 @@ function doOptimize(){
         <span style="font-size:13px;font-weight:800;color:${accent}">${mode}</span>
         <span style="font-size:12px;color:var(--sub)">${s.ph}장/h · 사이클 ${s.cyc}초</span>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px">
-        ${[['유지시간',s.peak+'초'],['탈수량',s.sw+'%p'],['최종수분',s.finalM+'%'],['시간당',s.ph+'장/h']]
-          .map(([k,v])=>`<div style="background:#fff;border-radius:5px;padding:4px 6px;text-align:center">
-            <div style="font-size:12px;font-weight:800;color:${accent}">${v}</div>
+      <div style="display:grid;grid-template-columns:repeat(${hotOn?5:4},1fr);gap:4px">
+        ${[['유지시간',s.peak+'초'],['원심탈수',s.sw+'%p'],
+           ...(hotOn?[['열풍+','+'+s.swHot+'%p'],['총탈수량',s.swTotal+'%p']]:
+                     [['탈수량',s.sw+'%p']]),
+           ['최종수분',(hotOn?s.finalMTotal:s.finalM)+'%']
+          ].map(([k,v])=>`<div style="background:#fff;border-radius:5px;padding:4px 6px;text-align:center">
+            <div style="font-size:13px;font-weight:800;color:${accent}">${v}</div>
             <div style="font-size:12px;color:var(--mute)">${k}</div>
           </div>`).join('')}
       </div>
@@ -1036,20 +1133,24 @@ function doOptimize(){
     </div>`;
 
   const html=`
-    <div style="font-size:12px;color:var(--sub);margin-bottom:8px;padding:6px 8px;
-      background:#fef3c7;border-radius:6px;border-left:3px solid #d97706">
-      ⚡ <b>모드A(최대 탈수)</b>가 슬라이더에 반영됨 — 유지시간을 최대화하여 탈수율을 극대화합니다
+    <div style="font-size:12px;padding:6px 8px;background:#fef3c7;border-radius:6px;border-left:3px solid #d97706;margin-bottom:8px">
+      ⚡ <b>모드A(최대 탈수)</b> 슬라이더 반영 — 유지시간 ${opt.sA.peak}초
+      ${hotOn?` | 🌡️ 열풍 ${hotTemp}°C/${hotFlow}m³/h 복합 최적화 포함`:''}
     </div>
-    ${mkRow('🟢 모드A: 최대 탈수 (권장)', opt.sA, '#15803d')}
-    ${mkRow('🔵 모드B: 생산성 우선', opt.sB, '#2563a8')}
-    ${mkRow('🟡 모드C: 품질·생산 균형', opt.sC, '#b45309')}
+    ${mkRow('🟢 모드A: 최대 탈수 (권장)', sA2, '#15803d')}
+    ${mkRow('🔵 모드B: 생산성 우선', sB2, '#2563a8')}
+    ${mkRow('🟡 모드C: 품질·생산 균형', sC2, '#b45309')}
     <div style="font-size:12px;color:var(--mute);margin-top:6px;line-height:1.6">
-      이론한계 S∞=${opt.S_inf}%p | G_eff=${opt.G}G | k=${opt.k}<br>
-      잔류 결합수 ${opt.minResidual}% 는 원심력으로 제거 불가<br>
-      ※ 다른 모드 적용: 해당 유지시간을 슬라이더에 직접 입력
+      이론한계 S∞=${opt.S_inf}%p | G_eff=${opt.G}G | k=${opt.k} | 잔류수분 최소 ${opt.minResidual}%<br>
+      ${hotOn?`🌡️ 열풍 보조: k_hot=0.0008 · ΔT=${hotTemp-20}K · Q=${hotFlow}m³/h → 최대 추가탈수 ${sA2.swHot}%p<br>`:''}
+      ※ 다른 모드: 해당 유지시간을 슬라이더에 직접 입력
     </div>`;
 
   ['optResult-pc','optResult-mob'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=html;});
+  renderOptChart('optChart');
+  runSim(true);
+}
+
   renderOptChart('optChart');
   runSim(true);
 }
