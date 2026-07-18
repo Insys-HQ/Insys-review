@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>인시스 그룹 견적 작성 시스템 v4.5</title>
+<title>인시스 그룹 견적 작성 시스템 v4.6</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <!-- Firebase SDK는 body 끝에서 로딩 (타이밍 문제 방지) -->
 <!-- xlsx-js-style: 셀 서식(색상·테두리·병합) 지원 SheetJS 포크 -->
@@ -191,6 +191,7 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
   page-break-after:always;
   display:flex;flex-direction:column;
   overflow:hidden;
+  max-height:297mm;
 }
 /* 본문이 여백 안을 가득 채우도록 */
 .a4-body{flex:1;display:flex;flex-direction:column;min-height:0}
@@ -205,7 +206,7 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
   bottom:calc(var(--pg-bottom) - 12px);font-size:9.5px;color:#8a9ab0;font-weight:500}
 /* 가로(landscape) 모드 — A4 297×210mm */
 .a4-page.landscape{
-  width:297mm;min-height:210mm;
+  width:297mm;min-height:210mm;max-height:210mm;
 }
 .a4-page:last-child{page-break-after:auto}
 
@@ -364,7 +365,7 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
       <button class="btn btn-ghost btn-sm" onclick="openCoSelector()" id="nav-co-btn">
         🏢 <span id="nav-co-name">사업자 선택</span>
       </button>
-      <div class="nav-ver">v4.5</div>
+      <div class="nav-ver">v4.6</div>
     </div>
   </div>
 </nav>
@@ -1653,21 +1654,8 @@ const PAGE_MM = {
   landscape: { w:A4.h, h:A4.w },
 };
 const MM = 3.7795;              // 1mm → px (96dpi)
-const ROW_MM   = 4.7;           // 표 1행 평균 높이(mm)
-const HEAD_MM  = 47;            // 1p 상단 블록(발행사+수신처+견적조건)
-const CONT_MM  = 9;             // 2p~ 간이 헤더
-const TH_MM    = 5.5;           // 표 헤더 행
-const FOOT_MM  = 52;            // 합계+조건+서명 블록
-const PGNO_MM  = 5;             // 페이지번호 영역
-
-// 현재 여백 기준 페이지당 행 수 자동 계산 (mm 기준)
-function calcRowsPerPage(){
-  const ph = PAGE_MM[pageOrientation].h;
-  const usable = ph - pageMargins.top - pageMargins.bottom - PGNO_MM;
-  const first = Math.max(4, Math.floor((usable - HEAD_MM - TH_MM) / ROW_MM));
-  const next  = Math.max(4, Math.floor((usable - CONT_MM - TH_MM) / ROW_MM));
-  return { first, next };
-}
+const PGNO_MM = 6;              // 페이지번호 영역(mm)
+// ※ 페이지 분할은 buildPages()에서 실제 DOM 높이를 측정하여 결정합니다.
 
 // 여백 적용
 function applyMargins(){
@@ -1710,27 +1698,34 @@ function setOrientation(ori){
   toast(ori==='portrait' ? '세로 방향 적용' : '가로 방향 적용','info');
 }
 
+// ── 오프스크린 측정 컨테이너 ──
+function getMeasureBox(){
+  let box = document.getElementById('measure-box');
+  if(!box){
+    box = document.createElement('div');
+    box.id = 'measure-box';
+    box.style.cssText = 'position:fixed;left:-99999px;top:0;visibility:hidden;pointer-events:none;z-index:-1';
+    document.body.appendChild(box);
+  }
+  return box;
+}
+
+// ── 실제 DOM 높이 측정 기반 페이지 분할 ──
 function buildPages(){
   const d = previewData || collectQuoteData();
   if (!d) { toast('견적 유형을 먼저 선택하세요.','error'); return ''; }
-  const rows = d.rows;
-  const cfg  = calcRowsPerPage();
-  const R1 = cfg.first, RN = cfg.next;
-  const oriCls = pageOrientation==='landscape' ? ' landscape' : '';
-  const totalPages = rows.length <= R1 ? 1 : 1 + Math.ceil((rows.length - R1) / RN);
-  const pages = [];
-  const colCount = printColCount(d.qtype);
 
-  const makeTable = (rowsSlice, isLast, d) => `
-    <table class="qt-table">
-      ${colGroup(d.qtype)}
-      <thead>${thRow(d)}</thead>
-      <tbody>${rowsSlice.map(r=>printRowHTML(r,d)).join('')}</tbody>
-      ${isLast?`<tfoot><tr style="background:#dbeafe">
-        <td colspan="${colCount-1}" style="text-align:right;font-weight:700;color:#1a5fad;padding-right:6px">합 계</td>
-        <td class="num" style="font-weight:700;color:#1a5fad">${fmtN(d.supplyTotal)}</td>
-      </tr></tfoot>`:''}
-    </table>`;
+  const rows     = d.rows;
+  const oriCls   = pageOrientation==='landscape' ? ' landscape' : '';
+  const colCount = printColCount(d.qtype);
+  const sizeLabel= pageOrientation==='landscape' ? 'A4 가로 297×210mm' : 'A4 세로 210×297mm';
+
+  const tblOpen  = `<table class="qt-table">${colGroup(d.qtype)}<thead>${thRow(d)}</thead><tbody>`;
+  const tblClose = `</tbody></table>`;
+  const footRow  = `<tfoot><tr style="background:#dbeafe">
+      <td colspan="${colCount-1}" style="text-align:right;font-weight:700;color:#1a5fad;padding-right:6px">합 계</td>
+      <td class="num" style="font-weight:700;color:#1a5fad">${fmtN(d.supplyTotal)}</td>
+    </tr></tfoot>`;
 
   const contHdr = `<div style="display:flex;justify-content:space-between;align-items:center;
     margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid var(--blue)">
@@ -1738,37 +1733,98 @@ function buildPages(){
     <div style="font-size:10px;color:var(--gray)">견적번호: <strong>${d.qtNo}</strong> | 수신: <strong>${d.custName}</strong> | ${d.qtDate}</div>
   </div>`;
 
-  const p1 = rows.slice(0, R1);
-  const hasMore = rows.length > R1;
-  const sizeLabel = pageOrientation==='landscape' ? 'A4 가로 297×210mm' : 'A4 세로 210×297mm';
-  pages.push(`<div class="a4-page${oriCls}">
-    <div class="a4-badge">${sizeLabel} · 여백 상${pageMargins.top}/좌${pageMargins.left}/우${pageMargins.right}/하${pageMargins.bottom}mm</div>
-    <div class="a4-body">
-      ${headerHTML(d)}
-      ${makeTable(p1, !hasMore, d)}
-    </div>
-    ${!hasMore ? `<div class="a4-foot">${totalHTML(d)}${condHTML(d)}</div>` : ''}
-    <div class="page-num">1 / ${totalPages}</div>
-  </div>`);
+  const footBlock = `<div class="a4-foot">${totalHTML(d)}${condHTML(d)}</div>`;
 
-  if(hasMore){
-    let rem = rows.slice(R1);
-    let pi = 2;
-    while(rem.length>0){
-      const chunk = rem.splice(0, RN);
-      const isLast = rem.length===0;
-      pages.push(`<div class="a4-page${oriCls}">
-        <div class="a4-badge">${sizeLabel}</div>
-        <div class="a4-body">
-          ${contHdr}
-          ${makeTable(chunk, isLast, d)}
-        </div>
-        ${isLast ? `<div class="a4-foot">${totalHTML(d)}${condHTML(d)}</div>` : ''}
-        <div class="page-num">${pi} / ${totalPages}</div>
-      </div>`);
-      pi++;
+  // ── 측정용 페이지 생성 ──
+  const box = getMeasureBox();
+  const mkPage = (inner)=>`<div class="a4-page${oriCls}" style="margin:0">${inner}</div>`;
+
+  // 사용 가능 본문 높이 = 페이지 높이 − 상하 여백 − 페이지번호
+  const pageHpx = (pageOrientation==='landscape' ? 210 : 297) * MM;
+  const padPx   = (pageMargins.top + pageMargins.bottom) * MM;
+  const usable  = pageHpx - padPx - (PGNO_MM * MM);
+
+  // 특정 HTML의 높이 측정
+  const measure = (innerHTML)=>{
+    box.innerHTML = mkPage(`<div class="a4-body">${innerHTML}</div>`);
+    const body = box.querySelector('.a4-body');
+    const h = body ? body.scrollHeight : 0;
+    return h;
+  };
+
+  const headH = measure(headerHTML(d));   // 1p 상단 블록
+  const contH = measure(contHdr);         // 2p~ 간이 헤더
+  const footH = (()=>{ box.innerHTML = mkPage(footBlock);
+                       const f = box.querySelector('.a4-foot');
+                       return f ? f.scrollHeight : 0; })();
+
+  // 행 단위 실제 높이 측정 (누적 방식)
+  const rowHTMLs = rows.map(r=>printRowHTML(r,d));
+  const measureTable = (htmlRows, withFoot)=>
+    measure(tblOpen + htmlRows.join('') + tblClose.replace('</tbody></table>',
+      '</tbody>'+(withFoot?footRow:'')+'</table>'));
+
+  // ── 페이지 분할 ──
+  const chunks = [];       // 각 페이지에 들어갈 행 인덱스 배열
+  let cur = [], idx = 0;
+  let isFirst = true;
+
+  while(idx < rowHTMLs.length){
+    cur.push(rowHTMLs[idx]);
+    const baseH = isFirst ? headH : contH;
+    const isLastRow = (idx === rowHTMLs.length - 1);
+    // 마지막 행이면 합계/조건 블록도 함께 들어가는지 확인
+    const need = baseH + measureTable(cur, isLastRow) + (isLastRow ? footH : 0);
+
+    if(need > usable && cur.length > 1){
+      // 현재 행은 다음 페이지로
+      cur.pop();
+      chunks.push(cur);
+      cur = [rowHTMLs[idx]];
+      isFirst = false;
+      continue;   // idx 증가 없이 재검사
     }
+    idx++;
   }
+  if(cur.length) chunks.push(cur);
+
+  // 마지막 페이지에 합계/조건이 안 들어가면 별도 페이지 추가
+  let footOnNewPage = false;
+  if(chunks.length){
+    const lastBase = (chunks.length===1) ? headH : contH;
+    const lastNeed = lastBase + measureTable(chunks[chunks.length-1], true) + footH;
+    if(lastNeed > usable) footOnNewPage = true;
+  }
+
+  const totalPages = chunks.length + (footOnNewPage ? 1 : 0);
+
+  // ── 페이지 HTML 생성 ──
+  const pages = chunks.map((chunkRows, i)=>{
+    const isFirstPage = (i === 0);
+    const isLastChunk = (i === chunks.length - 1);
+    const showFoot    = isLastChunk && !footOnNewPage;
+    const tbl = tblOpen + chunkRows.join('') + '</tbody>' + (isLastChunk ? footRow : '') + '</table>';
+    return `<div class="a4-page${oriCls}">
+      <div class="a4-badge">${sizeLabel}${isFirstPage?` · 여백 상${pageMargins.top}/좌${pageMargins.left}/우${pageMargins.right}/하${pageMargins.bottom}mm`:''}</div>
+      <div class="a4-body">
+        ${isFirstPage ? headerHTML(d) : contHdr}
+        ${tbl}
+      </div>
+      ${showFoot ? footBlock : ''}
+      <div class="page-num">${i+1} / ${totalPages}</div>
+    </div>`;
+  });
+
+  if(footOnNewPage){
+    pages.push(`<div class="a4-page${oriCls}">
+      <div class="a4-badge">${sizeLabel}</div>
+      <div class="a4-body">${contHdr}</div>
+      ${footBlock}
+      <div class="page-num">${totalPages} / ${totalPages}</div>
+    </div>`);
+  }
+
+  box.innerHTML = '';
   return pages.join('');
 }
 
