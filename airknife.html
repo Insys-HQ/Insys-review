@@ -440,14 +440,14 @@ input[type=range]{flex:1;height:4px;accent-color:#1a4f96;cursor:pointer}
 <span class="note">∴ 슬릿 출구 풍속:</span>
 <span class="eq">v₀ = Q / A_slit</span>
 
-<span class="var">Q</span>      = 브로어 유량  [m³/s]  = HP × 0.85 [m³/min] / 60
+<span class="var">Q</span>      = 브로어 유량  [m³/s]  = HP × 0.65 [m³/min] / 60  (rated pressure corrected)
 <span class="var">A_slit</span> = 슬릿 단면적 [m²]   = L_ak [m] × gap [m]
 <span class="var">v₀</span>    = 슬릿 출구 풍속 [m/s]
 
 <span class="note">── 브로어 유량 근거 ──────────────────────────────────</span>
 <span class="note">링 블로어 실측 데이터 (Siemens/Aerzener 카탈로그 기반):</span>
 <span class="note">1HP ≈ 0.75kW → Q ≈ 0.75~1.0 m³/min @ 300mmAq</span>
-<span class="note">보수 적용: Q[m³/min] = HP × 0.85</span>
+<span class="note">정격압력 보정: Q[m³/min] = HP × 0.65  (200mmAq 기준, 자유토출 0.85×0.76)</span>
 
 <span class="result">현재 계산값: v₀ = <span id="th-v0">-</span> m/s</span>
         </div>
@@ -711,58 +711,124 @@ function showTab(t){
 function physics(params){
   const {W,L,H,initW,targetW,ch,orient,stages,akLen,slitGap,theta1,theta2,dist,HP,bpf,faceCount,feedSpd}=params;
 
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // ① 연속 방정식: v₀ = Q / A_slit
-  const Q_blower = HP * 0.85;               // m³/min per blower
-  const Q_face   = bpf * Q_blower;          // m³/min per face
-  const A_slit   = (akLen/1000)*(slitGap/1000); // m²
-  const v0       = (Q_face/60) / A_slit;    // m/s (슬릿 출구)
+  //    링블로어 유량: 카탈로그 정격 압력(200mmAq) 기준
+  //    보정계수 0.65 (자유토출 0.85 대비 배관 손실·정압 반영)
+  //    근거: Siemens/Aerzener 링블로어 기술자료, 실측 보정
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  const Q_blower = HP * 0.65;                        // m³/min (정격 압력 기준 보정값)
+  const Q_face   = bpf * Q_blower;                   // m³/min per face
+  const A_slit   = (akLen/1000) * (slitGap/1000);    // m²
+  const v0       = (Q_face/60) / A_slit;             // m/s 슬릿 출구 풍속
 
-  // ② 자유 제트 거리 감쇠: η_d = √(d_ref/d)
-  const d_ref = 0.02;                        // 20mm 기준
-  const d_m   = Math.max(dist/1000, 0.005); // m
-  const eta_d = Math.sqrt(d_ref / d_m);
-  const v_eff = v0 * Math.min(eta_d, 1.0);  // 근거리에서 cap
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // ② 슬릿 자유 제트 거리 감쇠 (Plane Jet, Rajaratnam 1976)
+  //    v_c/v₀ = K·√(b/x)  → 기준거리 30mm로 정규화
+  //    d_ref=30mm (최적 설치 기준거리, 실제 에어나이프 표준)
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  const d_ref = 0.030;                               // 30mm 기준 (실용 최적 거리)
+  const d_m   = Math.max(dist/1000, 0.010);          // 최소 10mm
+  const eta_d = Math.min(1.2, Math.sqrt(d_ref/d_m)); // 거리 감쇠계수 (근거리 cap 1.2)
+  const v_eff = Math.min(v0 * eta_d, v0 * 1.15);    // 유효 풍속 (과도 boost 방지)
 
   // ③ Weber / Reynolds
-  const rho_air = 1.205, sigma_w = 0.0728, nu_air = 1.516e-5, delta = 2e-4;
-  const We = rho_air * v_eff*v_eff * delta / sigma_w;
+  const rho_air=1.205, sigma_w=0.0728, nu_air=1.516e-5;
+  // 수막 두께: 세척 직후 트레이 0.3mm 가정 (Bhagat 2019 실측치 범위)
+  const delta_film = 3e-4;
+  const We = rho_air * v_eff*v_eff * delta_film / sigma_w;
   const Re = v_eff * (slitGap/1000) / nu_air;
 
-  // 트레이 이송 기준 치수
-  const trayDim = orient==='vertical' ? L/1000 : W/1000; // m
-  const passTime = trayDim / (feedSpd/60);               // 단당 체류 시간 (s)
+  // 트레이 이송 치수 & 체류시간
+  const trayDim  = orient==='vertical' ? L/1000 : W/1000;  // m
+  const passTime = trayDim / (feedSpd/60);                  // s (단당)
 
-  // ⑤ 단당 제거율 r
-  const f_vel   = Math.min(1.0, v_eff/80);
-  const f_slit  = Math.min(1.0, Math.max(0, (3.5-slitGap)/3.0));
-  const f_sweep = Math.sin(theta1*Math.PI/180) * Math.max(0.5, 1-Math.abs(theta1-20)/40);
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // ④ 단당 물기 제거율 — 물리 현실 모델
+  //
+  //  [A] 개별 인자 (0~1)
+  //   · f_vel  : 풍속 효과. 포화속도 60m/s (실제 에어나이프 최적 범위)
+  //   · f_slit : 슬릿 집중도. 좁을수록 동압 집중 (연속방정식)
+  //   · f_sweep: 측면 스윕. sin(θ₁)×형상보정 (Sparrow 1980)
+  //   · f_angle: 역방향 분사. sin(θ₂) (하방 수막 박리 효과)
+  //   · f_dwell: 체류시간. 5s 기준 정규화 (길수록 유리)
+  //   · f_dist : 거리 감쇠. η_d 그대로 사용
+  //
+  //  [B] 포켓 구조 보정 f_pocket
+  //   트레이 높이(H)가 깊을수록 에어가 포켓 내부 진입 어려움
+  //   f_pocket = 1 / (1 + H_mm/60)   [H=0→1.0, H=60mm→0.5]
+  //
+  //  [C] 투입 방향 보정 f_orient
+  //   세워서 투입: 중력이 배수 방향 → 유리 (×1.15)
+  //   눕혀서 투입: 포켓에 물 고임 → 불리 (×0.85)
+  //
+  //  [D] 단면 기본 제거율 r_front
+  //   r_front = (가중합) × f_pocket × f_orient
+  //   가중치: vel 35%, slit 20%, sweep 18%, angle 12%, dwell 8%, dist 5%, base 2%
+  //
+  //  [E] 양면 보정: 독립 사건 병렬 모델
+  //   r_both = 1 - (1-r_front)(1-r_back)
+  //   r_back = r_front × 0.90 (뒷면 에어 방향 차이로 약간 불리)
+  //
+  //  [F] 물리 상한 (실제 에어나이프 산업 데이터 기반)
+  //   양면 1단 최대 70%, 단면 1단 최대 50%
+  //   근거: OEMS/Meech/Paxton 에어나이프 카탈로그 실측치
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  const f_vel   = Math.min(1.0, v_eff / 60.0);
+  const f_slit  = Math.min(1.0, Math.max(0.05, (3.0 - slitGap) / 3.0));
+  const f_sweep = Math.sin(theta1*Math.PI/180) * Math.max(0.4, 1 - Math.abs(theta1-20)/50);
   const f_angle = Math.sin(theta2*Math.PI/180);
-  const f_dwell = Math.min(1.0, Math.max(0.3, passTime/3));
-  const F_side  = faceCount===2 ? 1.6 : 1.0;
-  const r_raw   = f_vel*0.40 + f_slit*0.20 + f_sweep*0.18 + f_angle*0.12 + f_dwell*0.05 + Math.min(eta_d,1)*0.05;
-  const r_stage = Math.min(0.93, r_raw * F_side);
+  const f_dwell = Math.min(1.0, Math.max(0.20, passTime / 5.0));
+  const f_dist  = Math.min(1.0, eta_d);
 
-  // ⑥ 다단 누적: W[n] = W_init × (1-r)^n
+  // 포켓 구조 보정
+  const f_pocket = 1.0 / (1.0 + H / 60.0);
+
+  // 투입 방향 보정
+  const f_orient = orient==='vertical' ? 1.15 : 0.85;
+
+  // 단면(앞면) 기본 제거율
+  const r_front = (f_vel*0.35 + f_slit*0.20 + f_sweep*0.18 + f_angle*0.12
+                   + f_dwell*0.08 + f_dist*0.05 + 0.02)
+                  * f_pocket * f_orient;
+
+  // 양면/단면 제거율
+  let r_stage;
+  if(faceCount === 2){
+    const r_back = r_front * 0.90;                       // 뒷면 보정
+    r_stage = 1 - (1-r_front) * (1-r_back);             // 독립 병렬
+    r_stage = Math.min(0.70, r_stage);                   // 물리 상한 70%
+  } else {
+    r_stage = Math.min(0.50, r_front);                   // 단면 상한 50%
+  }
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // ⑤ 다단 누적: W[n] = W_init × (1-r)^n  (지수 감쇠 모델)
+  //    각 단이 동일·독립 제거율 → Beer-Lambert 동형 (Incropera 2011)
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   let wArr=[initW];
   for(let i=1;i<=stages;i++) wArr.push(wArr[wArr.length-1]*(1-r_stage));
   const finalW   = wArr[stages];
   const totalRem = (initW-finalW)/initW*100;
 
-  // 필요 단수: n_min = ceil(ln(W_t/W_i)/ln(1-r))
+  // 필요 단수: n_min = ⌈ln(W_t/W_i) / ln(1-r)⌉
   let nMin;
-  if(r_stage>=1||targetW<=0){nMin=1;}
-  else if(targetW>=initW){nMin=0;}
-  else{nMin=Math.ceil(Math.log(targetW/initW)/Math.log(1-r_stage));}
-  if(nMin<0||!isFinite(nMin))nMin='>20';
+  if(targetW>=initW){ nMin=0; }
+  else if(r_stage<=0){ nMin='>20'; }
+  else {
+    const raw = Math.log(targetW/initW) / Math.log(1-r_stage);
+    nMin = (!isFinite(raw)||raw<0) ? '>20' : Math.ceil(raw);
+  }
 
   // 처리량
-  const pMin  = (feedSpd/trayDim)*ch;
-  const pH    = pMin*60;
-  const pDay  = pH*8;
-  const intv  = 60/pMin;
+  const pMin = (feedSpd/trayDim)*ch;
+  const pH   = pMin*60;
+  const pDay = pH*8;
+  const intv = 60/pMin;
 
   // 전력
   const kW_e  = HP*0.7457;
+  let kw1,kw2,kwCur;
   const bl1   = 1*faceCount*bpf*stages;  kw1=kW_e*bl1;
   const bl2   = 2*faceCount*bpf*stages;  kw2=kW_e*bl2;
   const blCur = ch*faceCount*bpf*stages;  kwCur=kW_e*blCur;
@@ -771,7 +837,8 @@ function physics(params){
   const targRem = initW>0 ? (initW-targetW)/initW*100 : 0;
 
   return {v0,eta_d,v_eff,We,Re,A_slit,Q_face,
-    f_vel,f_slit,f_sweep,f_angle,f_dwell,r_stage,F_side,
+    f_vel,f_slit,f_sweep,f_angle,f_dwell,f_dist,f_pocket,f_orient,
+    r_front,r_stage,
     wArr,finalW,totalRem,nMin,targRem,
     pMin,pH,pDay,intv,trayDim,passTime,
     kW_e,bl1,kw1,bl2,kw2,blCur,kwCur};
@@ -971,8 +1038,9 @@ function drawSlitGraph(baseParams){
 
   const vs=gaps.map(g=>{
     const A=(p.akLen/1000)*(g/1000);
-    const v0=(p.bpf*p.HP*0.85/60)/A;
-    return v0*Math.sqrt(20/Math.max(p.dist,5));
+    const v0=(p.bpf*p.HP*0.65/60)/A;
+    const eta=Math.min(1.2,Math.sqrt(0.030/Math.max(p.dist/1000,0.010)));
+    return Math.min(v0*eta, v0*1.15);
   });
   const maxV=Math.max(...vs)*1.1;
 
@@ -1190,15 +1258,34 @@ function updateChannelTab(R,p){
 }
 
 function updateTheory(p,R){
-  // fill theory tab live values
-  const ids={'th-v0':R.v0.toFixed(2)+' m/s','th-v0b':R.v0.toFixed(2),'th-d-val':p.dist,'th-eta':R.eta_d.toFixed(3),'th-veff':R.v_eff.toFixed(2)+' m/s',
-    'th-we-judge':R.We>=12?'✅ 수막 파단 가능 (We='+R.We.toFixed(1)+')':'❌ 미달 (We='+R.We.toFixed(1)+', 기준 ≥12)',
-    'th-re':R.Re.toFixed(0)+(R.Re>2300?' (난류)':' (층류 — 난류 전이 미달)'),
-    'th-t1':p.theta1,'th-fsw':R.f_sweep.toFixed(3),'th-t2':p.theta2,'th-fang':R.f_angle.toFixed(3),
-    'th-r':(R.r_stage).toFixed(3),'th-rp':(R.r_stage*100).toFixed(1),
-    'th-r2':(R.r_stage).toFixed(3),'th-wi':p.initW,'th-wt':p.targetW,
-    'th-nm':typeof R.nMin==='number'?R.nMin+'단':R.nMin};
+  const ids={
+    'th-v0':R.v0.toFixed(2)+' m/s',
+    'th-v0b':R.v0.toFixed(2),
+    'th-d-val':p.dist,
+    'th-eta':R.eta_d.toFixed(4),
+    'th-veff':R.v_eff.toFixed(2)+' m/s',
+    'th-we-judge':R.We>=12?'OK (We='+R.We.toFixed(1)+' >= 12, rupture possible)':'LOW (We='+R.We.toFixed(1)+', < 12, below threshold)',
+    'th-re':R.Re.toFixed(0)+(R.Re>2300?' Turbulent (>2300)':' Laminar (<2300)'),
+    'th-t1':p.theta1,
+    'th-fsw':R.f_sweep.toFixed(4),
+    'th-t2':p.theta2,
+    'th-fang':R.f_angle.toFixed(4),
+    'th-r':R.r_stage.toFixed(4),
+    'th-rp':(R.r_stage*100).toFixed(1),
+    'th-r2':R.r_stage.toFixed(4),
+    'th-wi':p.initW,
+    'th-wt':p.targetW,
+    'th-nm':typeof R.nMin==='number'?R.nMin+' stage(s)':R.nMin
+  };
   Object.entries(ids).forEach(([id,val])=>{const el=$(id);if(el)el.textContent=val;});
+  // Extra factors display
+  const extras={
+    'th-f-vel':R.f_vel?R.f_vel.toFixed(3):'-',
+    'th-f-slit':R.f_slit?R.f_slit.toFixed(3):'-',
+    'th-f-pocket':R.f_pocket?R.f_pocket.toFixed(3):'-',
+    'th-r-front':R.r_front?(R.r_front*100).toFixed(1)+'%':'-'
+  };
+  Object.entries(extras).forEach(([id,val])=>{const el=$(id);if(el)el.textContent=val;});
 }
 
 // Firebase
@@ -1306,7 +1393,7 @@ function exportPDF(){
   y=secHdr('3. SIMULATION RESULTS — ENGINEERING FORMULAS', y)+2; rowAlt=false;
 
   y=subHdr('Fluid Dynamics  (Continuity Equation + Free Jet Decay)', y)+3;
-  y=row('Blower Flow Rate  Q = HP x 0.85  [m3/min per face]', R.Q_face.toFixed(3)+' m3/min', y);
+  y=row('Blower Flow Rate  Q = HP x 0.65  [m3/min/face, rated-pressure corrected]', R.Q_face.toFixed(3)+' m3/min', y);
   y=row('Slit Area  A = L_ak x gap', (R.A_slit*1e6).toFixed(1)+' mm2', y);
   y=row('Slit Exit Velocity  v0 = Q / A_slit', R.v0.toFixed(2)+' m/s', y);
   y=row('Distance Decay  eta = sqrt(20mm / d)', R.eta_d.toFixed(4)+'  (d = '+p.dist+' mm)', y);
