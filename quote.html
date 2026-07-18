@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>인시스 그룹 견적 작성 시스템 v4.0</title>
+<title>인시스 그룹 견적 작성 시스템 v4.1</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <!-- Firebase SDK는 body 끝에서 로딩 (타이밍 문제 방지) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -161,25 +161,42 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
 #preview-area{display:none;position:fixed;inset:0;background:rgba(0,0,0,.70);
   z-index:9999;overflow-y:auto;padding:0}
 .preview-wrap{width:max-content;margin:0 auto;padding:0 0 40px}
-.preview-toolbar{background:linear-gradient(90deg,#0d3d7a,#1a5fad);padding:14px 22px;
-  display:flex;align-items:center;justify-content:space-between;
+.preview-toolbar{background:linear-gradient(90deg,#0d3d7a,#1a5fad);padding:11px 22px;
+  display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
   position:sticky;top:0;z-index:10000;box-shadow:0 2px 12px rgba(0,0,0,.3)}
 .preview-toolbar h3{color:#fff;font-size:15px;font-weight:700}
+/* 여백 조절 */
+.mg-ctrl{display:flex;align-items:center;gap:6px;background:rgba(0,0,0,.22);
+  border-radius:8px;padding:5px 10px}
+.mg-ctrl label{color:rgba(255,255,255,.8);font-size:11px;font-weight:600}
+.mg-ctrl input{width:44px;border:none;border-radius:5px;padding:4px 6px;
+  font-size:12px;font-weight:700;text-align:center;color:#1a5fad;font-family:inherit}
+.mg-ctrl .sep{color:rgba(255,255,255,.35);font-size:11px}
 
 /* A4 페이지 시뮬레이션 */
 /* A4 = 210mm × 297mm. 96dpi 기준 1mm ≈ 3.7795px → 210mm≈794px, 297mm≈1123px */
+/* 여백은 CSS 변수로 제어 (mm → px 환산: 1mm ≈ 3.7795px) */
+:root{
+  --pg-top:20mm; --pg-left:14mm; --pg-right:14mm; --pg-bottom:16mm;
+}
 .a4-page{
   width:794px;min-height:1123px;margin:16px auto 0;
   background:#fff;box-shadow:0 4px 24px rgba(0,0,0,.25);
-  /* 상 20mm(76px) · 좌우 14mm(53px) 균등 · 하 16mm(60px) */
-  padding:76px 53px 60px;
+  padding:var(--pg-top) var(--pg-right) var(--pg-bottom) var(--pg-left);
   position:relative;box-sizing:border-box;
   page-break-after:always;
+  display:flex;flex-direction:column;
 }
+/* 본문이 여백 안을 가득 채우도록 */
+.a4-body{flex:1;display:flex;flex-direction:column;min-height:0}
+.a4-body .qt-table{width:100%}
+.a4-foot{margin-top:auto;padding-top:6px}
+/* 페이지 번호는 하단 여백 안쪽에 고정 */
+.a4-page .page-num{position:absolute;right:var(--pg-right);
+  bottom:calc(var(--pg-bottom) - 12px);font-size:9.5px;color:#8a9ab0;font-weight:500}
 /* 가로(landscape) 모드 */
 .a4-page.landscape{
   width:1123px;min-height:794px;
-  padding:60px 53px 50px;
 }
 .a4-page:last-child{page-break-after:auto}
 
@@ -241,7 +258,6 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
 .q-sign-box p{font-size:9.5px;color:var(--gray);margin-bottom:14px}
 .q-sign-box strong{font-size:11px;color:#1a2e4a;display:block;
   border-top:1px solid var(--border);padding-top:6px}
-.page-num{position:absolute;bottom:14px;right:22px;font-size:9.5px;color:#8a9ab0;font-weight:500}
 
 /* 인쇄/PDF 전용 스타일 */
 @media print{
@@ -254,11 +270,10 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
     box-shadow:none!important;margin:0!important;
     page-break-after:always;break-after:page;
     width:210mm!important;min-height:296mm!important;
-    padding:20mm 14mm 16mm!important;
+    padding:var(--pg-top) var(--pg-right) var(--pg-bottom) var(--pg-left)!important;
   }
   .a4-page.landscape{
     width:297mm!important;min-height:209mm!important;
-    padding:16mm 14mm 13mm!important;
   }
   .a4-page:last-child{page-break-after:auto;break-after:auto}
   @page{size:A4 portrait;margin:0}
@@ -340,7 +355,7 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
       <button class="btn btn-ghost btn-sm" onclick="openCoSelector()" id="nav-co-btn">
         🏢 <span id="nav-co-name">사업자 선택</span>
       </button>
-      <div class="nav-ver">v4.0</div>
+      <div class="nav-ver">v4.1</div>
     </div>
   </div>
 </nav>
@@ -701,6 +716,15 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
   <div class="preview-toolbar">
     <h3>📄 견적서 미리보기<span id="preview-subtitle" style="font-weight:400;opacity:.8;font-size:13px"></span></h3>
     <div class="btn-grp">
+      <div class="mg-ctrl">
+        <label>여백(mm)</label>
+        <span class="sep">상</span><input type="number" id="mg-top"    value="20" min="0" max="40" oninput="applyMargins()">
+        <span class="sep">좌</span><input type="number" id="mg-left"   value="14" min="0" max="40" oninput="applyMargins()">
+        <span class="sep">우</span><input type="number" id="mg-right"  value="14" min="0" max="40" oninput="applyMargins()">
+        <span class="sep">하</span><input type="number" id="mg-bottom" value="16" min="0" max="40" oninput="applyMargins()">
+        <button onclick="resetMargins()" style="background:rgba(255,255,255,.2);color:#fff;border:none;
+          padding:4px 9px;border-radius:5px;font-size:11px;cursor:pointer;font-family:inherit">초기화</button>
+      </div>
       <span style="color:rgba(255,255,255,.75);font-size:12px;margin-right:2px">용지방향</span>
       <div style="display:flex;background:rgba(0,0,0,.22);border-radius:8px;padding:3px;gap:3px;margin-right:10px">
         <button class="ori-btn" id="ori-portrait" onclick="setOrientation('portrait')"
@@ -1604,14 +1628,55 @@ function condHTML(d){
 }
 
 // ── A4 페이지 분리 빌드 ──
-// ── 용지 방향 상태 ──
+// ── 용지 방향 & 여백 상태 ──
 let pageOrientation = 'portrait';   // 'portrait' | 'landscape'
+let pageMargins = { top:20, left:14, right:14, bottom:16 };   // mm
 
-// 방향별 페이지당 행 수 (여백 축소 반영)
-const ROWS_CFG = {
-  portrait : { first: 24, next: 36 },
-  landscape: { first: 13, next: 21 },
-};
+const MM = 3.7795;              // 1mm → px
+const PAGE_H = { portrait:1123, landscape:794 };   // A4 px 높이
+const ROW_H  = 17.5;            // 표 1행 평균 높이(px)
+const HEAD_H = 178;             // 1p 상단 블록(발행사+수신처+견적조건) 높이
+const CONT_H = 34;              // 2p~ 간이 헤더 높이
+const TH_H   = 20;              // 표 헤더 행
+const FOOT_H = 196;             // 합계+조건+서명 블록 높이
+
+// 현재 여백 기준 페이지당 행 수 자동 계산
+function calcRowsPerPage(){
+  const ph = PAGE_H[pageOrientation];
+  const usable = ph - (pageMargins.top + pageMargins.bottom) * MM - 18;  // 18=페이지번호 영역
+  const first = Math.max(4, Math.floor((usable - HEAD_H - TH_H) / ROW_H));
+  const next  = Math.max(4, Math.floor((usable - CONT_H - TH_H) / ROW_H));
+  return { first, next };
+}
+
+// 여백 적용
+function applyMargins(){
+  pageMargins.top    = clampMg(document.getElementById('mg-top').value,    20);
+  pageMargins.left   = clampMg(document.getElementById('mg-left').value,   14);
+  pageMargins.right  = clampMg(document.getElementById('mg-right').value,  14);
+  pageMargins.bottom = clampMg(document.getElementById('mg-bottom').value, 16);
+  const r = document.documentElement.style;
+  r.setProperty('--pg-top',    pageMargins.top    + 'mm');
+  r.setProperty('--pg-left',   pageMargins.left   + 'mm');
+  r.setProperty('--pg-right',  pageMargins.right  + 'mm');
+  r.setProperty('--pg-bottom', pageMargins.bottom + 'mm');
+  if(document.getElementById('preview-area').style.display === 'block'){
+    document.getElementById('quote-doc').innerHTML = buildPages();
+  }
+}
+function clampMg(v, def){
+  const n = parseFloat(v);
+  if(isNaN(n)) return def;
+  return Math.min(40, Math.max(0, n));
+}
+function resetMargins(){
+  document.getElementById('mg-top').value    = 20;
+  document.getElementById('mg-left').value   = 14;
+  document.getElementById('mg-right').value  = 14;
+  document.getElementById('mg-bottom').value = 16;
+  applyMargins();
+  toast('여백을 기본값으로 되돌렸습니다.','info');
+}
 
 function setOrientation(ori){
   pageOrientation = ori;
@@ -1629,7 +1694,7 @@ function buildPages(){
   const d = previewData || collectQuoteData();
   if (!d) { toast('견적 유형을 먼저 선택하세요.','error'); return ''; }
   const rows = d.rows;
-  const cfg  = ROWS_CFG[pageOrientation];
+  const cfg  = calcRowsPerPage();
   const R1 = cfg.first, RN = cfg.next;
   const oriCls = pageOrientation==='landscape' ? ' landscape' : '';
   const totalPages = rows.length <= R1 ? 1 : 1 + Math.ceil((rows.length - R1) / RN);
@@ -1656,9 +1721,11 @@ function buildPages(){
   const p1 = rows.slice(0, R1);
   const hasMore = rows.length > R1;
   pages.push(`<div class="a4-page${oriCls}">
-    ${headerHTML(d)}
-    ${makeTable(p1, !hasMore, d)}
-    ${!hasMore ? totalHTML(d)+condHTML(d) : ''}
+    <div class="a4-body">
+      ${headerHTML(d)}
+      ${makeTable(p1, !hasMore, d)}
+    </div>
+    ${!hasMore ? `<div class="a4-foot">${totalHTML(d)}${condHTML(d)}</div>` : ''}
     <div class="page-num">1 / ${totalPages}</div>
   </div>`);
 
@@ -1669,9 +1736,11 @@ function buildPages(){
       const chunk = rem.splice(0, RN);
       const isLast = rem.length===0;
       pages.push(`<div class="a4-page${oriCls}">
-        ${contHdr}
-        ${makeTable(chunk, isLast, d)}
-        ${isLast ? totalHTML(d)+condHTML(d) : ''}
+        <div class="a4-body">
+          ${contHdr}
+          ${makeTable(chunk, isLast, d)}
+        </div>
+        ${isLast ? `<div class="a4-foot">${totalHTML(d)}${condHTML(d)}</div>` : ''}
         <div class="page-num">${pi} / ${totalPages}</div>
       </div>`);
       pi++;
