@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>인시스 그룹 견적 작성 시스템 v2.2</title>
+<title>인시스 그룹 견적 작성 시스템 v2.3</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <!-- Firebase SDK (compat) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -304,7 +304,7 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
     <button class="btn btn-ghost btn-sm" onclick="openCoSelector()" id="nav-co-btn">
       🏢 <span id="nav-co-name">사업자 선택</span>
     </button>
-    <div class="nav-ver">v2.2</div>
+    <div class="nav-ver">v2.3</div>
   </div>
 </nav>
 
@@ -534,11 +534,17 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
             <div class="fg"><label class="fl">종목</label><input class="fc" id="co-item" placeholder="자동화 설비"></div>
           </div>
           <div class="g2" style="gap:12px">
-            <div class="fg"><label class="fl req">담당자</label><input class="fc" id="co-mgr" placeholder="담당자 이름"></div>
-            <div class="fg"><label class="fl req">담당자 연락처</label><input class="fc" id="co-tel" placeholder="010-0000-0000"></div>
+            <div class="fg"><label class="fl">대표전화</label><input class="fc" id="co-phone" placeholder="055-000-0000"></div>
+            <div class="fg"><label class="fl">팩스</label><input class="fc" id="co-fax" placeholder="055-000-0000"></div>
           </div>
-          <div class="fg"><label class="fl">이메일</label><input class="fc" id="co-email" placeholder="email@company.com"></div>
-          <div class="fg"><label class="fl">팩스</label><input class="fc" id="co-fax" placeholder="055-000-0000"></div>
+          <div class="g2" style="gap:12px">
+            <div class="fg"><label class="fl req">담당자</label><input class="fc" id="co-mgr" placeholder="담당자 이름"></div>
+            <div class="fg"><label class="fl req">담당자 휴대폰</label><input class="fc" id="co-tel" placeholder="010-0000-0000"></div>
+          </div>
+          <div class="g2" style="gap:12px">
+            <div class="fg"><label class="fl">이메일</label><input class="fc" id="co-email" placeholder="email@company.com"></div>
+            <div class="fg"><label class="fl">담당자 직통</label><input class="fc" id="co-tel2" placeholder="055-000-0000 (내선 포함)"></div>
+          </div>
           <input type="hidden" id="co-edit-id">
           <div class="btn-grp" style="margin-top:4px">
             <button class="btn btn-primary" onclick="saveCo()">💾 저장</button>
@@ -790,7 +796,7 @@ function renderCoList() {
     <div class="co-item" onclick="editCo('${c.id}')">
       <div>
         <div class="co-name">${c.name} <span style="font-size:11px;background:#e0f2fe;color:#0369a1;padding:1px 7px;border-radius:10px;margin-left:4px">${c.init||''}</span></div>
-        <div class="co-sub">사업자: ${c.bizno||'–'} | 대표: ${c.ceo||'–'} | 담당: ${c.manager||c.mgr||'–'}</div>
+        <div class="co-sub">사업자: ${c.bizno||'–'} | 대표: ${c.ceo||'–'} | 대표전화: ${c.phone||'–'} | 담당: ${c.manager||c.mgr||'–'} (${c.tel||'–'})</div>
       </div>
       <div style="display:flex;gap:6px">
         <button class="btn btn-sm btn-outline" onclick="event.stopPropagation();selectIssuer('${c.id}')">선택</button>
@@ -813,8 +819,10 @@ async function saveCo() {
     addr:    document.getElementById('co-addr').value.trim(),
     biz:     document.getElementById('co-biz').value.trim(),
     item:    document.getElementById('co-item').value.trim(),
+    phone:   document.getElementById('co-phone').value.trim(),
     manager: document.getElementById('co-mgr').value.trim(),
     tel:     document.getElementById('co-tel').value.trim(),
+    tel2:    document.getElementById('co-tel2').value.trim(),
     email:   document.getElementById('co-email').value.trim(),
     fax:     document.getElementById('co-fax').value.trim(),
     updatedAt: new Date().toISOString(),
@@ -849,16 +857,18 @@ function editCo(id) {
   document.getElementById('co-addr').value  = c.addr||'';
   document.getElementById('co-biz').value   = c.biz||'';
   document.getElementById('co-item').value  = c.item||'';
-  document.getElementById('co-mgr').value   = c.manager||'';
-  document.getElementById('co-tel').value   = c.tel||'';
-  document.getElementById('co-email').value = c.email||'';
-  document.getElementById('co-fax').value   = c.fax||'';
+  document.getElementById('co-phone').value  = c.phone||'';
+  document.getElementById('co-mgr').value    = c.manager||'';
+  document.getElementById('co-tel').value    = c.tel||'';
+  document.getElementById('co-tel2').value   = c.tel2||'';
+  document.getElementById('co-email').value  = c.email||'';
+  document.getElementById('co-fax').value    = c.fax||'';
   document.getElementById('co-edit-id').value = id;
   document.getElementById('co-edit-badge').textContent = '수정중';
 }
 
 function clearCoForm() {
-  ['co-name','co-init','co-bizno','co-ceo','co-addr','co-biz','co-item','co-mgr','co-tel','co-email','co-fax','co-edit-id'].forEach(id=>{
+  ['co-name','co-init','co-bizno','co-ceo','co-addr','co-biz','co-item','co-phone','co-mgr','co-tel','co-tel2','co-email','co-fax','co-edit-id'].forEach(id=>{
     document.getElementById(id).value='';
   });
   document.getElementById('co-edit-badge').textContent='신규';
@@ -891,7 +901,7 @@ function updateCoSelList() {
     <div class="co-item ${currentIssuer?.id===c.id?'selected':''}" onclick="selectIssuer('${c.id}');closeCoSelector()">
       <div>
         <div class="co-name">${c.name} <span class="co-badge">${c.init}</span></div>
-        <div class="co-sub">사업자: ${c.bizno||'–'} | 대표: ${c.ceo||'–'} | 담당: ${c.manager||c.mgr||'–'}</div>
+        <div class="co-sub">사업자: ${c.bizno||'–'} | 대표: ${c.ceo||'–'} | 대표전화: ${c.phone||'–'} | 담당: ${c.manager||c.mgr||'–'} (${c.tel||'–'})</div>
       </div>
       ${currentIssuer?.id===c.id?'<span class="badge b-green">현재선택</span>':''}
     </div>
@@ -907,7 +917,7 @@ function selectIssuer(id) {
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
       <strong style="font-size:15px">${currentIssuer.name}</strong>
       <span class="badge b-blue">${currentIssuer.init}</span>
-      <span style="font-size:13px;color:var(--gray)">사업자: ${currentIssuer.bizno||'–'} | 대표: ${currentIssuer.ceo||'–'} | 담당: ${currentIssuer.manager||'–'} (${currentIssuer.tel||'–'})</span>
+      <span style="font-size:13px;color:var(--gray)">사업자: ${currentIssuer.bizno||'–'} | 대표: ${currentIssuer.ceo||'–'} | 대표전화: ${currentIssuer.phone||'–'} | 담당: ${currentIssuer.manager||'–'} (${currentIssuer.tel||'–'})</span>
     </div>
   `;
   genQuoteNo();
@@ -1095,8 +1105,9 @@ function headerHTML(d){
       <p>
         사업자번호: ${d.co.bizno||'–'} | 대표이사: ${d.co.ceo||'–'}<br>
         주소: ${d.co.addr||'–'}<br>
+        대표전화: ${d.co.phone||'–'} | 팩스: ${d.co.fax||'–'}<br>
         업태: ${d.co.biz||'–'} | 종목: ${d.co.item||'–'}<br>
-        담당: ${d.co.manager||'–'} | ${d.co.tel||'–'} | ${d.co.email||'–'}
+        담당: ${d.co.manager||'–'} | 휴대폰: ${d.co.tel||'–'}${d.co.tel2?' | 직통: '+d.co.tel2:''} | ${d.co.email||'–'}
       </p>
     </div>
     <div class="qh-title">
@@ -1268,7 +1279,7 @@ function exportPDF(){
     doc.text(`${cur}`,PW-MR,292,{align:'right'});
     // 하단 회사명
     doc.setFontSize(7);
-    doc.text(`${co.name||'INSYS GROUP'}  |  견적번호: ${d.qtNo}  |  인시스 그룹 견적 작성 시스템 v2.2`,ML,292);
+    doc.text(`${co.name||'INSYS GROUP'}  |  견적번호: ${d.qtNo}  |  인시스 그룹 견적 작성 시스템 v2.3`,ML,292);
     // 2페이지부터 상단 continuation 헤더
     if(cur>1){
       doc.setFontSize(9);doc.setTextColor(26,95,173);doc.setFont('helvetica','bold');
@@ -1283,7 +1294,7 @@ function exportPDF(){
   doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(26,95,173);
   doc.text(d.qtTitle||'FORKLIFT RENTAL QUOTATION', ML, 14);
   doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(30,45,61);
-  doc.text(`${co.name||'–'}  |  사업자: ${co.bizno||'–'}  |  대표: ${co.ceo||'–'}  |  담당: ${co.manager||'–'}  |  ${co.tel||'–'}`, ML, 21);
+  doc.text(`${co.name||'–'}  |  사업자: ${co.bizno||'–'}  |  대표: ${co.ceo||'–'}  |  대표전화: ${co.phone||'–'}  |  담당: ${co.manager||'–'}  |  ${co.tel||'–'}`, ML, 21);
   doc.text(`수신: ${d.custName}  |  담당: ${d.custContact||'–'}  |  주소: ${d.custAddr||'–'}`, ML, 27);
   doc.setDrawColor(26,95,173);doc.setLineWidth(0.5);doc.line(ML,30,PW-MR,30);
 
@@ -1395,7 +1406,7 @@ function exportExcel(){
   const wb=XLSX.utils.book_new();
   let sup=0;
   const data=[
-    ['인시스 그룹 견적 작성 시스템 v2.2'],[''],
+    ['인시스 그룹 견적 작성 시스템 v2.3'],[''],
     ['견적번호',qtNo,'','발행일',qtDate],
     ['발행사',co.name||'–','','대표이사',co.ceo||'–'],
     ['사업자번호',co.bizno||'–','','담당자',co.manager||'–'],
@@ -1416,7 +1427,7 @@ function exportExcel(){
   data.push(['','','','','','','','','','부가세(10%)','',vat]);
   data.push(['','','','','','','','','','월합계(VAT포함)','',sup+vat]);
   data.push(['']);
-  data.push(['※ 인시스 그룹 견적 작성 시스템 v2.2 | insys-work Firebase']);
+  data.push(['※ 인시스 그룹 견적 작성 시스템 v2.3 | insys-work Firebase']);
   const ws=XLSX.utils.aoa_to_sheet(data);
   ws['!cols']=[{wch:4},{wch:8},{wch:18},{wch:10},{wch:8},{wch:6},{wch:6},{wch:22},{wch:6},{wch:6},{wch:12},{wch:12}];
   XLSX.utils.book_append_sheet(wb,ws,'견적서');
