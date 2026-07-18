@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>세척건조기 통합 시뮬레이터 v3.2 | 인시스 AI혁신 R&D센터</title>
+<title>세척건조기 통합 시뮬레이터 v3.3 | 인시스 AI혁신 R&D센터</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
@@ -159,6 +159,9 @@ footer{text-align:center;font-size:10px;color:var(--t3);padding:6px 0}
 .opt-badge:hover{background:#c8e6c9}
 .opt-badge.warn{background:#fff3e0;border-color:#ffcc80;color:#e65100}
 .opt-badge .ov{font-weight:700}
+/* 전체 최적 적용 버튼 */
+.opt-all-btn{background:#fff;color:var(--pri);border:none;border-radius:5px;font-size:11px;font-weight:700;font-family:inherit;padding:5px 12px;cursor:pointer;transition:.15s}
+.opt-all-btn:hover{background:#e8f5e9;color:#2e7d32}
 /* row-inp에 뱃지 포함 레이아웃 */
 .row-inp-inner{display:flex;align-items:center;gap:4px;flex-wrap:nowrap}
 /* 그래프 클릭 가능 안내 */
@@ -172,8 +175,11 @@ footer{text-align:center;font-size:10px;color:var(--t3);padding:6px 0}
 
 <div class="hdr">
   <div class="hdr-in">
-    <div class="hdr-t">🏭 세척건조기 통합 시뮬레이터 <span class="vbadge">v3.2</span></div>
-    <div class="hdr-r">인시스 AI혁신 R&D센터</div>
+    <div class="hdr-t">🏭 세척건조기 통합 시뮬레이터 <span class="vbadge">v3.3</span></div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="opt-all-btn" onclick="applyAllOpt()">⚡ 전체 최적값 적용</button>
+      <div class="hdr-r">인시스 AI혁신 R&D센터</div>
+    </div>
   </div>
 </div>
 
@@ -586,7 +592,7 @@ footer{text-align:center;font-size:10px;color:var(--t3);padding:6px 0}
 <!-- 권장 사항 -->
 <div id="recs"></div>
 
-<footer>인시스 AI혁신 R&D센터 | wash_sim.html v3.2 | 2026-07-18</footer>
+<footer>인시스 AI혁신 R&D센터 | wash_sim.html v3.3 | 2026-07-18</footer>
 </div><!-- /right -->
 </div><!-- /wrap -->
 
@@ -807,28 +813,65 @@ function cP(){
   };
 }
 
+// ─── 전체 최적값 일괄 적용 ───
+function applyAllOpt(){
+  var p=cP();
+  var O=calcOptVals(p);
+  g('nP').value=O.nP;      bf('nP',50,500);
+  g('nT').value=O.nT;      bf('nT',20,90);
+  g('nH').value=O.nH.toFixed(1); bf('nH',1,5);
+  g('zlen').value=O.zlen;  bf('zlen',300,3000);
+  g('zdep').value=O.zdep;  bf('zdep',200,1200);
+  g('sg').value=O.sg.toFixed(1); bf('sg',0.5,5);
+  g('ad').value=O.ad;      bf('ad',10,200);
+  g('aks').value=Math.min(8,Math.max(1,O.aks));
+  // select에 없는 값이면 근접값 선택
+  var akSel=g('aks');
+  var akOpts=[1,2,3,4,6];
+  if(akOpts.indexOf(parseInt(akSel.value))===-1){
+    var near=akOpts.reduce(function(a,b){return Math.abs(b-O.aks)<Math.abs(a-O.aks)?b:a;});
+    akSel.value=near;
+  }
+  var hpSel=g('bhp');
+  var hpOpts=[0.5,1,2,3,5,7.5,10,15];
+  var hpNear=hpOpts.reduce(function(a,b){return Math.abs(b-O.HP)<Math.abs(a-O.HP)?b:a;});
+  hpSel.value=hpNear;
+  g('dt').value=O.dt;      bf('dt',30,100);
+  var fcSel=g('fc');
+  var fcOpts=[1,2,3,4,6];
+  var fcNear=fcOpts.reduce(function(a,b){return Math.abs(b-O.fc)<Math.abs(a-O.fc)?b:a;});
+  fcSel.value=fcNear;
+  g('dht').value=O.dht;    bf('dht',1,200);
+  g('dl').value=O.dl;      bf('dl',500,15000);
+  sim();
+}
+
 // ─── SIM ───
 var TM=null;
 function sim(){clearTimeout(TM);TM=setTimeout(run,160);}
 
 function run(){
   var p=cP();
-  var W=p.apW?calcW(p):null;
-  var AK=p.apA?calcAK(p):null;
-  var D=p.apD?calcD(p):null;
-  var OPT=calcOptVals(p);
-  updateRowRes(p,W,AK,D);
-  updateOptBadges(p,OPT);
-  updateFlow(p,W,AK,D);
-  updateKPI(p,W,AK,D);
-  drawWasher(p,W,OPT);
-  drawAK(p,AK,OPT);
-  drawDryer(p,D,OPT);
-  updateSum(p,W,AK,D);
-  updateMotors(p,W,AK,D);
-  updateCost(p,W,AK,D);
-  updateParts(p,W,AK,D);
-  updateRecs(p,W,AK,D);
+  var W=null,AK=null,D=null,OPT=null;
+  try{W=p.apW?calcW(p):null;}catch(e){console.error('calcW:',e);}
+  try{AK=p.apA?calcAK(p):null;}catch(e){console.error('calcAK:',e);}
+  try{D=p.apD?calcD(p):null;}catch(e){console.error('calcD:',e);}
+  try{OPT=calcOptVals(p);}catch(e){console.error('calcOpt:',e);OPT={nP:200,nT:60,nH:2.5,zlen:1200,zdep:500,sg:1.0,ad:40,aks:2,HP:3,dt:60,fc:3,dht:30,dl:4000};}
+  var steps=[
+    function(){updateRowRes(p,W,AK,D);},
+    function(){updateOptBadges(p,OPT);},
+    function(){updateFlow(p,W,AK,D);},
+    function(){updateKPI(p,W,AK,D);},
+    function(){drawWasher(p,W,OPT);},
+    function(){drawAK(p,AK,OPT);},
+    function(){drawDryer(p,D,OPT);},
+    function(){updateSum(p,W,AK,D);},
+    function(){updateMotors(p,W,AK,D);},
+    function(){updateCost(p,W,AK,D);},
+    function(){updateParts(p,W,AK,D);},
+    function(){updateRecs(p,W,AK,D);}
+  ];
+  steps.forEach(function(fn){try{fn();}catch(e){console.error('render step:',e);}});
 }
 
 // ─── 최적값 뱃지 일괄 업데이트 ───
@@ -1052,10 +1095,6 @@ function drawAK(p,AK,OPT){
     {type:'line',data:ha.map(function(hp){return Math.abs(hp-OPT.HP)<0.3?hk[ha.indexOf(hp)]:null;}),
       borderColor:COPT,borderWidth:0,pointRadius:ha.map(function(hp){return Math.abs(hp-OPT.HP)<0.3?8:0;}),
       pointBackgroundColor:COPT,pointStyle:'triangle',label:'권장'}]},options:o4});
-}
-  var hk=ha.map(function(hp){return akP(hp,p.bpf,p.sg,p.sw,p.sa,p.ad,p.iW,p.iH,p.iL,p.csA,p.aks,p.akpos,p.iw).totKW;});
-  var hbg=ha.map(function(hp){return Math.abs(hp-p.HP)<0.3?CO:CA+'88';});
-  mc('c_ak_hp',{type:'bar',data:{labels:ha.map(function(v){return v+'HP';}),datasets:[{data:hk,backgroundColor:hbg,borderRadius:3}]},options:bOpt('kW')});
 }
 
 // ─── DRYER CHARTS ───
