@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>인시스 그룹 견적 작성 시스템 v3.2</title>
+<title>인시스 그룹 견적 작성 시스템 v3.3</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <!-- Firebase SDK는 body 끝에서 로딩 (타이밍 문제 방지) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -313,7 +313,7 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
       <button class="btn btn-ghost btn-sm" onclick="openCoSelector()" id="nav-co-btn">
         🏢 <span id="nav-co-name">사업자 선택</span>
       </button>
-      <div class="nav-ver">v3.2</div>
+      <div class="nav-ver">v3.3</div>
     </div>
   </div>
 </nav>
@@ -690,9 +690,97 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
 ═══════════════════════════════════════════ -->
 <script>
 // ── Firebase ── (SDK 로딩은 body 끝 스크립트에서 처리)
-let db = null;
+// ════════════════════════════════════════════
+// ── Firestore REST API 클라이언트 ──
+// (GitHub Pages CSP가 Firebase SDK를 차단하므로 REST 방식 사용)
+// ════════════════════════════════════════════
+const FB_PROJECT = 'insys-work';
+const FB_APIKEY  = 'AIzaSyBYqd2uRr1ZvFLDCWuS15h9qFkT-Dvg5Es';
+const FS_BASE    = `https://firestore.googleapis.com/v1/projects/${FB_PROJECT}/databases/(default)/documents`;
+
+let fbOnline = false;   // Firestore 연결 가능 여부
+
 const COL_Q  = () => document.getElementById('fb-col-quote')?.value || 'forklift_quotes';
 const COL_CO = () => document.getElementById('fb-col-co')?.value   || 'insys_companies';
+
+// ── JS 값 → Firestore 타입 변환 ──
+function toFsV(v){
+  if (v === null || v === undefined)  return { nullValue: null };
+  if (typeof v === 'boolean')         return { booleanValue: v };
+  if (typeof v === 'number')          return Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
+  if (typeof v === 'string')          return { stringValue: v };
+  if (Array.isArray(v))               return { arrayValue: { values: v.map(toFsV) } };
+  if (typeof v === 'object')          return { mapValue: { fields: toFsFields(v) } };
+  return { stringValue: String(v) };
+}
+function toFsFields(obj){
+  const f = {};
+  Object.entries(obj||{}).forEach(([k,v])=>{ f[k] = toFsV(v); });
+  return f;
+}
+// ── Firestore 타입 → JS 값 변환 ──
+function fromFsV(v){
+  if (!v) return null;
+  if ('nullValue'    in v) return null;
+  if ('booleanValue' in v) return v.booleanValue;
+  if ('integerValue' in v) return parseInt(v.integerValue,10);
+  if ('doubleValue'  in v) return v.doubleValue;
+  if ('stringValue'  in v) return v.stringValue;
+  if ('timestampValue' in v) return v.timestampValue;
+  if ('arrayValue'   in v) return (v.arrayValue.values||[]).map(fromFsV);
+  if ('mapValue'     in v) return fromFsFields(v.mapValue.fields);
+  return null;
+}
+function fromFsFields(fields){
+  const o = {};
+  Object.entries(fields||{}).forEach(([k,v])=>{ o[k] = fromFsV(v); });
+  return o;
+}
+
+// ── REST 헬퍼 ──
+async function fsList(collection){
+  const url = `${FS_BASE}/${collection}?key=${FB_APIKEY}&pageSize=300`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('fsList '+res.status);
+  const j = await res.json();
+  return (j.documents||[]).map(d=>({
+    id: d.name.split('/').pop(),
+    ...fromFsFields(d.fields)
+  }));
+}
+async function fsSet(collection, docId, data){
+  const url = `${FS_BASE}/${collection}/${encodeURIComponent(docId)}?key=${FB_APIKEY}`;
+  const res = await fetch(url, {
+    method:'PATCH',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ fields: toFsFields(data) })
+  });
+  if (!res.ok) throw new Error('fsSet '+res.status+' '+(await res.text()).slice(0,120));
+  return await res.json();
+}
+async function fsAdd(collection, data){
+  const url = `${FS_BASE}/${collection}?key=${FB_APIKEY}`;
+  const res = await fetch(url, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ fields: toFsFields(data) })
+  });
+  if (!res.ok) throw new Error('fsAdd '+res.status);
+  return await res.json();
+}
+async function fsDelete(collection, docId){
+  const url = `${FS_BASE}/${collection}/${encodeURIComponent(docId)}?key=${FB_APIKEY}`;
+  const res = await fetch(url, { method:'DELETE' });
+  if (!res.ok) throw new Error('fsDelete '+res.status);
+  return true;
+}
+async function fsPing(){
+  try{
+    const res = await fetch(`${FS_BASE}/${COL_CO()}?key=${FB_APIKEY}&pageSize=1`);
+    fbOnline = res.ok;
+    return res.ok;
+  }catch(e){ fbOnline = false; return false; }
+}
 
 // ── 장비 데이터 (37대) ──
 // ════════════════════════════════════════════
@@ -1102,8 +1190,9 @@ function applyRec(idx){
 }
 async function loadCompanies() {
   try {
-    const snap = await db.collection(COL_CO()).orderBy('name').get();
-    allCompanies = snap.docs.map(d => ({id:d.id,...d.data()}));
+    allCompanies = await fsList(COL_CO());
+    allCompanies.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+    fbOnline = true; hideFBBanner();
   } catch(e) {
     const ls = JSON.parse(localStorage.getItem('insys_companies')||'[]');
     allCompanies = ls;
@@ -1159,10 +1248,10 @@ async function saveCo() {
   const editId = document.getElementById('co-edit-id').value;
   try {
     if (editId) {
-      await db.collection(COL_CO()).doc(editId).update(data);
+      await fsSet(COL_CO(), editId, data);
     } else {
       data.createdAt = new Date().toISOString();
-      await db.collection(COL_CO()).add(data);
+      await fsAdd(COL_CO(), data);
     }
   } catch(e) {
     // 로컬 백업
@@ -1205,7 +1294,7 @@ function clearCoForm() {
 
 async function deleteCo(id) {
   if (!confirm('사업자를 삭제하시겠습니까?')) return;
-  try { await db.collection(COL_CO()).doc(id).delete(); } catch(e) {}
+  try { await fsDelete(COL_CO(), id); } catch(e) { console.warn(e.message); }
   const ls = JSON.parse(localStorage.getItem('insys_companies')||'[]');
   localStorage.setItem('insys_companies', JSON.stringify(ls.filter(c=>c.id!==id)));
   await loadCompanies();
@@ -1626,7 +1715,7 @@ function exportPDF(){
     doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(138,154,176);
     doc.text(`${cur}`,PW-MR,292,{align:'right'});
     doc.setFontSize(7);
-    doc.text(`${co.name||'INSYS GROUP'}  |  견적번호: ${d.qtNo}  |  인시스 그룹 견적 작성 시스템 v3.2`,ML,292);
+    doc.text(`${co.name||'INSYS GROUP'}  |  견적번호: ${d.qtNo}  |  인시스 그룹 견적 작성 시스템 v3.3`,ML,292);
     if(cur>1){
       doc.setFontSize(9);doc.setTextColor(26,95,173);doc.setFont('helvetica','bold');
       doc.text(co.name||'(주)인시스', ML, 12);
@@ -1720,7 +1809,7 @@ function exportExcel(){
   const co=d.co;
   const wb=XLSX.utils.book_new();
   const data=[
-    [`인시스 그룹 견적 작성 시스템 v3.2 — ${d.qtypeLabel}`],[''],
+    [`인시스 그룹 견적 작성 시스템 v3.3 — ${d.qtypeLabel}`],[''],
     ['견적번호',d.qtNo,'','발행일',d.qtDate],
     ['발행사',co.name||'–','','대표이사',co.ceo||'–'],
     ['사업자번호',co.bizno||'–','','담당자',co.manager||'–'],
@@ -1776,7 +1865,7 @@ async function saveQuote(){
     items:d.rows, createdAt:new Date().toISOString(),
   };
   try{
-    await db.collection(COL_Q()).doc(qno).set(saveData);
+    await fsSet(COL_Q(), qno, saveData);
     toast('Firebase에 저장 완료!','success');
   }catch(e){
     const ls=JSON.parse(localStorage.getItem('fq_list')||'[]');
@@ -1792,8 +1881,9 @@ async function saveQuote(){
 // ── 견적 관리 ──
 async function loadMgmt(){
   try {
-    const snap=await db.collection(COL_Q()).orderBy('createdAt','desc').limit(100).get();
-    allQuotes=snap.docs.map(d=>({id:d.id,...d.data()}));
+    allQuotes = await fsList(COL_Q());
+    allQuotes.sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
+    fbOnline = true; hideFBBanner();
   } catch(e) {
     allQuotes=JSON.parse(localStorage.getItem('fq_list')||'[]');
   }
@@ -1877,7 +1967,10 @@ function closeStatusModal(){document.getElementById('status-modal').classList.re
 async function saveStatus(){
   const no=editStatusNo; if(!no)return;
   const upd={status:document.getElementById('sm-status').value,submitDate:document.getElementById('sm-submit-date').value,memo:document.getElementById('sm-memo').value};
-  try{await db.collection(COL_Q()).doc(no).update(upd);}catch(e){}
+  try{
+    const cur = allQuotes.find(q=>q.quoteNo===no) || {};
+    await fsSet(COL_Q(), no, {...cur, ...upd});
+  }catch(e){ console.warn(e.message); }
   const ls=JSON.parse(localStorage.getItem('fq_list')||'[]');
   const idx=ls.findIndex(q=>q.quoteNo===no);
   if(idx>=0){ls[idx]={...ls[idx],...upd};localStorage.setItem('fq_list',JSON.stringify(ls));}
@@ -1887,7 +1980,7 @@ async function saveStatus(){
 }
 async function delQuote(no){
   if(!confirm('삭제하시겠습니까?'))return;
-  try{await db.collection(COL_Q()).doc(no).delete();}catch(e){}
+  try{ await fsDelete(COL_Q(), no); }catch(e){ console.warn(e.message); }
   const ls=JSON.parse(localStorage.getItem('fq_list')||'[]');
   localStorage.setItem('fq_list',JSON.stringify(ls.filter(q=>q.quoteNo!==no)));
   await loadMgmt(); toast('삭제 완료','info');
@@ -1919,16 +2012,23 @@ function updateCost(key,i,val){
 function saveCostSet(){ toast('원가가 저장되었습니다.','success'); }
 async function testFB(){
   const el=document.getElementById('fb-stat');
-  if(!db){ el.textContent='⚠️ 로컬 저장 모드 — Firestore 백엔드 연결 불가 (방화벽/프록시 확인 필요)'; el.style.color='#d97706'; return; }
   el.textContent='🔄 연결 확인 중...'; el.style.color='var(--gray)';
   try{
-    await Promise.race([
-      db.collection(COL_Q()).limit(1).get(),
+    const ok = await Promise.race([
+      fsPing(),
       new Promise((_,rej)=>setTimeout(()=>rej(new Error('타임아웃(8초)')),8000))
     ]);
-    el.textContent='✅ Firebase 연결 성공! (insys-work)'; el.style.color='green';
+    if(ok){
+      el.textContent='✅ Firestore REST 연결 성공! (insys-work)'; el.style.color='green';
+      fbOnline=true; hideFBBanner();
+      loadCompanies(); loadMgmt();
+    } else {
+      el.textContent='❌ 연결 실패 — 로컬 저장 모드로 동작합니다.'; el.style.color='red';
+      fbOnline=false; showFBBanner();
+    }
   }catch(e){
     el.textContent='❌ 연결 실패: '+e.message+' — 로컬 모드로 동작합니다.'; el.style.color='red';
+    fbOnline=false; showFBBanner();
   }
 }
 
@@ -1952,124 +2052,46 @@ function toast(msg,type='info'){
 }
 </script>
 
-<!-- Firebase SDK: 다중 CDN fallback 동적 로딩 -->
+<!-- Firestore REST API 초기화 (SDK 미사용 - CSP 우회) -->
 <script>
-(function(){
-  var VER = '10.12.0';
-  // CDN 우선순위: gstatic → jsdelivr → unpkg
-  var CDNS = [
-    'https://www.gstatic.com/firebasejs/'+VER+'/',
-    'https://cdn.jsdelivr.net/npm/firebase@'+VER+'/',
-    'https://unpkg.com/firebase@'+VER+'/',
-  ];
-  var cdnIdx = 0;
+function showFBBanner(){
+  if (document.getElementById('fb-offline-banner')) return;
+  var b = document.createElement('div');
+  b.id = 'fb-offline-banner';
+  b.style.cssText = 'position:fixed;bottom:16px;left:16px;z-index:99999;background:#fef3c7;'+
+    'border:1px solid #f59e0b;color:#92400e;padding:10px 16px;border-radius:8px;'+
+    'font-size:13px;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,.15);font-family:"Noto Sans KR",sans-serif';
+  b.innerHTML = '\u26a0\ufe0f Firestore \uc5f0\uacb0 \uc2e4\ud328 \u2014 <strong>\ub85c\uceec \uc800\uc7a5 \ubaa8\ub4dc</strong> ' +
+    '<button onclick="testFB();location.reload()" style="margin-left:8px;background:#f59e0b;color:#fff;border:none;'+
+    'padding:3px 10px;border-radius:5px;cursor:pointer;font-family:inherit;font-size:12px">\uc7ac\uc2dc\ub3c4</button>';
+  document.body.appendChild(b);
+}
+function hideFBBanner(){
+  var b = document.getElementById('fb-offline-banner');
+  if (b) b.remove();
+}
 
-  function loadScript(url){
-    return new Promise(function(resolve, reject){
-      var s = document.createElement('script');
-      s.src = url;
-      s.async = false;
-      s.onload  = function(){ resolve(url); };
-      s.onerror = function(){ reject(new Error('load fail: '+url)); };
-      document.head.appendChild(s);
+// 페이지 로드 후 Firestore REST 연결 확인 및 데이터 로드
+(function(){
+  function boot(){
+    fsPing().then(function(ok){
+      if(ok){
+        console.log('\u2705 Firestore REST \uc5f0\uacb0 \uc131\uacf5 (insys-work)');
+        fbOnline = true; hideFBBanner();
+      } else {
+        console.warn('\u26a0\ufe0f Firestore \uc5f0\uacb0 \uc2e4\ud328 \u2192 \ub85c\uceec \ubaa8\ub4dc');
+        fbOnline = false; showFBBanner();
+      }
+      loadCompanies();
+      loadMgmt();
+    }).catch(function(e){
+      console.warn('Firestore ping \uc624\ub958:', e.message);
+      fbOnline = false; showFBBanner();
+      loadCompanies(); loadMgmt();
     });
   }
-
-  function tryCDN(){
-    if (cdnIdx >= CDNS.length) {
-      console.error('❌ 모든 Firebase CDN 로딩 실패 — 로컬 모드로 동작합니다.');
-      showFBBanner();
-      // 로컬 모드로 데이터 로드
-      if (typeof loadCompanies === 'function') loadCompanies();
-      if (typeof loadMgmt === 'function') loadMgmt();
-      return;
-    }
-    var base = CDNS[cdnIdx];
-    console.log('Firebase SDK 로딩 시도: ' + base);
-    loadScript(base + 'firebase-app-compat.js')
-      .then(function(){ return loadScript(base + 'firebase-firestore-compat.js'); })
-      .then(function(){ initFB(base); })
-      .catch(function(err){
-        console.warn('CDN 실패 → 다음 CDN 시도:', err.message);
-        cdnIdx++;
-        tryCDN();
-      });
-  }
-
-  function initFB(base){
-    try {
-      if (typeof firebase === 'undefined') throw new Error('firebase 객체 미정의');
-      if (!firebase.apps.length) {
-        firebase.initializeApp({
-          apiKey:            "AIzaSyBYqd2uRr1ZvFLDCWuS15h9qFkT-Dvg5Es",
-          authDomain:        "insys-work.firebaseapp.com",
-          projectId:         "insys-work",
-          storageBucket:     "insys-work.firebasestorage.app",
-          messagingSenderId: "225275784859",
-          appId:             "1:225275784859:web:bd12815c6dc47c0c49e03e"
-        });
-      }
-      db = firebase.firestore();
-      // 방화벽/프록시 환경 대응: WebChannel 대신 Long Polling 사용
-      try {
-        db.settings({
-          experimentalAutoDetectLongPolling: true,
-          useFetchStreams: false,
-          merge: true
-        });
-      } catch(se) { console.warn('Firestore settings 적용 실패:', se.message); }
-
-      console.log('✅ Firebase SDK 초기화 완료 via ' + base);
-
-      // 실제 연결 테스트 (8초 타임아웃)
-      var connTest = db.collection(COL_CO()).limit(1).get();
-      var timeout = new Promise(function(_, rej){
-        setTimeout(function(){ rej(new Error('연결 타임아웃 (8초)')); }, 8000);
-      });
-      Promise.race([connTest, timeout])
-        .then(function(){
-          console.log('✅ Firestore 백엔드 연결 성공 (insys-work)');
-          hideFBBanner();
-          if (typeof loadCompanies === 'function') loadCompanies();
-          if (typeof loadMgmt === 'function') loadMgmt();
-        })
-        .catch(function(err){
-          console.warn('⚠️ Firestore 백엔드 연결 실패 → 로컬 모드:', err.message);
-          db = null;
-          showFBBanner();
-          if (typeof loadCompanies === 'function') loadCompanies();
-          if (typeof loadMgmt === 'function') loadMgmt();
-        });
-    } catch(e) {
-      console.error('Firebase 초기화 오류:', e.message);
-      cdnIdx++;
-      tryCDN();
-    }
-  }
-
-  function showFBBanner(){
-    if (document.getElementById('fb-offline-banner')) return;
-    var b = document.createElement('div');
-    b.id = 'fb-offline-banner';
-    b.style.cssText = 'position:fixed;bottom:16px;left:16px;z-index:99999;background:#fef3c7;'+
-      'border:1px solid #f59e0b;color:#92400e;padding:10px 16px;border-radius:8px;'+
-      'font-size:13px;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,.15);font-family:"Noto Sans KR",sans-serif';
-    b.innerHTML = '⚠️ Firebase 연결 실패 — <strong>로컬 저장 모드</strong>로 동작 중 ' +
-      '<button onclick="location.reload()" style="margin-left:8px;background:#f59e0b;color:#fff;border:none;'+
-      'padding:3px 10px;border-radius:5px;cursor:pointer;font-family:inherit;font-size:12px">재시도</button>';
-    document.body.appendChild(b);
-  }
-  function hideFBBanner(){
-    var b = document.getElementById('fb-offline-banner');
-    if (b) b.remove();
-  }
-
-  // DOM 준비 후 시작
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', tryCDN);
-  } else {
-    tryCDN();
-  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
 })();
 </script>
 </body>
