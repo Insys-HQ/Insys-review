@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>인시스 그룹 견적 작성 시스템 v3.7</title>
+<title>인시스 그룹 견적 작성 시스템 v3.8</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <!-- Firebase SDK는 body 끝에서 로딩 (타이밍 문제 방지) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -213,11 +213,18 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
   text-transform:uppercase;letter-spacing:.4px}
 .qm-box p{font-size:10.5px;line-height:1.6;color:#1e2d3d}
 .qt-table{width:100%;border-collapse:collapse;font-size:9.5px;table-layout:fixed}
-.qt-table th{background:#1a5fad;color:#fff;font-size:9px;padding:4px 3px;
-  border:1px solid #1048a0;line-height:1.25;word-break:keep-all}
-.qt-table td{font-size:9.5px;padding:3.5px 4px;border:1px solid #dde3ea;
-  line-height:1.3;word-break:break-word;overflow:hidden}
+.qt-table th{background:#1a5fad;color:#fff;font-size:8.5px;padding:3.5px 2px;
+  border:1px solid #1048a0;line-height:1.2;word-break:keep-all;text-align:center}
+.qt-table td{font-size:9.5px;padding:2.5px 3px;border:1px solid #dde3ea;
+  line-height:1.25;word-break:break-word;overflow:hidden;text-align:center}
 .qt-table tr:nth-child(even) td{background:#f9fbff}
+/* 좁은 컬럼(No·보험·수량·단위)은 패딩 최소화 */
+.qt-table td.tight,.qt-table th.tight{padding-left:1px;padding-right:1px}
+/* 텍스트 컬럼은 좌측 정렬 + 여유 패딩 */
+.qt-table td.txt{text-align:left;padding-left:5px;padding-right:4px}
+/* 금액 컬럼은 우측 정렬 */
+.qt-table td.num{text-align:right;padding-right:5px;padding-left:3px;
+  font-variant-numeric:tabular-nums;white-space:nowrap}
 .q-total{background:#f0f4ff;border:1.5px solid var(--blue);border-radius:5px;
   padding:8px 14px;margin-top:9px;display:flex;justify-content:flex-end;gap:26px}
 .qt-item{text-align:right}
@@ -329,7 +336,7 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
       <button class="btn btn-ghost btn-sm" onclick="openCoSelector()" id="nav-co-btn">
         🏢 <span id="nav-co-name">사업자 선택</span>
       </button>
-      <div class="nav-ver">v3.7</div>
+      <div class="nav-ver">v3.8</div>
     </div>
   </div>
 </nav>
@@ -822,6 +829,7 @@ const QTYPES = {
     mgDefaults:[8,6,7,0],
     thead:['No','관리번호','구역/용도','동력','승차형태','적재','높이','주요옵션','보험','시장원가(월)','마진단가(월)','견적단가(월)','수량','월합계'],
     printThead:['No','관리번호','구역/용도','규격/사양','주요옵션','보험','수량','월단가(원)','월합계(원)'],
+    printWidths:[3.5, 7.5, 17, 22, 19, 5, 4.5, 10.5, 10.5],
     tcolspan:12,
     conditions:[
       '임대기간: 기본 5년 / 라인변경 감차 가능 / 별도입찰 없을 경우 자동 1년 연장',
@@ -898,6 +906,7 @@ const QTYPES = {
     mgDefaults:[12,10,5,0],
     thead:['No','서비스 항목','세부 내용','투입인원(명)','단위','단가(원)','시장원가','마진단가','견적단가','수량','기간','합계(원)'],
     printThead:['No','코드','서비스 항목','세부 내용','단위','단가(원)','수량','기간','합계(원)'],
+    printWidths:[3.5, 8, 18, 27, 5, 11, 4.5, 5, 12],
     tcolspan:10,
     conditions:[
       '계약기간: 1년 단위 / 사전 협의 후 자동연장 가능',
@@ -943,6 +952,7 @@ const QTYPES = {
     mgDefaults:[15,12,5,0],
     thead:['No','항목','세부내용','박스 규격','세척방식','단위','시장원가','마진단가','견적단가','수량/월','합계(원)'],
     printThead:['No','코드','항목','박스 규격','세척방식','단위','단가(원)','수량/월','합계(원)'],
+    printWidths:[3.5, 8, 17, 20, 15, 5, 10.5, 8, 12],
     tcolspan:9,
     conditions:[
       '세척 후 이물질·냄새 제거 보증 / 불량 세척 시 재세척 처리',
@@ -985,6 +995,7 @@ const QTYPES = {
     mgDefaults:[10,8,5,0],
     thead:['No','직종/포지션','근무형태','필요인원','단위','시장원가(인/월)','마진단가','견적단가','수량(명)','기간(월)','합계(원)'],
     printThead:['No','코드','직종/포지션','업무 내용','근무형태','단위','단가(원)','인원','합계(원)'],
+    printWidths:[3.5, 8, 17, 24, 9, 6, 11, 5.5, 12],
     tcolspan:9,
     conditions:[
       '4대보험(국민·건강·고용·산재) 당사 부담 / 명세서 월 제공',
@@ -1493,6 +1504,13 @@ function thRow(d){
   const cols = tmpl.printThead || tmpl.thead;
   return `<tr>${cols.map(h=>`<th>${h}</th>`).join('')}</tr>`;
 }
+// 컬럼 너비 지정 colgroup
+function colGroup(qtype){
+  const t = QTYPES[qtype];
+  const w = t.printWidths;
+  if(!w) return '';
+  return `<colgroup>${w.map(x=>`<col style="width:${x}%">`).join('')}</colgroup>`;
+}
 function printColCount(qtype){
   const t = QTYPES[qtype];
   return (t.printThead || t.thead).length;
@@ -1501,48 +1519,61 @@ function printColCount(qtype){
 // ── 미리보기용 행 HTML (출력용 - 편집 입력란 제거, 단가/합계만) ──
 function printRowHTML(item, d){
   const qtype = d.qtype;
-  const qty = item.qty||1;
+  const qty   = item.qty || 1;
   const total = item.unitPrice * qty;
+  const N = v => `<td class="num">${fmtN(v)}</td>`;
+  const T = (v,extra='') => `<td class="txt" ${extra}>${v||'–'}</td>`;
+  const C = v => `<td class="tight">${v}</td>`;
+
   if(qtype==='forklift') return `<tr>
-    <td>${item.no}</td><td>${item.code}</td>
-    <td style="text-align:left">${item.desc}</td>
-    <td style="font-size:10px">${item.spec}</td>
-    <td style="text-align:left;font-size:10px">${item.opts||'–'}</td>
-    <td>${item.ins?'필요':'–'}</td><td>1</td>
-    <td style="text-align:right">${fmtN(item.unitPrice)}</td>
-    <td style="text-align:right;font-weight:700">${fmtN(total)}</td>
+    ${C(item.no)}
+    <td class="tight" style="font-size:9px">${item.code}</td>
+    ${T(item.desc)}
+    ${T(item.spec,'style="font-size:8.5px"')}
+    ${T(item.opts,'style="font-size:8.5px"')}
+    ${C(item.ins?'O':'–')}
+    ${C(1)}
+    ${N(item.unitPrice)}
+    <td class="num" style="font-weight:700">${fmtN(total)}</td>
   </tr>`;
+
   if(qtype==='building') return `<tr>
-    <td>${item.no}</td><td>${item.code}</td>
-    <td style="text-align:left;font-weight:600">${item.desc}</td>
-    <td style="text-align:left;font-size:11px">${item.spec}</td>
-    <td>${item.unit}</td>
-    <td style="text-align:right">${fmtN(item.unitPrice)}</td>
-    <td style="text-align:center">${qty}</td>
-    <td>${item.unit}</td>
-    <td style="text-align:right;font-weight:700">${fmtN(total)}</td>
+    ${C(item.no)}
+    <td class="tight" style="font-size:9px">${item.code}</td>
+    <td class="txt" style="font-weight:600">${item.desc}</td>
+    ${T(item.spec,'style="font-size:8.5px"')}
+    ${C(item.unit)}
+    ${N(item.unitPrice)}
+    ${C(qty)}
+    ${C(item.unit)}
+    <td class="num" style="font-weight:700">${fmtN(total)}</td>
   </tr>`;
+
   if(qtype==='washing') return `<tr>
-    <td>${item.no}</td><td>${item.code}</td>
-    <td style="text-align:left;font-weight:600">${item.desc}</td>
-    <td style="font-size:11px">${item.spec}</td>
-    <td style="font-size:11px">${item.method||'–'}</td>
-    <td>${item.unit}</td>
-    <td style="text-align:right">${fmtN(item.unitPrice)}</td>
-    <td style="text-align:center">${qty}</td>
-    <td style="text-align:right;font-weight:700">${fmtN(total)}</td>
+    ${C(item.no)}
+    <td class="tight" style="font-size:9px">${item.code}</td>
+    <td class="txt" style="font-weight:600">${item.desc}</td>
+    ${T(item.spec,'style="font-size:8.5px"')}
+    ${T(item.method,'style="font-size:8.5px"')}
+    ${C(item.unit)}
+    ${N(item.unitPrice)}
+    ${C(qty)}
+    <td class="num" style="font-weight:700">${fmtN(total)}</td>
   </tr>`;
+
   if(qtype==='manpower') return `<tr>
-    <td>${item.no}</td><td>${item.code}</td>
-    <td style="text-align:left;font-weight:600">${item.desc}</td>
-    <td style="font-size:11px">${item.spec}</td>
-    <td style="font-size:11px">${item.shift||'–'}</td>
-    <td>인/월</td>
-    <td style="text-align:right">${fmtN(item.unitPrice)}</td>
-    <td style="text-align:center">${qty}</td>
-    <td style="text-align:right;font-weight:700">${fmtN(total)}</td>
+    ${C(item.no)}
+    <td class="tight" style="font-size:9px">${item.code}</td>
+    <td class="txt" style="font-weight:600">${item.desc}</td>
+    ${T(item.spec,'style="font-size:8.5px"')}
+    ${C(item.shift||'–')}
+    ${C('인/월')}
+    ${N(item.unitPrice)}
+    ${C(qty)}
+    <td class="num" style="font-weight:700">${fmtN(total)}</td>
   </tr>`;
-  return `<tr><td>${item.no}</td><td>${item.desc}</td><td style="text-align:right">${fmtN(item.unitPrice)}</td><td>${fmtN(total)}</td></tr>`;
+
+  return `<tr>${C(item.no)}${T(item.desc)}${N(item.unitPrice)}${N(total)}</tr>`;
 }
 
 // ── 합계/조건 블록 ──
@@ -1574,8 +1605,8 @@ let pageOrientation = 'portrait';   // 'portrait' | 'landscape'
 
 // 방향별 페이지당 행 수 (여백 축소 반영)
 const ROWS_CFG = {
-  portrait : { first: 24, next: 36 },
-  landscape: { first: 14, next: 22 },
+  portrait : { first: 28, next: 42 },
+  landscape: { first: 16, next: 26 },
 };
 
 function setOrientation(ori){
@@ -1603,11 +1634,12 @@ function buildPages(){
 
   const makeTable = (rowsSlice, isLast, d) => `
     <table class="qt-table">
+      ${colGroup(d.qtype)}
       <thead>${thRow(d)}</thead>
       <tbody>${rowsSlice.map(r=>printRowHTML(r,d)).join('')}</tbody>
       ${isLast?`<tfoot><tr style="background:#dbeafe">
-        <td colspan="${colCount-1}" style="text-align:right;font-weight:700;color:#1a5fad">합 계</td>
-        <td style="text-align:right;font-weight:700;color:#1a5fad">${fmtN(d.supplyTotal)}</td>
+        <td colspan="${colCount-1}" style="text-align:right;font-weight:700;color:#1a5fad;padding-right:6px">합 계</td>
+        <td class="num" style="font-weight:700;color:#1a5fad">${fmtN(d.supplyTotal)}</td>
       </tr></tfoot>`:''}
     </table>`;
 
@@ -1723,7 +1755,7 @@ function exportPDF(){
     doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(138,154,176);
     doc.text(`${cur}`,PW-MR,FOOT_Y,{align:'right'});
     doc.setFontSize(6.5);
-    doc.text(`${co.name||'INSYS GROUP'}  |  견적번호: ${d.qtNo}  |  인시스 그룹 견적 작성 시스템 v3.7`,ML,FOOT_Y);
+    doc.text(`${co.name||'INSYS GROUP'}  |  견적번호: ${d.qtNo}  |  인시스 그룹 견적 작성 시스템 v3.8`,ML,FOOT_Y);
     if(cur>1){
       doc.setFontSize(9);doc.setTextColor(26,95,173);doc.setFont('helvetica','bold');
       doc.text(co.name||'(주)인시스', ML, 8);
@@ -1768,6 +1800,18 @@ function exportPDF(){
     headStyles:{fillColor:[26,95,173],textColor:255,fontStyle:'bold',fontSize:6.5,cellPadding:1.4},
     footStyles:{fillColor:[219,234,254],textColor:[26,64,175],fontStyle:'bold',fontSize:7},
     alternateRowStyles:{fillColor:[249,251,255]},
+    columnStyles: (function(){
+      const w = (QTYPES[d.qtype].printWidths)||[];
+      const st = {};
+      w.forEach((pct,i)=>{
+        st[i] = { cellWidth: CW*pct/100 };
+        // 정렬: 마지막 2열은 우측, 텍스트 열은 좌측, 나머지 중앙
+        if(i>=w.length-2) st[i].halign='right';
+        else if(pct>=15)  st[i].halign='left';
+        else              st[i].halign='center';
+      });
+      return st;
+    })(),
     margin:{left:ML,right:MR,top:12,bottom:10},
     showFoot:'lastPage', showHead:'everyPage',
     didDrawPage:addPageNum,
@@ -1816,7 +1860,7 @@ function exportExcel(){
   const co=d.co;
   const wb=XLSX.utils.book_new();
   const data=[
-    [`인시스 그룹 견적 작성 시스템 v3.7 — ${d.qtypeLabel}`],[''],
+    [`인시스 그룹 견적 작성 시스템 v3.8 — ${d.qtypeLabel}`],[''],
     ['견적번호',d.qtNo,'','발행일',d.qtDate],
     ['발행사',co.name||'–','','대표이사',co.ceo||'–'],
     ['사업자번호',co.bizno||'–','','담당자',co.manager||'–'],
