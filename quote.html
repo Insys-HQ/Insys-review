@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>인시스 그룹 견적 작성 시스템 v3.0</title>
+<title>인시스 그룹 견적 작성 시스템 v3.1</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <!-- Firebase SDK는 body 끝에서 로딩 (타이밍 문제 방지) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -313,7 +313,7 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
       <button class="btn btn-ghost btn-sm" onclick="openCoSelector()" id="nav-co-btn">
         🏢 <span id="nav-co-name">사업자 선택</span>
       </button>
-      <div class="nav-ver">v3.0</div>
+      <div class="nav-ver">v3.1</div>
     </div>
   </div>
 </nav>
@@ -1626,7 +1626,7 @@ function exportPDF(){
     doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(138,154,176);
     doc.text(`${cur}`,PW-MR,292,{align:'right'});
     doc.setFontSize(7);
-    doc.text(`${co.name||'INSYS GROUP'}  |  견적번호: ${d.qtNo}  |  인시스 그룹 견적 작성 시스템 v3.0`,ML,292);
+    doc.text(`${co.name||'INSYS GROUP'}  |  견적번호: ${d.qtNo}  |  인시스 그룹 견적 작성 시스템 v3.1`,ML,292);
     if(cur>1){
       doc.setFontSize(9);doc.setTextColor(26,95,173);doc.setFont('helvetica','bold');
       doc.text(co.name||'(주)인시스', ML, 12);
@@ -1720,7 +1720,7 @@ function exportExcel(){
   const co=d.co;
   const wb=XLSX.utils.book_new();
   const data=[
-    [`인시스 그룹 견적 작성 시스템 v3.0 — ${d.qtypeLabel}`],[''],
+    [`인시스 그룹 견적 작성 시스템 v3.1 — ${d.qtypeLabel}`],[''],
     ['견적번호',d.qtNo,'','발행일',d.qtDate],
     ['발행사',co.name||'–','','대표이사',co.ceo||'–'],
     ['사업자번호',co.bizno||'–','','담당자',co.manager||'–'],
@@ -1943,42 +1943,99 @@ function toast(msg,type='info'){
 }
 </script>
 
-<!-- Firebase SDK: body 끝에서 로딩, 콜백은 인라인으로 직접 처리 -->
+<!-- Firebase SDK: 다중 CDN fallback 동적 로딩 -->
 <script>
-var _fbAppLoaded = false;
-var _fbFSLoaded  = false;
+(function(){
+  var VER = '10.12.0';
+  // CDN 우선순위: gstatic → jsdelivr → unpkg
+  var CDNS = [
+    'https://www.gstatic.com/firebasejs/'+VER+'/',
+    'https://cdn.jsdelivr.net/npm/firebase@'+VER+'/',
+    'https://unpkg.com/firebase@'+VER+'/',
+  ];
+  var cdnIdx = 0;
 
-function onFBLoaded()  { _fbAppLoaded = true; tryInitFirebase(); }
-function onFBFSLoaded(){ _fbFSLoaded  = true; tryInitFirebase(); }
-function onFBError()   { console.error('Firebase App SDK 로딩 실패'); }
-
-function tryInitFirebase() {
-  if (!_fbAppLoaded || !_fbFSLoaded) return;
-  try {
-    if (typeof firebase === 'undefined') throw new Error('firebase 미정의');
-    if (!firebase.apps.length) {
-      firebase.initializeApp({
-        apiKey:            "AIzaSyBYqd2uRr1ZvFLDCWuS15h9qFkT-Dvg5Es",
-        authDomain:        "insys-work.firebaseapp.com",
-        projectId:         "insys-work",
-        storageBucket:     "insys-work.firebasestorage.app",
-        messagingSenderId: "225275784859",
-        appId:             "1:225275784859:web:bd12815c6dc47c0c49e03e"
-      });
-    }
-    db = firebase.firestore();
-    console.log('✅ Firebase 초기화 완료 (insys-work)');
-    loadCompanies();
-    loadMgmt();
-  } catch(e) {
-    console.error('Firebase 초기화 오류:', e.message);
+  function loadScript(url){
+    return new Promise(function(resolve, reject){
+      var s = document.createElement('script');
+      s.src = url;
+      s.async = false;
+      s.onload  = function(){ resolve(url); };
+      s.onerror = function(){ reject(new Error('load fail: '+url)); };
+      document.head.appendChild(s);
+    });
   }
-}
+
+  function tryCDN(){
+    if (cdnIdx >= CDNS.length) {
+      console.error('❌ 모든 Firebase CDN 로딩 실패 — 로컬 모드로 동작합니다.');
+      showFBBanner();
+      // 로컬 모드로 데이터 로드
+      if (typeof loadCompanies === 'function') loadCompanies();
+      if (typeof loadMgmt === 'function') loadMgmt();
+      return;
+    }
+    var base = CDNS[cdnIdx];
+    console.log('Firebase SDK 로딩 시도: ' + base);
+    loadScript(base + 'firebase-app-compat.js')
+      .then(function(){ return loadScript(base + 'firebase-firestore-compat.js'); })
+      .then(function(){ initFB(base); })
+      .catch(function(err){
+        console.warn('CDN 실패 → 다음 CDN 시도:', err.message);
+        cdnIdx++;
+        tryCDN();
+      });
+  }
+
+  function initFB(base){
+    try {
+      if (typeof firebase === 'undefined') throw new Error('firebase 객체 미정의');
+      if (!firebase.apps.length) {
+        firebase.initializeApp({
+          apiKey:            "AIzaSyBYqd2uRr1ZvFLDCWuS15h9qFkT-Dvg5Es",
+          authDomain:        "insys-work.firebaseapp.com",
+          projectId:         "insys-work",
+          storageBucket:     "insys-work.firebasestorage.app",
+          messagingSenderId: "225275784859",
+          appId:             "1:225275784859:web:bd12815c6dc47c0c49e03e"
+        });
+      }
+      db = firebase.firestore();
+      console.log('✅ Firebase 초기화 완료 (insys-work) via ' + base);
+      hideFBBanner();
+      if (typeof loadCompanies === 'function') loadCompanies();
+      if (typeof loadMgmt === 'function') loadMgmt();
+    } catch(e) {
+      console.error('Firebase 초기화 오류:', e.message);
+      cdnIdx++;
+      tryCDN();
+    }
+  }
+
+  function showFBBanner(){
+    if (document.getElementById('fb-offline-banner')) return;
+    var b = document.createElement('div');
+    b.id = 'fb-offline-banner';
+    b.style.cssText = 'position:fixed;bottom:16px;left:16px;z-index:99999;background:#fef3c7;'+
+      'border:1px solid #f59e0b;color:#92400e;padding:10px 16px;border-radius:8px;'+
+      'font-size:13px;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,.15);font-family:"Noto Sans KR",sans-serif';
+    b.innerHTML = '⚠️ Firebase 연결 실패 — <strong>로컬 저장 모드</strong>로 동작 중 ' +
+      '<button onclick="location.reload()" style="margin-left:8px;background:#f59e0b;color:#fff;border:none;'+
+      'padding:3px 10px;border-radius:5px;cursor:pointer;font-family:inherit;font-size:12px">재시도</button>';
+    document.body.appendChild(b);
+  }
+  function hideFBBanner(){
+    var b = document.getElementById('fb-offline-banner');
+    if (b) b.remove();
+  }
+
+  // DOM 준비 후 시작
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', tryCDN);
+  } else {
+    tryCDN();
+  }
+})();
 </script>
-<!-- 함수 선언 완료 후 SDK 로드 → onload 시점에 함수가 반드시 존재 -->
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"
-  onload="onFBLoaded()" onerror="onFBError()"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"
-  onload="onFBFSLoaded()" onerror="onFBError()"></script>
 </body>
 </html>
