@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>인시스 그룹 견적 작성 시스템 v2.0</title>
+<title>인시스 그룹 견적 작성 시스템 v2.1</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
@@ -156,43 +156,80 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
 .co-badge{font-size:11px;background:var(--blue);color:#fff;padding:2px 9px;border-radius:12px}
 
 /* PREVIEW */
-#preview-area{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);
-  z-index:9999;overflow-y:auto;padding:30px}
-.preview-inner{max-width:960px;margin:0 auto;background:#fff;border-radius:14px;
-  overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+/* ── PREVIEW OVERLAY ── */
+#preview-area{display:none;position:fixed;inset:0;background:rgba(0,0,0,.70);
+  z-index:9999;overflow-y:auto;padding:0}
+.preview-wrap{max-width:860px;margin:0 auto;padding:0 0 40px}
 .preview-toolbar{background:linear-gradient(90deg,#0d3d7a,#1a5fad);padding:14px 22px;
-  display:flex;align-items:center;justify-content:space-between}
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:10000;box-shadow:0 2px 12px rgba(0,0,0,.3)}
 .preview-toolbar h3{color:#fff;font-size:15px;font-weight:700}
-.preview-content{padding:44px 52px}
 
-/* QUOTE DOC */
+/* A4 페이지 시뮬레이션 */
+/* A4 = 210mm × 297mm. 96dpi 기준 1mm ≈ 3.7795px → 210mm≈794px, 297mm≈1123px */
+.a4-page{
+  width:794px;min-height:1123px;margin:24px auto 0;
+  background:#fff;box-shadow:0 4px 24px rgba(0,0,0,.25);
+  padding:60px 65px 70px;           /* 상60 좌우65 하70 */
+  position:relative;box-sizing:border-box;
+  page-break-after:always;
+}
+.a4-page:last-child{page-break-after:auto}
+
+/* 페이지 번호 (우측 하단) */
+.page-num{
+  position:absolute;bottom:22px;right:30px;
+  font-size:11px;color:#8a9ab0;font-weight:500;
+  font-family:'Noto Sans KR',sans-serif;
+}
+
+/* QUOTE DOC 공통 요소 */
 .qh{display:flex;justify-content:space-between;align-items:flex-start;
-  margin-bottom:28px;padding-bottom:20px;border-bottom:3px solid var(--blue)}
-.qh-co h1{font-size:20px;font-weight:900;color:var(--blue);margin-bottom:5px}
-.qh-co p{font-size:12px;color:var(--gray);line-height:2}
-.qh-title h2{font-size:28px;font-weight:900;color:#1a2e4a;letter-spacing:-1px;text-align:right}
-.qh-title .qno{font-size:12px;color:var(--gray);margin-top:5px;text-align:right}
-.qmeta{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
-.qm-box{border:1px solid var(--border);border-radius:9px;padding:14px 16px}
-.qm-box h4{font-size:11px;font-weight:700;color:var(--blue);margin-bottom:8px;
+  margin-bottom:20px;padding-bottom:16px;border-bottom:3px solid var(--blue)}
+.qh-co h1{font-size:18px;font-weight:900;color:var(--blue);margin-bottom:4px}
+.qh-co p{font-size:11px;color:var(--gray);line-height:1.9}
+.qh-title h2{font-size:26px;font-weight:900;color:#1a2e4a;letter-spacing:-1px;text-align:right}
+.qh-title .qno{font-size:11px;color:var(--gray);margin-top:4px;text-align:right}
+.qmeta{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px}
+.qm-box{border:1px solid var(--border);border-radius:7px;padding:11px 14px}
+.qm-box h4{font-size:10px;font-weight:700;color:var(--blue);margin-bottom:6px;
   text-transform:uppercase;letter-spacing:.5px}
-.qm-box p{font-size:13px;line-height:2;color:#1e2d3d}
-.qt-table th{background:#1a5fad;color:#fff;font-size:11px;padding:9px 7px}
-.qt-table td{font-size:12px;padding:7px 6px}
-.q-total{background:#f0f4ff;border:2px solid var(--blue);border-radius:9px;
-  padding:16px 22px;margin-top:16px;display:flex;justify-content:flex-end;gap:44px}
+.qm-box p{font-size:12px;line-height:1.9;color:#1e2d3d}
+.qt-table{width:100%;border-collapse:collapse;font-size:11px}
+.qt-table th{background:#1a5fad;color:#fff;font-size:10px;padding:7px 5px;border:1px solid #1048a0}
+.qt-table td{font-size:11px;padding:6px 5px;border:1px solid #dde3ea}
+.qt-table tr:nth-child(even) td{background:#f9fbff}
+.q-total{background:#f0f4ff;border:2px solid var(--blue);border-radius:7px;
+  padding:13px 18px;margin-top:14px;display:flex;justify-content:flex-end;gap:36px}
 .qt-item{text-align:right}
-.qt-item .tl{font-size:12px;color:var(--gray)}
-.qt-item .tv{font-size:17px;font-weight:900;color:#1a2e4a}
-.qt-item .tv.big{font-size:24px;color:var(--blue)}
-.q-cond{margin-top:20px;font-size:12px;color:var(--gray);line-height:2;
-  border-top:1px solid var(--border);padding-top:14px}
-.q-cond h4{font-size:13px;font-weight:700;color:#1a2e4a;margin-bottom:6px}
-.q-sign{display:flex;justify-content:flex-end;margin-top:24px;gap:30px}
-.q-sign-box{text-align:center;border:1px solid var(--border);border-radius:9px;padding:16px 32px}
-.q-sign-box p{font-size:12px;color:var(--gray);margin-bottom:22px}
-.q-sign-box strong{font-size:14px;color:#1a2e4a;display:block;
-  border-top:1px solid var(--border);padding-top:9px}
+.qt-item .tl{font-size:11px;color:var(--gray)}
+.qt-item .tv{font-size:15px;font-weight:900;color:#1a2e4a}
+.qt-item .tv.big{font-size:20px;color:var(--blue)}
+.q-cond{margin-top:16px;font-size:11px;color:var(--gray);line-height:1.9;
+  border-top:1px solid var(--border);padding-top:12px}
+.q-cond h4{font-size:12px;font-weight:700;color:#1a2e4a;margin-bottom:5px}
+.q-sign{display:flex;justify-content:flex-end;margin-top:20px;gap:24px}
+.q-sign-box{text-align:center;border:1px solid var(--border);border-radius:7px;padding:14px 28px}
+.q-sign-box p{font-size:11px;color:var(--gray);margin-bottom:20px}
+.q-sign-box strong{font-size:13px;color:#1a2e4a;display:block;
+  border-top:1px solid var(--border);padding-top:8px}
+
+/* 인쇄/PDF 전용 스타일 */
+@media print{
+  body > *:not(#preview-area){display:none!important}
+  #preview-area{display:block!important;position:static!important;
+    background:none!important;padding:0!important;overflow:visible!important}
+  .preview-toolbar{display:none!important}
+  .preview-wrap{padding:0!important;max-width:none!important}
+  .a4-page{
+    box-shadow:none!important;margin:0!important;
+    page-break-after:always;break-after:page;
+    width:210mm!important;min-height:297mm!important;
+    padding:15mm 17mm 20mm!important;
+  }
+  .a4-page:last-child{page-break-after:auto;break-after:auto}
+  @page{size:A4 portrait;margin:0}
+}
 
 /* RECOMMEND PANEL */
 .rec-panel{background:linear-gradient(135deg,#064e3b,#065f46,#047857);
@@ -240,7 +277,7 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
   .g2,.g3,.g4,.g5{grid-template-columns:1fr}
   .sum-row,.mp-row{grid-template-columns:1fr 1fr}
   .qh{flex-direction:column;gap:12px}
-  .preview-content{padding:22px}
+  .a4-page{width:100%;min-height:auto;padding:24px 20px 40px}
   .qmeta{grid-template-columns:1fr}
 }
 </style>
@@ -266,7 +303,7 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
     <button class="btn btn-ghost btn-sm" onclick="openCoSelector()" id="nav-co-btn">
       🏢 <span id="nav-co-name">사업자 선택</span>
     </button>
-    <div class="nav-ver">v2.0</div>
+    <div class="nav-ver">v2.1</div>
   </div>
 </nav>
 
@@ -599,17 +636,16 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
 
 <!-- PREVIEW -->
 <div id="preview-area">
-  <div class="preview-inner">
-    <div class="preview-toolbar">
-      <h3>📄 견적서 미리보기</h3>
-      <div class="btn-grp">
-        <button class="btn btn-success btn-sm" onclick="exportPDF()">📥 PDF 다운로드</button>
-        <button class="btn btn-warning btn-sm" onclick="exportExcel()">📊 Excel 다운로드</button>
-        <button class="btn btn-ghost btn-sm" onclick="closePreview()">✕ 닫기</button>
-      </div>
+  <div class="preview-toolbar">
+    <h3>📄 견적서 미리보기 — A4 페이지 분리 적용</h3>
+    <div class="btn-grp">
+      <button class="btn btn-success btn-sm" onclick="exportPDF()">📥 PDF 다운로드</button>
+      <button class="btn btn-warning btn-sm" onclick="exportExcel()">📊 Excel 다운로드</button>
+      <button class="btn btn-ghost btn-sm" onclick="window.print()">🖨️ 인쇄</button>
+      <button class="btn btn-ghost btn-sm" onclick="closePreview()">✕ 닫기</button>
     </div>
-    <div class="preview-content" id="quote-doc"></div>
   </div>
+  <div class="preview-wrap" id="quote-doc"></div>
 </div>
 
 <div class="toast-ct" id="toast-ct"></div>
@@ -1006,18 +1042,9 @@ function renderAttached(){
 }
 
 // ── 견적서 HTML 빌드 ──
-function buildQuoteHTML(){
+// ── 견적 데이터 수집 (공용) ──
+function collectQuoteData(){
   const co=currentIssuer||{};
-  const custName=document.getElementById('cust-name').value||'(고객사)';
-  const custContact=document.getElementById('cust-contact').value;
-  const custAddr=document.getElementById('cust-addr').value;
-  const qtTitle=document.getElementById('q-title').value||'견적서';
-  const qtNo=document.getElementById('q-no').value;
-  const qtDate=document.getElementById('q-date').value;
-  const qtValid=document.getElementById('q-valid').value;
-  const qtPayment=document.getElementById('q-payment').value;
-  const qtPeriod=document.getElementById('q-period').value;
-  const qtDelivery=document.getElementById('q-delivery').value;
   const disc=+document.getElementById('mg-disc').value||0;
   let supplyTotal=0;
   const rows=ITEMS.map((item,i)=>{
@@ -1026,61 +1053,94 @@ function buildQuoteHTML(){
     const mp=parseInt(mpTxt.replace(/[^0-9]/g,'')||0);
     const unitPrice=(unitEl.value&&unitEl.value!=='')?+unitEl.value:round100(mp*(1-disc/100));
     supplyTotal+=unitPrice;
-    return `<tr>
-      <td>${item.no}</td><td>${item.code}</td>
-      <td style="text-align:left">${item.zone}</td>
-      <td>${item.type}</td><td>${item.seat}</td>
-      <td>${item.cap}T / ${item.h>0?item.h+'M':'표준'}</td>
-      <td style="text-align:left;font-size:11px">${item.opts||'–'}</td>
-      <td>${item.ins?'필요':'–'}</td><td>1</td>
-      <td style="text-align:right">${fmtN(unitPrice)}</td>
-      <td style="text-align:right;font-weight:700">${fmtN(unitPrice)}</td>
-    </tr>`;
-  }).join('');
+    return {...item, unitPrice};
+  });
   const vat=Math.round(supplyTotal*.1);
-  const grand=supplyTotal+vat;
+  return {
+    co,
+    custName:   document.getElementById('cust-name').value||'(고객사)',
+    custContact:document.getElementById('cust-contact').value,
+    custAddr:   document.getElementById('cust-addr').value,
+    qtTitle:    document.getElementById('q-title').value||'견적서',
+    qtNo:       document.getElementById('q-no').value,
+    qtDate:     document.getElementById('q-date').value,
+    qtValid:    document.getElementById('q-valid').value,
+    qtPayment:  document.getElementById('q-payment').value,
+    qtPeriod:   document.getElementById('q-period').value,
+    qtDelivery: document.getElementById('q-delivery').value,
+    rows, supplyTotal, vat, grand: supplyTotal+vat,
+  };
+}
+
+// ── 공통 헤더 블록 ──
+function headerHTML(d){
   return `
   <div class="qh">
     <div class="qh-co">
-      <h1>${co.name||'(주)인시스'}</h1>
+      <h1>${d.co.name||'(주)인시스'}</h1>
       <p>
-        사업자번호: ${co.bizno||'–'} | 대표이사: ${co.ceo||'–'}<br>
-        주소: ${co.addr||'–'}<br>
-        업태: ${co.biz||'–'} | 종목: ${co.item||'–'}<br>
-        담당: ${co.manager||'–'} | ${co.tel||'–'} | ${co.email||'–'}
+        사업자번호: ${d.co.bizno||'–'} | 대표이사: ${d.co.ceo||'–'}<br>
+        주소: ${d.co.addr||'–'}<br>
+        업태: ${d.co.biz||'–'} | 종목: ${d.co.item||'–'}<br>
+        담당: ${d.co.manager||'–'} | ${d.co.tel||'–'} | ${d.co.email||'–'}
       </p>
     </div>
     <div class="qh-title">
-      <h2>${qtTitle}</h2>
-      <div class="qno">견적번호: <strong>${qtNo}</strong> | 작성일: ${qtDate}</div>
+      <h2>${d.qtTitle}</h2>
+      <div class="qno">견적번호: <strong>${d.qtNo}</strong> | 작성일: ${d.qtDate}</div>
     </div>
   </div>
   <div class="qmeta">
     <div class="qm-box">
       <h4>수신처</h4>
-      <p><strong style="font-size:16px">${custName}</strong> 귀중<br>담당자: ${custContact||'–'}<br>주소: ${custAddr||'–'}</p>
+      <p><strong style="font-size:15px">${d.custName}</strong> 귀중<br>
+      담당자: ${d.custContact||'–'}<br>주소: ${d.custAddr||'–'}</p>
     </div>
     <div class="qm-box">
       <h4>견적 조건</h4>
-      <p>유효기간: <strong>${qtValid}</strong> | 임대기간: <strong>${qtPeriod}</strong><br>
-      결제조건: <strong>${qtPayment}</strong> | 납기: <strong>${qtDelivery||'협의'}</strong></p>
+      <p>유효기간: <strong>${d.qtValid}</strong> | 임대기간: <strong>${d.qtPeriod}</strong><br>
+      결제조건: <strong>${d.qtPayment}</strong> | 납기: <strong>${d.qtDelivery||'협의'}</strong></p>
     </div>
-  </div>
-  <div class="tw">
-    <table class="qt-table">
-      <thead><tr>
-        <th>No</th><th>관리번호</th><th>구역/용도</th><th>동력</th><th>승차형태</th>
-        <th>적재/높이</th><th>주요옵션</th><th>보험</th><th>수량</th>
-        <th>월단가(원)</th><th>월합계(원)</th>
-      </tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
-  </div>
+  </div>`;
+}
+
+// ── 테이블 헤더 행 ──
+const TH_ROW=`<tr>
+  <th style="width:28px">No</th><th style="width:52px">관리번호</th>
+  <th style="min-width:90px">구역/용도</th><th style="width:62px">동력</th>
+  <th style="width:52px">승차형태</th><th style="width:60px">적재/높이</th>
+  <th>주요옵션</th><th style="width:36px">보험</th><th style="width:28px">수량</th>
+  <th style="width:80px">월단가(원)</th><th style="width:80px">월합계(원)</th>
+</tr>`;
+
+// ── 행 HTML ──
+function rowHTML(item){
+  return `<tr>
+    <td>${item.no}</td><td>${item.code}</td>
+    <td style="text-align:left">${item.zone}</td>
+    <td style="font-size:10px">${item.type}</td>
+    <td>${item.seat}</td>
+    <td>${item.cap}T/${item.h>0?item.h+'M':'표준'}</td>
+    <td style="text-align:left;font-size:10px">${item.opts||'–'}</td>
+    <td>${item.ins?'필요':'–'}</td><td>1</td>
+    <td style="text-align:right">${fmtN(item.unitPrice)}</td>
+    <td style="text-align:right;font-weight:700">${fmtN(item.unitPrice)}</td>
+  </tr>`;
+}
+
+// ── 합계 블록 ──
+function totalHTML(d){
+  return `
   <div class="q-total">
-    <div class="qt-item"><div class="tl">공급가 합계 (월)</div><div class="tv">${fmtN(supplyTotal)}원</div></div>
-    <div class="qt-item"><div class="tl">부가세 (10%)</div><div class="tv">${fmtN(vat)}원</div></div>
-    <div class="qt-item"><div class="tl">월 합계 (VAT포함)</div><div class="tv big">${fmtN(grand)}원</div></div>
-  </div>
+    <div class="qt-item"><div class="tl">공급가 합계 (월)</div><div class="tv">${fmtN(d.supplyTotal)}원</div></div>
+    <div class="qt-item"><div class="tl">부가세 (10%)</div><div class="tv">${fmtN(d.vat)}원</div></div>
+    <div class="qt-item"><div class="tl">월 합계 (VAT포함)</div><div class="tv big">${fmtN(d.grand)}원</div></div>
+  </div>`;
+}
+
+// ── 조건/서명 블록 ──
+function condHTML(d){
+  return `
   <div class="q-cond">
     <h4>▶ 임대 조건 및 특기사항</h4>
     1. 임대기간: 기본 5년 / 라인변경 감차 가능 / 별도입찰 없을 경우 자동 1년 연장<br>
@@ -1093,61 +1153,222 @@ function buildQuoteHTML(){
   <div class="q-sign">
     <div class="q-sign-box">
       <p>위와 같이 견적을 제출합니다.</p>
-      <strong>${co.name||'(주)인시스'} 대표이사 ${co.ceo||''} (인)</strong>
+      <strong>${d.co.name||'(주)인시스'} 대표이사 ${d.co.ceo||''} (인)</strong>
     </div>
   </div>`;
 }
 
+// ── A4 페이지 분리 빌드 ──
+// 1페이지: 헤더+메타+표 일부, 2페이지~: 표 이어서, 마지막 페이지: 합계+조건+서명
+const ROWS_PAGE1 = 18;   // 1페이지에 들어가는 행 수 (헤더/메타 고려)
+const ROWS_PER   = 28;   // 2페이지~부터 행 수
+
+function buildPages(){
+  const d = collectQuoteData();
+  const rows = d.rows;
+  const totalPages = Math.ceil(
+    (rows.length - ROWS_PAGE1) <= 0 ? 1 :
+    1 + Math.ceil((rows.length - ROWS_PAGE1) / ROWS_PER)
+  );
+  const pages = [];
+
+  // 페이지 1
+  const p1Rows = rows.slice(0, ROWS_PAGE1);
+  const hasMore = rows.length > ROWS_PAGE1;
+  pages.push(`
+    <div class="a4-page">
+      ${headerHTML(d)}
+      <table class="qt-table">
+        <thead>${TH_ROW}</thead>
+        <tbody>${p1Rows.map(rowHTML).join('')}</tbody>
+        ${!hasMore ? `<tfoot><tr style="background:#dbeafe">
+          <td colspan="9" style="text-align:right;font-weight:700;color:#1a5fad;font-size:11px">합 계</td>
+          <td style="text-align:right;font-weight:700">${fmtN(d.supplyTotal)}</td>
+          <td style="text-align:right;font-weight:700;color:#1a5fad">${fmtN(d.supplyTotal)}</td>
+        </tr></tfoot>` : ''}
+      </table>
+      ${!hasMore ? totalHTML(d)+condHTML(d) : ''}
+      <div class="page-num">${!hasMore?`1 / 1`:`1 / ${totalPages}`}</div>
+    </div>`);
+
+  // 페이지 2 이상
+  if(hasMore){
+    let remaining = rows.slice(ROWS_PAGE1);
+    let pageIdx = 2;
+    while(remaining.length > 0){
+      const chunk = remaining.splice(0, ROWS_PER);
+      const isLast = remaining.length === 0;
+      // 계속 페이지는 헤더 간소화 (견적번호+고객사만)
+      const contHeader=`<div style="display:flex;justify-content:space-between;align-items:center;
+        margin-bottom:12px;padding-bottom:10px;border-bottom:2px solid var(--blue)">
+        <div style="font-size:13px;font-weight:700;color:var(--blue)">${d.co.name||'(주)인시스'}</div>
+        <div style="font-size:12px;color:var(--gray)">견적번호: <strong>${d.qtNo}</strong> | 수신: <strong>${d.custName}</strong> | ${d.qtDate}</div>
+      </div>`;
+      pages.push(`
+        <div class="a4-page">
+          ${contHeader}
+          <table class="qt-table">
+            <thead>${TH_ROW}</thead>
+            <tbody>${chunk.map(rowHTML).join('')}</tbody>
+            ${isLast ? `<tfoot><tr style="background:#dbeafe">
+              <td colspan="9" style="text-align:right;font-weight:700;color:#1a5fad;font-size:11px">합 계</td>
+              <td style="text-align:right;font-weight:700">${fmtN(d.supplyTotal)}</td>
+              <td style="text-align:right;font-weight:700;color:#1a5fad">${fmtN(d.supplyTotal)}</td>
+            </tr></tfoot>` : ''}
+          </table>
+          ${isLast ? totalHTML(d)+condHTML(d) : ''}
+          <div class="page-num">${pageIdx} / ${totalPages}</div>
+        </div>`);
+      pageIdx++;
+    }
+  }
+  return pages.join('');
+}
+
 // ── 미리보기 ──
 function showPreview(){
-  document.getElementById('quote-doc').innerHTML=buildQuoteHTML();
+  document.getElementById('quote-doc').innerHTML = buildPages();
   document.getElementById('preview-area').style.display='block';
+  document.getElementById('preview-area').scrollTop=0;
 }
 function closePreview(){document.getElementById('preview-area').style.display='none';}
 
-// ── PDF 출력 ──
+// ── PDF 출력 (jsPDF autoTable + 페이지 번호) ──
 function exportPDF(){
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-  const co=currentIssuer||{};
-  const custName=document.getElementById('cust-name').value||'고객사';
-  const qtNo=document.getElementById('q-no').value;
-  const qtDate=document.getElementById('q-date').value;
-  const disc=+document.getElementById('mg-disc').value||0;
-  doc.setFont('helvetica'); doc.setFontSize(18);
-  doc.setTextColor(26,95,173);
-  doc.text('FORKLIFT RENTAL QUOTATION', 14, 16);
-  doc.setFontSize(9); doc.setTextColor(90,106,122);
-  doc.text(`${co.name||'Insys'}  BizNo: ${co.bizno||'–'}  Rep: ${co.ceo||'–'}  Manager: ${co.manager||'–'}  Tel: ${co.tel||'–'}`, 14, 22);
-  doc.text(`Client: ${custName}  |  QuoteNo: ${qtNo}  |  Date: ${qtDate}`, 14, 28);
-  doc.line(14,31,196,31);
-  const disc2=disc;
-  let sup=0;
-  const rows=ITEMS.map((item,i)=>{
-    const unitEl=document.getElementById(`c-unit-${i}`);
-    const mpTxt=document.getElementById(`c-mp-${i}`).textContent;
-    const mp=parseInt(mpTxt.replace(/[^0-9]/g,'')||0);
-    const up=(unitEl.value&&unitEl.value!=='')?+unitEl.value:round100(mp*(1-disc2/100));
-    sup+=up;
-    return [item.no,item.code,item.zone.substring(0,12),item.type,item.seat,`${item.cap}T`,item.opts.substring(0,16)||'–',item.ins?'Y':'–','1',fmtN(up),fmtN(up)];
-  });
+  const PW=210, ML=14, MR=14, CW=PW-ML-MR; // 182mm 유효폭
+  const d=collectQuoteData();
+  const co=d.co;
+
+  // ── 페이지당 반복 헤더 (didDrawPage 콜백) ──
+  let totalPageCount=0;
+  const addPageNum=(data)=>{
+    const pageCount=doc.internal.getNumberOfPages();
+    totalPageCount=pageCount;
+    const cur=data.pageNumber;
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(8);
+    doc.setTextColor(138,154,176);
+    // 우측 하단 페이지 번호 (임시: cur / ? → 후처리에서 교체)
+    doc.text(`${cur}`,PW-MR,292,{align:'right'});
+    // 하단 회사명
+    doc.setFontSize(7);
+    doc.text(`${co.name||'INSYS GROUP'}  |  견적번호: ${d.qtNo}  |  인시스 그룹 견적 작성 시스템 v2.1`,ML,292);
+    // 2페이지부터 상단 continuation 헤더
+    if(cur>1){
+      doc.setFontSize(9);doc.setTextColor(26,95,173);doc.setFont('helvetica','bold');
+      doc.text(co.name||'(주)인시스', ML, 12);
+      doc.setFont('helvetica','normal');doc.setTextColor(90,106,122);
+      doc.text(`견적번호: ${d.qtNo}  |  수신: ${d.custName}  |  ${d.qtDate}`, ML+40, 12);
+      doc.line(ML,14,PW-MR,14);
+    }
+  };
+
+  // ── 1페이지 헤더 ──
+  doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(26,95,173);
+  doc.text(d.qtTitle||'FORKLIFT RENTAL QUOTATION', ML, 14);
+  doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(30,45,61);
+  doc.text(`${co.name||'–'}  |  사업자: ${co.bizno||'–'}  |  대표: ${co.ceo||'–'}  |  담당: ${co.manager||'–'}  |  ${co.tel||'–'}`, ML, 21);
+  doc.text(`수신: ${d.custName}  |  담당: ${d.custContact||'–'}  |  주소: ${d.custAddr||'–'}`, ML, 27);
+  doc.setDrawColor(26,95,173);doc.setLineWidth(0.5);doc.line(ML,30,PW-MR,30);
+
+  // 견적조건 박스 (2컬럼)
+  doc.setFontSize(8);doc.setTextColor(90,106,122);
+  doc.text(`견적번호: ${d.qtNo}   작성일: ${d.qtDate}   유효기간: ${d.qtValid}`, ML, 36);
+  doc.text(`임대기간: ${d.qtPeriod}   결제: ${d.qtPayment}   납기: ${d.qtDelivery||'협의'}`, ML, 41);
+  doc.line(ML,43,PW-MR,43);
+
+  // ── 장비 명세 테이블 ──
+  const tableRows=d.rows.map(item=>[
+    item.no, item.code,
+    item.zone.length>14?item.zone.substring(0,14)+'…':item.zone,
+    item.type==='리튬신차'?'리튬신차':'납산중고',
+    item.seat,
+    `${item.cap}T/${item.h>0?item.h+'M':'표준'}`,
+    item.opts.length>18?item.opts.substring(0,18)+'…':(item.opts||'–'),
+    item.ins?'O':'–', '1',
+    fmtN(item.unitPrice),
+    fmtN(item.unitPrice),
+  ]);
+
   doc.autoTable({
-    startY:34,
-    head:[['No','Code','Zone','Type','Seat','Cap','Options','Ins','Qty','Unit','Total']],
-    body:rows,
-    styles:{fontSize:7,cellPadding:1.8},
-    headStyles:{fillColor:[26,95,173],textColor:255,fontStyle:'bold'},
-    alternateRowStyles:{fillColor:[248,250,253]},
-    margin:{left:14,right:14},
+    startY: 45,
+    head:[['No','코드','구역/용도','동력','승차','적재/높이','주요옵션','보험','수량','월단가(원)','월합계(원)']],
+    body: tableRows,
+    foot:[['','','','','','','','','합계','',fmtN(d.supplyTotal)]],
+    styles:        {font:'helvetica',fontSize:7.5,cellPadding:2,valign:'middle',overflow:'linebreak'},
+    headStyles:    {fillColor:[26,95,173],textColor:255,fontStyle:'bold',fontSize:7.5},
+    footStyles:    {fillColor:[219,234,254],textColor:[26,64,175],fontStyle:'bold',fontSize:8},
+    alternateRowStyles:{fillColor:[249,251,255]},
+    columnStyles:{
+      0:{halign:'center',cellWidth:8},
+      1:{halign:'center',cellWidth:14},
+      2:{halign:'left',  cellWidth:30},
+      3:{halign:'center',cellWidth:16},
+      4:{halign:'center',cellWidth:13},
+      5:{halign:'center',cellWidth:16},
+      6:{halign:'left',  cellWidth:30},
+      7:{halign:'center',cellWidth:8},
+      8:{halign:'center',cellWidth:8},
+      9:{halign:'right', cellWidth:19},
+      10:{halign:'right',cellWidth:20},
+    },
+    margin:{left:ML,right:MR,top:18,bottom:16},
+    showFoot:'lastPage',
+    showHead:'everyPage',
+    didDrawPage: addPageNum,
   });
-  const fy=doc.lastAutoTable.finalY+7;
-  const vat=Math.round(sup*.1); const grand=sup+vat;
-  doc.setFontSize(11); doc.setTextColor(26,95,173); doc.setFont('helvetica','bold');
-  doc.text(`Supply: ${fmtN(sup)} KRW  |  VAT: ${fmtN(vat)} KRW  |  TOTAL: ${fmtN(grand)} KRW / Month`,14,fy);
-  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(130,130,130);
-  doc.text(`INSYS GROUP Quotation System v2.0  |  ${new Date().toLocaleDateString('ko-KR')}`,14,fy+8);
-  doc.save(`견적서_${custName}_${qtNo}.pdf`);
-  toast('PDF 다운로드 완료','success');
+
+  // ── 합계 박스 ──
+  let fy=doc.lastAutoTable.finalY+6;
+  // 페이지 넘침 방지
+  if(fy>270){doc.addPage();fy=20;}
+  doc.setFillColor(240,244,255);doc.setDrawColor(26,95,173);doc.setLineWidth(0.5);
+  doc.roundedRect(ML,fy,CW,18,2,2,'FD');
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(26,45,74);
+  doc.text(`공급가: ${fmtN(d.supplyTotal)} 원`, ML+6, fy+6);
+  doc.text(`부가세(10%): ${fmtN(d.vat)} 원`, ML+60, fy+6);
+  doc.setTextColor(26,95,173);doc.setFontSize(11);
+  doc.text(`월 합계 (VAT포함): ${fmtN(d.grand)} 원`, ML+110, fy+6);
+  // 조건
+  doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(90,106,122);
+  const conds=[
+    '1. 임대기간: 기본 5년 / 라인변경 감차 가능 / 별도입찰 없을 경우 자동 1년 연장',
+    '2. 소모품(타이어·배터리) 무상교환 / 부주의 파손 유상수리',
+    '3. 보험: 도급+임대 동시 운영(리튬 8대) 시 대인5천만·대물1억·적재물배상1천만 가입',
+    '4. 상시 AS 체계 구축(창원 서비스센터 운영) / 리튬 8대 신차 / 납산 29대 중고 무관',
+    '5. 본 견적은 유효기간 내에만 유효합니다.',
+  ];
+  let cy=fy+24;
+  if(cy>270){doc.addPage();cy=20;}
+  doc.setTextColor(30,45,61);doc.setFontSize(7.5);
+  conds.forEach(c=>{doc.text(c,ML,cy);cy+=5;});
+  // 서명
+  cy+=4;
+  if(cy>270){doc.addPage();cy=20;}
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(26,45,74);
+  doc.text('위와 같이 견적을 제출합니다.',PW-MR-60,cy,{align:'right'});
+  cy+=6;
+  doc.setDrawColor(200,210,220);doc.setLineWidth(0.3);
+  doc.line(PW-MR-60,cy,PW-MR,cy);
+  cy+=5;
+  doc.setFont('helvetica','normal');doc.setFontSize(8.5);
+  doc.text(`${co.name||'(주)인시스'}  대표이사 ${co.ceo||''}  (인)`,PW-MR,cy,{align:'right'});
+
+  // ── 전체 페이지 수 후처리 (페이지 번호 업데이트) ──
+  const totalPgs=doc.internal.getNumberOfPages();
+  for(let i=1;i<=totalPgs;i++){
+    doc.setPage(i);
+    doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(138,154,176);
+    // 이전에 단순 번호만 찍었으므로 "X / N" 형태로 덮어쓰기
+    doc.setFillColor(255,255,255);
+    doc.rect(PW-MR-14,288,18,6,'F'); // 흰 박스로 가리고
+    doc.text(`${i} / ${totalPgs}`,PW-MR,292,{align:'right'});
+  }
+
+  doc.save(`견적서_${d.custName}_${d.qtNo}.pdf`);
+  toast(`PDF 저장 완료 (총 ${totalPgs}페이지)`, 'success');
 }
 
 // ── Excel 출력 ──
@@ -1160,7 +1381,7 @@ function exportExcel(){
   const wb=XLSX.utils.book_new();
   let sup=0;
   const data=[
-    ['인시스 그룹 견적 작성 시스템 v2.0'],[''],
+    ['인시스 그룹 견적 작성 시스템 v2.1'],[''],
     ['견적번호',qtNo,'','발행일',qtDate],
     ['발행사',co.name||'–','','대표이사',co.ceo||'–'],
     ['사업자번호',co.bizno||'–','','담당자',co.manager||'–'],
@@ -1181,7 +1402,7 @@ function exportExcel(){
   data.push(['','','','','','','','','','부가세(10%)','',vat]);
   data.push(['','','','','','','','','','월합계(VAT포함)','',sup+vat]);
   data.push(['']);
-  data.push(['※ 인시스 그룹 견적 작성 시스템 v2.0 | insys-work Firebase']);
+  data.push(['※ 인시스 그룹 견적 작성 시스템 v2.1 | insys-work Firebase']);
   const ws=XLSX.utils.aoa_to_sheet(data);
   ws['!cols']=[{wch:4},{wch:8},{wch:18},{wch:10},{wch:8},{wch:6},{wch:6},{wch:22},{wch:6},{wch:6},{wch:12},{wch:12}];
   XLSX.utils.book_append_sheet(wb,ws,'견적서');
