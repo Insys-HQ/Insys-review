@@ -1,0 +1,1591 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>세척건조기 통합 시뮬레이터 v1.0 | 인시스 AI혁신 R&D센터</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --pri: #1a4f8a;
+  --pri2: #1565c0;
+  --acc: #0c7a69;
+  --acc2: #00897b;
+  --warn: #e65100;
+  --bg: #f0f4f8;
+  --bg2: #e8edf3;
+  --card: #ffffff;
+  --border: #cfd8e3;
+  --text: #1e2a38;
+  --text2: #4a5568;
+  --text3: #718096;
+  --s-rec: #e3f4fd;
+  --s-auto: #e8f5e9;
+  --s-user: #fff9e6;
+  --s-ro: #f0f4f8;
+  --washer-c: #1565c0;
+  --airknife-c: #00796b;
+  --dryer-c: #6a1b9a;
+  --red: #c62828;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); font-size: 13px; }
+
+/* HEADER */
+.hdr { background: var(--pri); width: 100%; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+.hdr-inner { max-width: 1540px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 52px; }
+.hdr-title { color: #fff; font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+.hdr-badge { background: rgba(255,255,255,0.2); color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 400; }
+.hdr-right { display: flex; align-items: center; gap: 12px; }
+.hdr-dept { color: rgba(255,255,255,0.75); font-size: 11px; }
+
+/* MAIN LAYOUT */
+.main-wrap { max-width: 1540px; margin: 0 auto; padding: 12px 24px 24px; display: grid; grid-template-columns: 480px 1fr; gap: 14px; align-items: start; }
+
+/* LEFT PANEL */
+.left-panel { display: flex; flex-direction: column; gap: 10px; }
+
+/* RIGHT PANEL */
+.right-panel { display: flex; flex-direction: column; gap: 10px; }
+
+/* CARDS */
+.card { background: var(--card); border-radius: 10px; border: 1px solid var(--border); overflow: hidden; }
+.card-hdr { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+.card-hdr h3 { font-size: 13px; font-weight: 700; }
+.card-body { padding: 12px 14px; }
+.sec-tag { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0; }
+.tag-w { background: var(--washer-c); }
+.tag-a { background: var(--airknife-c); }
+.tag-d { background: var(--dryer-c); }
+.tag-g { background: #455a64; }
+.tag-c { background: var(--warn); }
+
+/* SECTION COLOR BORDERS */
+.card.washer { border-top: 3px solid var(--washer-c); }
+.card.airknife { border-top: 3px solid var(--airknife-c); }
+.card.dryer { border-top: 3px solid var(--dryer-c); }
+.card.common { border-top: 3px solid #455a64; }
+.card.conv { border-top: 3px solid var(--warn); }
+
+/* FORM ROWS */
+.f-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px; }
+.f-row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 6px; }
+.f-row4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; margin-bottom: 6px; }
+.f-row1 { margin-bottom: 6px; }
+.f-group { display: flex; flex-direction: column; gap: 3px; }
+.f-label { font-size: 11px; color: var(--text2); font-weight: 500; display: flex; align-items: center; gap: 4px; }
+.f-unit { color: var(--text3); font-weight: 400; font-size: 10px; }
+.f-hint { font-size: 10px; color: var(--text3); margin-top: 1px; }
+
+input[type=number], input[type=text], select {
+  width: 100%; padding: 5px 8px; border: 1px solid var(--border);
+  border-radius: 5px; font-family: 'Noto Sans KR', sans-serif;
+  font-size: 12px; color: var(--text); outline: none;
+  transition: border-color 0.15s;
+}
+input[type=number]:focus, input[type=text]:focus, select:focus { border-color: var(--pri2); }
+input.s-rec { background: var(--s-rec); }
+input.s-auto { background: var(--s-auto); }
+input.s-user { background: var(--s-user); }
+input.s-ro { background: var(--s-ro); }
+input[readonly] { cursor: default; }
+
+/* SLIDER ROW */
+.sv-wrap { margin-bottom: 8px; }
+.sv-label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.sv-label { font-size: 11px; color: var(--text2); font-weight: 500; }
+.sv-val-box { display: flex; align-items: center; gap: 4px; }
+.sv-val-box input { width: 64px; text-align: right; }
+.sv-unit { font-size: 10px; color: var(--text3); }
+.sv-bar-bg { height: 8px; background: #e2e8f0; border-radius: 4px; position: relative; margin-bottom: 3px; }
+.sv-bar-opt { position: absolute; height: 100%; background: rgba(0,180,100,0.18); border-radius: 4px; }
+.sv-bar-fill { position: absolute; height: 100%; border-radius: 4px; transition: width 0.2s; }
+.sv-bar-fill.ok { background: #2e7d32; }
+.sv-bar-fill.low { background: #f9a825; }
+.sv-bar-fill.high { background: #c62828; }
+input[type=range] { width: 100%; accent-color: var(--pri2); height: 4px; cursor: pointer; }
+.sv-state-row { font-size: 10px; color: var(--text3); display: flex; gap: 8px; }
+
+/* CHECKBOX */
+.chk-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; cursor: pointer; }
+.chk-row input[type=checkbox] { width: 15px; height: 15px; accent-color: var(--pri2); cursor: pointer; flex-shrink: 0; }
+.chk-label { font-size: 12px; color: var(--text); font-weight: 500; }
+.chk-sub { font-size: 10px; color: var(--text3); }
+
+/* DIVIDER */
+.div-line { height: 1px; background: var(--border); margin: 8px 0; }
+
+/* CONV LINK */
+.conv-link-box { background: #fff3e0; border: 1px solid #ffb74d; border-radius: 8px; padding: 10px 12px; margin-bottom: 0; }
+.conv-link-title { font-size: 12px; font-weight: 700; color: var(--warn); margin-bottom: 6px; }
+.conv-channels { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; }
+.conv-ch { background: #fff; border: 1px solid #ffe0b2; border-radius: 6px; padding: 8px; text-align: center; }
+.conv-ch-label { font-size: 10px; color: var(--text3); margin-bottom: 4px; }
+.conv-ch input { border-color: #ffb74d; background: #fff8f0; font-weight: 700; text-align: center; }
+
+/* ── RIGHT PANEL ── */
+/* PROCESS FLOW */
+.flow-wrap { display: flex; align-items: center; gap: 0; overflow-x: auto; padding: 4px 0; }
+.flow-box { flex-shrink: 0; background: #f8fafc; border: 2px solid var(--border); border-radius: 8px; padding: 10px 14px; text-align: center; min-width: 110px; }
+.flow-box.w { border-color: var(--washer-c); background: #e8f0fe; }
+.flow-box.a { border-color: var(--airknife-c); background: #e0f2f1; }
+.flow-box.d { border-color: var(--dryer-c); background: #f3e5f5; }
+.flow-icon { font-size: 22px; }
+.flow-name { font-size: 11px; font-weight: 700; color: var(--text); margin: 2px 0; }
+.flow-stat { font-size: 10px; color: var(--text3); }
+.flow-stat.ok { color: #2e7d32; font-weight: 600; }
+.flow-stat.warn { color: var(--warn); font-weight: 600; }
+.flow-arrow { font-size: 18px; color: var(--border); padding: 0 4px; flex-shrink: 0; }
+
+/* KPI CARDS */
+.kpi-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+.kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; text-align: center; }
+.kpi-card.w { border-top: 3px solid var(--washer-c); }
+.kpi-card.a { border-top: 3px solid var(--airknife-c); }
+.kpi-card.d { border-top: 3px solid var(--dryer-c); }
+.kpi-label { font-size: 10px; color: var(--text3); margin-bottom: 3px; }
+.kpi-val { font-size: 20px; font-weight: 700; color: var(--text); line-height: 1.1; }
+.kpi-unit { font-size: 11px; color: var(--text3); font-weight: 400; }
+.kpi-sub { font-size: 10px; color: var(--text3); margin-top: 2px; }
+
+/* SUMMARY TABLE */
+.sum-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.sum-table th { background: #eef2f7; color: var(--text); font-weight: 600; padding: 6px 10px; text-align: left; border-bottom: 2px solid var(--border); font-size: 11px; }
+.sum-table td { padding: 6px 10px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+.sum-table tr:last-child td { border-bottom: none; }
+.sum-table .total-row td { background: #f8fafc; font-weight: 700; }
+.sum-table .total-row.highlight td { background: #e3f0ff; color: var(--pri); }
+.badge-w { background: #dbeafe; color: var(--washer-c); padding: 2px 7px; border-radius: 10px; font-size: 10px; font-weight: 600; }
+.badge-a { background: #d1fae5; color: var(--acc); padding: 2px 7px; border-radius: 10px; font-size: 10px; font-weight: 600; }
+.badge-d { background: #ede9fe; color: var(--dryer-c); padding: 2px 7px; border-radius: 10px; font-size: 10px; font-weight: 600; }
+.val-num { font-weight: 600; color: var(--text); }
+.val-hi { color: var(--pri2); font-weight: 700; }
+
+/* MOTOR TABLE */
+.motor-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.motor-table th { background: #fff3e0; color: #5d4037; font-weight: 600; padding: 6px 10px; font-size: 11px; border-bottom: 2px solid #ffcc80; }
+.motor-table td { padding: 6px 10px; border-bottom: 1px solid #fff3e0; }
+.motor-table tr:last-child td { border-bottom: none; }
+.motor-rec { background: #fff9c4; color: #5d4037; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; }
+
+/* MONTHLY COST */
+.cost-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 8px; }
+.cost-item { background: #f8fafc; border: 1px solid var(--border); border-radius: 7px; padding: 10px; }
+.cost-label { font-size: 10px; color: var(--text3); margin-bottom: 3px; }
+.cost-val { font-size: 16px; font-weight: 700; color: var(--text); }
+.cost-unit { font-size: 11px; color: var(--text3); }
+.cost-total { background: linear-gradient(135deg,#1a4f8a,#1565c0); color: #fff; border-radius: 8px; padding: 12px; text-align: center; grid-column: 1/-1; }
+.cost-total-label { font-size: 11px; opacity: 0.8; margin-bottom: 4px; }
+.cost-total-val { font-size: 24px; font-weight: 700; }
+
+/* PARTS TABLE */
+.parts-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.parts-table th { background: #eef2f7; color: var(--text); font-weight: 600; padding: 5px 8px; font-size: 11px; border-bottom: 2px solid var(--border); }
+.parts-table td { padding: 5px 8px; border-bottom: 1px solid #f4f4f4; }
+.parts-table tr:last-child td { border-bottom: none; }
+
+/* BAR CHART */
+.bar-chart { margin-top: 6px; }
+.bar-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+.bar-name { font-size: 11px; color: var(--text2); width: 90px; flex-shrink: 0; text-align: right; }
+.bar-track { flex: 1; height: 14px; background: #e2e8f0; border-radius: 3px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; display: flex; align-items: center; padding-left: 4px; }
+.bar-text { font-size: 10px; color: #fff; font-weight: 600; white-space: nowrap; }
+.bar-val { font-size: 11px; color: var(--text); font-weight: 600; width: 70px; flex-shrink: 0; }
+
+/* ALERT */
+.alert { border-radius: 6px; padding: 8px 12px; font-size: 11px; margin-bottom: 8px; }
+.alert-warn { background: #fff3e0; border: 1px solid #ffcc80; color: #e65100; }
+.alert-ok { background: #e8f5e9; border: 1px solid #a5d6a7; color: #2e7d32; }
+.alert-info { background: #e3f4fd; border: 1px solid #90caf9; color: #1565c0; }
+
+/* SECTION HEADER ROW */
+.sec-hdr-row { display: flex; align-items: center; gap: 6px; padding: 0 0 6px 0; }
+.sec-hdr-row h4 { font-size: 12px; font-weight: 700; color: var(--text); }
+.req-chk { font-size: 10px; color: var(--text3); display: flex; align-items: center; gap: 3px; margin-left: auto; }
+.req-chk input { width: 13px; height: 13px; }
+
+/* TOGGLE APPLY */
+.apply-row { display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; margin-bottom: 6px; }
+.apply-row label { font-size: 11px; color: var(--text2); font-weight: 500; cursor: pointer; }
+.toggle { position: relative; display: inline-block; width: 34px; height: 18px; }
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-sl { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #ccc; border-radius: 18px; transition: 0.3s; }
+.toggle-sl:before { position: absolute; content: ""; height: 13px; width: 13px; left: 2px; bottom: 2px; background: white; border-radius: 50%; transition: 0.3s; }
+.toggle input:checked + .toggle-sl { background: var(--pri2); }
+.toggle input:checked + .toggle-sl:before { transform: translateX(16px); }
+
+/* MOBILE / RESPONSIVE */
+@media (max-width: 1100px) {
+  .main-wrap { grid-template-columns: 1fr; }
+  .kpi-grid { grid-template-columns: repeat(3,1fr); }
+}
+@media (max-width: 640px) {
+  .main-wrap { padding: 8px 10px 16px; gap: 8px; }
+  .hdr-inner { padding: 0 10px; }
+  .kpi-grid { grid-template-columns: 1fr 1fr; }
+  .cost-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-inner">
+    <div class="hdr-title">
+      🏭 세척건조기 통합 시뮬레이터
+      <span class="hdr-badge">v1.0</span>
+    </div>
+    <div class="hdr-right">
+      <span class="hdr-dept">인시스 AI혁신 R&D센터</span>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main-wrap">
+
+  <!-- ==================== LEFT PANEL ==================== -->
+  <div class="left-panel">
+
+    <!-- A. 기본 공통 정보 -->
+    <div class="card common">
+      <div class="card-hdr">
+        <span class="sec-tag tag-g">A</span>
+        <h3>기본 공통 정보</h3>
+      </div>
+      <div class="card-body">
+        <div class="f-row">
+          <div class="f-group">
+            <label class="f-label">피처리물 종류</label>
+            <select id="itype" onchange="triggerSim()">
+              <option value="box">박스</option>
+              <option value="tray" selected>트레이</option>
+            </select>
+          </div>
+          <div class="f-group">
+            <label class="f-label">채널 수</label>
+            <select id="ch_count" onchange="triggerSim()">
+              <option value="1" selected>1채널</option>
+              <option value="2">2채널</option>
+            </select>
+          </div>
+        </div>
+        <div class="f-row3">
+          <div class="f-group">
+            <label class="f-label">가로 W <span class="f-unit">mm</span></label>
+            <input type="number" id="iW" value="400" min="100" max="2000" class="s-user" oninput="triggerSim()">
+          </div>
+          <div class="f-group">
+            <label class="f-label">세로 L <span class="f-unit">mm</span></label>
+            <input type="number" id="iL" value="600" min="100" max="2000" class="s-user" oninput="triggerSim()">
+          </div>
+          <div class="f-group">
+            <label class="f-label">높이 H <span class="f-unit">mm</span></label>
+            <input type="number" id="iH" value="150" min="5" max="500" class="s-user" oninput="triggerSim()">
+          </div>
+        </div>
+        <div class="f-row">
+          <div class="f-group">
+            <label class="f-label">목표 처리량 <span class="f-unit">개/h</span></label>
+            <input type="number" id="iqty" value="200" min="10" max="5000" class="s-user" oninput="triggerSim()">
+          </div>
+          <div class="f-group">
+            <label class="f-label">오염도</label>
+            <select id="dlv" onchange="triggerSim()">
+              <option value="0">① 경미</option>
+              <option value="1">② 보통</option>
+              <option value="2" selected>③ 중간</option>
+              <option value="3">④ 심함</option>
+              <option value="4">⑤ 극심</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- B. 세척기 -->
+    <div class="card washer">
+      <div class="card-hdr">
+        <span class="sec-tag tag-w">B</span>
+        <h3>세척기 설계</h3>
+        <div style="margin-left:auto; display:flex; align-items:center; gap:6px;">
+          <label class="toggle" title="세척기 적용 여부">
+            <input type="checkbox" id="apply_washer" checked onchange="triggerSim()">
+            <span class="toggle-sl"></span>
+          </label>
+          <span style="font-size:11px;color:var(--text3)">적용</span>
+        </div>
+      </div>
+      <div class="card-body" id="washer_body">
+        <div class="f-row">
+          <div class="f-group">
+            <label class="f-label">세척 단수</label>
+            <select id="zcnt" onchange="triggerSim()">
+              <option value="1">1단</option>
+              <option value="2">2단</option>
+              <option value="3">3단</option>
+              <option value="4" selected>4단</option>
+            </select>
+          </div>
+          <div class="f-group">
+            <label class="f-label">투입 방식</label>
+            <select id="fmode" onchange="triggerSim()">
+              <option value="1" selected>1열</option>
+              <option value="2">2열 (격벽)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 슬라이더: 분사압 -->
+        <div class="sv-wrap">
+          <div class="sv-label-row">
+            <span class="sv-label">분사압</span>
+            <div class="sv-val-box">
+              <input type="number" id="nPress" value="200" min="50" max="500" class="s-user" oninput="svSync('nPress',50,500);triggerSim()">
+              <span class="sv-unit">kPa</span>
+            </div>
+          </div>
+          <div class="sv-bar-bg">
+            <div class="sv-bar-opt" id="opt_nPress" style="left:25%;width:35%"></div>
+            <div class="sv-bar-fill" id="fill_nPress"></div>
+          </div>
+          <input type="range" id="rng_nPress" min="50" max="500" value="200" oninput="svRngSync('nPress',50,500);triggerSim()">
+          <div class="sv-state-row"><span id="state_nPress">최적: 150~280kPa</span></div>
+        </div>
+
+        <!-- 슬라이더: 세척 온도 -->
+        <div class="sv-wrap">
+          <div class="sv-label-row">
+            <span class="sv-label">세척 온도</span>
+            <div class="sv-val-box">
+              <input type="number" id="nTemp" value="60" min="20" max="90" class="s-user" oninput="svSync('nTemp',20,90);triggerSim()">
+              <span class="sv-unit">°C</span>
+            </div>
+          </div>
+          <div class="sv-bar-bg">
+            <div class="sv-bar-opt" id="opt_nTemp" style="left:35%;width:40%"></div>
+            <div class="sv-bar-fill" id="fill_nTemp"></div>
+          </div>
+          <input type="range" id="rng_nTemp" min="20" max="90" value="60" oninput="svRngSync('nTemp',20,90);triggerSim()">
+          <div class="sv-state-row"><span id="state_nTemp">최적: 50~80°C</span></div>
+        </div>
+
+        <!-- 슬라이더: 노즐 홀직경 -->
+        <div class="sv-wrap">
+          <div class="sv-label-row">
+            <span class="sv-label">노즐 홀직경</span>
+            <div class="sv-val-box">
+              <input type="number" id="nHole" value="2.5" min="1.0" max="5.0" step="0.1" class="s-user" oninput="svSync('nHole',1.0,5.0);triggerSim()">
+              <span class="sv-unit">mm</span>
+            </div>
+          </div>
+          <div class="sv-bar-bg">
+            <div class="sv-bar-opt" id="opt_nHole" style="left:18%;width:45%"></div>
+            <div class="sv-bar-fill" id="fill_nHole"></div>
+          </div>
+          <input type="range" id="rng_nHole" min="10" max="50" value="25" oninput="svRngSync10x('nHole',1.0,5.0);triggerSim()">
+          <div class="sv-state-row"><span id="state_nHole">최적: 1.8~3.0mm</span></div>
+        </div>
+
+        <div class="f-row">
+          <div class="f-group">
+            <label class="f-label">펌프 효율 <span class="f-unit">%</span></label>
+            <input type="number" id="pEff" value="75" min="50" max="95" class="s-rec" oninput="triggerSim()">
+          </div>
+          <div class="f-group">
+            <label class="f-label">세척조 길이 <span class="f-unit">mm/단</span></label>
+            <input type="number" id="zlen" value="1200" min="500" max="3000" class="s-user" oninput="triggerSim()">
+          </div>
+        </div>
+        <div class="f-row">
+          <div class="f-group">
+            <label class="f-label">세척조 폭 <span class="f-unit">mm</span></label>
+            <input type="number" id="zwid" value="600" min="200" max="2000" class="s-auto" readonly>
+            <span class="f-hint">W + 200mm 자동</span>
+          </div>
+          <div class="f-group">
+            <label class="f-label">세척조 깊이 <span class="f-unit">mm</span></label>
+            <input type="number" id="zdep" value="500" min="200" max="1500" class="s-user" oninput="triggerSim()">
+          </div>
+        </div>
+        <div class="apply-row">
+          <label for="detUse">🧴 세척제 사용</label>
+          <label class="toggle">
+            <input type="checkbox" id="detUse" onchange="toggleDet()">
+            <span class="toggle-sl"></span>
+          </label>
+        </div>
+        <div id="det_row" style="display:none">
+          <div class="sv-wrap">
+            <div class="sv-label-row">
+              <span class="sv-label">세척제 농도</span>
+              <div class="sv-val-box">
+                <input type="number" id="det" value="5" min="0" max="20" class="s-user" oninput="svSync('det',0,20);triggerSim()">
+                <span class="sv-unit">%</span>
+              </div>
+            </div>
+            <div class="sv-bar-bg">
+              <div class="sv-bar-opt" id="opt_det" style="left:15%;width:50%"></div>
+              <div class="sv-bar-fill" id="fill_det"></div>
+            </div>
+            <input type="range" id="rng_det" min="0" max="20" value="5" oninput="svRngSync('det',0,20);triggerSim()">
+            <div class="sv-state-row"><span id="state_det">최적: 3~10%</span></div>
+          </div>
+        </div>
+        <div class="f-row">
+          <div class="f-group">
+            <label class="f-label">물 단가 <span class="f-unit">원/m³</span></label>
+            <input type="number" id="waterPrice" value="1200" min="100" max="5000" class="s-user" oninput="triggerSim()">
+          </div>
+          <div class="f-group">
+            <label class="f-label">전기 단가 <span class="f-unit">원/kWh</span></label>
+            <input type="number" id="elecPrice" value="120" min="50" max="500" class="s-user" oninput="triggerSim()">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- C. 에어나이프 -->
+    <div class="card airknife">
+      <div class="card-hdr">
+        <span class="sec-tag tag-a">C</span>
+        <h3>에어나이프 건조</h3>
+        <div style="margin-left:auto; display:flex; align-items:center; gap:6px;">
+          <label class="toggle">
+            <input type="checkbox" id="apply_ak" checked onchange="triggerSim()">
+            <span class="toggle-sl"></span>
+          </label>
+          <span style="font-size:11px;color:var(--text3)">적용</span>
+        </div>
+      </div>
+      <div class="card-body" id="ak_body">
+        <div class="f-row">
+          <div class="f-group">
+            <label class="f-label">단수</label>
+            <select id="ak_stages" onchange="triggerSim()">
+              <option value="1">1단</option>
+              <option value="2" selected>2단</option>
+              <option value="3">3단</option>
+              <option value="4">4단</option>
+              <option value="6">6단</option>
+            </select>
+          </div>
+          <div class="f-group">
+            <label class="f-label">설치 면</label>
+            <select id="ak_pos" onchange="triggerSim()">
+              <option value="both" selected>양면</option>
+              <option value="one">단면</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 슬라이더: 슬릿 간격 -->
+        <div class="sv-wrap">
+          <div class="sv-label-row">
+            <span class="sv-label">슬릿 간격</span>
+            <div class="sv-val-box">
+              <input type="number" id="slit_gap" value="1.0" min="0.5" max="5.0" step="0.1" class="s-user" oninput="svSync10x('slit_gap',0.5,5.0);triggerSim()">
+              <span class="sv-unit">mm</span>
+            </div>
+          </div>
+          <div class="sv-bar-bg">
+            <div class="sv-bar-opt" id="opt_slit_gap" style="left:0%;width:20%"></div>
+            <div class="sv-bar-fill" id="fill_slit_gap"></div>
+          </div>
+          <input type="range" id="rng_slit_gap" min="5" max="50" value="10" oninput="svRngSync10x2('slit_gap',0.5,5.0);triggerSim()">
+          <div class="sv-state-row"><span id="state_slit_gap">최적: ≤1.0mm</span></div>
+        </div>
+
+        <!-- 슬라이더: 스윕각 -->
+        <div class="sv-wrap">
+          <div class="sv-label-row">
+            <span class="sv-label">스윕각 θ₁</span>
+            <div class="sv-val-box">
+              <input type="number" id="angle_sweep" value="20" min="0" max="30" class="s-user" oninput="svSync('angle_sweep',0,30);triggerSim()">
+              <span class="sv-unit">°</span>
+            </div>
+          </div>
+          <div class="sv-bar-bg">
+            <div class="sv-bar-opt" id="opt_angle_sweep" style="left:50%;width:33%"></div>
+            <div class="sv-bar-fill" id="fill_angle_sweep"></div>
+          </div>
+          <input type="range" id="rng_angle_sweep" min="0" max="30" value="20" oninput="svRngSync('angle_sweep',0,30);triggerSim()">
+          <div class="sv-state-row"><span id="state_angle_sweep">최적: 15~25°</span></div>
+        </div>
+
+        <!-- 슬라이더: 분사각 -->
+        <div class="sv-wrap">
+          <div class="sv-label-row">
+            <span class="sv-label">분사각 θ₂</span>
+            <div class="sv-val-box">
+              <input type="number" id="angle_slit" value="35" min="0" max="60" class="s-user" oninput="svSync('angle_slit',0,60);triggerSim()">
+              <span class="sv-unit">°</span>
+            </div>
+          </div>
+          <div class="sv-bar-bg">
+            <div class="sv-bar-opt" id="opt_angle_slit" style="left:33%;width:25%"></div>
+            <div class="sv-bar-fill" id="fill_angle_slit"></div>
+          </div>
+          <input type="range" id="rng_angle_slit" min="0" max="60" value="35" oninput="svRngSync('angle_slit',0,60);triggerSim()">
+          <div class="sv-state-row"><span id="state_angle_slit">최적: 25~45°</span></div>
+        </div>
+
+        <!-- 슬라이더: AK-거리 -->
+        <div class="sv-wrap">
+          <div class="sv-label-row">
+            <span class="sv-label">AK-트레이 거리</span>
+            <div class="sv-val-box">
+              <input type="number" id="ak_dist" value="40" min="10" max="200" class="s-user" oninput="svSync('ak_dist',10,200);triggerSim()">
+              <span class="sv-unit">mm</span>
+            </div>
+          </div>
+          <div class="sv-bar-bg">
+            <div class="sv-bar-opt" id="opt_ak_dist" style="left:5%;width:26%"></div>
+            <div class="sv-bar-fill" id="fill_ak_dist"></div>
+          </div>
+          <input type="range" id="rng_ak_dist" min="10" max="200" value="40" oninput="svRngSync('ak_dist',10,200);triggerSim()">
+          <div class="sv-state-row"><span id="state_ak_dist">최적: 20~60mm</span></div>
+        </div>
+
+        <div class="f-row">
+          <div class="f-group">
+            <label class="f-label">브로어 마력 <span class="f-unit">HP</span></label>
+            <select id="blower_hp" onchange="triggerSim()">
+              <option value="0.5">0.5 HP</option>
+              <option value="1">1 HP</option>
+              <option value="2">2 HP</option>
+              <option value="3" selected>3 HP</option>
+              <option value="5">5 HP</option>
+              <option value="7.5">7.5 HP</option>
+              <option value="10">10 HP</option>
+              <option value="15">15 HP</option>
+            </select>
+          </div>
+          <div class="f-group">
+            <label class="f-label">면당 브로어 수 <span class="f-unit">대/면</span></label>
+            <select id="blower_per_face" onchange="triggerSim()">
+              <option value="1" selected>1대</option>
+              <option value="2">2대</option>
+              <option value="3">3대</option>
+            </select>
+          </div>
+        </div>
+        <div class="f-group f-row1">
+          <label class="f-label">초기 물기량 <span class="f-unit">g/개</span></label>
+          <input type="number" id="init_water" value="80" min="1" max="2000" class="s-user" oninput="triggerSim()">
+          <span class="f-hint">세척 후 잔류 수분량</span>
+        </div>
+        <div class="f-group f-row1">
+          <label class="f-label">AK 후 목표 잔류 물기 <span class="f-unit">g/개</span></label>
+          <input type="number" id="target_water" value="20" min="0" max="500" class="s-user" oninput="triggerSim()">
+        </div>
+      </div>
+    </div>
+
+    <!-- D. 최종건조기 -->
+    <div class="card dryer">
+      <div class="card-hdr">
+        <span class="sec-tag tag-d">D</span>
+        <h3>최종 건조기 (시로코팬)</h3>
+        <div style="margin-left:auto; display:flex; align-items:center; gap:6px;">
+          <label class="toggle">
+            <input type="checkbox" id="apply_dryer" checked onchange="triggerSim()">
+            <span class="toggle-sl"></span>
+          </label>
+          <span style="font-size:11px;color:var(--text3)">적용</span>
+        </div>
+      </div>
+      <div class="card-body" id="dryer_body">
+        <div class="f-row3">
+          <div class="f-group">
+            <label class="f-label">길이 L <span class="f-unit">mm</span></label>
+            <input type="number" id="dry_len" value="4000" min="500" max="15000" class="s-user" oninput="triggerSim()">
+          </div>
+          <div class="f-group">
+            <label class="f-label">폭 W <span class="f-unit">mm</span></label>
+            <input type="number" id="dry_wid" value="800" min="300" max="3000" class="s-user" oninput="triggerSim()">
+          </div>
+          <div class="f-group">
+            <label class="f-label">높이 H <span class="f-unit">mm</span></label>
+            <input type="number" id="dry_hgt" value="600" min="200" max="2000" class="s-user" oninput="triggerSim()">
+          </div>
+        </div>
+
+        <!-- 슬라이더: 건조 온도 -->
+        <div class="sv-wrap">
+          <div class="sv-label-row">
+            <span class="sv-label">건조 온도</span>
+            <div class="sv-val-box">
+              <input type="number" id="dry_temp" value="60" min="30" max="100" class="s-user" oninput="svSync('dry_temp',30,100);triggerSim()">
+              <span class="sv-unit">°C</span>
+            </div>
+          </div>
+          <div class="sv-bar-bg">
+            <div class="sv-bar-opt" id="opt_dry_temp" style="left:27%;width:43%"></div>
+            <div class="sv-bar-fill" id="fill_dry_temp"></div>
+          </div>
+          <input type="range" id="rng_dry_temp" min="30" max="100" value="60" oninput="svRngSync('dry_temp',30,100);triggerSim()">
+          <div class="sv-state-row"><span id="state_dry_temp">최적: 50~80°C</span></div>
+        </div>
+
+        <div class="f-row">
+          <div class="f-group">
+            <label class="f-label">시로코팬 대수</label>
+            <select id="fan_cnt" onchange="triggerSim()">
+              <option value="1">1대</option>
+              <option value="2">2대</option>
+              <option value="3" selected>3대</option>
+              <option value="4">4대</option>
+              <option value="6">6대</option>
+            </select>
+          </div>
+          <div class="f-group">
+            <label class="f-label">내부 순환</label>
+            <select id="dry_circ" onchange="triggerSim()">
+              <option value="0">비순환</option>
+              <option value="50" selected>50% 순환</option>
+              <option value="100">전량 순환</option>
+            </select>
+          </div>
+        </div>
+        <div class="f-row">
+          <div class="f-group">
+            <label class="f-label">히터 용량 <span class="f-unit">kW</span></label>
+            <input type="number" id="dry_heat" value="30" min="1" max="200" class="s-user" oninput="triggerSim()">
+          </div>
+          <div class="f-group">
+            <label class="f-label">제습기 용량 <span class="f-unit">L/h</span></label>
+            <input type="number" id="dry_dehum" value="20" min="0" max="200" class="s-user" oninput="triggerSim()">
+            <span class="f-hint">0 = 미사용</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- E. 가동 조건 + 컨베이어 연동 -->
+    <div class="card conv">
+      <div class="card-hdr">
+        <span class="sec-tag tag-c">E</span>
+        <h3>가동 조건 &amp; 컨베이어 연동</h3>
+      </div>
+      <div class="card-body">
+        <div class="f-row">
+          <div class="f-group">
+            <label class="f-label">일 가동 시간 <span class="f-unit">h</span></label>
+            <input type="number" id="op_hours" value="8" min="1" max="24" class="s-user" oninput="triggerSim()">
+          </div>
+          <div class="f-group">
+            <label class="f-label">월 가동 일수 <span class="f-unit">일</span></label>
+            <input type="number" id="op_days" value="22" min="1" max="31" class="s-user" oninput="triggerSim()">
+          </div>
+        </div>
+
+        <div class="div-line"></div>
+        <div class="conv-link-box">
+          <div class="conv-link-title">🔗 컨베이어 속도 연동</div>
+          <div class="chk-row" style="margin-bottom:8px;">
+            <input type="checkbox" id="conv_link" checked onchange="toggleConvLink()">
+            <label for="conv_link" class="chk-label">3개 구간 속도 연동</label>
+            <span class="chk-sub">— 체크 시 하나 변경 → 전체 동기화</span>
+          </div>
+          <div class="conv-channels">
+            <div class="conv-ch">
+              <div class="conv-ch-label">🔵 세척기</div>
+              <input type="number" id="cspd_w" value="2.0" min="0.5" max="15" step="0.1" class="s-user" oninput="onConvChange('w')">
+              <div class="conv-ch-label" style="margin-top:3px;">m/min</div>
+            </div>
+            <div class="conv-ch">
+              <div class="conv-ch-label">🟢 에어나이프</div>
+              <input type="number" id="cspd_a" value="2.0" min="0.5" max="15" step="0.1" class="s-user" oninput="onConvChange('a')">
+              <div class="conv-ch-label" style="margin-top:3px;">m/min</div>
+            </div>
+            <div class="conv-ch">
+              <div class="conv-ch-label">🟣 건조기</div>
+              <input type="number" id="cspd_d" value="2.0" min="0.5" max="15" step="0.1" class="s-user" oninput="onConvChange('d')">
+              <div class="conv-ch-label" style="margin-top:3px;">m/min</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /left-panel -->
+
+  <!-- ==================== RIGHT PANEL ==================== -->
+  <div class="right-panel">
+
+    <!-- 공정 흐름도 -->
+    <div class="card">
+      <div class="card-hdr"><h3>📊 공정 흐름도</h3></div>
+      <div class="card-body">
+        <div class="flow-wrap">
+          <div class="flow-box">
+            <div class="flow-icon">📦</div>
+            <div class="flow-name">피처리물 투입</div>
+            <div class="flow-stat" id="flow_input">-</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box w" id="flow_box_w">
+            <div class="flow-icon">🚿</div>
+            <div class="flow-name">세척기</div>
+            <div class="flow-stat" id="flow_w_stat">-</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box a" id="flow_box_a">
+            <div class="flow-icon">💨</div>
+            <div class="flow-name">에어나이프</div>
+            <div class="flow-stat" id="flow_a_stat">-</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box d" id="flow_box_d">
+            <div class="flow-icon">🌀</div>
+            <div class="flow-name">건조기</div>
+            <div class="flow-stat" id="flow_d_stat">-</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box">
+            <div class="flow-icon">✅</div>
+            <div class="flow-name">완료</div>
+            <div class="flow-stat ok" id="flow_out">-</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPI 카드 -->
+    <div class="card">
+      <div class="card-hdr"><h3>📈 단위별 핵심 지표</h3></div>
+      <div class="card-body">
+        <div class="kpi-grid">
+          <div class="kpi-card w">
+            <div class="kpi-label">세척율</div>
+            <div class="kpi-val"><span id="kpi_clean">--</span><span class="kpi-unit">%</span></div>
+            <div class="kpi-sub" id="kpi_clean_sub">-</div>
+          </div>
+          <div class="kpi-card a">
+            <div class="kpi-label">AK 물기 제거율</div>
+            <div class="kpi-val"><span id="kpi_ak">--</span><span class="kpi-unit">%</span></div>
+            <div class="kpi-sub" id="kpi_ak_sub">-</div>
+          </div>
+          <div class="kpi-card d">
+            <div class="kpi-label">건조 처리량</div>
+            <div class="kpi-val"><span id="kpi_dry">--</span><span class="kpi-unit">개/h</span></div>
+            <div class="kpi-sub" id="kpi_dry_sub">-</div>
+          </div>
+          <div class="kpi-card w">
+            <div class="kpi-label">세척 체류시간</div>
+            <div class="kpi-val"><span id="kpi_dwell">--</span><span class="kpi-unit">s</span></div>
+            <div class="kpi-sub">목표 ≥30s</div>
+          </div>
+          <div class="kpi-card a">
+            <div class="kpi-label">AK 후 잔류 물기</div>
+            <div class="kpi-val"><span id="kpi_water_rem">--</span><span class="kpi-unit">g</span></div>
+            <div class="kpi-sub" id="kpi_water_sub">-</div>
+          </div>
+          <div class="kpi-card d">
+            <div class="kpi-label">건조 체류시간</div>
+            <div class="kpi-val"><span id="kpi_dry_dwell">--</span><span class="kpi-unit">s</span></div>
+            <div class="kpi-sub">건조기 길이 기준</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 세척 기여 요소 그래프 -->
+    <div class="card">
+      <div class="card-hdr"><h3>🔬 세척 효율 기여 요소</h3></div>
+      <div class="card-body">
+        <div class="bar-chart" id="wash_contrib_chart"></div>
+      </div>
+    </div>
+
+    <!-- 물/전력 사용량 합산 -->
+    <div class="card">
+      <div class="card-hdr"><h3>⚡ 물·전력 사용량 합산</h3></div>
+      <div class="card-body">
+        <table class="sum-table">
+          <thead>
+            <tr>
+              <th>구분</th>
+              <th>항목</th>
+              <th>물 <span style="font-weight:400">(L/h)</span></th>
+              <th>전력 <span style="font-weight:400">(kW)</span></th>
+            </tr>
+          </thead>
+          <tbody id="sum_tbody">
+          </tbody>
+        </table>
+        <div style="margin-top:10px;">
+          <div class="bar-chart" id="power_chart"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 컨베이어 구동모터 추천 -->
+    <div class="card">
+      <div class="card-hdr"><h3>⚙️ 컨베이어 구동모터 추천</h3></div>
+      <div class="card-body">
+        <table class="motor-table">
+          <thead>
+            <tr>
+              <th>구간</th>
+              <th>속도</th>
+              <th>길이</th>
+              <th>부하 추정</th>
+              <th>산출 용량</th>
+              <th>추천 규격</th>
+            </tr>
+          </thead>
+          <tbody id="motor_tbody"></tbody>
+        </table>
+        <div class="alert alert-info" style="margin-top:8px;font-size:11px;">
+          💡 체인 컨베이어 기준. 부하계수 1.5×, 안전율 1.2× 적용. 실제 설치 시 부하 측정 후 최종 확정 권장.
+        </div>
+      </div>
+    </div>
+
+    <!-- 월 운영비 -->
+    <div class="card">
+      <div class="card-hdr"><h3>💰 월 운영비 산출</h3></div>
+      <div class="card-body">
+        <div class="cost-grid" id="cost_grid"></div>
+      </div>
+    </div>
+
+    <!-- 부품 구성 시뮬레이션 -->
+    <div class="card">
+      <div class="card-hdr"><h3>🔩 부품 구성 시뮬레이션</h3></div>
+      <div class="card-body">
+        <table class="parts-table">
+          <thead>
+            <tr>
+              <th>구분</th>
+              <th>부품명</th>
+              <th>규격/사양</th>
+              <th>수량</th>
+              <th>비고</th>
+            </tr>
+          </thead>
+          <tbody id="parts_tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 설계 권장 사항 -->
+    <div id="recommendations" style="display:flex;flex-direction:column;gap:6px;"></div>
+
+    <div style="text-align:center;font-size:10px;color:var(--text3);padding:8px 0;">
+      인시스 AI혁신 R&D센터 | wash_sim.html v1.0 | 2026-07-18
+    </div>
+
+  </div><!-- /right-panel -->
+
+</div><!-- /main-wrap -->
+
+<script>
+// ──────────────────────────────────────────────
+// SLIDER UTILITIES
+// ──────────────────────────────────────────────
+function svSync(id, mn, mx) {
+  var v = parseFloat(document.getElementById(id).value);
+  v = Math.max(mn, Math.min(mx, v));
+  document.getElementById('rng_' + id).value = v;
+  updateBarFill(id, v, mn, mx);
+}
+function svRngSync(id, mn, mx) {
+  var v = parseFloat(document.getElementById('rng_' + id).value);
+  document.getElementById(id).value = v;
+  updateBarFill(id, v, mn, mx);
+}
+// For x10 scale (e.g. nHole: 1.0~5.0, range 10~50)
+function svSync10x(id, mn, mx) {
+  var v = parseFloat(document.getElementById(id).value);
+  v = Math.max(mn, Math.min(mx, v));
+  document.getElementById('rng_' + id).value = Math.round(v * 10);
+  updateBarFill(id, v, mn, mx);
+}
+function svRngSync10x(id, mn, mx) {
+  var v = parseFloat(document.getElementById('rng_' + id).value) / 10;
+  document.getElementById(id).value = v.toFixed(1);
+  updateBarFill(id, v, mn, mx);
+}
+function svRngSync10x2(id, mn, mx) {
+  var v = parseFloat(document.getElementById('rng_' + id).value) / 10;
+  document.getElementById(id).value = v.toFixed(1);
+  updateBarFill(id, v, mn, mx);
+}
+
+var OPT_RANGES = {
+  nPress: [150, 280, 50, 500],
+  nTemp:  [50, 80, 20, 90],
+  nHole:  [1.8, 3.0, 1.0, 5.0],
+  det:    [3, 10, 0, 20],
+  slit_gap: [0.5, 1.0, 0.5, 5.0],
+  angle_sweep: [15, 25, 0, 30],
+  angle_slit:  [25, 45, 0, 60],
+  ak_dist: [20, 60, 10, 200],
+  dry_temp: [50, 80, 30, 100]
+};
+
+function updateBarFill(id, v, mn, mx) {
+  var fill = document.getElementById('fill_' + id);
+  if (!fill) return;
+  var pct = (v - mn) / (mx - mn) * 100;
+  fill.style.width = pct + '%';
+  var r = OPT_RANGES[id];
+  if (r) {
+    var lo = r[0], hi = r[1];
+    if (v >= lo && v <= hi) { fill.className = 'sv-bar-fill ok'; }
+    else if (v < lo) { fill.className = 'sv-bar-fill low'; }
+    else { fill.className = 'sv-bar-fill high'; }
+  }
+}
+
+function initBars() {
+  Object.keys(OPT_RANGES).forEach(function(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var r = OPT_RANGES[id];
+    var v = parseFloat(el.value);
+    updateBarFill(id, v, r[2], r[3]);
+  });
+}
+
+// ──────────────────────────────────────────────
+// CONVEYOR LINK
+// ──────────────────────────────────────────────
+function toggleConvLink() {
+  // just trigger sim on change
+  triggerSim();
+}
+function onConvChange(src) {
+  if (document.getElementById('conv_link').checked) {
+    var v = document.getElementById('cspd_' + src).value;
+    ['w','a','d'].forEach(function(c) {
+      if (c !== src) document.getElementById('cspd_' + c).value = v;
+    });
+  }
+  triggerSim();
+}
+
+function toggleDet() {
+  document.getElementById('det_row').style.display =
+    document.getElementById('detUse').checked ? 'block' : 'none';
+  triggerSim();
+}
+
+// ──────────────────────────────────────────────
+// MAIN SIMULATION
+// ──────────────────────────────────────────────
+var simTimer = null;
+function triggerSim() {
+  clearTimeout(simTimer);
+  simTimer = setTimeout(runSim, 200);
+}
+
+function g(id) { return document.getElementById(id); }
+function gv(id) { return parseFloat(g(id).value) || 0; }
+function gvi(id) { return parseInt(g(id).value) || 0; }
+function gvs(id) { return g(id).value; }
+
+function runSim() {
+  var p = collectParams();
+  autoCalc(p);
+  var R = {};
+  R.washer  = p.applyW  ? calcWasher(p)  : null;
+  R.ak      = p.applyAK ? calcAK(p)      : null;
+  R.dryer   = p.applyD  ? calcDryer(p)   : null;
+  R.motor   = calcMotors(p, R);
+  R.cost    = calcCost(p, R);
+  renderAll(p, R);
+}
+
+function collectParams() {
+  return {
+    // common
+    itype: gvs('itype'),
+    ch: gvi('ch_count'),
+    iW: gv('iW'), iL: gv('iL'), iH: gv('iH'),
+    iqty: gv('iqty'),
+    dlv: gvi('dlv'),
+    op_hours: gv('op_hours'),
+    op_days: gv('op_days'),
+    waterPrice: gv('waterPrice'),
+    elecPrice: gv('elecPrice'),
+    // apply toggles
+    applyW:  g('apply_washer').checked,
+    applyAK: g('apply_ak').checked,
+    applyD:  g('apply_dryer').checked,
+    // washer
+    zcnt: gvi('zcnt'),
+    fmode: gvi('fmode'),
+    nPress: gv('nPress'),
+    nTemp: gv('nTemp'),
+    nHole: gv('nHole'),
+    pEff: gv('pEff') / 100,
+    zlen: gv('zlen'),
+    zwid: gv('zwid'),
+    zdep: gv('zdep'),
+    detUse: g('detUse').checked,
+    det: g('detUse').checked ? gv('det') : 0,
+    cspdW: gv('cspd_w'),
+    // airknife
+    ak_stages: gvi('ak_stages'),
+    ak_pos: gvs('ak_pos'),
+    slit_gap: gv('slit_gap'),
+    angle_sweep: gv('angle_sweep'),
+    angle_slit: gv('angle_slit'),
+    ak_dist: gv('ak_dist'),
+    blower_hp: gv('blower_hp'),
+    blower_per_face: gvi('blower_per_face'),
+    init_water: gv('init_water'),
+    target_water: gv('target_water'),
+    cspdA: gv('cspd_a'),
+    // dryer
+    dry_len: gv('dry_len'),
+    dry_wid: gv('dry_wid'),
+    dry_hgt: gv('dry_hgt'),
+    dry_temp: gv('dry_temp'),
+    fan_cnt: gvi('fan_cnt'),
+    dry_circ: gvi('dry_circ'),
+    dry_heat: gv('dry_heat'),
+    dry_dehum: gv('dry_dehum'),
+    cspdD: gv('cspd_d'),
+  };
+}
+
+function autoCalc(p) {
+  // auto zwid
+  var zwid = p.iW + 200;
+  g('zwid').value = zwid;
+  p.zwid = zwid;
+}
+
+// ─── WASHER CALC ───
+var DIRT = [
+  {flux:4.0,  press:100, temp:40, hole:3.0},
+  {flux:7.0,  press:150, temp:50, hole:2.5},
+  {flux:12.0, press:200, temp:60, hole:2.5},
+  {flux:18.0, press:280, temp:70, hole:2.0},
+  {flux:25.0, press:350, temp:80, hole:1.8}
+];
+
+function calcWasher(p) {
+  var d = DIRT[p.dlv];
+  var Cd = 0.62;
+  var r = p.nHole / 1000 / 2;
+  var A = Math.PI * r * r;
+  var dP = p.nPress * 1000;
+  var qNozzle = Cd * A * Math.sqrt(2 * dP / 1000) * 1000 * 60; // L/min/nozzle
+
+  // nozzle layout
+  var iW = p.iW, iH = p.iH;
+  var faceW = iW, faceH = iH;
+  var targetGap = [150, 120, 100, 80, 60][p.dlv];
+  var nc = Math.max(2, Math.round(faceW / targetGap));
+  var nr = Math.max(2, Math.round(faceH / targetGap));
+  var nozzles_per_face = nc * nr;
+
+  // faces
+  var ch = p.ch;
+  var facesPerCh = (p.itype === 'box') ? 4 : 2;
+  var totalFaces = facesPerCh * ch;
+
+  // total flow per stage
+  var qPerFace = qNozzle * nozzles_per_face;
+  var qTotal = qPerFace * totalFaces; // L/min
+
+  // pump power
+  var qm3s = qTotal / 60 / 1000;
+  var pumpKW = qm3s * (p.nPress * 1000) / p.pEff / 1000;
+  var pumpHP = pumpKW * 1.341;
+
+  // heater per stage
+  var tankVol = p.zlen * p.zwid * p.zdep * 0.75 / 1e6; // L
+  var heaterKW = tankVol * 4.18 * (p.nTemp - 20) / 3600 * 1.35;
+
+  var totalPumpKW = pumpKW * p.zcnt;
+  var totalHeatKW = heaterKW * p.zcnt;
+  var totalKW = totalPumpKW + totalHeatKW;
+
+  // dwell time
+  var totalLen = p.zlen * p.zcnt / 1000; // m
+  var cspd = p.cspdW / 60; // m/s
+  var dwell = totalLen / cspd;
+
+  // wash rate model
+  var bases = [52, 68, 80, 90];
+  var base = bases[Math.min(p.zcnt - 1, 3)];
+  var dirtP = [0, 0, -3, -9, -18, -32][p.dlv] || 0;
+  var tempB = Math.min(18, (p.nTemp - 25) * 0.36);
+  var pressB = Math.min(10, (p.nPress - 100) * 0.028);
+  var detB = Math.min(12, p.det * 1.1);
+  var dwellB = Math.min(8, (dwell - 30) * 0.05);
+  var spdP = Math.max(-14, -(p.cspdW - 2) * 2.5);
+
+  // coverage (simplified)
+  var gapX = faceW / (nc + 1);
+  var gapY = faceH / (nr + 1);
+  var sr = Math.tan(30 * Math.PI / 180) * 100;
+  var covX = Math.min(faceW, (nc - 1) * gapX + 2 * sr);
+  var covY = Math.min(faceH, (nr - 1) * gapY + 2 * sr);
+  var coverage = (covX / faceW) * (covY / faceH) * 100;
+  var covF = 0.6 + 0.4 * (coverage / 100);
+
+  var cleanRate = (base + dirtP + tempB + pressB + detB + dwellB + spdP) * covF;
+  cleanRate = Math.max(5, Math.min(99.9, cleanRate));
+
+  // water usage
+  var waterLph = qTotal * 60 * 0.03 * p.zcnt + (tankVol * p.zcnt) / 8;
+
+  // throughput
+  var thruput = (p.cspdW / (p.iL / 1000)) * 60 * ch;
+
+  return {
+    cleanRate: cleanRate,
+    dwell: dwell,
+    qTotal: qTotal,
+    pumpKW: pumpKW,
+    pumpHP: pumpHP,
+    heaterKW: heaterKW,
+    totalPumpKW: totalPumpKW,
+    totalHeatKW: totalHeatKW,
+    totalKW: totalKW,
+    tankVol: tankVol,
+    waterLph: waterLph,
+    thruput: thruput,
+    nc: nc, nr: nr,
+    nozzles_per_face: nozzles_per_face,
+    totalFaces: totalFaces,
+    coverage: coverage,
+    contrib: {
+      base: base, dirtP: dirtP, tempB: tempB,
+      pressB: pressB, detB: detB, dwellB: dwellB, spdP: spdP
+    }
+  };
+}
+
+// ─── AIRKNIFE CALC ───
+function calcAK(p) {
+  var gap = p.slit_gap / 1000; // m
+  var L_ak = p.iW / 1000; // m (AK length = tray width)
+  var ch = p.ch;
+  var bpf = p.blower_per_face;
+  var HP = p.blower_hp;
+  var stages = p.ak_stages;
+  var pos = p.ak_pos; // both / one
+
+  var Q_blower = HP * 0.65; // m³/min
+  var Q_face = bpf * Q_blower;
+  var A_slit = L_ak * gap;
+  var v0 = (Q_face / 60) / A_slit; // m/s
+
+  var d_ref = 30;
+  var d = p.ak_dist;
+  var eta_d = Math.min(1.2, Math.sqrt(d_ref / d));
+  var v_eff = Math.min(v0 * eta_d, v0 * 1.15);
+
+  var We = 1.2 * v_eff * v_eff * 0.0003 / 0.0728;
+  var Re = v_eff * gap / 1.516e-5;
+
+  // r per stage
+  var f_vel = Math.min(1, v_eff / 60);
+  var f_slit = Math.min(1, Math.max(0.05, (3 - p.slit_gap) / 3));
+  var sw = p.angle_sweep * Math.PI / 180;
+  var f_sweep = Math.sin(sw) * Math.max(0.4, 1 - Math.abs(p.angle_sweep - 20) / 50);
+  var f_angle = Math.sin(p.angle_slit * Math.PI / 180);
+  var f_dist = Math.min(1, eta_d);
+  var air_base = (f_vel * 0.45 + f_slit * 0.25 + f_sweep * 0.20 + f_angle * 0.15 + f_dist * 0.05) / 1.10;
+
+  var chEffW = p.iW;
+  var f_coverage = Math.min(1, (p.iW) / chEffW);
+  var f_pocketDepth = 1 / (1 + p.iH / 60);
+  var air_strength = air_base * f_coverage;
+
+  var t = (p.iL / 1000) / (p.cspdA / 60);
+  var tau = 2.5;
+  var r_instant = air_strength * 0.55 * f_pocketDepth;
+  var r_time = air_strength * 0.45 * (1 - Math.exp(-t / tau)) * f_pocketDepth;
+  var r_front = Math.min(0.45, r_instant + r_time);
+
+  var r_stage, faceCount;
+  if (pos === 'both') {
+    var r_back = r_front * 0.90;
+    r_stage = Math.min(0.70, 1 - (1 - r_front) * (1 - r_back));
+    faceCount = 2;
+  } else {
+    r_stage = Math.min(0.50, r_front);
+    faceCount = 1;
+  }
+
+  var W0 = p.init_water;
+  var Wn = W0 * Math.pow(1 - r_stage, stages);
+  var etaTotal = 1 - Math.pow(1 - r_stage, stages);
+  var n_min = W0 > p.target_water
+    ? Math.ceil(Math.log(p.target_water / W0) / Math.log(1 - r_stage))
+    : 1;
+
+  var kW_each = HP * 0.7457;
+  var blowers = ch * faceCount * bpf * stages;
+  var totalKW = kW_each * blowers;
+
+  var thruput = (p.cspdA / (p.iL / 1000)) * 60 * ch;
+
+  return {
+    v0: v0, v_eff: v_eff, We: We, Re: Re,
+    r_stage: r_stage, etaTotal: etaTotal,
+    W_remain: Wn, n_min: n_min,
+    totalKW: totalKW, blowers: blowers,
+    waterLph: 0,
+    thruput: thruput,
+    faceCount: faceCount
+  };
+}
+
+// ─── DRYER CALC ───
+function calcDryer(p) {
+  var vol = p.dry_len * p.dry_wid * p.dry_hgt / 1e9; // m³
+  var tempMap = {40: 35, 50: 45, 60: 55};
+  var t = p.dry_temp;
+  var cycleRate = t <= 40 ? 35 : t <= 50 ? 45 : 55;
+  var totalFlow = vol * cycleRate * 1.15 * 1.1; // m³/h
+  var fanFlow = totalFlow / p.fan_cnt;
+  var baseStatic = t <= 40 ? 50 : t <= 50 ? 70 : 90;
+  var staticPa = baseStatic;
+  var motorKW = (fanFlow / 3600) * staticPa / 0.45 * 1.15;
+  var fanTotalKW = motorKW * p.fan_cnt;
+
+  var circSave = [0, 0, 22, 45][p.dry_circ === 0 ? 0 : p.dry_circ === 50 ? 2 : 3] || 0;
+  var effectiveHeat = p.dry_heat * (1 - circSave / 100);
+
+  // throughput
+  var thruput = (p.cspdD / (p.iL / 1000)) * 60 * p.ch;
+  var dwell = (p.dry_len / 1000) / (p.cspdD / 60);
+
+  // dehumidifier power approx (0.5 kW per L/h)
+  var dehumKW = p.dry_dehum * 0.5;
+  var totalKW = fanTotalKW + effectiveHeat + dehumKW;
+
+  // water: condensate removal
+  var waterLph = p.dry_dehum > 0 ? p.dry_dehum : 0;
+
+  return {
+    vol: vol, totalFlow: totalFlow, fanFlow: fanFlow,
+    motorKW: motorKW, fanTotalKW: fanTotalKW,
+    effectiveHeat: effectiveHeat, circSave: circSave,
+    dehumKW: dehumKW, totalKW: totalKW,
+    waterLph: waterLph,
+    thruput: thruput, dwell: dwell
+  };
+}
+
+// ─── MOTOR CALC ───
+// Chain conveyor motor sizing
+function calcMotors(p, R) {
+  function motorCalc(name, len_m, load_kg, spd_mpm, tag) {
+    // F = μ × m × g, with conveyor chain ~15 kg/m, product load estimated
+    var chainWeight = len_m * 15; // kg
+    var totalMass = chainWeight + load_kg;
+    var g_acc = 9.81;
+    var mu = 0.15; // chain friction
+    var F = totalMass * g_acc * mu; // N
+    var v = spd_mpm / 60; // m/s
+    var P_raw = F * v / 1000; // kW
+    var P_design = P_raw * 1.5 * 1.2; // 부하계수×안전율
+    // round up to standard motor
+    var stdMotors = [0.1, 0.2, 0.4, 0.75, 1.1, 1.5, 2.2, 3.7, 5.5, 7.5, 11, 15, 18.5, 22, 30];
+    var rec = stdMotors.find(function(m) { return m >= P_design; }) || 30;
+    return {
+      name: name, len: len_m, spd: spd_mpm,
+      loadKg: load_kg, P_raw: P_raw, P_design: P_design, rec: rec, tag: tag
+    };
+  }
+
+  var productLoad = (p.iW / 1000) * (p.iL / 1000) * (p.iH / 1000) * 30 * 5; // 5 items on belt est.
+  var results = [];
+  if (p.applyW) {
+    var wlen = p.zlen * p.zcnt / 1000;
+    results.push(motorCalc('세척기', wlen, productLoad + 20, p.cspdW, 'w'));
+  }
+  if (p.applyAK) {
+    var alen = (p.iL / 1000) * p.ak_stages * 2;
+    results.push(motorCalc('에어나이프', Math.max(1, alen), productLoad + 5, p.cspdA, 'a'));
+  }
+  if (p.applyD) {
+    results.push(motorCalc('건조기', p.dry_len / 1000, productLoad + 10, p.cspdD, 'd'));
+  }
+  return results;
+}
+
+// ─── COST CALC ───
+function calcCost(p, R) {
+  var totalWater = 0, totalKW = 0;
+  if (R.washer) { totalWater += R.washer.waterLph; totalKW += R.washer.totalKW; }
+  if (R.ak) { totalWater += R.ak.waterLph; totalKW += R.ak.totalKW; }
+  if (R.dryer) { totalWater += R.dryer.waterLph; totalKW += R.dryer.totalKW; }
+
+  var waterCostDay = totalWater * p.op_hours / 1000 * p.waterPrice; // 원/일 (L→m³)
+  var elecCostDay = totalKW * p.op_hours * p.elecPrice; // 원/일
+  var waterCostMonth = waterCostDay * p.op_days;
+  var elecCostMonth = elecCostDay * p.op_days;
+  var totalMonth = waterCostMonth + elecCostMonth;
+
+  return {
+    totalWater: totalWater, totalKW: totalKW,
+    waterCostDay: waterCostDay, elecCostDay: elecCostDay,
+    waterCostMonth: waterCostMonth, elecCostMonth: elecCostMonth,
+    totalMonth: totalMonth
+  };
+}
+
+// ──────────────────────────────────────────────
+// RENDER
+// ──────────────────────────────────────────────
+function renderAll(p, R) {
+  renderFlow(p, R);
+  renderKPI(p, R);
+  renderWashContrib(R);
+  renderSumTable(p, R);
+  renderPowerChart(p, R);
+  renderMotors(R);
+  renderCost(p, R);
+  renderParts(p, R);
+  renderRecs(p, R);
+}
+
+function fmt(v, dec) { return (v === undefined || isNaN(v)) ? '-' : v.toFixed(dec !== undefined ? dec : 1); }
+function fmtN(v) { return Math.round(v).toLocaleString(); }
+
+function renderFlow(p, R) {
+  g('flow_input').textContent = p.ch + '채널 · ' + p.iW + '×' + p.iL + 'mm';
+  if (R.washer) {
+    g('flow_w_stat').textContent = fmt(R.washer.cleanRate) + '% 세척';
+    g('flow_w_stat').className = 'flow-stat ' + (R.washer.cleanRate >= 80 ? 'ok' : 'warn');
+  } else {
+    g('flow_w_stat').textContent = '미적용';
+    g('flow_w_stat').className = 'flow-stat';
+  }
+  if (R.ak) {
+    g('flow_a_stat').textContent = fmt(R.ak.etaTotal * 100) + '% 제거';
+    g('flow_a_stat').className = 'flow-stat ' + (R.ak.etaTotal >= 0.6 ? 'ok' : 'warn');
+  } else {
+    g('flow_a_stat').textContent = '미적용';
+    g('flow_a_stat').className = 'flow-stat';
+  }
+  if (R.dryer) {
+    g('flow_d_stat').textContent = fmt(R.dryer.dwell) + 's 체류';
+    g('flow_d_stat').className = 'flow-stat ok';
+  } else {
+    g('flow_d_stat').textContent = '미적용';
+    g('flow_d_stat').className = 'flow-stat';
+  }
+  var maxQty = R.washer ? R.washer.thruput : (R.ak ? R.ak.thruput : (R.dryer ? R.dryer.thruput : 0));
+  g('flow_out').textContent = fmtN(Math.min(p.iqty, maxQty)) + '개/h';
+}
+
+function renderKPI(p, R) {
+  if (R.washer) {
+    g('kpi_clean').textContent = fmt(R.washer.cleanRate);
+    g('kpi_clean_sub').textContent = R.washer.cleanRate >= 80 ? '✅ 목표 달성' : '⚠️ 조건 검토 필요';
+    g('kpi_dwell').textContent = fmt(R.washer.dwell);
+  } else {
+    g('kpi_clean').textContent = '--'; g('kpi_clean_sub').textContent = '미적용';
+    g('kpi_dwell').textContent = '--';
+  }
+  if (R.ak) {
+    g('kpi_ak').textContent = fmt(R.ak.etaTotal * 100);
+    g('kpi_ak_sub').textContent = R.ak.n_min <= p.ak_stages ? '✅ 목표 달성' : '⚠️ 단수 부족 (필요:' + R.ak.n_min + '단)';
+    g('kpi_water_rem').textContent = fmt(R.ak.W_remain, 1);
+    g('kpi_water_sub').textContent = R.ak.W_remain <= p.target_water ? '✅ 목표 이하' : '⚠️ ' + fmt(p.target_water) + 'g 초과';
+  } else {
+    g('kpi_ak').textContent = '--'; g('kpi_ak_sub').textContent = '미적용';
+    g('kpi_water_rem').textContent = '--'; g('kpi_water_sub').textContent = '미적용';
+  }
+  if (R.dryer) {
+    g('kpi_dry').textContent = fmtN(Math.min(p.iqty, R.dryer.thruput));
+    g('kpi_dry_sub').textContent = R.dryer.thruput >= p.iqty ? '✅ 목표 충족' : '⚠️ 목표 미달';
+    g('kpi_dry_dwell').textContent = fmt(R.dryer.dwell);
+  } else {
+    g('kpi_dry').textContent = '--'; g('kpi_dry_sub').textContent = '미적용';
+    g('kpi_dry_dwell').textContent = '--';
+  }
+}
+
+function renderWashContrib(R) {
+  var el = g('wash_contrib_chart');
+  if (!R.washer) { el.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:4px">세척기 미적용</div>'; return; }
+  var c = R.washer.contrib;
+  var items = [
+    { name: '기본 세척력', val: Math.max(0, c.base), color: '#1565c0', max: 90, hint: '단수 기반 기본값' },
+    { name: '온도 기여', val: Math.max(0, c.tempB), color: '#e65100', max: 18, hint: '최대 +18점' },
+    { name: '압력 기여', val: Math.max(0, c.pressB), color: '#6a1b9a', max: 10, hint: '최대 +10점' },
+    { name: '세척제 기여', val: Math.max(0, c.detB), color: '#00796b', max: 12, hint: '최대 +12점' },
+    { name: '체류시간 기여', val: Math.max(0, c.dwellB), color: '#558b2f', max: 8, hint: '최대 +8점' },
+    { name: '오염도 페널티', val: Math.abs(Math.min(0, c.dirtP)), color: '#c62828', max: 32, hint: '오염도에 따른 감점' },
+  ];
+  el.innerHTML = items.map(function(it) {
+    var pct = Math.min(100, (it.val / it.max) * 100);
+    return '<div class="bar-row">' +
+      '<span class="bar-name">' + it.name + '</span>' +
+      '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%;background:' + it.color + '">' +
+      '<span class="bar-text">' + fmt(it.val, 1) + '</span></div></div>' +
+      '<span class="bar-val">' + fmt(it.val, 1) + '<span style="font-size:9px;color:var(--text3)">/' + it.max + '</span></span>' +
+      '</div>';
+  }).join('');
+}
+
+function renderSumTable(p, R) {
+  var wW = R.washer ? fmt(R.washer.waterLph, 1) : '-';
+  var wKW = R.washer ? fmt(R.washer.totalKW, 2) : '-';
+  var aW = R.ak ? '0' : '-';
+  var aKW = R.ak ? fmt(R.ak.totalKW, 2) : '-';
+  var dW = R.dryer ? fmt(R.dryer.waterLph, 1) : '-';
+  var dKW = R.dryer ? fmt(R.dryer.totalKW, 2) : '-';
+  var totW = ((R.washer ? R.washer.waterLph : 0) + (R.ak ? 0 : 0) + (R.dryer ? R.dryer.waterLph : 0));
+  var totKW = ((R.washer ? R.washer.totalKW : 0) + (R.ak ? R.ak.totalKW : 0) + (R.dryer ? R.dryer.totalKW : 0));
+
+  g('sum_tbody').innerHTML =
+    '<tr><td><span class="badge-w">세척기</span></td>' +
+      '<td>펌프 ' + (R.washer ? fmt(R.washer.totalPumpKW,2) : '-') + 'kW + 히터 ' + (R.washer ? fmt(R.washer.totalHeatKW,2) : '-') + 'kW</td>' +
+      '<td class="val-num">' + wW + '</td><td class="val-num">' + wKW + '</td></tr>' +
+    '<tr><td><span class="badge-a">에어나이프</span></td>' +
+      '<td>브로어 ' + (R.ak ? R.ak.blowers + '대' : '-') + '</td>' +
+      '<td class="val-num">' + aW + '</td><td class="val-num">' + aKW + '</td></tr>' +
+    '<tr><td><span class="badge-d">건조기</span></td>' +
+      '<td>팬 ' + (R.dryer ? fmt(R.dryer.fanTotalKW,2) : '-') + 'kW + 히터 ' + (R.dryer ? fmt(R.dryer.effectiveHeat,2) : '-') + 'kW</td>' +
+      '<td class="val-num">' + dW + '</td><td class="val-num">' + dKW + '</td></tr>' +
+    '<tr class="total-row highlight"><td colspan="2"><strong>합계</strong></td>' +
+      '<td class="val-hi">' + fmt(totW, 1) + '</td><td class="val-hi">' + fmt(totKW, 2) + '</td></tr>';
+}
+
+function renderPowerChart(p, R) {
+  var el = g('power_chart');
+  var items = [];
+  if (R.washer) {
+    items.push({name:'세척 펌프', val:R.washer.totalPumpKW, color:'#1565c0'});
+    items.push({name:'세척 히터', val:R.washer.totalHeatKW, color:'#42a5f5'});
+  }
+  if (R.ak) items.push({name:'AK 브로어', val:R.ak.totalKW, color:'#00796b'});
+  if (R.dryer) {
+    items.push({name:'건조 팬', val:R.dryer.fanTotalKW, color:'#6a1b9a'});
+    items.push({name:'건조 히터', val:R.dryer.effectiveHeat, color:'#ab47bc'});
+    if (R.dryer.dehumKW > 0) items.push({name:'제습기', val:R.dryer.dehumKW, color:'#ff7043'});
+  }
+  var maxV = Math.max.apply(null, items.map(function(i){return i.val;})) || 1;
+  el.innerHTML = '<div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:4px">전력 구성 (kW)</div>' +
+    items.map(function(it) {
+      var pct = (it.val / maxV) * 100;
+      return '<div class="bar-row">' +
+        '<span class="bar-name" style="font-size:10px">' + it.name + '</span>' +
+        '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%;background:' + it.color + '">' +
+        '<span class="bar-text">' + fmt(it.val,2) + '</span></div></div>' +
+        '<span class="bar-val">' + fmt(it.val,2) + ' kW</span></div>';
+    }).join('');
+}
+
+function renderMotors(R) {
+  var std = [0.1,0.2,0.4,0.75,1.1,1.5,2.2,3.7,5.5,7.5,11,15,18.5,22,30];
+  var badges = {w:'badge-w',a:'badge-a',d:'badge-d'};
+  var names = {w:'세척기',a:'에어나이프',d:'건조기'};
+  g('motor_tbody').innerHTML = R.motor.map(function(m) {
+    return '<tr>' +
+      '<td><span class="' + badges[m.tag] + '">' + m.name + '</span></td>' +
+      '<td>' + fmt(m.spd,1) + ' m/min</td>' +
+      '<td>' + fmt(m.len,1) + ' m</td>' +
+      '<td>' + fmt(m.P_raw,3) + ' kW</td>' +
+      '<td>' + fmt(m.P_design,3) + ' kW</td>' +
+      '<td><span class="motor-rec">' + m.rec + ' kW</span></td>' +
+      '</tr>';
+  }).join('');
+}
+
+function renderCost(p, R) {
+  var c = R.cost;
+  g('cost_grid').innerHTML =
+    '<div class="cost-item"><div class="cost-label">💧 월 물 사용량</div>' +
+      '<div class="cost-val">' + fmtN(c.totalWater * p.op_hours * p.op_days / 1000) + '<span class="cost-unit"> m³/월</span></div>' +
+      '<div style="font-size:10px;color:var(--text3);margin-top:2px">' + fmt(c.totalWater,1) + ' L/h × ' + p.op_hours + 'h × ' + p.op_days + '일</div></div>' +
+    '<div class="cost-item"><div class="cost-label">⚡ 월 전력 사용량</div>' +
+      '<div class="cost-val">' + fmtN(c.totalKW * p.op_hours * p.op_days) + '<span class="cost-unit"> kWh/월</span></div>' +
+      '<div style="font-size:10px;color:var(--text3);margin-top:2px">' + fmt(c.totalKW,2) + ' kW × ' + p.op_hours + 'h × ' + p.op_days + '일</div></div>' +
+    '<div class="cost-item"><div class="cost-label">💧 월 수도요금</div>' +
+      '<div class="cost-val">' + fmtN(Math.round(c.waterCostMonth)) + '<span class="cost-unit"> 원</span></div></div>' +
+    '<div class="cost-item"><div class="cost-label">⚡ 월 전기요금</div>' +
+      '<div class="cost-val">' + fmtN(Math.round(c.elecCostMonth)) + '<span class="cost-unit"> 원</span></div></div>' +
+    '<div class="cost-total"><div class="cost-total-label">월 총 운영비 (수도+전기)</div>' +
+      '<div class="cost-total-val">₩ ' + fmtN(Math.round(c.totalMonth)) + '</div>' +
+      '<div style="font-size:11px;margin-top:4px;opacity:0.85">일 ₩' + fmtN(Math.round(c.waterCostDay + c.elecCostDay)) + ' × ' + p.op_days + '일</div></div>';
+}
+
+function renderParts(p, R) {
+  var rows = [];
+  if (R.washer) {
+    rows.push(['세척기','워터펌프', fmt(R.washer.pumpKW,2)+'kW / '+fmt(R.washer.pumpHP,2)+'HP', p.zcnt+'대 (단당 1대)', '원심펌프 SUS304']);
+    rows.push(['세척기','스프레이 노즐', 'Ø'+p.nHole+'mm', R.washer.nozzles_per_face+'개/면 × '+R.washer.totalFaces+'면', '오리피스형']);
+    rows.push(['세척기','히터 (전기)', fmt(R.washer.heaterKW,1)+'kW/단', p.zcnt+'단', '침수형 SUS']);
+    rows.push(['세척기','세척조 탱크', p.zlen+'×'+p.zwid+'×'+p.zdep+'mm', p.zcnt+'개', '탱크 '+fmt(R.washer.tankVol,0)+'L/개']);
+  }
+  if (R.ak) {
+    rows.push(['에어나이프','링블로어', p.blower_hp+'HP ('+fmt(p.blower_hp*0.7457,2)+'kW)', R.ak.blowers+'대', '정격압 200mmAq']);
+    rows.push(['에어나이프','에어나이프 본체', p.iW+'mm 길이', p.ak_stages+'단 × '+(p.ak_pos==='both'?2:1)+'면', '슬릿 '+p.slit_gap+'mm']);
+  }
+  if (R.dryer) {
+    rows.push(['건조기','시로코팬', fmt(R.dryer.motorKW,2)+'kW/대', p.fan_cnt+'대', '총 '+fmt(R.dryer.fanTotalKW,2)+'kW']);
+    rows.push(['건조기','히터 (전기)', p.dry_heat+'kW', '1식', '유효 '+fmt(R.dryer.effectiveHeat,1)+'kW (순환절감 '+R.dryer.circSave+'%)']);
+    if (p.dry_dehum > 0) rows.push(['건조기','제습기', p.dry_dehum+'L/h', '1대', fmt(R.dryer.dehumKW,2)+'kW']);
+    rows.push(['건조기','건조챔버', p.dry_len+'×'+p.dry_wid+'×'+p.dry_hgt+'mm', '1식', '체적 '+fmt(R.dryer.vol,2)+'m³']);
+  }
+  // motors
+  R.motor.forEach(function(m) {
+    rows.push([m.name+'컨베이어','체인 구동모터', m.rec+'kW', '1대', fmt(m.spd,1)+'m/min 기준']);
+  });
+
+  g('parts_tbody').innerHTML = rows.map(function(r, i) {
+    var cls = r[0].indexOf('세척') >= 0 ? 'badge-w' : r[0].indexOf('에어') >= 0 ? 'badge-a' : r[0].indexOf('건조') >= 0 ? 'badge-d' : 'badge-w';
+    var bgCls = (i % 2 === 0) ? '' : 'style="background:#fafafa"';
+    return '<tr ' + bgCls + '><td><span class="' + cls + '" style="font-size:10px">' + r[0] + '</span></td>' +
+      '<td>' + r[1] + '</td><td>' + r[2] + '</td><td style="text-align:center">' + r[3] + '</td><td style="color:var(--text3)">' + r[4] + '</td></tr>';
+  }).join('');
+}
+
+function renderRecs(p, R) {
+  var el = g('recommendations');
+  var recs = [];
+  if (R.washer && R.washer.cleanRate < 80) {
+    recs.push({cls:'alert-warn', txt:'⚠️ 세척율 ' + fmt(R.washer.cleanRate) + '% — 온도를 높이거나 단수를 늘려 80% 이상 목표 권장'});
+  }
+  if (R.washer && R.washer.dwell < 30) {
+    recs.push({cls:'alert-warn', txt:'⚠️ 세척 체류시간 ' + fmt(R.washer.dwell) + 's — 30s 이상 확보를 위해 세척조 길이 연장 또는 속도 감소 검토'});
+  }
+  if (R.ak && R.ak.n_min > p.ak_stages) {
+    recs.push({cls:'alert-warn', txt:'⚠️ AK 목표 달성 최소 단수 ' + R.ak.n_min + '단 — 현재 ' + p.ak_stages + '단에서 단수 증가 필요'});
+  }
+  if (R.ak && R.ak.We < 12) {
+    recs.push({cls:'alert-warn', txt:'⚠️ We=' + fmt(R.ak.We,1) + ' (기준 12 미달) — 수막 파단 불충분. 슬릿 간격 축소 또는 브로어 마력 상향 필요'});
+  }
+  if (R.dryer && R.dryer.thruput < p.iqty) {
+    recs.push({cls:'alert-warn', txt:'⚠️ 건조기 처리량 ' + fmtN(R.dryer.thruput) + '개/h — 목표 ' + fmtN(p.iqty) + '개/h 미달. 컨베이어 속도 상향 또는 채널 추가 검토'});
+  }
+  if (R.cost && R.cost.totalMonth > 5000000) {
+    recs.push({cls:'alert-info', txt:'💡 월 운영비 ' + fmtN(Math.round(R.cost.totalMonth)) + '원 — 내부순환율 증가 또는 히터 용량 최적화로 에너지 절감 가능'});
+  }
+  if (recs.length === 0) {
+    recs.push({cls:'alert-ok', txt:'✅ 모든 설계 조건이 권장 범위 내에 있습니다.'});
+  }
+  el.innerHTML = recs.map(function(r) {
+    return '<div class="alert ' + r.cls + '">' + r.txt + '</div>';
+  }).join('');
+}
+
+// ──────────────────────────────────────────────
+// INIT
+// ──────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', function() {
+  initBars();
+  runSim();
+});
+</script>
+</body>
+</html>
