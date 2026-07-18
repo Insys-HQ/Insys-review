@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>인시스 그룹 견적 작성 시스템 v3.6</title>
+<title>인시스 그룹 견적 작성 시스템 v3.7</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <!-- Firebase SDK는 body 끝에서 로딩 (타이밍 문제 방지) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -329,7 +329,7 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
       <button class="btn btn-ghost btn-sm" onclick="openCoSelector()" id="nav-co-btn">
         🏢 <span id="nav-co-name">사업자 선택</span>
       </button>
-      <div class="nav-ver">v3.6</div>
+      <div class="nav-ver">v3.7</div>
     </div>
   </div>
 </nav>
@@ -688,17 +688,18 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
 <!-- PREVIEW -->
 <div id="preview-area">
   <div class="preview-toolbar">
-    <h3>📄 견적서 미리보기</h3>
+    <h3>📄 견적서 미리보기<span id="preview-subtitle" style="font-weight:400;opacity:.8;font-size:13px"></span></h3>
     <div class="btn-grp">
-      <div style="display:flex;background:rgba(255,255,255,.15);border-radius:7px;padding:3px;gap:2px;margin-right:6px">
-        <button class="btn btn-sm ori-btn active" id="ori-portrait" onclick="setOrientation('portrait')"
-          style="background:#fff;color:var(--blue);border:none;padding:5px 12px;font-size:12px">📄 세로</button>
-        <button class="btn btn-sm ori-btn" id="ori-landscape" onclick="setOrientation('landscape')"
-          style="background:none;color:rgba(255,255,255,.8);border:none;padding:5px 12px;font-size:12px">📃 가로</button>
+      <span style="color:rgba(255,255,255,.75);font-size:12px;margin-right:2px">용지방향</span>
+      <div style="display:flex;background:rgba(0,0,0,.22);border-radius:8px;padding:3px;gap:3px;margin-right:10px">
+        <button class="ori-btn" id="ori-portrait" onclick="setOrientation('portrait')"
+          style="background:#fff;color:#1a5fad;border:none;padding:6px 14px;font-size:12px;font-weight:700;border-radius:6px;cursor:pointer;font-family:inherit">📄 세로</button>
+        <button class="ori-btn" id="ori-landscape" onclick="setOrientation('landscape')"
+          style="background:none;color:rgba(255,255,255,.85);border:none;padding:6px 14px;font-size:12px;font-weight:700;border-radius:6px;cursor:pointer;font-family:inherit">📃 가로</button>
       </div>
-      <button class="btn btn-success btn-sm" onclick="exportPDF()">📥 PDF</button>
-      <button class="btn btn-warning btn-sm" onclick="exportExcel()">📊 Excel</button>
-      <button class="btn btn-ghost btn-sm" onclick="printPreview()">🖨️ 인쇄</button>
+      <button class="btn btn-success btn-sm" onclick="exportPDF()">📥 PDF 내보내기</button>
+      <button class="btn btn-warning btn-sm" onclick="exportExcel()">📊 Excel 내보내기</button>
+      <button class="btn btn-ghost btn-sm" onclick="printPreview()">🖨️ 출력하기</button>
       <button class="btn btn-ghost btn-sm" onclick="closePreview()">✕ 닫기</button>
     </div>
   </div>
@@ -1579,14 +1580,10 @@ const ROWS_CFG = {
 
 function setOrientation(ori){
   pageOrientation = ori;
-  document.getElementById('ori-portrait').style.cssText =
-    ori==='portrait'
-      ? 'background:#fff;color:var(--blue);border:none;padding:5px 12px;font-size:12px'
-      : 'background:none;color:rgba(255,255,255,.8);border:none;padding:5px 12px;font-size:12px';
-  document.getElementById('ori-landscape').style.cssText =
-    ori==='landscape'
-      ? 'background:#fff;color:var(--blue);border:none;padding:5px 12px;font-size:12px'
-      : 'background:none;color:rgba(255,255,255,.8);border:none;padding:5px 12px;font-size:12px';
+  const ON  = 'background:#fff;color:#1a5fad;border:none;padding:6px 14px;font-size:12px;font-weight:700;border-radius:6px;cursor:pointer;font-family:inherit';
+  const OFF = 'background:none;color:rgba(255,255,255,.85);border:none;padding:6px 14px;font-size:12px;font-weight:700;border-radius:6px;cursor:pointer;font-family:inherit';
+  document.getElementById('ori-portrait').style.cssText  = (ori==='portrait')  ? ON : OFF;
+  document.getElementById('ori-landscape').style.cssText = (ori==='landscape') ? ON : OFF;
   // 미리보기 재렌더
   document.getElementById('quote-doc').innerHTML = buildPages();
   document.getElementById('preview-area').scrollTop = 0;
@@ -1594,7 +1591,7 @@ function setOrientation(ori){
 }
 
 function buildPages(){
-  const d = collectQuoteData();
+  const d = previewData || collectQuoteData();
   if (!d) { toast('견적 유형을 먼저 선택하세요.','error'); return ''; }
   const rows = d.rows;
   const cfg  = ROWS_CFG[pageOrientation];
@@ -1648,13 +1645,59 @@ function buildPages(){
 }
 
 // ── 미리보기 ──
+let previewData = null;   // 저장된 견적 미리보기용 (null이면 현재 작성 중인 견적)
+
 function showPreview(){
   if (!currentQType) { toast('견적 유형을 먼저 선택하세요.','error'); return; }
+  previewData = null;
+  openPreviewPanel('작성 중인 견적');
+}
+
+// 저장된 견적을 미리보기 (견적 관리 탭에서 호출)
+function previewSaved(quoteNo){
+  const q = allQuotes.find(x=>x.quoteNo===quoteNo)
+         || JSON.parse(localStorage.getItem('fq_list')||'[]').find(x=>x.quoteNo===quoteNo);
+  if(!q){ toast('견적 데이터를 찾을 수 없습니다.','error'); return; }
+  previewData = savedToPreview(q);
+  openPreviewPanel(q.quoteNo + ' · ' + (q.customer?.name||''));
+}
+
+// 저장 데이터 → 미리보기 데이터 구조 변환
+function savedToPreview(q){
+  const tmpl = QTYPES[q.qtype] || QTYPES.forklift;
+  return {
+    co: q.issuer || {},
+    qtype: q.qtype || 'forklift',
+    qtypeLabel: q.qtypeLabel || tmpl.label,
+    custName:    q.customer?.name    || '(고객사)',
+    custContact: q.customer?.contact || '',
+    custAddr:    q.customer?.addr    || '',
+    qtTitle:  q.title     || '견적서',
+    qtNo:     q.quoteNo   || '',
+    qtDate:   q.quoteDate || '',
+    qtValid:  q.qtValid   || '30일',
+    qtPayment:q.qtPayment || '–',
+    qtPeriod: q.qtPeriod  || '–',
+    qtDelivery:q.qtDelivery|| '',
+    rows: q.items || [],
+    supplyTotal: q.supplyTotal || 0,
+    vat:   q.vatAmt     || 0,
+    grand: q.grandTotal || 0,
+    conditions: q.conditions || tmpl.conditions,
+  };
+}
+
+function openPreviewPanel(subtitle){
+  document.getElementById('preview-subtitle').textContent = subtitle ? ' — '+subtitle : '';
   document.getElementById('quote-doc').innerHTML = buildPages();
   document.getElementById('preview-area').style.display='block';
   document.getElementById('preview-area').scrollTop=0;
 }
-function closePreview(){document.getElementById('preview-area').style.display='none';}
+
+function closePreview(){
+  document.getElementById('preview-area').style.display='none';
+  previewData = null;
+}
 
 // ── 인쇄 (방향 반영) ──
 function printPreview(){
@@ -1672,7 +1715,7 @@ function exportPDF(){
   const PW=isLand?297:210, PH=isLand?210:297;
   const ML=9, MR=9, CW=PW-ML-MR;
   const FOOT_Y = PH-6;
-  const d=collectQuoteData();
+  const d=previewData||collectQuoteData();
   if(!d){toast('견적 유형을 먼저 선택하세요.','error');return;}
   const co=d.co;
   const addPageNum=(data)=>{
@@ -1680,7 +1723,7 @@ function exportPDF(){
     doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(138,154,176);
     doc.text(`${cur}`,PW-MR,FOOT_Y,{align:'right'});
     doc.setFontSize(6.5);
-    doc.text(`${co.name||'INSYS GROUP'}  |  견적번호: ${d.qtNo}  |  인시스 그룹 견적 작성 시스템 v3.6`,ML,FOOT_Y);
+    doc.text(`${co.name||'INSYS GROUP'}  |  견적번호: ${d.qtNo}  |  인시스 그룹 견적 작성 시스템 v3.7`,ML,FOOT_Y);
     if(cur>1){
       doc.setFontSize(9);doc.setTextColor(26,95,173);doc.setFont('helvetica','bold');
       doc.text(co.name||'(주)인시스', ML, 8);
@@ -1768,12 +1811,12 @@ function exportPDF(){
 
 // ── Excel 출력 ──
 function exportExcel(){
-  const d=collectQuoteData();
+  const d=previewData||collectQuoteData();
   if(!d){toast('견적 유형을 먼저 선택하세요.','error');return;}
   const co=d.co;
   const wb=XLSX.utils.book_new();
   const data=[
-    [`인시스 그룹 견적 작성 시스템 v3.6 — ${d.qtypeLabel}`],[''],
+    [`인시스 그룹 견적 작성 시스템 v3.7 — ${d.qtypeLabel}`],[''],
     ['견적번호',d.qtNo,'','발행일',d.qtDate],
     ['발행사',co.name||'–','','대표이사',co.ceo||'–'],
     ['사업자번호',co.bizno||'–','','담당자',co.manager||'–'],
@@ -1823,6 +1866,8 @@ async function saveQuote(){
     customer:{name:d.custName,contact:d.custContact,
       tel:document.getElementById('cust-tel').value,
       email:document.getElementById('cust-email').value,addr:d.custAddr},
+    qtValid:d.qtValid, qtPayment:d.qtPayment, qtPeriod:d.qtPeriod, qtDelivery:d.qtDelivery,
+    conditions:d.conditions,
     supplyTotal:d.supplyTotal, vatAmt:d.vat, grandTotal:d.grand,
     status:'작성중', submitDate:'', memo:'',
     notes:document.getElementById('q-notes').value,
@@ -1909,8 +1954,9 @@ function renderMgmt(list){
       <td style="font-size:12px;color:var(--gray)">${q.submitDate||'–'}</td>
       <td>
         <div class="btn-grp" style="gap:4px;justify-content:center">
-          <button class="btn btn-sm btn-outline" onclick="openStatusModal('${q.quoteNo}','${q.status||''}','${q.submitDate||''}')">✏️</button>
-          <button class="btn btn-sm btn-danger" onclick="delQuote('${q.quoteNo}')">🗑</button>
+          <button class="btn btn-sm" style="background:#e0f2fe;color:#0369a1;border:none" onclick="previewSaved('${q.quoteNo}')" title="미리보기 · PDF · Excel · 인쇄">👁 보기</button>
+          <button class="btn btn-sm btn-outline" onclick="openStatusModal('${q.quoteNo}','${q.status||''}','${q.submitDate||''}')" title="상태 변경">✏️ 상태</button>
+          <button class="btn btn-sm btn-danger" onclick="delQuote('${q.quoteNo}')" title="삭제">🗑</button>
         </div>
       </td>
     </tr>`).join('')}</tbody>
