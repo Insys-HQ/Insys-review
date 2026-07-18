@@ -1014,7 +1014,7 @@ function calc(){
     feedSpd:+$('feed_speed').value
   };
   const R=physics(params);
-  window._P=params; window._R=R;
+  window._P=params; window._R=R; window._score=0; // set below after score calc
 
   // AK hint
   const refDim=params.orient==='vertical'?params.L:params.W;
@@ -1036,7 +1036,7 @@ function calc(){
   const engEff=Math.min(100,(R.totalRem/(R.kwCur+0.01))*8);
   const revPct=Math.min(100,R.f_angle*100);
   const prodSc=Math.min(100,R.pH/500*100);
-  const score=Math.min(100,Math.round(R.totalRem*0.30+velEff*0.20+cov*0.12+engEff*0.15+revPct*0.10+prodSc*0.08+(R.totalRem>=R.targRem?5:0)));
+  const score=Math.min(100,Math.round(R.totalRem*0.30+velEff*0.20+cov*0.12+engEff*0.15+revPct*0.10+prodSc*0.08+(R.totalRem>=R.targRem?5:0))); window._score=score;
   const arc=213.6; $('sc-arc').setAttribute('stroke-dashoffset',arc-arc*score/100); $('sc-arc').setAttribute('stroke',scC(score));
   $('sc-num').textContent=score;
   const grade=score>=85?'최우수 ★★★':score>=70?'우수 ★★':score>=55?'양호 ★':'개선 필요';
@@ -1220,23 +1220,135 @@ async function loadHistory(){
 }
 
 function exportPDF(){
-  const p=window._P,R=window._R;
-  if(!p){alert('시뮬레이션을 실행하세요.');return;}
+  const p=window._P, R=window._R;
+  if(!p){ alert('Run simulation first.'); return; }
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-  const L=196,lm=14;
-  const H=(txt,y)=>{doc.setFillColor(10,31,61);doc.rect(lm,y-5,L,8,'F');doc.setTextColor(255,255,255);doc.setFontSize(10);doc.setFont('helvetica','bold');doc.text(txt,lm+2,y);return y+5;};
-  const Row=(a,b,y)=>{doc.setFillColor(247,250,253);doc.rect(lm,y-4,L,7,'F');doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor(50,50,80);doc.text(a,lm+2,y);doc.setFont('helvetica','bold');doc.text(String(b),lm+L-2,y,{align:'right'});doc.setDrawColor(220,230,240);doc.line(lm,y+3,lm+L,y+3);return y+8;};
-  doc.setFont('helvetica','bold');doc.setFontSize(15);doc.setTextColor(10,31,61);doc.text('Air-Knife Pre-Dryer Report',105,18,{align:'center'});
-  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,120);doc.text('인시스 AI혁신 R&D센터 | v3.0 | '+new Date().toLocaleDateString('ko-KR'),105,24,{align:'center'});
-  doc.setDrawColor(10,31,61);doc.setLineWidth(0.5);doc.line(lm,27,lm+L,27);
-  let y=37;
-  y=H('트레이 사양',y)+2;y=Row('W×L×H',`${p.W}×${p.L}×${p.H} mm`,y);y=Row('포켓',p.pocket+' ea',y);y=Row('초기→목표 물기',`${p.initW}g → ${p.targetW}g`,y);
-  y=H('에어나이프',y)+2;y=Row('단수',p.stages+'단',y);y=Row('AK 길이',p.akLen+' mm',y);y=Row('슬릿 간격',p.slitGap+' mm',y);y=Row('θ₁ / θ₂',p.theta1+'° / '+p.theta2+'°',y);y=Row('거리',p.dist+' mm',y);y=Row('브로어',p.HP+'HP × '+p.faceCount+'면 × '+p.bpf+'대/면',y);
-  y=H('결과 — 공학 수식 기반',y)+2;y=Row('슬릿 출구 v₀',R.v0.toFixed(2)+' m/s',y);y=Row('거리 감쇠 η_d',R.eta_d.toFixed(3),y);y=Row('유효 풍속 v_eff',R.v_eff.toFixed(2)+' m/s',y);y=Row('We (Weber수)',R.We.toFixed(1)+(R.We>=12?' ✓':' ✗ 기준미달'),y);y=Row('Re (Reynolds수)',R.Re.toFixed(0)+(R.Re>2300?' 난류':' 층류'),y);y=Row('단당 제거율 r',(R.r_stage*100).toFixed(2)+'%',y);y=Row('총 제거율',R.totalRem.toFixed(1)+'% / 목표 '+R.targRem.toFixed(1)+'%',y);y=Row('필요 단수',R.nMin+'단',y);
-  y=H('생산·전력',y)+2;y=Row('시간당 처리',Math.round(R.pH)+' 개/h',y);y=Row('일 8h 처리',Math.round(R.pDay)+' 개',y);y=Row('총 소비전력',R.kwCur.toFixed(2)+' kW',y);y=Row('1ch / 2ch 전력',R.kw1.toFixed(2)+' / '+R.kw2.toFixed(2)+' kW',y);
-  doc.setFontSize(7.5);doc.setTextColor(150,150,170);doc.text('수식 근거: 연속방정식(Munson 2016), 자유제트(Rajaratnam 1976), Weber수(Bhagat 2019), 충돌제트(Sparrow 1980)',105,285,{align:'center'});
-  doc.text('인시스 AI혁신 R&D센터 에어나이프 시뮬레이터 v3.0 | '+new Date().toLocaleString('ko-KR'),105,290,{align:'center'});
+  const PW=196, LM=14;
+  const now=new Date();
+  const pad=n=>n.toString().padStart(2,'0');
+  const dateStr=now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate());
+  const timeStr=pad(now.getHours())+':'+pad(now.getMinutes());
+
+  const secHdr=(txt,y)=>{
+    doc.setFillColor(10,31,61); doc.rect(LM,y-5,PW,8,'F');
+    doc.setTextColor(255,255,255); doc.setFontSize(10); doc.setFont('helvetica','bold');
+    doc.text(txt, LM+2, y); return y+5;
+  };
+  const subHdr=(txt,y)=>{
+    doc.setFillColor(30,64,140); doc.rect(LM,y-4,PW,6,'F');
+    doc.setTextColor(200,220,255); doc.setFontSize(8.5); doc.setFont('helvetica','bold');
+    doc.text(txt, LM+2, y); return y+4;
+  };
+  let rowAlt=false;
+  const row=(lbl,val,y)=>{
+    rowAlt=!rowAlt;
+    doc.setFillColor(rowAlt?242:248, rowAlt?247:251, rowAlt?252:254);
+    doc.rect(LM,y-4,PW,7,'F');
+    doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(50,50,80);
+    doc.text(lbl, LM+3, y);
+    doc.setFont('helvetica','bold'); doc.setTextColor(10,31,61);
+    doc.text(String(val), LM+PW-2, y, {align:'right'});
+    doc.setDrawColor(210,225,240); doc.line(LM,y+3,LM+PW,y+3);
+    return y+8;
+  };
+
+  // Title block
+  doc.setFillColor(10,31,61); doc.rect(0,0,210,32,'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(17); doc.setTextColor(255,255,255);
+  doc.text('Air-Knife Pre-Dryer Optimization Report', 105, 13, {align:'center'});
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(180,210,240);
+  doc.text('Insys AI Innovation R&D Center  |  v3.0  |  '+dateStr+'  '+timeStr, 105, 22, {align:'center'});
+
+  // Score badge
+  const score=window._score||0;
+  const sc=score>=85?[5,150,105]:score>=70?[26,79,152]:score>=55?[217,119,6]:[220,38,38];
+  doc.setFillColor(...sc); doc.roundedRect(LM,35,36,14,2,2,'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(255,255,255);
+  doc.text('SCORE', LM+18, 41, {align:'center'});
+  doc.setFontSize(15); doc.text(String(score), LM+18, 48, {align:'center'});
+
+  // Status badge
+  const ok=R.totalRem>=R.targRem;
+  doc.setFillColor(ok?5:200, ok?150:40, ok?105:40); doc.roundedRect(LM+40,35,66,14,2,2,'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(255,255,255);
+  doc.text(ok?'TARGET ACHIEVED':'TARGET NOT MET', LM+73, 41, {align:'center'});
+  doc.setFontSize(9.5);
+  doc.text('Removal: '+R.totalRem.toFixed(1)+'%  /  Target: '+R.targRem.toFixed(1)+'%', LM+73, 48, {align:'center'});
+
+  let y=56;
+
+  // 1. Tray
+  y=secHdr('1. TRAY SPECIFICATION', y)+2; rowAlt=false;
+  const pockets=+(document.getElementById('pocket').value)||0;
+  y=row('Tray Dimensions  (W x L x H)', p.W+' x '+p.L+' x '+p.H+' mm', y);
+  y=row('Pocket Count', pockets+' ea', y);
+  y=row('Channel Count', p.ch+'-Channel', y);
+  y=row('Feed Orientation', p.orient==='vertical'?'Vertical (standing upright)':'Horizontal (flat)', y);
+  y=row('Initial Moisture (per tray)', p.initW+' g', y);
+  y=row('Target Residual Moisture', p.targetW+' g', y);
+  y=row('Required Removal Rate', R.targRem.toFixed(1)+' %', y);
+  y+=3;
+
+  // 2. Air Knife
+  y=secHdr('2. AIR KNIFE CONFIGURATION', y)+2; rowAlt=false;
+  y=row('Number of Stages', p.stages+' stage(s)', y);
+  y=row('Air Knife Length', p.akLen+' mm', y);
+  y=row('Slit Gap', p.slitGap+' mm', y);
+  y=row('Sweep Angle  (theta1)', p.theta1+' deg  — right-to-left sweep', y);
+  y=row('Injection Angle  (theta2)', p.theta2+' deg  — counter feed direction', y);
+  y=row('AK-to-Tray Distance  (d)', p.dist+' mm', y);
+  y=row('Blower Setup', p.HP+' HP  x  '+p.faceCount+' face(s)  x  '+p.bpf+' unit(s)/face'+(p.faceCount===2?' [Front+Back]':''), y);
+  y=row('Conveyor Speed', p.feedSpd+' m/min', y);
+  y+=3;
+
+  // 3. Engineering Results
+  y=secHdr('3. SIMULATION RESULTS — ENGINEERING FORMULAS', y)+2; rowAlt=false;
+
+  y=subHdr('Fluid Dynamics  (Continuity Equation + Free Jet Decay)', y)+3;
+  y=row('Blower Flow Rate  Q = HP x 0.85  [m3/min per face]', R.Q_face.toFixed(3)+' m3/min', y);
+  y=row('Slit Area  A = L_ak x gap', (R.A_slit*1e6).toFixed(1)+' mm2', y);
+  y=row('Slit Exit Velocity  v0 = Q / A_slit', R.v0.toFixed(2)+' m/s', y);
+  y=row('Distance Decay  eta = sqrt(20mm / d)', R.eta_d.toFixed(4)+'  (d = '+p.dist+' mm)', y);
+  y=row('Effective Velocity  v_eff = v0 x eta', R.v_eff.toFixed(2)+' m/s', y);
+
+  y=subHdr('Film Rupture Criteria  (Weber No. / Reynolds No.)', y)+3;
+  y=row('Weber No.  We = rho_air x v2 x delta / sigma_water', R.We.toFixed(2)+(R.We>=12?'  OK (>= 12)':'  LOW (< 12, threshold)'), y);
+  y=row('Reynolds No.  Re = v x gap / nu_air', R.Re.toFixed(0)+(R.Re>2300?'  Turbulent (> 2300)':'  Laminar'), y);
+
+  y=subHdr('Angle Effects  (Oblique Impingement — Sparrow 1980)', y)+3;
+  y=row('Sweep Factor  f_sweep = sin(theta1) x shape-correction', R.f_sweep.toFixed(4), y);
+  y=row('Angle Factor  f_angle = sin(theta2)', R.f_angle.toFixed(4), y);
+
+  y=subHdr('Per-Stage & Cumulative Removal  (Exponential Decay Model)', y)+3;
+  y=row('Dwell Time per Stage  t = L_tray / v_conveyor', R.passTime.toFixed(2)+' s', y);
+  y=row('Per-Stage Removal Rate  r  (capped 93%)', (R.r_stage*100).toFixed(2)+' %', y);
+  y=row('Cumulative Model  W[n] = W0 x (1 - r)^n', p.stages+' stage(s) applied', y);
+  y=row('Final Residual Moisture', R.wArr[p.stages].toFixed(2)+' g/tray', y);
+  y=row('Total Removal Rate', R.totalRem.toFixed(2)+' %  (Target: '+R.targRem.toFixed(1)+'%)', y);
+  y=row('Min. Stages  n = ceil( ln(Wt/W0) / ln(1-r) )', (typeof R.nMin==='number'?R.nMin:'>20')+' stage(s)', y);
+  y+=3;
+
+  // 4. Production & Power
+  y=secHdr('4. PRODUCTION & POWER', y)+2; rowAlt=false;
+  y=row('Throughput Formula  = v / L_tray x channels', '', y);
+  y=row('Trays per Minute', R.pMin.toFixed(2)+' ea/min', y);
+  y=row('Trays per Hour', Math.round(R.pH)+' ea/h', y);
+  y=row('Trays per Day  (8 h shift)', Math.round(R.pDay)+' ea/day', y);
+  y=row('Tray Interval', R.intv.toFixed(1)+' s', y);
+  y=row('Total Blowers  ('+p.ch+'-ch)', R.blCur+' units', y);
+  y=row('Power per Blower  = HP x 0.7457', R.kW_e.toFixed(4)+' kW/unit', y);
+  y=row('Total Power  ('+p.ch+'-ch)', R.kwCur.toFixed(2)+' kW', y);
+  y=row('1-Channel Configuration', R.kw1.toFixed(2)+' kW  ('+R.bl1+' blowers)', y);
+  y=row('2-Channel Configuration', R.kw2.toFixed(2)+' kW  ('+R.bl2+' blowers)', y);
+  y=row('Est. Monthly Power Cost  (8h x 22d x 120 KRW/kWh)', Math.round(R.kwCur*8*22*120).toLocaleString()+' KRW', y);
+
+  // Footer
+  doc.setFontSize(7.5); doc.setTextColor(150,150,170); doc.setFont('helvetica','normal');
+  doc.text('References: Continuity Eq.(Munson 2016) / Free Jet Decay(Rajaratnam 1976, Forthmann 1934) / Weber No.(Bhagat 2019 AIChE J.) / Oblique Jet(Sparrow 1980) / Decay Model(Incropera 2011)', 105, 282, {align:'center'});
+  doc.setDrawColor(180,200,220); doc.line(LM,285,LM+PW,285);
+  doc.text('Insys AI Innovation R&D Center  |  Air-Knife Pre-Dryer Simulator v3.0  |  Generated: '+dateStr+' '+timeStr, 105, 290, {align:'center'});
+
   doc.save('airknife_v3_report.pdf');
 }
 
