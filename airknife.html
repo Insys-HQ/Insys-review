@@ -217,12 +217,13 @@ input[type=range]{flex:1;height:4px;accent-color:#1a4f96;cursor:pointer}
           <div class="sec">각도 설정</div>
           <div class="f"><label>측면 스윕각 θ₁ <span class="u">° (우→좌 쓸기, 권장 10~25°)</span></label>
             <div class="rw"><input type="range" id="angle_sweep" min="0" max="30" step="1" value="20" oninput="syncR('angle_sweep','asv');calc()"><span class="rv" id="asv">20</span><span class="u">°</span></div>
-            <div style="display:flex;justify-content:space-between;font-size:9px;color:#718096"><span>0° 수직</span><span>15~25° 최적</span><span>30° 한계</span></div></div>
-          <div class="f"><label>분사각 θ₂ <span class="u">° (역방향)</span></label>
-            <div class="rw"><input type="range" id="angle_slit" min="0" max="60" step="5" value="30" oninput="syncR('angle_slit','a2v');calc()"><span class="rv" id="a2v">30</span><span class="u">°</span></div></div>
-          <div class="f"><label>AK-트레이 거리 d <span class="u">mm</span> <span style="font-size:10px;color:#718096">(실용 범위 10~100mm)</span></label>
+            <div style="display:flex;justify-content:space-between;font-size:9px;color:#718096"><span>0° 효과없음</span><span id="t1-warn">15~25° 최적</span><span>30° 한계</span></div></div>
+          <div class="f"><label>분사각 θ₂ <span class="u">° (역방향, 권장 25~45°)</span></label>
+            <div class="rw"><input type="range" id="angle_slit" min="0" max="60" step="5" value="30" oninput="syncR('angle_slit','a2v');calc()"><span class="rv" id="a2v">30</span><span class="u">°</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:9px;color:#718096"><span>0° 수직분사</span><span id="t2-warn"></span><span>60° 최대역방향</span></div></div>
+          <div class="f"><label>AK-트레이 거리 d <span class="u">mm</span></label>
             <div class="rw"><input type="range" id="ak_dist" min="10" max="200" step="5" value="50" oninput="syncR('ak_dist','adv');calc()"><span class="rv" id="adv">50</span><span class="u">mm</span></div>
-            <div id="dist-warn" style="font-size:10px;color:#d97706;margin-top:2px"></div></div>
+            <div style="display:flex;justify-content:space-between;font-size:9px;color:#718096"><span>10mm 최근접</span><span id="dist-warn"></span><span>200mm 원거리</span></div></div>
           <div class="sec">링 브로어</div>
           <div class="f2">
             <div class="f"><label>브로어 마력 <span class="u">HP</span></label>
@@ -1160,10 +1161,39 @@ function calc(){
   $('ak_hint').textContent=`트레이 기준 ${refDim}mm → 최소 ${Math.ceil(refDim/100)*100}mm / 권장 ${Math.ceil(refDim*1.1/100)*100}mm | 채널 유효폭 ${R.chEffWidth.toFixed(0)}mm`;
 
   // 실시간 범위 경고
+  // ── 슬라이더 실시간 최적 마커 ──────────────────────────────
+  // 슬릿 간격
   const slitWarn=$('slit-warn');
-  if(slitWarn){ slitWarn.textContent = params.slitGap>3 ? '⚠️ 3mm↑ = 에어커튼 영역' : params.slitGap<=1?'✅ 최적':''; }
+  if(slitWarn){
+    if(params.slitGap<=1.0)      slitWarn.innerHTML='<span style="color:#059669;font-weight:700">✅ 최적</span>';
+    else if(params.slitGap<=2.0) slitWarn.innerHTML='<span style="color:#2563a8;font-weight:700">✅ 양호</span>';
+    else if(params.slitGap<=3.0) slitWarn.innerHTML='<span style="color:#d97706;font-weight:700">⚠️ 보통</span>';
+    else                         slitWarn.innerHTML='<span style="color:#dc2626;font-weight:700">⛔ 에어커튼</span>';
+  }
+  // 스윕각 θ₁ (고정 텍스트 중앙값을 동적으로)
+  const t1Warn=$('t1-warn');
+  if(t1Warn){
+    if(params.theta1>=15&&params.theta1<=25) t1Warn.innerHTML='<span style="color:#059669;font-weight:700">✅ 최적</span>';
+    else if(params.theta1>=10&&params.theta1<15) t1Warn.innerHTML='<span style="color:#d97706;font-weight:700">⚠️ 각도 부족</span>';
+    else if(params.theta1>25)                t1Warn.innerHTML='<span style="color:#d97706;font-weight:700">⚠️ 과대</span>';
+    else                                     t1Warn.innerHTML='<span style="color:#dc2626;font-weight:700">⛔ 효과 없음</span>';
+  }
+  // 분사각 θ₂
+  const t2Warn=$('t2-warn');
+  if(t2Warn){
+    if(params.theta2>=25&&params.theta2<=45) t2Warn.innerHTML='<span style="color:#059669;font-weight:700">✅ 최적</span>';
+    else if(params.theta2>=20&&params.theta2<25) t2Warn.innerHTML='<span style="color:#2563a8;font-weight:700">✅ 양호</span>';
+    else if(params.theta2>45)                t2Warn.innerHTML='<span style="color:#d97706;font-weight:700">⚠️ 과대</span>';
+    else                                     t2Warn.innerHTML='<span style="color:#dc2626;font-weight:700">⛔ 효과 없음</span>';
+  }
+  // 거리
   const distWarn=$('dist-warn');
-  if(distWarn){ distWarn.textContent = params.dist>100 ? `⚠️ ${params.dist}mm — 100mm 초과 시 압력 손실 큼 (η=${R.eta_d.toFixed(2)})` : ''; }
+  if(distWarn){
+    if(params.dist>=20&&params.dist<=60)      distWarn.innerHTML='<span style="color:#059669;font-weight:700">✅ 최적</span>';
+    else if(params.dist>60&&params.dist<=100) distWarn.innerHTML='<span style="color:#2563a8;font-weight:700">✅ 양호</span>';
+    else if(params.dist>100&&params.dist<=150)distWarn.innerHTML='<span style="color:#d97706;font-weight:700">⚠️ 손실 큼 (η='+R.eta_d.toFixed(2)+')</span>';
+    else                                      distWarn.innerHTML='<span style="color:#dc2626;font-weight:700">⛔ 원거리 (η='+R.eta_d.toFixed(2)+')</span>';
+  }
 
   // Target pct & needed stages
   $('tgt_pct').textContent=R.targRem.toFixed(1)+'%';
