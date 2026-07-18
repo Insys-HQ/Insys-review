@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>세척기 설계 시뮬레이터 v3.10 | 인시스 AI혁신 R&D센터</title>
+<title>세척기 설계 시뮬레이터 v3.11 | 인시스 AI혁신 R&D센터</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -190,6 +190,49 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
 .live-chip.good{background:#d4edda;border-color:#a5d6a7;color:#1b5e20;}
 .live-chip.warn{background:#fff3cd;border-color:#ffb300;color:#856404;}
 .live-chip.bad {background:#f8d7da;border-color:#ef9a9a;color:#b71c1c;}
+
+/* ── 슬라이더+막대 컴포넌트 ── */
+.sv-wrap{background:#f8fafc;border:1px solid #e2eaf2;border-radius:9px;padding:10px 12px;margin-bottom:8px;transition:border .2s;}
+.sv-wrap:hover{border-color:#0d7fa8;}
+.sv-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;}
+.sv-lbl{font-size:12px;font-weight:700;color:#1a3a5a;}
+.sv-right{display:flex;align-items:center;gap:6px;}
+.sv-num{width:70px;border:1.5px solid #c5d5e5;border-radius:6px;padding:3px 6px;font-size:13px;font-weight:700;font-family:inherit;color:#1a2535;text-align:right;background:#fff;}
+.sv-num.s-rec{background:#e3f4fd;border-color:#0d7fa8;color:#083d55;}
+.sv-num.s-auto{background:#e8f5e9;border-color:#43a047;color:#1b5e20;}
+.sv-num.s-user{background:#fff9e6;border-color:#d4a017;color:#7a4500;}
+.sv-unit{font-size:11px;color:#7a90a4;min-width:24px;}
+.sv-status{font-size:10px;font-weight:700;padding:2px 8px;border-radius:7px;white-space:nowrap;}
+.sv-status.opt {background:#d4edda;color:#155724;}
+.sv-status.low {background:#fff3cd;color:#856404;}
+.sv-status.high{background:#f8d7da;color:#721c24;}
+.sv-status.na  {background:#e9ecef;color:#6c757d;}
+
+/* 막대 영역 */
+.sv-bar-area{position:relative;margin-bottom:5px;}
+.sv-bar-bg{position:relative;background:#e3eaf0;border-radius:8px;height:28px;overflow:hidden;}
+/* 최적 범위 강조 영역 */
+.sv-bar-opt{position:absolute;top:0;height:100%;background:rgba(46,125,50,.12);border-left:2px solid rgba(46,125,50,.4);border-right:2px solid rgba(46,125,50,.4);pointer-events:none;z-index:1;}
+/* 현재값 채움 막대 */
+.sv-bar-fill{position:absolute;top:0;left:0;height:100%;border-radius:8px 0 0 8px;transition:width .35s ease,background .35s;z-index:2;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;}
+.sv-bar-fill span{font-size:10px;font-weight:700;color:#fff;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.3);}
+/* 슬라이더 — 막대 위에 투명하게 올림 */
+.sv-range{position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:3;margin:0;}
+/* min/max 라벨 */
+.sv-minmax{display:flex;justify-content:space-between;font-size:9px;color:#9aabb8;margin-top:2px;padding:0 2px;}
+/* 힌트 */
+.sv-hint{font-size:10px;color:#6a82a0;margin-top:3px;line-height:1.5;}
+/* 상태 라벨 (그래프 하단) */
+.sv-state-row{display:flex;gap:4px;margin-top:4px;flex-wrap:wrap;}
+.sv-state-item{font-size:10px;padding:1px 8px;border-radius:6px;font-weight:600;border:1px solid;}
+.sv-state-item.cur{border-color:#0d7fa8;background:#e3f4fd;color:#0b5a80;}
+.sv-state-item.opt-lbl{border-color:#2e7d32;background:#e8f5e9;color:#1b5e20;}
+.sv-state-item.low-lbl{border-color:#f9a825;background:#fff8e1;color:#e65100;}
+.sv-state-item.high-lbl{border-color:#c62828;background:#ffebee;color:#b71c1c;}
+.live-chip{font-size:11px;font-weight:700;padding:2px 9px;border-radius:8px;background:#fff;border:1px solid #c8dcea;color:#0b5a80;white-space:nowrap;}
+.live-chip.good{background:#d4edda;border-color:#a5d6a7;color:#1b5e20;}
+.live-chip.warn{background:#fff3cd;border-color:#ffb300;color:#856404;}
+.live-chip.bad {background:#f8d7da;border-color:#ef9a9a;color:#b71c1c;}
 </style>
 </head>
 <body>
@@ -210,7 +253,7 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
        title="새 탭에서 열기">🔗 바로가기</a>
     <button class="vt on" id="bPC">PC</button>
     <button class="vt" id="bMB">Mobile</button>
-    <span class="vb">v3.10</span>
+    <span class="vb">v3.11</span>
   </div>
 </div>
 
@@ -301,11 +344,11 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
     </div>
   </div>
 
-  <!-- STEP 2: 노즐 설계 -->
+  <!-- STEP 2: 노즐 설계 (슬라이더+막대그래프) -->
   <div class="card">
-    <div class="ch"><span class="ci">💧</span><span class="cl">STEP 2 — 분사 노즐 설계</span><span class="cq cq-b">변경 시 연동값 자동계산</span></div>
+    <div class="ch"><span class="ci">💧</span><span class="cl">STEP 2 — 분사 노즐 설계</span><span class="cq cq-b">슬라이더로 조정 → 실시간 연동</span></div>
     <!-- 실시간 결과 요약 바 -->
-    <div id="step2LiveBar" style="display:flex;gap:8px;padding:6px 13px;background:#f0f6fd;border-bottom:1px solid #e2eaf2;flex-wrap:wrap;align-items:center;">
+    <div id="step2LiveBar" style="display:flex;gap:7px;padding:6px 13px;background:#f0f6fd;border-bottom:1px solid #e2eaf2;flex-wrap:wrap;align-items:center;">
       <span style="font-size:11px;font-weight:700;color:#1a4060;">📊 실시간:</span>
       <span class="live-chip" id="lv-cov">커버리지: —</span>
       <span class="live-chip" id="lv-noz">노즐: —</span>
@@ -315,44 +358,118 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
       <span class="live-chip" id="lv-pipe">분사관: —</span>
     </div>
     <div class="cb">
-      <!-- 범례 -->
-      <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
-        <span style="font-size:10px;background:#e3f4fd;color:#0b5a80;padding:1px 7px;border-radius:4px;font-weight:700;">🔵 추천값</span>
-        <span style="font-size:10px;background:#e8f5e9;color:#1b5e20;padding:1px 7px;border-radius:4px;font-weight:700;">🟢 자동계산</span>
-        <span style="font-size:10px;background:#fff9e6;color:#b37400;padding:1px 7px;border-radius:4px;font-weight:700;">🟡 사용자입력</span>
+
+      <div class="st">노즐 기본 사양</div>
+
+      <!-- 홀 직경 -->
+      <div class="sv-wrap" id="sv-nHole">
+        <div class="sv-head">
+          <span class="sv-lbl">💧 홀 직경</span>
+          <div class="sv-right">
+            <span class="sv-status" id="st-nHole">—</span>
+            <input class="sv-num s-rec" type="number" id="nHole" value="2.5" step="0.1" min="0.5" max="10">
+            <span class="sv-unit">mm</span>
+          </div>
+        </div>
+        <div class="sv-bar-area">
+          <div class="sv-bar-bg">
+            <div class="sv-bar-opt" id="opt-nHole"></div>
+            <div class="sv-bar-fill" id="bar-nHole"></div>
+            <input type="range" class="sv-range" id="r-nHole" min="5" max="100" step="1" value="25">
+          </div>
+          <div class="sv-minmax"><span>0.5mm</span><span>10mm</span></div>
+        </div>
+        <div class="sv-hint" id="hint-nHole">→ 단위유량: <b id="dv-qEach">—</b> L/min | 오염도 기반 추천</div>
       </div>
 
-      <div class="st">노즐 기본 사양 <small style="font-weight:400;color:#7a90a4;">↓ 변경 시 유량·펌프·커버리지 자동계산</small></div>
-      <div class="g3">
-        <div class="fl">
-          <label>홀 직경 <span class="lbadge lbadge-r">추천</span></label>
-          <input type="number" id="nHole" class="s-rec" value="2.5" step="0.1" min="0.5" max="15">
-          <span class="un" id="dep-hole">→ 단위유량: <b id="dv-qEach">—</b> L/min</span>
+      <!-- 분사 압력 -->
+      <div class="sv-wrap" id="sv-nPress">
+        <div class="sv-head">
+          <span class="sv-lbl">🔧 분사 압력</span>
+          <div class="sv-right">
+            <span class="sv-status" id="st-nPress">—</span>
+            <input class="sv-num s-rec" type="number" id="nPress" value="200" min="50" max="600">
+            <span class="sv-unit">kPa</span>
+          </div>
         </div>
-        <div class="fl">
-          <label>분사 압력 <span class="lbadge lbadge-r">추천</span></label>
-          <input type="number" id="nPress" class="s-rec" value="200" min="50" max="600">
-          <span class="un" id="dep-press">→ 유량·펌프HP 연동</span>
+        <div class="sv-bar-area">
+          <div class="sv-bar-bg">
+            <div class="sv-bar-opt" id="opt-nPress"></div>
+            <div class="sv-bar-fill" id="bar-nPress"></div>
+            <input type="range" class="sv-range" id="r-nPress" min="50" max="600" step="10" value="200">
+          </div>
+          <div class="sv-minmax"><span>50kPa</span><span>600kPa</span></div>
         </div>
-        <div class="fl">
-          <label>분사 각도 <span class="lbadge lbadge-r">추천</span></label>
-          <input type="number" id="nAng" class="s-rec" value="15" min="5" max="60">
-          <span class="un" id="dep-ang">→ 커버리지 연동</span>
-        </div>
+        <div class="sv-hint" id="dep-press">→ 유량·펌프HP 연동 | 높을수록 세척력↑ 전력↑</div>
       </div>
 
-      <div class="st">노즐 배열 <small style="font-weight:400;color:#7a90a4;">↓ 변경 시 간격·커버리지 자동계산</small></div>
-      <div class="g4">
-        <div class="fl">
-          <label>가로 수 <span class="lbadge lbadge-r">추천</span></label>
-          <input type="number" id="nCol" class="s-rec" value="4" min="1" max="30">
-          <span class="un" id="dep-col">→ 가로간격 연동</span>
+      <!-- 분사 각도 -->
+      <div class="sv-wrap" id="sv-nAng">
+        <div class="sv-head">
+          <span class="sv-lbl">📐 분사 각도</span>
+          <div class="sv-right">
+            <span class="sv-status" id="st-nAng">—</span>
+            <input class="sv-num s-rec" type="number" id="nAng" value="15" min="5" max="60">
+            <span class="sv-unit">°</span>
+          </div>
         </div>
-        <div class="fl">
-          <label>세로 수 <span class="lbadge lbadge-r">추천</span></label>
-          <input type="number" id="nRow" class="s-rec" value="3" min="1" max="20">
-          <span class="un" id="dep-row">→ 세로간격 연동</span>
+        <div class="sv-bar-area">
+          <div class="sv-bar-bg">
+            <div class="sv-bar-opt" id="opt-nAng"></div>
+            <div class="sv-bar-fill" id="bar-nAng"></div>
+            <input type="range" class="sv-range" id="r-nAng" min="5" max="60" step="1" value="15">
+          </div>
+          <div class="sv-minmax"><span>5°</span><span>60°</span></div>
         </div>
+        <div class="sv-hint" id="dep-ang">→ 커버리지 연동</div>
+      </div>
+
+      <div class="st" style="margin-top:12px;">노즐 배열</div>
+
+      <!-- 노즐 가로수 -->
+      <div class="sv-wrap" id="sv-nCol">
+        <div class="sv-head">
+          <span class="sv-lbl">↔ 가로 수</span>
+          <div class="sv-right">
+            <span class="sv-status" id="st-nCol">—</span>
+            <input class="sv-num s-rec" type="number" id="nCol" value="4" min="1" max="30">
+            <span class="sv-unit">개</span>
+          </div>
+        </div>
+        <div class="sv-bar-area">
+          <div class="sv-bar-bg">
+            <div class="sv-bar-opt" id="opt-nCol"></div>
+            <div class="sv-bar-fill" id="bar-nCol"></div>
+            <input type="range" class="sv-range" id="r-nCol" min="1" max="20" step="1" value="4">
+          </div>
+          <div class="sv-minmax"><span>1개</span><span>20개</span></div>
+        </div>
+        <div class="sv-hint" id="dep-col">→ 가로간격 연동</div>
+      </div>
+
+      <!-- 노즐 세로수 -->
+      <div class="sv-wrap" id="sv-nRow">
+        <div class="sv-head">
+          <span class="sv-lbl">↕ 세로 수</span>
+          <div class="sv-right">
+            <span class="sv-status" id="st-nRow">—</span>
+            <input class="sv-num s-rec" type="number" id="nRow" value="3" min="1" max="20">
+            <span class="sv-unit">개</span>
+          </div>
+        </div>
+        <div class="sv-bar-area">
+          <div class="sv-bar-bg">
+            <div class="sv-bar-opt" id="opt-nRow"></div>
+            <div class="sv-bar-fill" id="bar-nRow"></div>
+            <input type="range" class="sv-range" id="r-nRow" min="1" max="20" step="1" value="3">
+          </div>
+          <div class="sv-minmax"><span>1개</span><span>20개</span></div>
+        </div>
+        <div class="sv-hint" id="dep-row">→ 세로간격 연동</div>
+      </div>
+
+      <!-- 가로/세로 간격 (자동계산, 읽기전용 표시) -->
+      <div class="g2" style="margin-top:8px;">
         <div class="fl">
           <label>가로 간격 <span class="lbadge lbadge-a">자동</span></label>
           <input type="number" id="nGapX" class="s-auto" value="150" min="20" max="600" readonly>
@@ -364,13 +481,36 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
           <span class="un">mm (노즐수·면고 기반)</span>
         </div>
       </div>
-      <!-- 가로/세로 간격 수동 오버라이드 -->
-      <div style="margin-top:4px;margin-bottom:6px;">
+      <div style="margin-top:4px;margin-bottom:8px;">
         <button class="btn-w" id="btnUnlockGap" style="font-size:11px;padding:3px 10px;">🔓 간격 수동 입력 모드</button>
         <span style="font-size:10px;color:#7a90a4;margin-left:6px;">자동계산 해제 후 직접 입력 가능</span>
       </div>
 
-      <div class="st">분사관 / 거리 <small style="font-weight:400;color:#7a90a4;">SUS 304/316 배관 규격 선택</small></div>
+      <div class="st">분사 거리 / 관 규격</div>
+
+      <!-- 분사 거리 -->
+      <div class="sv-wrap" id="sv-nDist">
+        <div class="sv-head">
+          <span class="sv-lbl">📏 분사 거리</span>
+          <div class="sv-right">
+            <span class="sv-status" id="st-nDist">—</span>
+            <input class="sv-num" type="number" id="nDist" value="150" min="30" max="500">
+            <span class="sv-unit">mm</span>
+          </div>
+        </div>
+        <div class="sv-bar-area">
+          <div class="sv-bar-bg">
+            <div class="sv-bar-opt" id="opt-nDist"></div>
+            <div class="sv-bar-fill" id="bar-nDist"></div>
+            <input type="range" class="sv-range" id="r-nDist" min="30" max="500" step="10" value="150">
+          </div>
+          <div class="sv-minmax"><span>30mm</span><span>500mm</span></div>
+        </div>
+        <div class="sv-hint" id="dep-dist">→ 커버리지·스프레드 연동</div>
+      </div>
+
+      <!-- 분사관 SUS 규격 -->
+      <div class="st">분사관 SUS 규격 <small style="font-weight:400;color:#7a90a4;">SUS 304/316 배관 규격 선택</small></div>
       <div class="g2" style="margin-bottom:7px;">
         <div class="fl">
           <label>분사관 SUS 규격 <span class="lbadge lbadge-r">추천</span></label>
@@ -413,16 +553,11 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
           <span class="un" id="dep-supSpec">ID: — mm | 유속: — m/s</span>
         </div>
       </div>
-      <div class="g3">
+      <div class="g2">
         <div class="fl">
           <label>분사관 폭 <span class="lbadge lbadge-a">자동</span></label>
           <input type="number" id="nManW" class="s-auto" value="600" min="100" max="3000">
           <span class="un">mm (피세척물 폭 기준)</span>
-        </div>
-        <div class="fl">
-          <label>분사 거리 <span class="lbadge lbadge-u">사용자</span></label>
-          <input type="number" id="nDist" value="150" min="30" max="500">
-          <span class="un" id="dep-dist">→ 커버리지·스프레드 연동</span>
         </div>
         <div class="fl">
           <label>SUS 재질</label>
@@ -434,6 +569,7 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
           <span class="un">세척액 부식성 고려</span>
         </div>
       </div>
+
     </div>
   </div>
 
@@ -606,7 +742,7 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
 
 </div><!-- /rp -->
 </div><!-- /wrap -->
-<footer>인시스 AI혁신 R&D센터 | 세척기 설계 시뮬레이터 v3.10 | ys.kim@in-sys.co.kr</footer>
+<footer>인시스 AI혁신 R&D센터 | 세척기 설계 시뮬레이터 v3.11 | ys.kim@in-sys.co.kr</footer>
 
 <script>
 'use strict';
@@ -623,7 +759,7 @@ const DIRT={
   hole: [0,  3.0,  2.5,  2.5,  2.0,  1.8],
 };
 const HP_PER_KW=1.341;
-const LS_KEY='washer_v310_last'; // localStorage 키
+const LS_KEY='washer_v311_last'; // localStorage 키
 
 // ── SUS 배관 규격 (KS B 1501 / JIS B 2311 스케줄 10S 기준) ──
 const SUS_PIPES=[
@@ -802,6 +938,147 @@ function setAuto(id,val){
   const e=gi(id); if(!e) return;
   e.value=val;
   e.className='s-auto';
+}
+
+// ══════════════════════════════════════════════
+// 슬라이더+막대그래프 시스템
+// ══════════════════════════════════════════════
+
+// 각 슬라이더 파라미터 정의
+// {id, min, max, optMin, optMax, unit, colorFn, statusFn}
+function getSliderDefs(dlv, iD, iH, qPerCh){
+  const dlvN = dlv||3;
+  // 오염도별 최적 범위
+  const holeOpt  = [[0.8,1.5],[1.5,2.5],[2.0,3.0],[2.0,3.0],[1.5,2.5],[1.5,2.0]][dlvN]||[2.0,3.0];
+  const pressOpt = [[50,120],[80,150],[120,200],[160,280],[200,350],[250,400]][dlvN]||[150,250];
+  const angOpt   = [10,20]; // 항상 10~20°
+  const colOpt   = [Math.max(2,Math.round(iD/150)), Math.max(2,Math.round(iD/80))];
+  const rowOpt   = [Math.max(2,Math.round(iH/150)), Math.max(2,Math.round(iH/80))];
+  const distOpt  = [100, 200];
+  return {
+    nHole:  {min:0.5,  max:10,  optMin:holeOpt[0],  optMax:holeOpt[1],  unit:'mm',  label:'최적 홀 직경'},
+    nPress: {min:50,   max:600, optMin:pressOpt[0],  optMax:pressOpt[1], unit:'kPa', label:'최적 분사압'},
+    nAng:   {min:5,    max:60,  optMin:angOpt[0],    optMax:angOpt[1],   unit:'°',   label:'최적 분사각'},
+    nCol:   {min:1,    max:20,  optMin:colOpt[0],    optMax:colOpt[1],   unit:'개',  label:'최적 가로수'},
+    nRow:   {min:1,    max:20,  optMin:rowOpt[0],    optMax:rowOpt[1],   unit:'개',  label:'최적 세로수'},
+    nDist:  {min:30,   max:500, optMin:distOpt[0],   optMax:distOpt[1],  unit:'mm',  label:'최적 거리'},
+  };
+}
+
+function getStatus(val, optMin, optMax){
+  if(val < optMin) return 'low';
+  if(val > optMax) return 'high';
+  return 'opt';
+}
+const STATUS_TEXT = {opt:'✅ 최적', low:'⚠️ 부족', high:'🔴 초과', na:'—'};
+const STATUS_CLS  = {opt:'opt',    low:'low',     high:'high',    na:'na'};
+const BAR_COLORS  = {opt:'linear-gradient(90deg,#2e7d32,#43a047)', low:'linear-gradient(90deg,#f57f17,#ffb300)', high:'linear-gradient(90deg,#c62828,#e53935)'};
+
+function updateSliderUI(id, val, def){
+  const numEl  = gi(id);
+  const rangeEl= gi('r-'+id);
+  const barEl  = gi('bar-'+id);
+  const optEl  = gi('opt-'+id);
+  const stEl   = gi('st-'+id);
+  if(!barEl||!def) return;
+
+  const {min,max,optMin,optMax,unit,label} = def;
+  const pct    = Math.min(100, Math.max(0, (val-min)/(max-min)*100));
+  const pctMin = Math.min(100, Math.max(0, (optMin-min)/(max-min)*100));
+  const pctMax = Math.min(100, Math.max(0, (optMax-min)/(max-min)*100));
+  const status = getStatus(val, optMin, optMax);
+
+  // 막대 채움
+  barEl.style.width   = pct+'%';
+  barEl.style.background = BAR_COLORS[status];
+  barEl.innerHTML     = '<span>'+val+'</span>';
+
+  // 최적 범위 강조
+  if(optEl){
+    optEl.style.left  = pctMin+'%';
+    optEl.style.width = (pctMax-pctMin)+'%';
+  }
+
+  // 상태 뱃지
+  if(stEl){
+    stEl.textContent = STATUS_TEXT[status];
+    stEl.className   = 'sv-status '+ STATUS_CLS[status];
+  }
+
+  // 숫자 입력 슬라이더 동기화
+  if(rangeEl && +rangeEl.value !== val){
+    // range min/max는 HTML 속성 기준이므로 clamp
+    rangeEl.value = Math.min(+rangeEl.max, Math.max(+rangeEl.min, val));
+  }
+
+  // 힌트 하단 상태 라벨 업데이트
+  const hintEl = gi('hint-'+id) || gi('dep-'+id.replace('n','').toLowerCase()+id.slice(1));
+  const stateRow = gi('strow-'+id);
+  // sv-wrap 하단에 상태 라벨 동적 생성
+  const wrapEl = gi('sv-'+id);
+  if(wrapEl){
+    let sr = wrapEl.querySelector('.sv-state-row');
+    if(!sr){ sr=document.createElement('div'); sr.className='sv-state-row'; wrapEl.appendChild(sr); }
+    sr.innerHTML =
+      '<span class="sv-state-item opt-lbl">최적: '+optMin+'~'+optMax+unit+'</span>'+
+      '<span class="sv-state-item cur">현재: '+val+unit+'</span>'+
+      '<span class="sv-state-item '+(status==='low'?'low-lbl':status==='high'?'high-lbl':'opt-lbl')+'">'+STATUS_TEXT[status]+'</span>';
+  }
+}
+
+// 슬라이더 이벤트 등록
+function initSliders(){
+  const sliderIds = ['nHole','nPress','nAng','nCol','nRow','nDist'];
+  sliderIds.forEach(id=>{
+    const numEl   = gi(id);
+    const rangeEl = gi('r-'+id);
+    if(!numEl||!rangeEl) return;
+
+    // 슬라이더 → 숫자 입력 동기화
+    rangeEl.addEventListener('input', ()=>{
+      const raw = +rangeEl.value;
+      // nHole은 0.1 단위이므로 /10 처리
+      const val = id==='nHole' ? raw/10 : raw;
+      numEl.value = val;
+      numEl.classList.remove('s-rec','s-auto'); numEl.classList.add('s-user');
+      triggerSim();
+    });
+
+    // 숫자 입력 → 슬라이더 동기화
+    numEl.addEventListener('input', ()=>{
+      const val = +numEl.value;
+      const mapped = id==='nHole' ? Math.round(val*10) : val;
+      rangeEl.value = mapped;
+      numEl.classList.remove('s-rec','s-auto'); numEl.classList.add('s-user');
+      triggerSim();
+    });
+  });
+}
+
+// 모든 슬라이더 UI 일괄 업데이트 (runSim/updateAutoCalc에서 호출)
+function updateAllSliders(){
+  const dlv  = +gv('dlv')||3;
+  const iD   = +gv('iD')||400;
+  const iH   = +gv('iH')||300;
+  const defs = getSliderDefs(dlv, iD, iH, 0);
+
+  const vals = {
+    nHole:  +gv('nHole')||2.5,
+    nPress: +gv('nPress')||200,
+    nAng:   +gv('nAng')||15,
+    nCol:   +gv('nCol')||4,
+    nRow:   +gv('nRow')||3,
+    nDist:  +gv('nDist')||150,
+  };
+  for(const id in vals){
+    updateSliderUI(id, vals[id], defs[id]);
+    // nHole의 range는 0.5~10을 ×10한 5~100으로 매핑
+    const rangeEl = gi('r-'+id);
+    if(rangeEl){
+      const mapped = id==='nHole' ? Math.round(vals[id]*10) : vals[id];
+      rangeEl.value = Math.min(+rangeEl.max, Math.max(+rangeEl.min, mapped));
+    }
+  }
 }
 
 // ══════════════════════════════════════════════
@@ -1289,6 +1566,9 @@ function runSim(){
   avgTemp/=zcnt;
   gi('zoneTbody').innerHTML=zRows.join('');
 
+  // 슬라이더 UI 업데이트
+  updateAllSliders();
+
   // ── 실시간 결과 바 업데이트 (for 루프 밖) ──
   (function updateLiveBar(){
     const liveCov = calcCoverage(nCol,nRow,nGapX,nGapY,f0.fw,f0.fh,nAng,nDist);
@@ -1367,6 +1647,9 @@ function runSim(){
     _crEl.textContent='세척율: '+cr.toFixed(1)+'%';
     _crEl.className='live-chip '+(cr>=_tgt2?'good':cr>=_tgt2-5?'warn':'bad');
   }
+  // 슬라이더 UI 최종 업데이트
+  updateAllSliders();
+
   // localStorage 즉시 저장
   lsSave();
   // Firebase 자동저장 (디바운스 2초)
@@ -2055,11 +2338,13 @@ function triggerSim(){
 // 이벤트 등록
 // ══════════════════════════════════════════════
 gi('btnOpt').addEventListener('click', calcOptimal);
+// 슬라이더 초기화
+initSliders();
 gi('btnReset').addEventListener('click',()=>{ HIST=[]; gi('histBars').innerHTML=''; });
 
 // 수정 시 상태 업데이트 + triggerSim
 const baseIds=['itype','fmode','iW','iD','iH','dlv','tgtClean','iqty','zcnt'];
-const nozIds=['nHole','nPress','nAng','nCol','nRow','nDist','nManW','nGapX','nGapY'];
+const nozIds=['nManW','nGapX','nGapY']; // nHole~nDist는 initSliders에서 처리
 const pumpIds=['pFlow','pEff'];
 const convIds=['cSpd','cPitch','det'];
 
