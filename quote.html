@@ -3,10 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>인시스 그룹 견적 작성 시스템 v3.9</title>
+<title>인시스 그룹 견적 작성 시스템 v4.0</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <!-- Firebase SDK는 body 끝에서 로딩 (타이밍 문제 방지) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
@@ -159,7 +160,7 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
 /* ── PREVIEW OVERLAY ── */
 #preview-area{display:none;position:fixed;inset:0;background:rgba(0,0,0,.70);
   z-index:9999;overflow-y:auto;padding:0}
-.preview-wrap{max-width:860px;margin:0 auto;padding:0 0 40px}
+.preview-wrap{width:max-content;margin:0 auto;padding:0 0 40px}
 .preview-toolbar{background:linear-gradient(90deg,#0d3d7a,#1a5fad);padding:14px 22px;
   display:flex;align-items:center;justify-content:space-between;
   position:sticky;top:0;z-index:10000;box-shadow:0 2px 12px rgba(0,0,0,.3)}
@@ -309,10 +310,12 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
 @media(max-width:1000px){
   .g2,.g3,.g4,.g5{grid-template-columns:1fr}
   .sum-row,.mp-row{grid-template-columns:1fr 1fr}
-  .qh{flex-direction:column;gap:12px}
-  .a4-page{width:100%;min-height:auto;padding:24px 20px 40px}
-  .qmeta{grid-template-columns:1fr}
 }
+/* A4 미리보기는 고정 규격 유지 — 작은 화면에서는 가로 스크롤 */
+#preview-area{overflow-x:auto}
+.preview-wrap{min-width:794px}
+/* PDF 캡처 중에는 변형 제거 */
+.capturing .preview-wrap{transform:none!important}
 </style>
 </head>
 <body>
@@ -337,7 +340,7 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
       <button class="btn btn-ghost btn-sm" onclick="openCoSelector()" id="nav-co-btn">
         🏢 <span id="nav-co-name">사업자 선택</span>
       </button>
-      <div class="nav-ver">v3.9</div>
+      <div class="nav-ver">v4.0</div>
     </div>
   </div>
 </nav>
@@ -1740,162 +1743,148 @@ function printPreview(){
   window.print();
 }
 
-// ── PDF 출력 (jsPDF autoTable + 페이지 번호) ──
-function exportPDF(){
-  const {jsPDF}=window.jspdf;
-  const isLand = (pageOrientation==='landscape');
-  const doc=new jsPDF({orientation:isLand?'landscape':'portrait',unit:'mm',format:'a4'});
-  const PW=isLand?297:210, PH=isLand?210:297;
-  const ML=14, MR=14, CW=PW-ML-MR;
-  const TOP=20;                 // 상단 여백 20mm
-  const FOOT_Y = PH-9;
-  const d=previewData||collectQuoteData();
-  if(!d){toast('견적 유형을 먼저 선택하세요.','error');return;}
-  const co=d.co;
-  const addPageNum=(data)=>{
-    const cur=data.pageNumber;
-    doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(138,154,176);
-    doc.text(`${cur}`,PW-MR,FOOT_Y,{align:'right'});
-    doc.setFontSize(6.5);
-    doc.text(`${co.name||'INSYS GROUP'}  |  견적번호: ${d.qtNo}  |  인시스 그룹 견적 작성 시스템 v3.9`,ML,FOOT_Y);
-    if(cur>1){
-      doc.setFontSize(9);doc.setTextColor(26,95,173);doc.setFont('helvetica','bold');
-      doc.text(co.name||'(주)인시스', ML, 12);
-      doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(90,106,122);
-      doc.text(`견적번호: ${d.qtNo}  |  수신: ${d.custName}  |  ${d.qtDate}  [${d.qtypeLabel}]`, ML+34, 12);
-      doc.line(ML,13.5,PW-MR,13.5);
+// ── PDF 출력: 미리보기 DOM을 그대로 캡처 (한글 100% 동일 렌더링) ──
+async function exportPDF(){
+  const d = previewData || collectQuoteData();
+  if(!d){ toast('견적 유형을 먼저 선택하세요.','error'); return; }
+  if(typeof html2canvas === 'undefined'){ toast('PDF 라이브러리 로딩 중입니다. 잠시 후 다시 시도하세요.','error'); return; }
+
+  // 미리보기가 닫혀 있으면 임시로 렌더링
+  const wasOpen = document.getElementById('preview-area').style.display === 'block';
+  if(!wasOpen){
+    document.getElementById('quote-doc').innerHTML = buildPages();
+    document.getElementById('preview-area').style.display = 'block';
+  }
+
+  const pages = document.querySelectorAll('#quote-doc .a4-page');
+  if(!pages.length){ toast('출력할 페이지가 없습니다.','error'); if(!wasOpen) closePreview(); return; }
+
+  toast(`PDF 생성 중... (${pages.length}페이지)`,'info');
+
+  const { jsPDF } = window.jspdf;
+  const isLand = (pageOrientation === 'landscape');
+  const doc = new jsPDF({ orientation: isLand?'landscape':'portrait', unit:'mm', format:'a4', compress:true });
+  const PW = isLand ? 297 : 210;
+  const PH = isLand ? 210 : 297;
+
+  try{
+    for(let i=0; i<pages.length; i++){
+      const canvas = await html2canvas(pages[i], {
+        scale: 2,                    // 고해상도
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        logging: false,
+        windowWidth: pages[i].scrollWidth,
+        windowHeight: pages[i].scrollHeight,
+      });
+      const imgData = canvas.toDataURL('image/jpeg', 0.92);
+      if(i > 0) doc.addPage(undefined, isLand?'landscape':'portrait');
+      doc.addImage(imgData, 'JPEG', 0, 0, PW, PH, undefined, 'FAST');
+    }
+    doc.save(`견적서_${d.custName}_${d.qtNo}.pdf`);
+    toast(`PDF 저장 완료 (총 ${pages.length}페이지)`,'success');
+  }catch(e){
+    console.error(e);
+    toast('PDF 생성 실패: '+e.message,'error');
+  }finally{
+    if(!wasOpen) closePreview();
+  }
+}
+
+// ── Excel 출력: 미리보기와 동일한 컬럼 구성 ──
+function exportExcel(){
+  const d = previewData || collectQuoteData();
+  if(!d){ toast('견적 유형을 먼저 선택하세요.','error'); return; }
+  const co   = d.co;
+  const tmpl = QTYPES[d.qtype] || QTYPES.forklift;
+  const cols = tmpl.printThead || tmpl.thead;
+  const wb   = XLSX.utils.book_new();
+
+  // 미리보기 행 → Excel 배열 (printRowHTML과 동일 순서)
+  const rowToArr = (item)=>{
+    const qty = item.qty || 1;
+    const total = item.unitPrice * qty;
+    switch(d.qtype){
+      case 'forklift':
+        return [item.no, item.code, item.desc, item.spec, item.opts||'–', item.ins?'필요':'–', 1, item.unitPrice, total];
+      case 'building':
+        return [item.no, item.code, item.desc, item.spec, item.unit, item.unitPrice, qty, item.unit, total];
+      case 'washing':
+        return [item.no, item.code, item.desc, item.spec, item.method||'–', item.unit, item.unitPrice, qty, total];
+      case 'manpower':
+        return [item.no, item.code, item.desc, item.spec, item.shift||'–', '인/월', item.unitPrice, qty, total];
+      default:
+        return [item.no, item.desc, item.unitPrice, total];
     }
   };
 
-  doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(26,95,173);
-  doc.text(d.qtTitle, ML, TOP);
-  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(90,106,122);
-  doc.text(`[${d.qtypeLabel}]  ${co.name||'–'}  |  사업자: ${co.bizno||'–'}  |  대표: ${co.ceo||'–'}  |  TEL: ${co.phone||'–'}  |  담당: ${co.manager||'–'} ${co.tel||''}`, ML, TOP+5.5);
-  doc.text(`수신: ${d.custName}  |  담당: ${d.custContact||'–'}  |  주소: ${d.custAddr||'–'}`, ML, TOP+10);
-  doc.setDrawColor(26,95,173);doc.setLineWidth(0.4);doc.line(ML,TOP+12,PW-MR,TOP+12);
-  doc.setFontSize(7);doc.setTextColor(90,106,122);
-  doc.text(`견적번호: ${d.qtNo}   작성일: ${d.qtDate}   유효기간: ${d.qtValid}   계약기간: ${d.qtPeriod}   결제: ${d.qtPayment}   납기: ${d.qtDelivery||'협의'}`, ML, TOP+16.5);
-  doc.line(ML,TOP+18.5,PW-MR,TOP+18.5);
-
-  // 유형별 테이블 컬럼
-  const tmpl = QTYPES[d.qtype];
-  const printCols = tmpl.printThead || tmpl.thead;
-  const tableRows = d.rows.map(item=>{
-    const qty=item.qty||1;
-    const total=item.unitPrice*qty;
-    if(d.qtype==='forklift') return [item.no,item.code,item.desc.substring(0,14),item.spec.substring(0,18),item.opts?.substring(0,16)||'–',item.ins?'O':'–','1',fmtN(item.unitPrice),fmtN(total)];
-    if(d.qtype==='building') return [item.no,item.code,item.desc,item.spec.substring(0,18),item.unit,fmtN(item.unitPrice),qty,item.unit,fmtN(total)];
-    if(d.qtype==='washing')  return [item.no,item.code,item.desc,item.spec.substring(0,14),item.method||'–',item.unit,fmtN(item.unitPrice),qty,fmtN(total)];
-    if(d.qtype==='manpower') return [item.no,item.code,item.desc,item.spec.substring(0,16),item.shift||'–','인/월',fmtN(item.unitPrice),qty,fmtN(total)];
-    return [item.no,item.desc,fmtN(item.unitPrice),fmtN(total)];
-  });
-  const lastCol=printCols.length-1;
-  const footRow=Array(printCols.length).fill('');
-  footRow[printCols.length-2]='합계'; footRow[lastCol]=fmtN(d.supplyTotal);
-
-  doc.autoTable({
-    startY:TOP+20.5,
-    head:[printCols],
-    body:tableRows,
-    foot:[footRow],
-    styles:{font:'helvetica',fontSize:6.5,cellPadding:1.2,valign:'middle',overflow:'linebreak',lineWidth:0.1},
-    headStyles:{fillColor:[26,95,173],textColor:255,fontStyle:'bold',fontSize:6.5,cellPadding:1.4},
-    footStyles:{fillColor:[219,234,254],textColor:[26,64,175],fontStyle:'bold',fontSize:7},
-    alternateRowStyles:{fillColor:[249,251,255]},
-    columnStyles: (function(){
-      const w = (QTYPES[d.qtype].printWidths)||[];
-      const st = {};
-      w.forEach((pct,i)=>{
-        st[i] = { cellWidth: CW*pct/100 };
-        // 정렬: 마지막 2열은 우측, 텍스트 열은 좌측, 나머지 중앙
-        if(i>=w.length-2) st[i].halign='right';
-        else if(pct>=15)  st[i].halign='left';
-        else              st[i].halign='center';
-      });
-      return st;
-    })(),
-    margin:{left:ML,right:MR,top:16,bottom:14},
-    showFoot:'lastPage', showHead:'everyPage',
-    didDrawPage:addPageNum,
-  });
-
-  const LIMIT = PH-24;
-  let fy=doc.lastAutoTable.finalY+4;
-  if(fy>LIMIT){doc.addPage();fy=14;}
-  doc.setFillColor(240,244,255);doc.setDrawColor(26,95,173);doc.setLineWidth(0.4);
-  doc.roundedRect(ML,fy,CW,11,1.5,1.5,'FD');
-  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(26,45,74);
-  doc.text(`공급가: ${fmtN(d.supplyTotal)}원`,ML+3,fy+4.5);
-  doc.text(`부가세(10%): ${fmtN(d.vat)}원`,ML+48,fy+4.5);
-  doc.setTextColor(26,95,173);doc.setFontSize(9.5);
-  doc.text(`합계(VAT포함): ${fmtN(d.grand)}원`,ML+96,fy+4.5);
-  let cy=fy+16;
-  if(cy>LIMIT){doc.addPage();cy=14;}
-  doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(30,45,61);
-  (d.conditions||[]).forEach((c,i)=>{
-    doc.text(`${i+1}. ${c}`,ML,cy);cy+=3.6;
-    if(cy>LIMIT){doc.addPage();cy=14;}
-  });
-  cy+=3;
-  if(cy>LIMIT){doc.addPage();cy=14;}
-  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(26,45,74);
-  doc.text('위와 같이 견적을 제출합니다.',PW-MR-50,cy,{align:'right'});
-  cy+=4.5;doc.setDrawColor(200,210,220);doc.setLineWidth(0.3);doc.line(PW-MR-50,cy,PW-MR,cy);
-  cy+=4;doc.setFont('helvetica','normal');doc.setFontSize(7.5);
-  doc.text(`${co.name||'(주)인시스'}  대표이사 ${co.ceo||''}  (인)`,PW-MR,cy,{align:'right'});
-
-  const totalPgs=doc.internal.getNumberOfPages();
-  for(let i=1;i<=totalPgs;i++){
-    doc.setPage(i);
-    doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(138,154,176);
-    doc.setFillColor(255,255,255);doc.rect(PW-MR-14,FOOT_Y-4,18,6,'F');
-    doc.text(`${i} / ${totalPgs}`,PW-MR,FOOT_Y,{align:'right'});
-  }
-  doc.save(`견적서_${d.custName}_${d.qtNo}.pdf`);
-  toast(`PDF 저장 완료 (총 ${totalPgs}페이지)`,'success');
-}
-
-// ── Excel 출력 ──
-function exportExcel(){
-  const d=previewData||collectQuoteData();
-  if(!d){toast('견적 유형을 먼저 선택하세요.','error');return;}
-  const co=d.co;
-  const wb=XLSX.utils.book_new();
-  const data=[
-    [`인시스 그룹 견적 작성 시스템 v3.9 — ${d.qtypeLabel}`],[''],
-    ['견적번호',d.qtNo,'','발행일',d.qtDate],
-    ['발행사',co.name||'–','','대표이사',co.ceo||'–'],
-    ['사업자번호',co.bizno||'–','','담당자',co.manager||'–'],
-    ['고객사',d.custName,'','고객담당',d.custContact||'–'],[''],
-    ['No','코드','항목/내용','규격/세부','단위','수량','단가(원)','합계(원)']
+  const data = [
+    [d.qtTitle],
+    [`[${d.qtypeLabel}]`],
+    [''],
+    ['발행사',   co.name||'–',    '', '사업자번호', co.bizno||'–',   '', '대표이사', co.ceo||'–'],
+    ['주소',     co.addr||'–',    '', '대표전화',   co.phone||'–',   '', '팩스',     co.fax||'–'],
+    ['담당자',   co.manager||'–', '', '휴대폰',     co.tel||'–',     '', '이메일',   co.email||'–'],
+    [''],
+    ['수신처',   d.custName,      '', '담당자',     d.custContact||'–', '', '주소',  d.custAddr||'–'],
+    ['견적번호', d.qtNo,          '', '작성일',     d.qtDate,        '', '유효기간', d.qtValid||'–'],
+    ['계약기간', d.qtPeriod||'–', '', '결제조건',   d.qtPayment||'–','', '납기',    d.qtDelivery||'협의'],
+    [''],
+    cols,
   ];
-  d.rows.forEach(item=>{
-    const qty=item.qty||1;
-    data.push([item.no,item.code,item.desc,item.spec||'',item.unit||'식',qty,item.unitPrice,item.unitPrice*qty]);
-  });
-  data.push(['','','','','','','공급가',d.supplyTotal]);
-  data.push(['','','','','','','부가세(10%)',d.vat]);
-  data.push(['','','','','','','합계(VAT포함)',d.grand]);
+
+  d.rows.forEach(item => data.push(rowToArr(item)));
+
+  const n = cols.length;
+  const pad = (label, val) => {
+    const r = Array(n).fill('');
+    r[n-2] = label; r[n-1] = val;
+    return r;
+  };
+  data.push(pad('공급가 합계',    d.supplyTotal));
+  data.push(pad('부가세 (10%)',   d.vat));
+  data.push(pad('합계 (VAT포함)', d.grand));
   data.push(['']);
-  (d.conditions||[]).forEach((c,i)=>data.push([`${i+1}. ${c}`]));
-  const ws=XLSX.utils.aoa_to_sheet(data);
-  ws['!cols']=[{wch:4},{wch:10},{wch:22},{wch:20},{wch:8},{wch:6},{wch:14},{wch:14}];
-  XLSX.utils.book_append_sheet(wb,ws,'견적서');
-  // 원가분석 시트
-  const d2=[['원가 분석'],['코드','항목','원가','마진단가','견적단가','마진액','마진율(%)']];
-  currentItems.forEach((item,i)=>{
-    const cost=item.cost||0;
-    const mpEl=document.getElementById(`c-mp-${i}`);
-    const mp=parseInt(mpEl?.textContent.replace(/[^0-9]/g,'')||0);
-    const unitEl=document.getElementById(`c-unit-${i}`);
-    const disc=+document.getElementById('mg-disc').value||0;
-    const up=(unitEl?.value&&unitEl.value!=='')?+unitEl.value:round100(mp*(1-disc/100));
-    d2.push([item.code,item.desc,cost,mp,up,up-cost,cost>0?(((up-cost)/cost)*100).toFixed(1):0]);
-  });
-  const ws2=XLSX.utils.aoa_to_sheet(d2);
-  ws2['!cols']=[{wch:10},{wch:22},{wch:12},{wch:12},{wch:12},{wch:10},{wch:10}];
-  XLSX.utils.book_append_sheet(wb,ws2,'원가분석');
-  XLSX.writeFile(wb,`견적서_${d.custName}_${d.qtNo}.xlsx`);
+  data.push(['▶ 계약 조건 및 특기사항']);
+  (d.conditions||[]).forEach((c,i)=> data.push([`${i+1}. ${c}`]));
+
+  const ws = XLSX.utils.aoa_to_sheet(data);
+
+  // 컬럼 폭: printWidths 비율 반영
+  const W = tmpl.printWidths || [];
+  ws['!cols'] = cols.map((c,i)=>({ wch: W[i] ? Math.max(6, Math.round(W[i]*1.15)) : 12 }));
+
+  // 제목 셀 병합
+  ws['!merges'] = [
+    { s:{r:0,c:0}, e:{r:0,c:n-1} },
+    { s:{r:1,c:0}, e:{r:1,c:n-1} },
+  ];
+
+  XLSX.utils.book_append_sheet(wb, ws, '견적서');
+
+  // ── 원가분석 시트 (작성 중 견적일 때만) ──
+  if(!previewData && currentItems.length){
+    const disc = +document.getElementById('mg-disc').value || 0;
+    const d2 = [
+      ['원가 분석 — '+d.qtypeLabel],[''],
+      ['코드','항목','시장원가','마진단가','견적단가','수량','마진액','마진율(%)']
+    ];
+    currentItems.forEach((item,i)=>{
+      const cost = item.cost||0;
+      const mp   = parseInt((document.getElementById(`c-mp-${i}`)?.textContent||'').replace(/[^0-9]/g,'')||0);
+      const uEl  = document.getElementById(`c-unit-${i}`);
+      const up   = (uEl?.value && uEl.value!=='') ? +uEl.value : round100(mp*(1-disc/100));
+      const qEl  = document.getElementById(`c-qty-${i}`);
+      const qty  = qEl ? (+qEl.value||1) : 1;
+      d2.push([item.code, item.desc, cost, mp, up, qty, (up-cost)*qty,
+               cost>0 ? (((up-cost)/cost)*100).toFixed(1) : 0]);
+    });
+    const ws2 = XLSX.utils.aoa_to_sheet(d2);
+    ws2['!cols'] = [{wch:10},{wch:24},{wch:13},{wch:13},{wch:13},{wch:7},{wch:13},{wch:11}];
+    XLSX.utils.book_append_sheet(wb, ws2, '원가분석');
+  }
+
+  XLSX.writeFile(wb, `견적서_${d.custName}_${d.qtNo}.xlsx`);
   toast('Excel 다운로드 완료','success');
 }
 
