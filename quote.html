@@ -3,11 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>인시스 그룹 견적 작성 시스템 v2.4</title>
+<title>인시스 그룹 견적 작성 시스템 v2.5</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
-<!-- Firebase SDK (compat) -->
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<!-- Firebase SDK는 body 끝에서 로딩 (타이밍 문제 방지) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
@@ -306,7 +304,7 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
       <button class="btn btn-ghost btn-sm" onclick="openCoSelector()" id="nav-co-btn">
         🏢 <span id="nav-co-name">사업자 선택</span>
       </button>
-      <div class="nav-ver">v2.4</div>
+      <div class="nav-ver">v2.5</div>
     </div>
   </div>
 </nav>
@@ -664,28 +662,8 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
      SCRIPTS
 ═══════════════════════════════════════════ -->
 <script>
-// ── Firebase 초기화 (SDK 로딩 완료 보장) ──
+// ── Firebase ── (SDK 로딩은 body 끝 스크립트에서 처리)
 let db = null;
-function initFirebase() {
-  try {
-    if (typeof firebase === 'undefined') throw new Error('Firebase SDK 미로딩');
-    if (!firebase.apps.length) {
-      firebase.initializeApp({
-        apiKey:            "AIzaSyBYqd2uRr1ZvFLDCWuS15h9qFkT-Dvg5Es",
-        authDomain:        "insys-work.firebaseapp.com",
-        projectId:         "insys-work",
-        storageBucket:     "insys-work.firebasestorage.app",
-        messagingSenderId: "225275784859",
-        appId:             "1:225275784859:web:bd12815c6dc47c0c49e03e"
-      });
-    }
-    db = firebase.firestore();
-    console.log('✅ Firebase 초기화 완료');
-  } catch(e) {
-    console.warn('⚠️ Firebase 초기화 실패, 로컬 모드로 동작:', e.message);
-    db = null;
-  }
-}
 const COL_Q  = () => document.getElementById('fb-col-quote')?.value || 'forklift_quotes';
 const COL_CO = () => document.getElementById('fb-col-co')?.value   || 'insys_companies';
 
@@ -763,14 +741,12 @@ let editStatusNo  = null;
 
 // ── 초기화 ──
 window.onload = async () => {
-  initFirebase();  // Firebase 가장 먼저 초기화
+  // UI 초기화 (Firebase는 SDK 로딩 후 tryInitFirebase에서 자동 처리)
   const today = new Date().toISOString().split('T')[0];
   document.getElementById('q-date').value = today;
   renderCostSettings();
   renderTable();
   recalc();
-  await loadCompanies();
-  await loadMgmt();
 };
 
 // ── 사업자 관련 ──
@@ -1282,7 +1258,7 @@ function exportPDF(){
     doc.text(`${cur}`,PW-MR,292,{align:'right'});
     // 하단 회사명
     doc.setFontSize(7);
-    doc.text(`${co.name||'INSYS GROUP'}  |  견적번호: ${d.qtNo}  |  인시스 그룹 견적 작성 시스템 v2.4`,ML,292);
+    doc.text(`${co.name||'INSYS GROUP'}  |  견적번호: ${d.qtNo}  |  인시스 그룹 견적 작성 시스템 v2.5`,ML,292);
     // 2페이지부터 상단 continuation 헤더
     if(cur>1){
       doc.setFontSize(9);doc.setTextColor(26,95,173);doc.setFont('helvetica','bold');
@@ -1409,7 +1385,7 @@ function exportExcel(){
   const wb=XLSX.utils.book_new();
   let sup=0;
   const data=[
-    ['인시스 그룹 견적 작성 시스템 v2.4'],[''],
+    ['인시스 그룹 견적 작성 시스템 v2.5'],[''],
     ['견적번호',qtNo,'','발행일',qtDate],
     ['발행사',co.name||'–','','대표이사',co.ceo||'–'],
     ['사업자번호',co.bizno||'–','','담당자',co.manager||'–'],
@@ -1430,7 +1406,7 @@ function exportExcel(){
   data.push(['','','','','','','','','','부가세(10%)','',vat]);
   data.push(['','','','','','','','','','월합계(VAT포함)','',sup+vat]);
   data.push(['']);
-  data.push(['※ 인시스 그룹 견적 작성 시스템 v2.4 | insys-work Firebase']);
+  data.push(['※ 인시스 그룹 견적 작성 시스템 v2.5 | insys-work Firebase']);
   const ws=XLSX.utils.aoa_to_sheet(data);
   ws['!cols']=[{wch:4},{wch:8},{wch:18},{wch:10},{wch:8},{wch:6},{wch:6},{wch:22},{wch:6},{wch:6},{wch:12},{wch:12}];
   XLSX.utils.book_append_sheet(wb,ws,'견적서');
@@ -1644,6 +1620,43 @@ function toast(msg,type='info'){
   el.innerHTML=`<span>${type==='success'?'✅':type==='error'?'❌':'ℹ️'}</span>${msg}`;
   c.appendChild(el);
   setTimeout(()=>el.remove(),3200);
+}
+</script>
+
+<!-- Firebase SDK: body 끝에서 로딩 → initFirebase 타이밍 보장 -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"
+  onload="onFBLoaded()" onerror="onFBError()"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"
+  onload="onFBFSLoaded()"></script>
+<script>
+var _fbAppLoaded = false;
+var _fbFSLoaded  = false;
+
+function onFBLoaded()  { _fbAppLoaded = true; tryInitFirebase(); }
+function onFBFSLoaded(){ _fbFSLoaded  = true; tryInitFirebase(); }
+function onFBError()   { console.error('Firebase App SDK 로딩 실패 — CDN 차단 여부 확인'); }
+
+function tryInitFirebase() {
+  if (!_fbAppLoaded || !_fbFSLoaded) return; // 두 스크립트 모두 로딩 완료 대기
+  try {
+    if (!firebase.apps.length) {
+      firebase.initializeApp({
+        apiKey:            "AIzaSyBYqd2uRr1ZvFLDCWuS15h9qFkT-Dvg5Es",
+        authDomain:        "insys-work.firebaseapp.com",
+        projectId:         "insys-work",
+        storageBucket:     "insys-work.firebasestorage.app",
+        messagingSenderId: "225275784859",
+        appId:             "1:225275784859:web:bd12815c6dc47c0c49e03e"
+      });
+    }
+    db = firebase.firestore();
+    console.log('✅ Firebase 초기화 완료 (insys-work)');
+    // SDK 로딩 완료 후 데이터 재로드
+    loadCompanies();
+    loadMgmt();
+  } catch(e) {
+    console.error('Firebase 초기화 오류:', e.message);
+  }
 }
 </script>
 </body>
