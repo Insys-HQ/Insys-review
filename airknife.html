@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>에어나이프 1차 건조기 시뮬레이터 v3.3</title>
+<title>에어나이프 1차 건조기 시뮬레이터 v3.4</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
@@ -139,7 +139,7 @@ input[type=range]{flex:1;height:4px;accent-color:#1a4f96;cursor:pointer}
       <div class="hdr-sub">Air-Knife Pre-Dryer Optimization | 인시스 AI혁신 R&amp;D센터</div>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
-      <span class="ver">v3.3</span>
+      <span class="ver">v3.4</span>
       <span id="fb-badge" class="fb-badge">🔄 Firebase 연결 중</span>
     </div>
   </div>
@@ -172,7 +172,10 @@ input[type=range]{flex:1;height:4px;accent-color:#1a4f96;cursor:pointer}
           </div>
           <div class="f2">
             <div class="f"><label>높이 H <span class="u">mm</span></label><input type="number" id="tray_h" value="30" min="5" max="300" oninput="calc()"></div>
-            <div class="f"><label>포켓 수량 <span class="u">ea</span></label><input type="number" id="pocket" value="24" min="1" max="500" oninput="calc()"></div>
+            <div class="f"><label>포켓 수량 <span class="u">ea (초기 물기량 배분 기준)</span></label>
+              <input type="number" id="pocket" value="24" min="1" max="500" oninput="calc()">
+              <div style="font-size:10px;color:#718096;margin-top:2px">포켓 수↑ → 에어 저항 면적↑ → 포켓 내부 배수 어려움</div>
+            </div>
           </div>
           <div class="sec">수분 조건</div>
           <div class="f2">
@@ -186,7 +189,10 @@ input[type=range]{flex:1;height:4px;accent-color:#1a4f96;cursor:pointer}
           <div class="f2">
             <div class="f"><label>채널 수</label>
               <select id="ch_count" onchange="calc()"><option value="2" selected>2채널 (좌/우)</option><option value="1">1채널</option></select></div>
-            <div class="f"><label>채널 간격 <span class="u">mm</span></label><input type="number" id="ch_gap" value="80" min="20" max="400" oninput="calc()"></div>
+            <div class="f"><label>채널 간격 (격벽 폭) <span class="u">mm</span></label>
+              <input type="number" id="ch_gap" value="80" min="20" max="400" oninput="calc()">
+              <div style="font-size:10px;color:#718096;margin-top:2px">좌우 채널 사이 격벽 두께 → 유효 처리 폭에 반영</div>
+            </div>
           </div>
           <div class="f"><label>트레이 투입 방향</label>
             <select id="tray_orient" onchange="calc()"><option value="vertical" selected>세워서 투입 (수직)</option><option value="horizontal">눕혀서 투입 (수평)</option></select></div>
@@ -206,15 +212,17 @@ input[type=range]{flex:1;height:4px;accent-color:#1a4f96;cursor:pointer}
           <div class="sec">슬릿 간격</div>
           <div class="f">
             <div class="rw"><input type="range" id="slit_gap" min="0.5" max="5" step="0.5" value="1.5" oninput="syncR('slit_gap','sgv');calc()"><span class="rv" id="sgv">1.5</span><span class="u">mm</span></div>
-            <div style="display:flex;justify-content:space-between;font-size:9px;color:#718096"><span>0.5 精密</span><span>5.0 広帯</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:9px;color:#718096"><span>0.5mm 정밀형</span><span id="slit-warn" style="color:#d97706"></span><span>5.0mm 에어커튼형</span></div>
           </div>
           <div class="sec">각도 설정</div>
-          <div class="f"><label>측면 스윕각 θ₁ <span class="u">° (우→좌 쓸기)</span></label>
-            <div class="rw"><input type="range" id="angle_sweep" min="0" max="45" step="1" value="20" oninput="syncR('angle_sweep','asv');calc()"><span class="rv" id="asv">20</span><span class="u">°</span></div></div>
+          <div class="f"><label>측면 스윕각 θ₁ <span class="u">° (우→좌 쓸기, 권장 10~25°)</span></label>
+            <div class="rw"><input type="range" id="angle_sweep" min="0" max="30" step="1" value="20" oninput="syncR('angle_sweep','asv');calc()"><span class="rv" id="asv">20</span><span class="u">°</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:9px;color:#718096"><span>0° 수직</span><span>15~25° 최적</span><span>30° 한계</span></div></div>
           <div class="f"><label>분사각 θ₂ <span class="u">° (역방향)</span></label>
             <div class="rw"><input type="range" id="angle_slit" min="0" max="60" step="5" value="30" oninput="syncR('angle_slit','a2v');calc()"><span class="rv" id="a2v">30</span><span class="u">°</span></div></div>
-          <div class="f"><label>AK-트레이 거리 d <span class="u">mm</span></label>
-            <div class="rw"><input type="range" id="ak_dist" min="10" max="300" step="5" value="50" oninput="syncR('ak_dist','adv');calc()"><span class="rv" id="adv">50</span><span class="u">mm</span></div></div>
+          <div class="f"><label>AK-트레이 거리 d <span class="u">mm</span> <span style="font-size:10px;color:#718096">(실용 범위 10~100mm)</span></label>
+            <div class="rw"><input type="range" id="ak_dist" min="10" max="200" step="5" value="50" oninput="syncR('ak_dist','adv');calc()"><span class="rv" id="adv">50</span><span class="u">mm</span></div>
+            <div id="dist-warn" style="font-size:10px;color:#d97706;margin-top:2px"></div></div>
           <div class="sec">링 브로어</div>
           <div class="f2">
             <div class="f"><label>브로어 마력 <span class="u">HP</span></label>
@@ -223,8 +231,18 @@ input[type=range]{flex:1;height:4px;accent-color:#1a4f96;cursor:pointer}
                 <option value="3" selected>3 HP (2.2kW)</option><option value="5">5 HP (3.7kW)</option>
                 <option value="7.5">7.5 HP (5.5kW)</option><option value="10">10 HP (7.5kW)</option>
                 <option value="15">15 HP (11kW)</option></select></div>
-            <div class="f"><label>면당 브로어 수</label>
-              <select id="blower_per_face" onchange="calc()"><option value="1" selected>1대/면</option><option value="2">2대/면</option><option value="3">3대/면</option></select></div>
+            <div class="f">
+              <label>에어나이프 1개당 브로어 수 <span class="u">(대/면·단)</span></label>
+              <select id="blower_per_face" onchange="calc()">
+                <option value="1" selected>1대 (AK 600mm 이하 권장)</option>
+                <option value="2">2대 병렬 (AK 600~1200mm)</option>
+                <option value="3">3대 병렬 (AK 1200mm 초과)</option>
+              </select>
+              <div style="font-size:10px;color:#1a4f96;margin-top:3px;line-height:1.5">
+                💡 에어나이프 1개(1단·1면)에 링 브로어 몇 대를 연결하는지.<br>
+                AK가 길수록 풍량 부족 → 브로어 병렬 추가로 보완.
+              </div>
+            </div>
           </div>
           <div class="f2">
             <div class="f"><label>설치 면</label>
@@ -301,6 +319,9 @@ input[type=range]{flex:1;height:4px;accent-color:#1a4f96;cursor:pointer}
             <tr><td>트레이 통과 시간 (단당)</td><td id="pv-pass">-</td></tr>
             <tr><td>에어나이프 스윕 유효폭</td><td id="pv-sweep">-</td></tr>
             <tr><td>총 소비전력</td><td id="pv-kw">-</td></tr>
+            <tr><td>포켓 구조 보정</td><td id="pv-pocket">-</td></tr>
+            <tr><td>채널 유효폭·커버리지</td><td id="pv-ch">-</td></tr>
+            <tr><td>에어 강도·메커니즘</td><td id="pv-air">-</td></tr>
           </table>
         </div>
       </div>
@@ -727,7 +748,7 @@ function showTab(t){
 // PHYSICS MODEL (공학 수식 기반)
 // ──────────────────────────────────────────
 function physics(params){
-  const {W,L,H,initW,targetW,ch,orient,stages,akLen,slitGap,theta1,theta2,dist,HP,bpf,faceCount,feedSpd}=params;
+  const {W,L,H,pockets,initW,targetW,ch,chGap,orient,stages,akLen,slitGap,theta1,theta2,dist,HP,bpf,faceCount,feedSpd}=params;
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // ① 연속 방정식: v₀ = Q / A_slit
@@ -789,13 +810,28 @@ function physics(params){
   const f_angle = Math.sin(theta2*Math.PI/180);
   const f_dist  = Math.min(1.0, eta_d);
   // 정규화 (가중합이 1.10 기준)
+  // air_strength: 에어 성능 지수 × 커버리지 보정
   const air_strength = Math.min(1.0,
     (f_vel*0.45 + f_slit*0.25 + f_sweep*0.20 + f_angle*0.15 + f_dist*0.05) / 1.10
-  );
+  ) * f_coverage;
 
   // 구조·방향 보정
-  const f_pocket = 1.0 / (1.0 + H/60.0);
+  // f_pocket: 포켓 깊이(H) + 포켓 밀도(pockets/면적) 반영
+  //   포켓 많을수록 에어가 각 포켓에 집중되기 어려움 → f_pocket 감소
+  //   포켓 밀도 = 포켓수 / 트레이 면적(dm²) — 5개/dm² 기준 정규화
+  const trayAreaDm2 = (W/100) * (L/100);           // dm²
+  const pocketDensity = pockets / trayAreaDm2;      // 개/dm²
+  const f_pocketDepth = 1.0 / (1.0 + H/60.0);      // 깊이 보정
+  // 포켓 밀도 보정: 2개/dm² 초과 시 에어 저항 증가
+  //   예: 600×400 트레이에 포켓 100개 → 4.2/dm² → f=0.70 (30% 감소)
+  const f_pocketDensity = 1.0 / (1.0 + Math.max(0, pocketDensity-2)/5); // 2개/dm² 기준
+  const f_pocket = f_pocketDepth * f_pocketDensity;
   const f_orient = orient==='vertical' ? 1.15 : 0.85;
+
+  // 채널 유효 폭: 격벽 제외
+  const chEffWidth = (W - chGap*(ch-1)) / ch;      // mm, 채널당 유효 처리 폭
+  // 커버리지 보정: AK 길이가 채널 유효폭보다 짧으면 손실
+  const f_coverage = Math.min(1.0, akLen / chEffWidth);
 
   // [A] 즉시 제거율 (표면수 55% 중)
   const r_instant = air_strength * 0.55 * f_pocket * f_orient;
@@ -848,7 +884,9 @@ function physics(params){
   const targRem=initW>0?(initW-targetW)/initW*100:0;
 
   return {v0,eta_d,v_eff,We,Re,A_slit,Q_face,
-    f_vel,f_slit,f_sweep,f_angle,f_dist,f_pocket,f_orient,
+    f_vel,f_slit,f_sweep,f_angle,f_dist,
+    f_pocketDepth,f_pocketDensity,f_pocket,f_orient,f_coverage,
+    pocketDensity,chEffWidth,
     air_strength,r_instant,r_time,r_front,r_stage,
     passTime,trayDim,tau:2.5,
     wArr,finalW,totalRem,nMin,targRem,
@@ -1084,8 +1122,9 @@ function drawSlitGraph(baseParams){
 function calc(){
   const params={
     W:+$('tray_w').value, L:+$('tray_l').value, H:+$('tray_h').value,
+    pockets:+$('pocket').value,
     initW:+$('init_water').value, targetW:+$('target_water').value,
-    ch:+$('ch_count').value, orient:$('tray_orient').value,
+    ch:+$('ch_count').value, chGap:+$('ch_gap').value, orient:$('tray_orient').value,
     stages:+$('ak_stages').value, akLen:+$('ak_length').value,
     slitGap:+$('slit_gap').value, theta1:+$('angle_sweep').value,
     theta2:+$('angle_slit').value, dist:+$('ak_dist').value,
@@ -1098,7 +1137,13 @@ function calc(){
 
   // AK hint
   const refDim=params.orient==='vertical'?params.L:params.W;
-  $('ak_hint').textContent=`트레이 기준 ${refDim}mm → 최소 ${Math.ceil(refDim/100)*100}mm / 권장 ${Math.ceil(refDim*1.1/100)*100}mm`;
+  $('ak_hint').textContent=`트레이 기준 ${refDim}mm → 최소 ${Math.ceil(refDim/100)*100}mm / 권장 ${Math.ceil(refDim*1.1/100)*100}mm | 채널 유효폭 ${R.chEffWidth.toFixed(0)}mm`;
+
+  // 실시간 범위 경고
+  const slitWarn=$('slit-warn');
+  if(slitWarn){ slitWarn.textContent = params.slitGap>3 ? '⚠️ 3mm↑ = 에어커튼 영역' : params.slitGap<=1?'✅ 최적':''; }
+  const distWarn=$('dist-warn');
+  if(distWarn){ distWarn.textContent = params.dist>100 ? `⚠️ ${params.dist}mm — 100mm 초과 시 압력 손실 큼 (η=${R.eta_d.toFixed(2)})` : ''; }
 
   // Target pct & needed stages
   $('tgt_pct').textContent=R.targRem.toFixed(1)+'%';
@@ -1174,6 +1219,10 @@ function calc(){
   $('pv-pass').textContent=R.passTime.toFixed(2)+' 초';
   $('pv-sweep').textContent=(params.akLen*Math.sin(params.theta1*Math.PI/180)).toFixed(0)+' mm';
   $('pv-kw').textContent=R.kwCur.toFixed(2)+' kW ('+R.blCur+'대)';
+  // 추가 파라미터 표시
+  const pvPocket=$('pv-pocket'); if(pvPocket) pvPocket.textContent=params.pockets+'ea | 밀도 '+R.pocketDensity.toFixed(1)+'/dm² | f_pocket='+R.f_pocket.toFixed(3);
+  const pvCh=$('pv-ch'); if(pvCh) pvCh.textContent='채널유효폭 '+R.chEffWidth.toFixed(0)+'mm | f_coverage='+R.f_coverage.toFixed(3);
+  const pvAir=$('pv-air'); if(pvAir) pvAir.textContent='air_strength='+R.air_strength.toFixed(3)+' | r_instant='+( R.r_instant*100).toFixed(1)+'% | r_time='+(R.r_time*100).toFixed(1)+'%';
 
   // Recommendations
   buildRec(score,params,R);
@@ -1334,7 +1383,7 @@ function updateTheory(p,R){
 // Firebase
 async function saveFirebase(){
   if(!window._R){alert('시뮬레이션을 먼저 실행하세요.');return;}
-  const data={...window._P,...window._R,savedAt:new Date().toISOString(),ver:'3.3'};
+  const data={...window._P,...window._R,savedAt:new Date().toISOString(),ver:'3.4'};
   if(window._fbSave){const ok=await window._fbSave(data);$('stbar').innerHTML=ok?'<span class="ok">✅ 저장 완료</span>':'<span class="wn">⚠️ Firebase 미연결</span>';}
 }
 async function loadHistory(){
@@ -1477,7 +1526,7 @@ function exportPDF(){
   doc.setFontSize(7.5); doc.setTextColor(150,150,170); doc.setFont('helvetica','normal');
   doc.text('References: Continuity Eq.(Munson 2016) / Free Jet Decay(Rajaratnam 1976, Forthmann 1934) / Weber No.(Bhagat 2019 AIChE J.) / Oblique Jet(Sparrow 1980) / Decay Model(Incropera 2011)', 105, 282, {align:'center'});
   doc.setDrawColor(180,200,220); doc.line(LM,285,LM+PW,285);
-  doc.text('Insys AI Innovation R&D Center  |  Air-Knife Pre-Dryer Simulator v3.3  |  Generated: '+dateStr+' '+timeStr, 105, 290, {align:'center'});
+  doc.text('Insys AI Innovation R&D Center  |  Air-Knife Pre-Dryer Simulator v3.4  |  Generated: '+dateStr+' '+timeStr, 105, 290, {align:'center'});
 
   doc.save('airknife_v3_report.pdf');
 }
