@@ -1945,22 +1945,19 @@ function toast(msg,type='info'){
 }
 </script>
 
-<!-- Firebase SDK: body 끝에서 로딩 → initFirebase 타이밍 보장 -->
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"
-  onload="onFBLoaded()" onerror="onFBError()"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"
-  onload="onFBFSLoaded()"></script>
+<!-- Firebase SDK: body 끝에서 로딩, 콜백은 인라인으로 직접 처리 -->
 <script>
 var _fbAppLoaded = false;
 var _fbFSLoaded  = false;
 
 function onFBLoaded()  { _fbAppLoaded = true; tryInitFirebase(); }
 function onFBFSLoaded(){ _fbFSLoaded  = true; tryInitFirebase(); }
-function onFBError()   { console.error('Firebase App SDK 로딩 실패 — CDN 차단 여부 확인'); }
+function onFBError()   { console.error('Firebase App SDK 로딩 실패'); }
 
 function tryInitFirebase() {
-  if (!_fbAppLoaded || !_fbFSLoaded) return; // 두 스크립트 모두 로딩 완료 대기
+  if (!_fbAppLoaded || !_fbFSLoaded) return;
   try {
+    if (typeof firebase === 'undefined') throw new Error('firebase 미정의');
     if (!firebase.apps.length) {
       firebase.initializeApp({
         apiKey:            "AIzaSyBYqd2uRr1ZvFLDCWuS15h9qFkT-Dvg5Es",
@@ -1973,7 +1970,6 @@ function tryInitFirebase() {
     }
     db = firebase.firestore();
     console.log('✅ Firebase 초기화 완료 (insys-work)');
-    // SDK 로딩 완료 후 데이터 재로드
     loadCompanies();
     loadMgmt();
   } catch(e) {
@@ -1981,5 +1977,10 @@ function tryInitFirebase() {
   }
 }
 </script>
+<!-- 함수 선언 완료 후 SDK 로드 → onload 시점에 함수가 반드시 존재 -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"
+  onload="onFBLoaded()" onerror="onFBError()"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"
+  onload="onFBFSLoaded()" onerror="onFBError()"></script>
 </body>
 </html>
