@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>인시스 그룹 견적 작성 시스템 v3.1</title>
+<title>인시스 그룹 견적 작성 시스템 v3.2</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <!-- Firebase SDK는 body 끝에서 로딩 (타이밍 문제 방지) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -313,7 +313,7 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
       <button class="btn btn-ghost btn-sm" onclick="openCoSelector()" id="nav-co-btn">
         🏢 <span id="nav-co-name">사업자 선택</span>
       </button>
-      <div class="nav-ver">v3.1</div>
+      <div class="nav-ver">v3.2</div>
     </div>
   </div>
 </nav>
@@ -1626,7 +1626,7 @@ function exportPDF(){
     doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(138,154,176);
     doc.text(`${cur}`,PW-MR,292,{align:'right'});
     doc.setFontSize(7);
-    doc.text(`${co.name||'INSYS GROUP'}  |  견적번호: ${d.qtNo}  |  인시스 그룹 견적 작성 시스템 v3.1`,ML,292);
+    doc.text(`${co.name||'INSYS GROUP'}  |  견적번호: ${d.qtNo}  |  인시스 그룹 견적 작성 시스템 v3.2`,ML,292);
     if(cur>1){
       doc.setFontSize(9);doc.setTextColor(26,95,173);doc.setFont('helvetica','bold');
       doc.text(co.name||'(주)인시스', ML, 12);
@@ -1720,7 +1720,7 @@ function exportExcel(){
   const co=d.co;
   const wb=XLSX.utils.book_new();
   const data=[
-    [`인시스 그룹 견적 작성 시스템 v3.1 — ${d.qtypeLabel}`],[''],
+    [`인시스 그룹 견적 작성 시스템 v3.2 — ${d.qtypeLabel}`],[''],
     ['견적번호',d.qtNo,'','발행일',d.qtDate],
     ['발행사',co.name||'–','','대표이사',co.ceo||'–'],
     ['사업자번호',co.bizno||'–','','담당자',co.manager||'–'],
@@ -1919,8 +1919,17 @@ function updateCost(key,i,val){
 function saveCostSet(){ toast('원가가 저장되었습니다.','success'); }
 async function testFB(){
   const el=document.getElementById('fb-stat');
-  try{await db.collection(COL_Q()).limit(1).get();el.textContent='✅ Firebase 연결 성공!';el.style.color='green';}
-  catch(e){el.textContent='❌ 오류: '+e.message;el.style.color='red';}
+  if(!db){ el.textContent='⚠️ 로컬 저장 모드 — Firestore 백엔드 연결 불가 (방화벽/프록시 확인 필요)'; el.style.color='#d97706'; return; }
+  el.textContent='🔄 연결 확인 중...'; el.style.color='var(--gray)';
+  try{
+    await Promise.race([
+      db.collection(COL_Q()).limit(1).get(),
+      new Promise((_,rej)=>setTimeout(()=>rej(new Error('타임아웃(8초)')),8000))
+    ]);
+    el.textContent='✅ Firebase 연결 성공! (insys-work)'; el.style.color='green';
+  }catch(e){
+    el.textContent='❌ 연결 실패: '+e.message+' — 로컬 모드로 동작합니다.'; el.style.color='red';
+  }
 }
 
 // ── 페이지 전환 ──
@@ -2001,10 +2010,36 @@ function toast(msg,type='info'){
         });
       }
       db = firebase.firestore();
-      console.log('✅ Firebase 초기화 완료 (insys-work) via ' + base);
-      hideFBBanner();
-      if (typeof loadCompanies === 'function') loadCompanies();
-      if (typeof loadMgmt === 'function') loadMgmt();
+      // 방화벽/프록시 환경 대응: WebChannel 대신 Long Polling 사용
+      try {
+        db.settings({
+          experimentalAutoDetectLongPolling: true,
+          useFetchStreams: false,
+          merge: true
+        });
+      } catch(se) { console.warn('Firestore settings 적용 실패:', se.message); }
+
+      console.log('✅ Firebase SDK 초기화 완료 via ' + base);
+
+      // 실제 연결 테스트 (8초 타임아웃)
+      var connTest = db.collection(COL_CO()).limit(1).get();
+      var timeout = new Promise(function(_, rej){
+        setTimeout(function(){ rej(new Error('연결 타임아웃 (8초)')); }, 8000);
+      });
+      Promise.race([connTest, timeout])
+        .then(function(){
+          console.log('✅ Firestore 백엔드 연결 성공 (insys-work)');
+          hideFBBanner();
+          if (typeof loadCompanies === 'function') loadCompanies();
+          if (typeof loadMgmt === 'function') loadMgmt();
+        })
+        .catch(function(err){
+          console.warn('⚠️ Firestore 백엔드 연결 실패 → 로컬 모드:', err.message);
+          db = null;
+          showFBBanner();
+          if (typeof loadCompanies === 'function') loadCompanies();
+          if (typeof loadMgmt === 'function') loadMgmt();
+        });
     } catch(e) {
       console.error('Firebase 초기화 오류:', e.message);
       cdnIdx++;
