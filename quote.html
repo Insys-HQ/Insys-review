@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>인시스 그룹 견적 작성 시스템 v2.6</title>
+<title>인시스 그룹 견적 작성 시스템 v3.0</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <!-- Firebase SDK는 body 끝에서 로딩 (타이밍 문제 방지) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -183,6 +183,15 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
   font-family:'Noto Sans KR',sans-serif;
 }
 
+/* 견적 유형 선택 카드 */
+.qtype-card{border:2px solid var(--border);border-radius:12px;padding:22px 16px;
+  text-align:center;cursor:pointer;transition:.2s;background:#fff;}
+.qtype-card:hover{border-color:var(--blue2);background:var(--blue-light);transform:translateY(-2px);box-shadow:0 4px 16px rgba(26,95,173,.15)}
+.qtype-card.selected{border-color:var(--blue);background:#dbeafe;box-shadow:0 4px 20px rgba(26,95,173,.2)}
+.qt-icon{font-size:36px;margin-bottom:10px}
+.qt-name{font-size:15px;font-weight:900;color:#1a2e4a;margin-bottom:6px}
+.qt-desc{font-size:12px;color:var(--gray);line-height:1.7}
+
 /* QUOTE DOC 공통 요소 */
 .qh{display:flex;justify-content:space-between;align-items:flex-start;
   margin-bottom:20px;padding-bottom:16px;border-bottom:3px solid var(--blue)}
@@ -304,7 +313,7 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
       <button class="btn btn-ghost btn-sm" onclick="openCoSelector()" id="nav-co-btn">
         🏢 <span id="nav-co-name">사업자 선택</span>
       </button>
-      <div class="nav-ver">v2.6</div>
+      <div class="nav-ver">v3.0</div>
     </div>
   </div>
 </nav>
@@ -328,151 +337,169 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
     </div>
   </div>
 
-  <!-- 고객사 + 견적 정보 -->
-  <div class="g2">
-    <div class="card">
-      <div class="card-header"><span class="hico">🏢</span>고객사(수신처) 정보</div>
-      <div class="card-body">
-        <div class="g2" style="gap:12px">
-          <div class="fg"><label class="fl req">고객사명</label><input class="fc" id="cust-name" placeholder="DY POWER" value="DY POWER"></div>
-          <div class="fg"><label class="fl">담당자</label><input class="fc" id="cust-contact" placeholder="담당자 이름"></div>
-          <div class="fg"><label class="fl">연락처</label><input class="fc" id="cust-tel" placeholder="055-000-0000"></div>
-          <div class="fg"><label class="fl">이메일</label><input class="fc" id="cust-email" placeholder="email@company.com"></div>
-          <div class="fg span2"><label class="fl">주소</label><input class="fc" id="cust-addr" placeholder="경남 창원시 성주동" value="경남 창원시 성주동"></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-header"><span class="hico">📄</span>견적 정보</div>
-      <div class="card-body">
-        <div class="g2" style="gap:12px">
-          <div class="fg"><label class="fl req">견적 제목</label><input class="fc" id="q-title" value="지게차 임대 견적서"></div>
-          <div class="fg"><label class="fl">견적번호 (자동생성)</label>
-            <div style="display:flex;gap:6px">
-              <input class="fc" id="q-no" readonly style="background:#f5f7fa;flex:1;font-weight:700;color:var(--blue)">
-              <button class="btn btn-sm btn-outline" onclick="genQuoteNo()" title="재생성">🔄</button>
-            </div>
-          </div>
-          <div class="fg"><label class="fl req">작성일자</label><input class="fc" id="q-date" type="date"></div>
-          <div class="fg"><label class="fl">유효기간</label><input class="fc" id="q-valid" placeholder="30일" value="30일"></div>
-          <div class="fg"><label class="fl">부가세</label>
-            <select class="fc" id="q-vat" onchange="recalc()">
-              <option value="include">별도 표시 (공급가+VAT)</option>
-              <option value="exclude">포함가만 표시</option>
-            </select>
-          </div>
-          <div class="fg"><label class="fl">결제조건</label><input class="fc" id="q-payment" value="월 임대료 후불"></div>
-          <div class="fg"><label class="fl">임대기간</label><input class="fc" id="q-period" value="기본 5년 (감차 가능)"></div>
-          <div class="fg"><label class="fl">납기</label><input class="fc" id="q-delivery" placeholder="계약 후 협의"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 기초자료 첨부 -->
-  <div class="card">
-    <div class="card-header"><span class="hico">📎</span>기초자료 첨부 · 요구조건 메모</div>
+  <!-- ① 견적 유형 선택 -->
+  <div class="card" id="type-selector-card">
+    <div class="card-header"><span class="hico">📂</span>견적 유형 선택</div>
     <div class="card-body">
-      <div class="g2" style="gap:16px">
-        <div>
-          <div class="file-drop" onclick="document.getElementById('fi').click()"
-            ondragover="event.preventDefault();this.style.borderColor='#1a5fad'"
-            ondragleave="this.style.borderColor=''"
-            ondrop="handleDrop(event)">
-            <div class="file-drop-icon">📁</div>
-            <p style="font-size:13px"><strong>파일 드래그 또는 클릭하여 업로드</strong></p>
-            <p style="font-size:12px;color:var(--gray);margin-top:4px">PDF · Excel · Word · 이미지</p>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px">
+        <div class="qtype-card" id="qt-forklift" onclick="selectQType('forklift')">
+          <div class="qt-icon">🚜</div>
+          <div class="qt-name">지게차 임대</div>
+          <div class="qt-desc">납산·리튬 지게차<br>장기 임대 견적</div>
+        </div>
+        <div class="qtype-card" id="qt-building" onclick="selectQType('building')">
+          <div class="qt-icon">🏢</div>
+          <div class="qt-name">건물 관리</div>
+          <div class="qt-desc">시설·미화·경비·설비<br>건물관리 용역 견적</div>
+        </div>
+        <div class="qtype-card" id="qt-washing" onclick="selectQType('washing')">
+          <div class="qt-icon">🧹</div>
+          <div class="qt-name">박스 세척</div>
+          <div class="qt-desc">산업용 박스·용기<br>세척·건조 서비스 견적</div>
+        </div>
+        <div class="qtype-card" id="qt-manpower" onclick="selectQType('manpower')">
+          <div class="qt-icon">👷</div>
+          <div class="qt-name">인력 공급</div>
+          <div class="qt-desc">생산·물류·아웃소싱<br>인력 파견·공급 견적</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ② 공통: 고객사 + 견적 정보 (유형 선택 후 표시) -->
+  <div id="quote-form-wrap" style="display:none">
+
+    <div class="g2">
+      <div class="card">
+        <div class="card-header"><span class="hico">🏢</span>고객사(수신처) 정보</div>
+        <div class="card-body">
+          <div class="g2" style="gap:12px">
+            <div class="fg"><label class="fl req">고객사명</label><input class="fc" id="cust-name" placeholder="고객사명"></div>
+            <div class="fg"><label class="fl">담당자</label><input class="fc" id="cust-contact" placeholder="담당자 이름"></div>
+            <div class="fg"><label class="fl">연락처</label><input class="fc" id="cust-tel" placeholder="055-000-0000"></div>
+            <div class="fg"><label class="fl">이메일</label><input class="fc" id="cust-email" placeholder="email@company.com"></div>
+            <div class="fg span2"><label class="fl">주소</label><input class="fc" id="cust-addr" placeholder="주소"></div>
           </div>
-          <input type="file" id="fi" multiple style="display:none" onchange="handleFiles(this.files)">
-          <div class="af-list" id="af-list"></div>
-        </div>
-        <div class="fg">
-          <label class="fl">특기사항 / 요구조건</label>
-          <textarea class="fc" id="q-notes" style="height:130px">• 전체 지게차 상시 AS 가능 체계 구축 필수
-• 현대 리튬배터리 8대: 신차 조건
-• 납산 장비 29대: 메이커 및 중고 무관
-• 소모품(타이어·배터리) 무상교환 포함
-• 보험: 도급+임대 동시 운영 시 가입 필수
-• 임대기간 기본 5년, 라인변경 시 감차 가능</textarea>
         </div>
       </div>
-    </div>
-  </div>
-
-  <!-- 마진율 패널 -->
-  <div class="margin-panel">
-    <h3>💹 원가 & 마진율 설정 — 낮은 마진으로 낙찰 확률 극대화</h3>
-    <div class="mp-row">
-      <div><div class="mp-label">납산 중고 마진율 (%)</div><input type="number" class="mp-input" id="mg-pb" value="8" min="0" max="50" oninput="recalc()"></div>
-      <div><div class="mp-label">리튬 신차 마진율 (%)</div><input type="number" class="mp-input" id="mg-li" value="6" min="0" max="50" oninput="recalc()"></div>
-      <div><div class="mp-label">특수옵션 마진율 (%)</div><input type="number" class="mp-input" id="mg-sp" value="7" min="0" max="50" oninput="recalc()"></div>
-      <div><div class="mp-label">전체 할인율 (%)</div><input type="number" class="mp-input" id="mg-disc" value="0" min="0" max="30" oninput="recalc()"></div>
-      <div class="mp-result">
-        <div class="rl">예상 월 수익</div>
-        <div class="rv" id="est-profit">–</div>
+      <div class="card">
+        <div class="card-header"><span class="hico">📄</span>견적 정보</div>
+        <div class="card-body">
+          <div class="g2" style="gap:12px">
+            <div class="fg"><label class="fl req">견적 제목</label><input class="fc" id="q-title" placeholder="견적서 제목"></div>
+            <div class="fg"><label class="fl">견적번호</label>
+              <div style="display:flex;gap:6px">
+                <input class="fc" id="q-no" readonly style="background:#f5f7fa;flex:1;font-weight:700;color:var(--blue)">
+                <button class="btn btn-sm btn-outline" onclick="genQuoteNo()">🔄</button>
+              </div>
+            </div>
+            <div class="fg"><label class="fl req">작성일자</label><input class="fc" id="q-date" type="date"></div>
+            <div class="fg"><label class="fl">유효기간</label><input class="fc" id="q-valid" value="30일"></div>
+            <div class="fg"><label class="fl">부가세</label>
+              <select class="fc" id="q-vat">
+                <option value="include">별도 표시 (공급가+VAT)</option>
+                <option value="exclude">포함가만 표시</option>
+              </select>
+            </div>
+            <div class="fg"><label class="fl">결제조건</label><input class="fc" id="q-payment" value="월 후불"></div>
+            <div class="fg"><label class="fl">계약기간</label><input class="fc" id="q-period" value="1년 (자동연장)"></div>
+            <div class="fg"><label class="fl">납기/시작일</label><input class="fc" id="q-delivery" placeholder="계약 후 협의"></div>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- 최적 견적 추천 패널 (토글) -->
-  <div class="rec-panel" id="rec-panel">
-    <h3>🎯 AI 최적 견적 추천</h3>
-    <div class="rec-list" id="rec-list"></div>
-    <div style="margin-top:12px;display:flex;gap:8px">
-      <button class="btn btn-ghost btn-sm" onclick="applyRec(0)">✅ 안전낙찰 적용</button>
-      <button class="btn btn-ghost btn-sm" onclick="applyRec(1)">⚡ 공격낙찰 적용</button>
-      <button class="btn btn-ghost btn-sm" onclick="applyRec(2)">💼 수익균형 적용</button>
-      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('rec-panel').style.display='none'">✕ 닫기</button>
-    </div>
-  </div>
-
-  <!-- 요약 -->
-  <div class="sum-row">
-    <div class="sc"><div class="sl">총 장비 수</div><div class="sv" id="sum-cnt">37</div><div class="sd">대</div></div>
-    <div class="sc g"><div class="sl">월 공급가 합계</div><div class="sv" id="sum-sup">–</div><div class="sd">VAT 별도</div></div>
-    <div class="sc o"><div class="sl">부가세 (10%)</div><div class="sv" id="sum-vat">–</div><div class="sd">원</div></div>
-    <div class="sc r"><div class="sl">월 합계 (VAT포함)</div><div class="sv" id="sum-grd">–</div><div class="sd">원</div></div>
-  </div>
-
-  <!-- 장비 명세 -->
-  <div class="card">
-    <div class="card-header">
-      <span class="hico">🚜</span>장비 명세 (37대) — 단가 직접 수정 가능
-      <div style="margin-left:auto;display:flex;gap:8px">
-        <button class="btn btn-sm" style="background:#e0f2fe;color:#0369a1;border:none" onclick="showRec()">🎯 최적 견적 추천</button>
-        <button class="btn btn-sm btn-outline" onclick="resetMargin()">↺ 마진 초기화</button>
+    <!-- 기초자료 첨부 -->
+    <div class="card">
+      <div class="card-header"><span class="hico">📎</span>기초자료 첨부 · 요구조건 메모</div>
+      <div class="card-body">
+        <div class="g2" style="gap:16px">
+          <div>
+            <div class="file-drop" onclick="document.getElementById('fi').click()"
+              ondragover="event.preventDefault();this.style.borderColor='#1a5fad'"
+              ondragleave="this.style.borderColor=''"
+              ondrop="handleDrop(event)">
+              <div class="file-drop-icon">📁</div>
+              <p style="font-size:13px"><strong>파일 드래그 또는 클릭하여 업로드</strong></p>
+              <p style="font-size:12px;color:var(--gray);margin-top:4px">PDF · Excel · Word · 이미지</p>
+            </div>
+            <input type="file" id="fi" multiple style="display:none" onchange="handleFiles(this.files)">
+            <div class="af-list" id="af-list"></div>
+          </div>
+          <div class="fg">
+            <label class="fl">특기사항 / 요구조건</label>
+            <textarea class="fc" id="q-notes" style="height:130px" placeholder="입찰 요구사항, 특수조건 등 메모..."></textarea>
+          </div>
+        </div>
       </div>
     </div>
-    <div class="card-body" style="padding:0">
-      <div class="tw">
-        <table id="item-table">
-          <thead>
-            <tr>
-              <th>No</th><th>관리번호</th><th>구역/용도</th><th>동력</th><th>승차형태</th>
-              <th>적재</th><th>높이</th><th>주요옵션</th><th>보험</th>
-              <th>시장원가<br>(월/대)</th><th>마진단가<br>(월/대)</th>
-              <th>견적단가<br>(월/대)</th><th>수량</th><th>월합계</th>
-            </tr>
-          </thead>
+
+    <!-- 마진율 패널 -->
+    <div class="margin-panel">
+      <h3>💹 마진율 설정 — 낮은 마진으로 낙찰 확률 극대화</h3>
+      <div class="mp-row">
+        <div><div class="mp-label" id="mg-label1">기본 마진율 (%)</div><input type="number" class="mp-input" id="mg-pb" value="10" min="0" max="50" oninput="recalc()"></div>
+        <div><div class="mp-label" id="mg-label2">특수/고급 마진율 (%)</div><input type="number" class="mp-input" id="mg-li" value="8" min="0" max="50" oninput="recalc()"></div>
+        <div><div class="mp-label">간접비 마진율 (%)</div><input type="number" class="mp-input" id="mg-sp" value="5" min="0" max="50" oninput="recalc()"></div>
+        <div><div class="mp-label">전체 할인율 (%)</div><input type="number" class="mp-input" id="mg-disc" value="0" min="0" max="30" oninput="recalc()"></div>
+        <div class="mp-result">
+          <div class="rl">예상 수익</div>
+          <div class="rv" id="est-profit">–</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 최적 견적 추천 -->
+    <div class="rec-panel" id="rec-panel">
+      <h3>🎯 최적 견적 추천</h3>
+      <div class="rec-list" id="rec-list"></div>
+      <div style="margin-top:12px;display:flex;gap:8px">
+        <button class="btn btn-ghost btn-sm" onclick="applyRec(0)">✅ 안전낙찰 적용</button>
+        <button class="btn btn-ghost btn-sm" onclick="applyRec(1)">⚡ 공격낙찰 적용</button>
+        <button class="btn btn-ghost btn-sm" onclick="applyRec(2)">💼 수익균형 적용</button>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('rec-panel').style.display='none'">✕ 닫기</button>
+      </div>
+    </div>
+
+    <!-- 요약 -->
+    <div class="sum-row">
+      <div class="sc"><div class="sl" id="sum-label">항목 수</div><div class="sv" id="sum-cnt">–</div><div class="sd" id="sum-unit">건</div></div>
+      <div class="sc g"><div class="sl">공급가 합계</div><div class="sv" id="sum-sup">–</div><div class="sd">VAT 별도</div></div>
+      <div class="sc o"><div class="sl">부가세 (10%)</div><div class="sv" id="sum-vat">–</div><div class="sd">원</div></div>
+      <div class="sc r"><div class="sl">합계 (VAT포함)</div><div class="sv" id="sum-grd">–</div><div class="sd">원</div></div>
+    </div>
+
+    <!-- ③ 유형별 명세 영역 (동적 렌더) -->
+    <div class="card" id="items-card">
+      <div class="card-header">
+        <span class="hico" id="items-icon">📋</span>
+        <span id="items-title">견적 명세</span>
+        <div style="margin-left:auto;display:flex;gap:8px">
+          <button class="btn btn-sm" style="background:#e0f2fe;color:#0369a1;border:none" onclick="showRec()">🎯 최적 견적 추천</button>
+          <button class="btn btn-sm btn-outline" onclick="resetMargin()">↺ 마진 초기화</button>
+          <button class="btn btn-sm btn-success" onclick="addCustomRow()">+ 행 추가</button>
+        </div>
+      </div>
+      <div class="card-body" style="padding:0">
+        <div class="tw"><table id="item-table">
+          <thead><tr id="item-thead-row"></tr></thead>
           <tbody id="item-tbody"></tbody>
-          <tfoot>
-            <tr style="background:#dbeafe;font-weight:700">
-              <td colspan="12" style="text-align:right;color:var(--blue);font-size:13px">합 계</td>
-              <td id="ft-qty" style="font-weight:700">37</td>
-              <td id="ft-total" style="font-weight:700;color:var(--blue);font-size:14px">-</td>
-            </tr>
-          </tfoot>
-        </table>
+          <tfoot><tr style="background:#dbeafe;font-weight:700">
+            <td colspan="2" style="text-align:right;color:var(--blue);font-size:13px;padding:9px 8px">합 계</td>
+            <td id="ft-qty" style="font-weight:700;text-align:center">–</td>
+            <td id="ft-total" colspan="10" style="font-weight:700;color:var(--blue);font-size:14px;padding:9px 8px">–</td>
+          </tr></tfoot>
+        </table></div>
       </div>
     </div>
-  </div>
 
-  <!-- 하단 버튼 -->
-  <div class="btn-grp" style="justify-content:flex-end;margin-top:6px">
-    <button class="btn btn-outline" onclick="showPage('pg-mgmt')">📂 견적 목록</button>
-    <button class="btn btn-warning" onclick="showPreview()">👁 미리보기</button>
-    <button class="btn btn-primary" onclick="saveQuote()">💾 저장 (Firebase)</button>
+    <!-- 하단 버튼 -->
+    <div class="btn-grp" style="justify-content:flex-end;margin-top:6px">
+      <button class="btn btn-outline" onclick="resetQType()">◀ 유형 재선택</button>
+      <button class="btn btn-outline" onclick="showPage('pg-mgmt')">📂 목록</button>
+      <button class="btn btn-warning" onclick="showPreview()">👁 미리보기</button>
+      <button class="btn btn-primary" onclick="saveQuote()">💾 저장</button>
+    </div>
   </div>
 </div>
 
@@ -668,71 +695,216 @@ const COL_Q  = () => document.getElementById('fb-col-quote')?.value || 'forklift
 const COL_CO = () => document.getElementById('fb-col-co')?.value   || 'insys_companies';
 
 // ── 장비 데이터 (37대) ──
-const ITEMS = [
-  {no:1,  code:'1B-1', zone:'1동 연구소/AS',      type:'납산/중고', seat:'입승',  cap:2.5, h:3.0, opts:'',                      ins:false, ck:'pb_std'},
-  {no:2,  code:'1B-2', zone:'1동 도장',            type:'납산/중고', seat:'좌승',  cap:2.5, h:3.0, opts:'풀캐빈',                ins:true,  ck:'pb_cab'},
-  {no:3,  code:'2B-1', zone:'2동 포장 PT250B',     type:'납산/중고', seat:'좌승',  cap:3.0, h:3.0, opts:'풀캐빈',                ins:true,  ck:'pb_cab3'},
-  {no:4,  code:'2B-2', zone:'2동 포장 PT350A',     type:'납산/중고', seat:'좌승',  cap:3.0, h:3.0, opts:'풀캐빈',                ins:true,  ck:'pb_cab3'},
-  {no:5,  code:'2B-3', zone:'2동 포장 PT250S',     type:'납산/중고', seat:'좌승',  cap:3.0, h:3.0, opts:'풀캐빈',                ins:true,  ck:'pb_cab3'},
-  {no:6,  code:'3B-1', zone:'3동 HC Picking',      type:'납산/중고', seat:'입승',  cap:1.8, h:5.0, opts:'다단마스터(5M)',        ins:false, ck:'pb_5m'},
-  {no:7,  code:'3B-2', zone:'3동 BUSH Picking',    type:'납산/중고', seat:'입승',  cap:1.8, h:5.0, opts:'다단마스터(5M)',        ins:false, ck:'pb_5m'},
-  {no:8,  code:'3B-3', zone:'3동 CL Picking',      type:'납산/중고', seat:'입승',  cap:1.8, h:5.0, opts:'다단마스터(5M)',        ins:false, ck:'pb_5m'},
-  {no:9,  code:'3B-5', zone:'3동 일반',            type:'납산/중고', seat:'입승',  cap:2.5, h:5.0, opts:'다단마스터(5M)',        ins:false, ck:'pb_5m25'},
-  {no:10, code:'3B-6', zone:'3동 일반',            type:'납산/중고', seat:'입승',  cap:2.5, h:5.0, opts:'다단마스터(5M)',        ins:false, ck:'pb_5m25'},
-  {no:11, code:'3B-8', zone:'3동 악세서리 Pick',   type:'납산/중고', seat:'입승',  cap:1.8, h:5.0, opts:'다단마스터(5M)',        ins:false, ck:'pb_5m'},
-  {no:12, code:'3B-4', zone:'3동 U60A라인',        type:'납산/중고', seat:'좌승',  cap:3.0, h:3.0, opts:'풀캐빈',                ins:false, ck:'pb_cab3'},
-  {no:13, code:'4B-3', zone:'4동 일반',            type:'납산/중고', seat:'입승',  cap:2.5, h:3.0, opts:'',                      ins:false, ck:'pb_std'},
-  {no:14, code:'4B-4', zone:'4동 일반',            type:'납산/중고', seat:'좌승',  cap:2.5, h:3.0, opts:'풀캐빈·마스터회전',    ins:false, ck:'pb_cab_sp'},
-  {no:15, code:'4B-1', zone:'4동 마찰',            type:'납산/중고', seat:'입승',  cap:2.5, h:3.0, opts:'',                      ins:false, ck:'pb_std'},
-  {no:16, code:'4B-6', zone:'4동 CO2용접',         type:'납산/중고', seat:'입승',  cap:2.5, h:3.0, opts:'',                      ins:false, ck:'pb_std'},
-  {no:17, code:'4B-2', zone:'4동 용접Feeder',      type:'납산/중고', seat:'좌승',  cap:2.5, h:5.0, opts:'풀캐빈',                ins:false, ck:'pb_cab'},
-  {no:18, code:'4B-5', zone:'4동 ROD창고',         type:'납산/중고', seat:'좌승',  cap:2.5, h:3.0, opts:'풀캐빈',                ins:false, ck:'pb_cab'},
-  {no:19, code:'5B-2', zone:'5동1층 F30A라인',     type:'납산/중고', seat:'입승',  cap:2.5, h:3.0, opts:'',                      ins:false, ck:'pb_std'},
-  {no:20, code:'5B-5', zone:'5동1층 Feeder',       type:'납산/중고', seat:'입승',  cap:2.5, h:3.0, opts:'사이드쉬프트',          ins:false, ck:'pb_side'},
-  {no:21, code:'5B-3', zone:'5동1층 PISTON Pick',  type:'납산/중고', seat:'입승',  cap:1.3, h:5.0, opts:'다단마스터(5M)',        ins:false, ck:'pb_5m13'},
-  {no:22, code:'5B-4', zone:'5동1층 ROD COVER',    type:'납산/중고', seat:'입승',  cap:1.8, h:5.0, opts:'다단마스터(5M)',        ins:false, ck:'pb_5m'},
-  {no:23, code:'5B-6', zone:'5동1층 E15C라인',     type:'납산/중고', seat:'입승',  cap:2.5, h:3.0, opts:'',                      ins:false, ck:'pb_std'},
-  {no:24, code:'5B-1', zone:'5동2층 Feeder',       type:'납산/중고', seat:'좌승',  cap:2.5, h:3.0, opts:'풀캐빈',                ins:false, ck:'pb_cab'},
-  {no:25, code:'2P-1', zone:'2공장 일반',           type:'납산/중고', seat:'입승',  cap:2.5, h:3.0, opts:'',                      ins:false, ck:'pb_std'},
-  {no:26, code:'2P-2', zone:'2공장 일반',           type:'납산/중고', seat:'입승',  cap:2.5, h:3.0, opts:'',                      ins:false, ck:'pb_std'},
-  {no:27, code:'2P-3', zone:'2공장 일반',           type:'납산/중고', seat:'입승',  cap:2.5, h:3.0, opts:'',                      ins:false, ck:'pb_std'},
-  {no:28, code:'2P-4', zone:'2공장 스태커',         type:'납산/중고', seat:'스태커',cap:1.3, h:0,   opts:'',                      ins:false, ck:'stacker'},
-  {no:29, code:'2P-5', zone:'2공장 도금로드',       type:'납산/중고', seat:'좌승',  cap:3.0, h:0,   opts:'풀캐빈',                ins:true,  ck:'pb_cab3'},
-  {no:30, code:'2Y-4', zone:'앞마당 부품상하차',    type:'리튬신차',  seat:'좌승',  cap:3.0, h:0,   opts:'풀캐빈',                ins:true,  ck:'li_3t'},
-  {no:31, code:'1Y-1', zone:'앞마당 출하',          type:'리튬신차',  seat:'좌승',  cap:3.0, h:0,   opts:'풀캐빈·사이드·포크무브',ins:true,  ck:'li_3t_sp'},
-  {no:32, code:'1Y-2', zone:'앞마당 컨테이너',      type:'리튬신차',  seat:'좌승',  cap:4.5, h:0,   opts:'풀캐빈·컨테이너·싱글타이어·포크무브', ins:true, ck:'li_45t'},
-  {no:33, code:'1Y-3', zone:'앞마당 컨테이너',      type:'리튬신차',  seat:'좌승',  cap:4.5, h:0,   opts:'풀캐빈·컨테이너·싱글타이어·포크무브', ins:true, ck:'li_45t'},
-  {no:34, code:'2Y-1', zone:'뒷마당 부품상하차',    type:'리튬신차',  seat:'좌승',  cap:3.0, h:0,   opts:'풀캐빈·포크무브',      ins:true,  ck:'li_3t_mv'},
-  {no:35, code:'2Y-2', zone:'뒷마당 부품상하차',    type:'리튬신차',  seat:'좌승',  cap:3.0, h:0,   opts:'풀캐빈·포크무브',      ins:true,  ck:'li_3t_mv'},
-  {no:36, code:'2Y-3', zone:'뒷마당 부품상하차',    type:'리튬신차',  seat:'좌승',  cap:3.0, h:0,   opts:'풀캐빈·포크무브',      ins:true,  ck:'li_3t_mv'},
-  {no:37, code:'2Y-5', zone:'임대공장 Tube상하차',  type:'리튬신차',  seat:'좌승',  cap:3.0, h:0,   opts:'풀캐빈·포크무브',      ins:true,  ck:'li_3t_mv'},
-];
+// ════════════════════════════════════════════
+// ── 견적 유형별 템플릿 정의 ──
+// ════════════════════════════════════════════
+const QTYPES = {
 
-// ── 시장 기준 원가 ──
-let COSTS = {
-  pb_std:   320000, pb_cab:   430000, pb_cab3: 480000, pb_cab_sp:460000,
-  pb_5m:    400000, pb_5m25:  440000, pb_5m13: 360000, pb_side:  360000,
-  stacker:  270000,
-  li_3t:    680000, li_3t_sp: 730000, li_3t_mv:720000, li_45t:   950000,
-};
-const COST_LABELS = {
-  pb_std:'납산 입승 2.5T 표준', pb_cab:'납산 좌승 2.5T 풀캐빈',
-  pb_cab3:'납산 좌승 3.0T 풀캐빈', pb_cab_sp:'납산 좌승 2.5T 특수',
-  pb_5m:'납산 입승 1.8T 5단마스터', pb_5m25:'납산 입승 2.5T 5단마스터',
-  pb_5m13:'납산 입승 1.3T 5단마스터', pb_side:'납산 입승 사이드시프트',
-  stacker:'스태커 1.3T',
-  li_3t:'리튬신차 3.0T 기본', li_3t_sp:'리튬신차 3.0T 사이드+포크무브',
-  li_3t_mv:'리튬신차 3.0T 포크무브', li_45t:'리튬신차 4.5T 컨테이너',
-};
+  // ① 지게차 임대
+  forklift: {
+    label:'지게차 임대', icon:'🚜', unit:'대',
+    defaultTitle:'지게차 임대 견적서',
+    defaultPeriod:'기본 5년 (감차 가능)',
+    defaultPayment:'월 임대료 후불',
+    defaultNotes:'• 전체 지게차 상시 AS 가능 체계 구축 필수\n• 현대 리튬배터리 8대: 신차 조건\n• 납산 장비 29대: 메이커 및 중고 무관\n• 소모품(타이어·배터리) 무상교환 포함\n• 보험: 도급+임대 동시 운영 시 가입 필수\n• 임대기간 기본 5년, 라인변경 시 감차 가능',
+    mgLabels:['납산 중고 마진율(%)','리튬 신차 마진율(%)','특수옵션 마진율(%)'],
+    mgDefaults:[8,6,7,0],
+    thead:['No','관리번호','구역/용도','동력','승차형태','적재','높이','주요옵션','보험','시장원가(월)','마진단가(월)','견적단가(월)','수량','월합계'],
+    tcolspan:12,
+    conditions:[
+      '임대기간: 기본 5년 / 라인변경 감차 가능 / 별도입찰 없을 경우 자동 1년 연장',
+      '소모품(타이어·배터리) 무상교환 / 부주의 파손 유상수리',
+      '보험조건: 도급+임대 동시 운영(리튬 8대) 시 대인 5천만·대물 1억·적재물배상 1천만 가입',
+      '상시 AS 체계 구축 — 창원 지역 서비스센터 운영',
+      '현대 리튬배터리 8대 신차 / 납산 29대 메이커·중고 무관',
+      '본 견적은 유효기간 내에만 유효합니다.',
+    ],
+    items:[
+      {no:1, code:'1B-1', desc:'1동 연구소/AS', spec:'납산/중고 입승 2.5T/3.0M', opts:'', ins:false, cost:320000},
+      {no:2, code:'1B-2', desc:'1동 도장',       spec:'납산/중고 좌승 2.5T/3.0M', opts:'풀캐빈', ins:true, cost:430000},
+      {no:3, code:'2B-1', desc:'2동 포장(PT250B)',spec:'납산/중고 좌승 3.0T/3.0M', opts:'풀캐빈', ins:true, cost:480000},
+      {no:4, code:'2B-2', desc:'2동 포장(PT350A)',spec:'납산/중고 좌승 3.0T/3.0M', opts:'풀캐빈', ins:true, cost:480000},
+      {no:5, code:'2B-3', desc:'2동 포장(PT250S)',spec:'납산/중고 좌승 3.0T/3.0M', opts:'풀캐빈', ins:true, cost:480000},
+      {no:6, code:'3B-1', desc:'3동 HC Picking', spec:'납산/중고 입승 1.8T/5.0M', opts:'다단마스터(5M)', ins:false, cost:400000},
+      {no:7, code:'3B-2', desc:'3동 BUSH Pick',  spec:'납산/중고 입승 1.8T/5.0M', opts:'다단마스터(5M)', ins:false, cost:400000},
+      {no:8, code:'3B-3', desc:'3동 CL Picking', spec:'납산/중고 입승 1.8T/5.0M', opts:'다단마스터(5M)', ins:false, cost:400000},
+      {no:9, code:'3B-5', desc:'3동 일반',        spec:'납산/중고 입승 2.5T/5.0M', opts:'다단마스터(5M)', ins:false, cost:440000},
+      {no:10,code:'3B-6', desc:'3동 일반',        spec:'납산/중고 입승 2.5T/5.0M', opts:'다단마스터(5M)', ins:false, cost:440000},
+      {no:11,code:'3B-8', desc:'3동 악세서리',    spec:'납산/중고 입승 1.8T/5.0M', opts:'다단마스터(5M)', ins:false, cost:400000},
+      {no:12,code:'3B-4', desc:'3동 U60A라인',    spec:'납산/중고 좌승 3.0T/3.0M', opts:'풀캐빈', ins:false, cost:480000},
+      {no:13,code:'4B-3', desc:'4동 일반',        spec:'납산/중고 입승 2.5T/3.0M', opts:'', ins:false, cost:320000},
+      {no:14,code:'4B-4', desc:'4동 일반',        spec:'납산/중고 좌승 2.5T/3.0M', opts:'풀캐빈·마스터회전', ins:false, cost:460000},
+      {no:15,code:'4B-1', desc:'4동 마찰',        spec:'납산/중고 입승 2.5T/3.0M', opts:'', ins:false, cost:320000},
+      {no:16,code:'4B-6', desc:'4동 CO2용접',     spec:'납산/중고 입승 2.5T/3.0M', opts:'', ins:false, cost:320000},
+      {no:17,code:'4B-2', desc:'4동 용접Feeder',  spec:'납산/중고 좌승 2.5T/5.0M', opts:'풀캐빈', ins:false, cost:430000},
+      {no:18,code:'4B-5', desc:'4동 ROD창고',     spec:'납산/중고 좌승 2.5T/3.0M', opts:'풀캐빈', ins:false, cost:430000},
+      {no:19,code:'5B-2', desc:'5동1층 F30A라인', spec:'납산/중고 입승 2.5T/3.0M', opts:'', ins:false, cost:320000},
+      {no:20,code:'5B-5', desc:'5동1층 Feeder',   spec:'납산/중고 입승 2.5T/3.0M', opts:'사이드쉬프트', ins:false, cost:360000},
+      {no:21,code:'5B-3', desc:'5동1층 PISTON',   spec:'납산/중고 입승 1.3T/5.0M', opts:'다단마스터(5M)', ins:false, cost:360000},
+      {no:22,code:'5B-4', desc:'5동1층 ROD COVER',spec:'납산/중고 입승 1.8T/5.0M', opts:'다단마스터(5M)', ins:false, cost:400000},
+      {no:23,code:'5B-6', desc:'5동1층 E15C라인', spec:'납산/중고 입승 2.5T/3.0M', opts:'', ins:false, cost:320000},
+      {no:24,code:'5B-1', desc:'5동2층 Feeder',   spec:'납산/중고 좌승 2.5T/3.0M', opts:'풀캐빈', ins:false, cost:430000},
+      {no:25,code:'2P-1', desc:'2공장 일반',       spec:'납산/중고 입승 2.5T/3.0M', opts:'', ins:false, cost:320000},
+      {no:26,code:'2P-2', desc:'2공장 일반',       spec:'납산/중고 입승 2.5T/3.0M', opts:'', ins:false, cost:320000},
+      {no:27,code:'2P-3', desc:'2공장 일반',       spec:'납산/중고 입승 2.5T/3.0M', opts:'', ins:false, cost:320000},
+      {no:28,code:'2P-4', desc:'2공장 스태커',     spec:'납산/중고 스태커 1.3T/표준', opts:'', ins:false, cost:270000},
+      {no:29,code:'2P-5', desc:'2공장 도금로드',   spec:'납산/중고 좌승 3.0T/표준', opts:'풀캐빈', ins:true, cost:480000},
+      {no:30,code:'2Y-4', desc:'앞마당 부품상하차',spec:'리튬신차 좌승 3.0T/표준', opts:'풀캐빈', ins:true, cost:680000},
+      {no:31,code:'1Y-1', desc:'앞마당 출하',      spec:'리튬신차 좌승 3.0T/표준', opts:'풀캐빈·사이드·포크무브', ins:true, cost:730000},
+      {no:32,code:'1Y-2', desc:'앞마당 컨테이너',  spec:'리튬신차 좌승 4.5T/표준', opts:'풀캐빈·컨테이너·싱글타이어·포크무브', ins:true, cost:950000},
+      {no:33,code:'1Y-3', desc:'앞마당 컨테이너',  spec:'리튬신차 좌승 4.5T/표준', opts:'풀캐빈·컨테이너·싱글타이어·포크무브', ins:true, cost:950000},
+      {no:34,code:'2Y-1', desc:'뒷마당 부품상하차',spec:'리튬신차 좌승 3.0T/표준', opts:'풀캐빈·포크무브', ins:true, cost:720000},
+      {no:35,code:'2Y-2', desc:'뒷마당 부품상하차',spec:'리튬신차 좌승 3.0T/표준', opts:'풀캐빈·포크무브', ins:true, cost:720000},
+      {no:36,code:'2Y-3', desc:'뒷마당 부품상하차',spec:'리튬신차 좌승 3.0T/표준', opts:'풀캐빈·포크무브', ins:true, cost:720000},
+      {no:37,code:'2Y-5', desc:'임대공장 Tube',    spec:'리튬신차 좌승 3.0T/표준', opts:'풀캐빈·포크무브', ins:true, cost:720000},
+    ],
+    renderRow:(item,i)=>`
+      <td>${item.no}</td>
+      <td><span class="badge ${item.spec.includes('리튬')?' b-green':'b-blue'}">${item.code}</span></td>
+      <td style="text-align:left;font-size:12px">${item.desc}</td>
+      <td style="font-size:11px">${item.spec.split(' ')[0]+' '+item.spec.split(' ')[1]}</td>
+      <td style="font-size:11px">${item.spec.split(' ')[2]||'–'}</td>
+      <td style="font-size:11px">${item.spec.split(' ')[3]||'–'}</td>
+      <td style="font-size:11px">${item.spec.split(' ')[4]||'–'}</td>
+      <td style="text-align:left;font-size:11px">${item.opts||'–'}</td>
+      <td>${item.ins?'<span class="badge b-red">필요</span>':'–'}</td>
+      <td style="color:var(--gray);font-size:12px" id="c-cost-${i}">${fmtW(item.cost)}</td>
+      <td style="color:var(--blue);font-weight:700;font-size:12px" id="c-mp-${i}">–</td>
+      <td><input type="number" id="c-unit-${i}" placeholder="자동" oninput="recalc()" style="width:84px"></td>
+      <td>1</td>
+      <td style="font-weight:700;color:#1a2e4a" id="c-row-${i}">–</td>`,
+  },
 
-// ── 추천 시나리오 ──
-const RECS = [
-  {name:'안전 낙찰형',  desc:'낙찰 확률 최우선, 최저 마진',    pb:5,  li:4,  sp:4,  disc:2,  color:'#10b981'},
-  {name:'공격 낙찰형',  desc:'경쟁사 대비 -8% 수준, 적자 없음',pb:3,  li:2,  sp:3,  disc:5,  color:'#f59e0b'},
-  {name:'수익 균형형',  desc:'적정 마진 확보 (업계 평균 수준)',  pb:10, li:8,  sp:9,  disc:0,  color:'#3b82f6'},
-];
+  // ② 건물 관리
+  building: {
+    label:'건물 관리', icon:'🏢', unit:'개소',
+    defaultTitle:'건물 관리 용역 견적서',
+    defaultPeriod:'1년 (자동연장)',
+    defaultPayment:'월 후불',
+    defaultNotes:'• 건물 규모 및 층수 확인 필요\n• 미화·경비·시설 구분 투입인력 협의\n• 비상연락 체계 및 야간 대응 방안\n• 소모품·장비 제공 범위 협의\n• 하자보수 및 긴급출동 조건',
+    mgLabels:['인건비 마진율(%)','관리비 마진율(%)','간접비율(%)'],
+    mgDefaults:[12,10,5,0],
+    thead:['No','서비스 항목','세부 내용','투입인원(명)','단위','단가(원)','시장원가','마진단가','견적단가','수량','기간','합계(원)'],
+    tcolspan:10,
+    conditions:[
+      '계약기간: 1년 단위 / 사전 협의 후 자동연장 가능',
+      '투입인원 변경 시 사전 1개월 통보 후 조정',
+      '소모품 및 청소도구 일체 용역사 부담',
+      '월 1회 이상 현장 점검 및 서비스 보고서 제출',
+      '긴급 상황 시 4시간 이내 출동 보장',
+      '본 견적은 유효기간 내에만 유효합니다.',
+    ],
+    items:[
+      {no:1, code:'BM-01', desc:'일반 미화',      spec:'청소·위생관리', unit:'월', qty:1, cost:3200000},
+      {no:2, code:'BM-02', desc:'특수 미화',       spec:'유리·외벽·고소 청소', unit:'회', qty:4, cost:500000},
+      {no:3, code:'BM-03', desc:'상주 경비',       spec:'24시간 상주경비 1인', unit:'월', qty:1, cost:3800000},
+      {no:4, code:'BM-04', desc:'시설 관리',       spec:'전기·소방·기계설비 점검', unit:'월', qty:1, cost:2500000},
+      {no:5, code:'BM-05', desc:'조경 관리',       spec:'수목관리·잔디·화단', unit:'월', qty:1, cost:800000},
+      {no:6, code:'BM-06', desc:'주차 관리',       spec:'주차요원 1인', unit:'월', qty:1, cost:2800000},
+      {no:7, code:'BM-07', desc:'폐기물 처리',     spec:'일반 폐기물 수거·처리', unit:'월', qty:1, cost:400000},
+      {no:8, code:'BM-08', desc:'방역·소독',       spec:'분기 1회 전문 방역', unit:'회', qty:1, cost:350000},
+    ],
+    renderRow:(item,i)=>`
+      <td>${item.no}</td>
+      <td><span class="badge b-blue">${item.code}</span></td>
+      <td style="text-align:left;font-weight:600">${item.desc}</td>
+      <td style="text-align:left;font-size:12px;color:var(--gray)">${item.spec}</td>
+      <td>–</td>
+      <td>${item.unit}</td>
+      <td style="color:var(--gray);font-size:12px" id="c-cost-${i}">${fmtW(item.cost)}</td>
+      <td style="color:var(--blue);font-weight:700;font-size:12px" id="c-mp-${i}">–</td>
+      <td><input type="number" id="c-unit-${i}" placeholder="자동" oninput="recalc()" style="width:84px"></td>
+      <td><input type="number" id="c-qty-${i}" value="${item.qty}" oninput="recalc()" style="width:50px"></td>
+      <td>${item.unit}</td>
+      <td style="font-weight:700;color:#1a2e4a" id="c-row-${i}">–</td>`,
+  },
+
+  // ③ 박스 세척
+  washing: {
+    label:'박스 세척', icon:'🧹', unit:'건',
+    defaultTitle:'박스 세척 서비스 견적서',
+    defaultPeriod:'1년 (자동연장)',
+    defaultPayment:'월 후불 (물량 정산)',
+    defaultNotes:'• 박스 종류 및 재질 확인 필요\n• 세척 후 건조 방식 협의\n• 반납·수거 물류 범위 협의\n• 불량품 처리 기준 명확화\n• 세척수·약품 제공 주체 확인',
+    mgLabels:['세척 마진율(%)','운반 마진율(%)','간접비율(%)'],
+    mgDefaults:[15,12,5,0],
+    thead:['No','항목','세부내용','박스 규격','세척방식','단위','시장원가','마진단가','견적단가','수량/월','합계(원)'],
+    tcolspan:9,
+    conditions:[
+      '세척 후 이물질·냄새 제거 보증 / 불량 세척 시 재세척 처리',
+      '수거·납품 물류비 별도 협의 (구간에 따라 차등 적용)',
+      '세척수 및 친환경 세제 당사 부담 / 특수약품 별도 협의',
+      '월 처리 물량 ±20% 범위 내 단가 동일 적용',
+      '박스 파손·분실 시 원가 기준 배상',
+      '본 견적은 유효기간 내에만 유효합니다.',
+    ],
+    items:[
+      {no:1, code:'WS-01', desc:'소형 박스 세척', spec:'300×200×150mm 이하', method:'고압수세+건조', unit:'개', qty:500, cost:800},
+      {no:2, code:'WS-02', desc:'중형 박스 세척', spec:'600×400×300mm 이하', method:'고압수세+건조', unit:'개', qty:300, cost:1500},
+      {no:3, code:'WS-03', desc:'대형 박스 세척', spec:'1200×800×600mm 이하', method:'고압수세+건조', unit:'개', qty:100, cost:3000},
+      {no:4, code:'WS-04', desc:'특수 컨테이너',  spec:'대형 특수 용기', method:'스팀+약품+건조', unit:'개', qty:20, cost:15000},
+      {no:5, code:'WS-05', desc:'팔레트 세척',    spec:'1200×1000mm 표준', method:'고압수세', unit:'개', qty:200, cost:1200},
+      {no:6, code:'WS-06', desc:'수거·납품 운반', spec:'왕복 운반 서비스', method:'–', unit:'회', qty:4, cost:150000},
+    ],
+    renderRow:(item,i)=>`
+      <td>${item.no}</td>
+      <td><span class="badge b-blue">${item.code}</span></td>
+      <td style="text-align:left;font-weight:600">${item.desc}</td>
+      <td style="text-align:left;font-size:11px;color:var(--gray)">${item.spec}</td>
+      <td style="font-size:11px">${item.method}</td>
+      <td>${item.unit}</td>
+      <td style="color:var(--gray);font-size:12px" id="c-cost-${i}">${fmtW(item.cost)}</td>
+      <td style="color:var(--blue);font-weight:700;font-size:12px" id="c-mp-${i}">–</td>
+      <td><input type="number" id="c-unit-${i}" placeholder="자동" oninput="recalc()" style="width:84px"></td>
+      <td><input type="number" id="c-qty-${i}" value="${item.qty}" oninput="recalc()" style="width:64px"></td>
+      <td style="font-weight:700;color:#1a2e4a" id="c-row-${i}">–</td>`,
+  },
+
+  // ④ 인력 공급
+  manpower: {
+    label:'인력 공급', icon:'👷', unit:'명',
+    defaultTitle:'인력 공급 견적서',
+    defaultPeriod:'6개월 이상 (협의)',
+    defaultPayment:'월 후불',
+    defaultNotes:'• 투입 공정 및 작업 난이도 확인\n• 주간/야간/교대 근무 형태 협의\n• 4대보험 및 산재보험 처리 주체\n• 교육·훈련 비용 포함 여부\n• 결원 발생 시 대체인력 공급 기준',
+    mgLabels:['인건비 마진율(%)','관리비 마진율(%)','간접비율(%)'],
+    mgDefaults:[10,8,5,0],
+    thead:['No','직종/포지션','근무형태','필요인원','단위','시장원가(인/월)','마진단가','견적단가','수량(명)','기간(월)','합계(원)'],
+    tcolspan:9,
+    conditions:[
+      '4대보험(국민·건강·고용·산재) 당사 부담 / 명세서 월 제공',
+      '결원 발생 시 3영업일 이내 대체인력 투입 보장',
+      '투입인원 변경(증감) 시 1개월 전 사전 통보 원칙',
+      '안전교육·직무교육 초기 2회 무상 제공',
+      '임금 인상 시 사전 협의 후 단가 조정',
+      '본 견적은 유효기간 내에만 유효합니다.',
+    ],
+    items:[
+      {no:1, code:'MP-01', desc:'일반 생산직',   spec:'조립·포장·검사', shift:'주간', qty:5, cost:2800000},
+      {no:2, code:'MP-02', desc:'숙련 생산직',   spec:'기계조작·용접·가공', shift:'주간', qty:3, cost:3200000},
+      {no:3, code:'MP-03', desc:'야간 생산직',   spec:'조립·포장 야간', shift:'야간', qty:2, cost:3500000},
+      {no:4, code:'MP-04', desc:'물류·창고직',   spec:'입출고·적재·분류', shift:'주간', qty:3, cost:2700000},
+      {no:5, code:'MP-05', desc:'지게차 운전원', spec:'지게차 면허 보유', shift:'주간', qty:2, cost:3300000},
+      {no:6, code:'MP-06', desc:'현장 관리자',   spec:'공정 관리·지도', shift:'주간', qty:1, cost:4500000},
+    ],
+    renderRow:(item,i)=>`
+      <td>${item.no}</td>
+      <td><span class="badge b-purple">${item.code}</span></td>
+      <td style="text-align:left;font-weight:600">${item.desc}</td>
+      <td style="text-align:left;font-size:11px;color:var(--gray)">${item.spec}</td>
+      <td style="font-size:11px">${item.shift}</td>
+      <td>인/월</td>
+      <td style="color:var(--gray);font-size:12px" id="c-cost-${i}">${fmtW(item.cost)}</td>
+      <td style="color:var(--blue);font-weight:700;font-size:12px" id="c-mp-${i}">–</td>
+      <td><input type="number" id="c-unit-${i}" placeholder="자동" oninput="recalc()" style="width:84px"></td>
+      <td><input type="number" id="c-qty-${i}" value="${item.qty}" oninput="recalc()" style="width:50px"></td>
+      <td style="font-weight:700;color:#1a2e4a" id="c-row-${i}">–</td>`,
+  },
+};
 
 // ── 전역 상태 ──
+let currentQType  = null;   // 선택된 견적 유형 key
+let currentItems  = [];     // 현재 활성 아이템 (템플릿 기본 + 추가행 포함)
 let currentIssuer = null;
 let allCompanies  = [];
 let allQuotes     = [];
@@ -741,15 +913,193 @@ let editStatusNo  = null;
 
 // ── 초기화 ──
 window.onload = async () => {
-  // UI 초기화 (Firebase는 SDK 로딩 후 tryInitFirebase에서 자동 처리)
   const today = new Date().toISOString().split('T')[0];
   document.getElementById('q-date').value = today;
   renderCostSettings();
-  renderTable();
-  recalc();
 };
 
-// ── 사업자 관련 ──
+// ── 견적 유형 선택 ──
+function selectQType(key) {
+  currentQType = key;
+  const tmpl = QTYPES[key];
+  // 유형 카드 UI
+  document.querySelectorAll('.qtype-card').forEach(c=>c.classList.remove('selected'));
+  document.getElementById('qt-'+key).classList.add('selected');
+  // 폼 표시
+  document.getElementById('quote-form-wrap').style.display='block';
+  // 기본값 세팅
+  document.getElementById('q-title').value   = tmpl.defaultTitle;
+  document.getElementById('q-period').value  = tmpl.defaultPeriod;
+  document.getElementById('q-payment').value = tmpl.defaultPayment;
+  document.getElementById('q-notes').value   = tmpl.defaultNotes;
+  // 마진 레이블 + 기본값
+  document.getElementById('mg-label1').textContent = tmpl.mgLabels[0];
+  document.getElementById('mg-label2').textContent = tmpl.mgLabels[1];
+  document.getElementById('mg-pb').value  = tmpl.mgDefaults[0];
+  document.getElementById('mg-li').value  = tmpl.mgDefaults[1];
+  document.getElementById('mg-sp').value  = tmpl.mgDefaults[2];
+  document.getElementById('mg-disc').value= tmpl.mgDefaults[3];
+  // 요약 레이블
+  document.getElementById('sum-label').textContent = '항목 수';
+  document.getElementById('sum-unit').textContent  = tmpl.unit;
+  // 명세 헤더/아이콘
+  document.getElementById('items-icon').textContent  = tmpl.icon;
+  document.getElementById('items-title').textContent = tmpl.label+' 명세';
+  // 테이블 헤더
+  document.getElementById('item-thead-row').innerHTML =
+    tmpl.thead.map(h=>`<th>${h}</th>`).join('');
+  // 아이템 초기화
+  currentItems = tmpl.items.map(it=>({...it}));
+  genQuoteNo();
+  renderItemTable();
+  recalc();
+  document.getElementById('quote-form-wrap').scrollIntoView({behavior:'smooth'});
+}
+
+function resetQType() {
+  currentQType = null;
+  document.querySelectorAll('.qtype-card').forEach(c=>c.classList.remove('selected'));
+  document.getElementById('quote-form-wrap').style.display='none';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ── 테이블 렌더 (유형별) ──
+function renderItemTable() {
+  if (!currentQType) return;
+  const tmpl = QTYPES[currentQType];
+  const tbody = document.getElementById('item-tbody');
+  tbody.innerHTML = '';
+  currentItems.forEach((item, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = tmpl.renderRow(item, i) +
+      `<td><button class="btn btn-sm" style="background:none;color:var(--red);border:none;padding:2px 6px" onclick="removeRow(${i})">✕</button></td>`;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('ft-qty').textContent = currentItems.length;
+}
+
+// ── 행 추가/삭제 ──
+function addCustomRow() {
+  if (!currentQType) return;
+  const n = currentItems.length + 1;
+  currentItems.push({no:n, code:'ADD-'+n, desc:'(직접 입력)', spec:'', unit:'식', qty:1, cost:0, opts:'', ins:false});
+  renderItemTable();
+  recalc();
+}
+function removeRow(i) {
+  currentItems.splice(i, 1);
+  currentItems.forEach((it,idx)=>it.no=idx+1);
+  renderItemTable();
+  recalc();
+}
+
+// ── 재계산 (유형 공통) ──
+function recalc() {
+  if (!currentQType || !currentItems.length) return;
+  const mp   = +document.getElementById('mg-pb').value   || 0;
+  const ml   = +document.getElementById('mg-li').value   || 0;
+  const ms   = +document.getElementById('mg-sp').value   || 0;
+  const disc = +document.getElementById('mg-disc').value || 0;
+  let supplyTotal=0, costTotal=0;
+
+  currentItems.forEach((item, i) => {
+    const cost = item.cost || 0;
+    // 유형별 마진율 구분 (리튬=ml, 특수=ms, 기본=mp)
+    const isHigh = item.spec?.includes('리튬')||item.spec?.includes('숙련')||item.spec?.includes('관리자')||item.spec?.includes('특수');
+    const isSp   = item.spec?.includes('컨테이너')||item.opts?.includes('마스터회전')||item.method?.includes('스팀');
+    const rate   = isHigh ? ml : (isSp ? ms : mp);
+    const marginPrice = round100(cost * (1 + rate/100));
+    const mpEl = document.getElementById(`c-mp-${i}`);
+    if (mpEl) mpEl.textContent = fmtW(marginPrice);
+
+    const unitEl = document.getElementById(`c-unit-${i}`);
+    const finalPrice = (unitEl?.value && unitEl.value!=='') ? +unitEl.value : round100(marginPrice*(1-disc/100));
+    if (unitEl && !unitEl.value) unitEl.placeholder = fmtN(finalPrice);
+
+    const qtyEl = document.getElementById(`c-qty-${i}`);
+    const qty = qtyEl ? (+qtyEl.value||1) : 1;
+    const rowTotal = finalPrice * qty;
+    supplyTotal += rowTotal;
+    costTotal   += cost * qty;
+
+    const rowEl = document.getElementById(`c-row-${i}`);
+    if (rowEl) rowEl.textContent = fmtW(rowTotal);
+  });
+
+  const vatAmt = Math.round(supplyTotal * 0.1);
+  const grand  = supplyTotal + vatAmt;
+  document.getElementById('sum-cnt').textContent = currentItems.length;
+  document.getElementById('sum-sup').textContent = fmtW(supplyTotal);
+  document.getElementById('sum-vat').textContent = fmtW(vatAmt);
+  document.getElementById('sum-grd').textContent = fmtW(grand);
+  document.getElementById('ft-total').textContent= fmtW(supplyTotal);
+  document.getElementById('est-profit').textContent = fmtW(supplyTotal-costTotal);
+}
+
+function round100(n){ return Math.round(n/100)*100; }
+function fmtN(n){ return n?n.toLocaleString('ko-KR'):'0'; }
+function fmtW(n){ return n?n.toLocaleString('ko-KR')+'원':'–'; }
+
+function resetMargin(){
+  if (!currentQType) return;
+  const d = QTYPES[currentQType].mgDefaults;
+  document.getElementById('mg-pb').value  = d[0];
+  document.getElementById('mg-li').value  = d[1];
+  document.getElementById('mg-sp').value  = d[2];
+  document.getElementById('mg-disc').value= d[3];
+  currentItems.forEach((_,i)=>{ const el=document.getElementById(`c-unit-${i}`); if(el) el.value=''; });
+  recalc(); toast('마진율 초기화','info');
+}
+
+// ── 최적 추천 ──
+const RECS = [
+  {name:'안전 낙찰형', desc:'낙찰 확률 최우선, 최저 마진', pb:5,  li:4,  sp:4,  disc:2},
+  {name:'공격 낙찰형', desc:'경쟁사 대비 저가, 적자 없음',  pb:3,  li:2,  sp:3,  disc:5},
+  {name:'수익 균형형', desc:'적정 마진 확보 (업계 평균)',    pb:12, li:10, sp:8,  disc:0},
+];
+function showRec() {
+  if (!currentQType) return;
+  const panel = document.getElementById('rec-panel');
+  const list  = document.getElementById('rec-list');
+  list.innerHTML = RECS.map((r,i)=>{
+    const disc=r.disc, mp=r.pb, ml=r.li, ms=r.sp;
+    let sup=0, cost=0;
+    currentItems.forEach((item,idx)=>{
+      const c=item.cost||0;
+      const isHigh=item.spec?.includes('리튬')||item.spec?.includes('숙련');
+      const isSp=item.spec?.includes('컨테이너')||item.opts?.includes('마스터회전');
+      const rate=isHigh?ml:(isSp?ms:mp);
+      const qtyEl=document.getElementById(`c-qty-${idx}`);
+      const qty=qtyEl?(+qtyEl.value||1):1;
+      sup+=round100(c*(1+rate/100)*(1-disc/100))*qty;
+      cost+=c*qty;
+    });
+    const grand=sup+Math.round(sup*.1);
+    return `<div class="rec-item">
+      <div class="ri-left">
+        <div class="ri-name">📌 ${r.name}</div>
+        <div class="ri-desc">${r.desc} | 기본${r.pb}% · 고급${r.li}% · 할인${r.disc}%</div>
+      </div>
+      <div style="text-align:right">
+        <div class="ri-val">${fmtN(grand)}원</div>
+        <div style="font-size:11px;opacity:.8">수익 ${fmtN(sup-cost)}원</div>
+      </div>
+    </div>`;
+  }).join('');
+  panel.style.display='block';
+  panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function applyRec(idx){
+  const r=RECS[idx];
+  document.getElementById('mg-pb').value  =r.pb;
+  document.getElementById('mg-li').value  =r.li;
+  document.getElementById('mg-sp').value  =r.sp;
+  document.getElementById('mg-disc').value=r.disc;
+  currentItems.forEach((_,i)=>{const el=document.getElementById(`c-unit-${i}`);if(el)el.value='';});
+  recalc();
+  document.getElementById('rec-panel').style.display='none';
+  toast(RECS[idx].name+' 적용 완료','success');
+}
 async function loadCompanies() {
   try {
     const snap = await db.collection(COL_CO()).orderBy('name').get();
@@ -1046,21 +1396,26 @@ function renderAttached(){
 
 // ── 견적서 HTML 빌드 ──
 // ── 견적 데이터 수집 (공용) ──
+// ── 데이터 수집 (공용) ──
 function collectQuoteData(){
-  const co=currentIssuer||{};
-  const disc=+document.getElementById('mg-disc').value||0;
+  if (!currentQType) return null;
+  const tmpl = QTYPES[currentQType];
+  const co   = currentIssuer||{};
+  const disc = +document.getElementById('mg-disc').value||0;
   let supplyTotal=0;
-  const rows=ITEMS.map((item,i)=>{
-    const unitEl=document.getElementById(`c-unit-${i}`);
-    const mpTxt=document.getElementById(`c-mp-${i}`).textContent;
-    const mp=parseInt(mpTxt.replace(/[^0-9]/g,'')||0);
-    const unitPrice=(unitEl.value&&unitEl.value!=='')?+unitEl.value:round100(mp*(1-disc/100));
-    supplyTotal+=unitPrice;
-    return {...item, unitPrice};
+  const rows = currentItems.map((item,i)=>{
+    const unitEl = document.getElementById(`c-unit-${i}`);
+    const mpTxt  = document.getElementById(`c-mp-${i}`)?.textContent||'0';
+    const mp     = parseInt(mpTxt.replace(/[^0-9]/g,'')||0);
+    const unitPrice = (unitEl?.value&&unitEl.value!=='') ? +unitEl.value : round100(mp*(1-disc/100));
+    const qtyEl  = document.getElementById(`c-qty-${i}`);
+    const qty    = qtyEl ? (+qtyEl.value||1) : 1;
+    supplyTotal += unitPrice * qty;
+    return {...item, unitPrice, qty};
   });
-  const vat=Math.round(supplyTotal*.1);
+  const vat = Math.round(supplyTotal*.1);
   return {
-    co,
+    co, qtype: currentQType, qtypeLabel: tmpl.label,
     custName:   document.getElementById('cust-name').value||'(고객사)',
     custContact:document.getElementById('cust-contact').value,
     custAddr:   document.getElementById('cust-addr').value,
@@ -1072,6 +1427,7 @@ function collectQuoteData(){
     qtPeriod:   document.getElementById('q-period').value,
     qtDelivery: document.getElementById('q-delivery').value,
     rows, supplyTotal, vat, grand: supplyTotal+vat,
+    conditions: tmpl.conditions,
   };
 }
 
@@ -1091,7 +1447,8 @@ function headerHTML(d){
     </div>
     <div class="qh-title">
       <h2>${d.qtTitle}</h2>
-      <div class="qno">견적번호: <strong>${d.qtNo}</strong> | 작성일: ${d.qtDate}</div>
+      <div class="qno">견적번호: <strong>${d.qtNo}</strong> | 작성일: ${d.qtDate}<br>
+      <span style="font-size:10px;background:#dbeafe;color:#1e40af;padding:1px 8px;border-radius:10px">${d.qtypeLabel}</span></div>
     </div>
   </div>
   <div class="qmeta">
@@ -1102,57 +1459,83 @@ function headerHTML(d){
     </div>
     <div class="qm-box">
       <h4>견적 조건</h4>
-      <p>유효기간: <strong>${d.qtValid}</strong> | 임대기간: <strong>${d.qtPeriod}</strong><br>
-      결제조건: <strong>${d.qtPayment}</strong> | 납기: <strong>${d.qtDelivery||'협의'}</strong></p>
+      <p>유효기간: <strong>${d.qtValid}</strong> | 계약기간: <strong>${d.qtPeriod}</strong><br>
+      결제조건: <strong>${d.qtPayment}</strong> | 납기/시작: <strong>${d.qtDelivery||'협의'}</strong></p>
     </div>
   </div>`;
 }
 
-// ── 테이블 헤더 행 ──
-const TH_ROW=`<tr>
-  <th style="width:28px">No</th><th style="width:52px">관리번호</th>
-  <th style="min-width:90px">구역/용도</th><th style="width:62px">동력</th>
-  <th style="width:52px">승차형태</th><th style="width:60px">적재/높이</th>
-  <th>주요옵션</th><th style="width:36px">보험</th><th style="width:28px">수량</th>
-  <th style="width:80px">월단가(원)</th><th style="width:80px">월합계(원)</th>
-</tr>`;
+// ── 테이블 헤더행 (유형별) ──
+function thRow(d){
+  const tmpl = QTYPES[d.qtype];
+  // 마지막 2열(견적단가·합계)만 출력용으로 표시, 편집열 제거
+  const printCols = tmpl.thead.filter(h=>
+    !['시장원가(월)','마진단가(월)','견적단가(월)','시장원가','마진단가'].includes(h)
+  );
+  return `<tr>${printCols.map(h=>`<th>${h}</th>`).join('')}</tr>`;
+}
 
-// ── 행 HTML ──
-function rowHTML(item){
-  return `<tr>
+// ── 미리보기용 행 HTML (출력용 - 편집 입력란 제거, 단가/합계만) ──
+function printRowHTML(item, d){
+  const qtype = d.qtype;
+  const qty = item.qty||1;
+  const total = item.unitPrice * qty;
+  if(qtype==='forklift') return `<tr>
     <td>${item.no}</td><td>${item.code}</td>
-    <td style="text-align:left">${item.zone}</td>
-    <td style="font-size:10px">${item.type}</td>
-    <td>${item.seat}</td>
-    <td>${item.cap}T/${item.h>0?item.h+'M':'표준'}</td>
+    <td style="text-align:left">${item.desc}</td>
+    <td style="font-size:10px">${item.spec}</td>
     <td style="text-align:left;font-size:10px">${item.opts||'–'}</td>
     <td>${item.ins?'필요':'–'}</td><td>1</td>
     <td style="text-align:right">${fmtN(item.unitPrice)}</td>
-    <td style="text-align:right;font-weight:700">${fmtN(item.unitPrice)}</td>
+    <td style="text-align:right;font-weight:700">${fmtN(total)}</td>
   </tr>`;
+  if(qtype==='building') return `<tr>
+    <td>${item.no}</td><td>${item.code}</td>
+    <td style="text-align:left;font-weight:600">${item.desc}</td>
+    <td style="text-align:left;font-size:11px">${item.spec}</td>
+    <td>${item.unit}</td>
+    <td style="text-align:right">${fmtN(item.unitPrice)}</td>
+    <td style="text-align:center">${qty}</td>
+    <td>${item.unit}</td>
+    <td style="text-align:right;font-weight:700">${fmtN(total)}</td>
+  </tr>`;
+  if(qtype==='washing') return `<tr>
+    <td>${item.no}</td><td>${item.code}</td>
+    <td style="text-align:left;font-weight:600">${item.desc}</td>
+    <td style="font-size:11px">${item.spec}</td>
+    <td style="font-size:11px">${item.method||'–'}</td>
+    <td>${item.unit}</td>
+    <td style="text-align:right">${fmtN(item.unitPrice)}</td>
+    <td style="text-align:center">${qty}</td>
+    <td style="text-align:right;font-weight:700">${fmtN(total)}</td>
+  </tr>`;
+  if(qtype==='manpower') return `<tr>
+    <td>${item.no}</td><td>${item.code}</td>
+    <td style="text-align:left;font-weight:600">${item.desc}</td>
+    <td style="font-size:11px">${item.spec}</td>
+    <td style="font-size:11px">${item.shift||'–'}</td>
+    <td>인/월</td>
+    <td style="text-align:right">${fmtN(item.unitPrice)}</td>
+    <td style="text-align:center">${qty}</td>
+    <td style="text-align:right;font-weight:700">${fmtN(total)}</td>
+  </tr>`;
+  return `<tr><td>${item.no}</td><td>${item.desc}</td><td style="text-align:right">${fmtN(item.unitPrice)}</td><td>${fmtN(total)}</td></tr>`;
 }
 
-// ── 합계 블록 ──
+// ── 합계/조건 블록 ──
 function totalHTML(d){
   return `
   <div class="q-total">
-    <div class="qt-item"><div class="tl">공급가 합계 (월)</div><div class="tv">${fmtN(d.supplyTotal)}원</div></div>
+    <div class="qt-item"><div class="tl">공급가 합계</div><div class="tv">${fmtN(d.supplyTotal)}원</div></div>
     <div class="qt-item"><div class="tl">부가세 (10%)</div><div class="tv">${fmtN(d.vat)}원</div></div>
-    <div class="qt-item"><div class="tl">월 합계 (VAT포함)</div><div class="tv big">${fmtN(d.grand)}원</div></div>
+    <div class="qt-item"><div class="tl">합계 (VAT포함)</div><div class="tv big">${fmtN(d.grand)}원</div></div>
   </div>`;
 }
-
-// ── 조건/서명 블록 ──
 function condHTML(d){
+  const items = (d.conditions||[]).map((c,i)=>`${i+1}. ${c}`).join('<br>');
   return `
   <div class="q-cond">
-    <h4>▶ 임대 조건 및 특기사항</h4>
-    1. 임대기간: 기본 5년 / 라인변경 감차 가능 / 별도입찰 없을 경우 자동 1년 연장<br>
-    2. 소모품(타이어·배터리) 무상교환 / 부주의 파손 유상수리<br>
-    3. 보험조건: 도급+임대 동시 운영(리튬 8대) 시 대인 5천만·대물 1억·적재물배상 1천만 가입<br>
-    4. 상시 AS 체계 구축 — 창원 지역 서비스센터 운영<br>
-    5. 현대 리튬배터리 8대 신차 / 납산 29대 메이커·중고 무관<br>
-    6. 본 견적은 유효기간 내에만 유효합니다.
+    <h4>▶ 계약 조건 및 특기사항</h4>${items}
   </div>
   <div class="q-sign">
     <div class="q-sign-box">
@@ -1163,67 +1546,59 @@ function condHTML(d){
 }
 
 // ── A4 페이지 분리 빌드 ──
-// 1페이지: 헤더+메타+표 일부, 2페이지~: 표 이어서, 마지막 페이지: 합계+조건+서명
-const ROWS_PAGE1 = 18;   // 1페이지에 들어가는 행 수 (헤더/메타 고려)
-const ROWS_PER   = 28;   // 2페이지~부터 행 수
+const ROWS_PAGE1 = 16;
+const ROWS_PER   = 26;
 
 function buildPages(){
   const d = collectQuoteData();
+  if (!d) { toast('견적 유형을 먼저 선택하세요.','error'); return ''; }
   const rows = d.rows;
-  const totalPages = Math.ceil(
-    (rows.length - ROWS_PAGE1) <= 0 ? 1 :
-    1 + Math.ceil((rows.length - ROWS_PAGE1) / ROWS_PER)
-  );
+  const totalPages = rows.length <= ROWS_PAGE1 ? 1 :
+    1 + Math.ceil((rows.length - ROWS_PAGE1) / ROWS_PER);
   const pages = [];
+  const colCount = QTYPES[d.qtype].thead.filter(h=>
+    !['시장원가(월)','마진단가(월)','견적단가(월)','시장원가','마진단가'].includes(h)).length;
+
+  const makeTable = (rowsSlice, isLast, d) => `
+    <table class="qt-table">
+      <thead>${thRow(d)}</thead>
+      <tbody>${rowsSlice.map(r=>printRowHTML(r,d)).join('')}</tbody>
+      ${isLast?`<tfoot><tr style="background:#dbeafe">
+        <td colspan="${colCount-1}" style="text-align:right;font-weight:700;color:#1a5fad;font-size:11px">합 계</td>
+        <td style="text-align:right;font-weight:700;color:#1a5fad">${fmtN(d.supplyTotal)}</td>
+      </tr></tfoot>`:''}
+    </table>`;
+
+  const contHdr = `<div style="display:flex;justify-content:space-between;align-items:center;
+    margin-bottom:12px;padding-bottom:10px;border-bottom:2px solid var(--blue)">
+    <div style="font-size:13px;font-weight:700;color:var(--blue)">${d.co.name||'(주)인시스'}</div>
+    <div style="font-size:12px;color:var(--gray)">견적번호: <strong>${d.qtNo}</strong> | 수신: <strong>${d.custName}</strong> | ${d.qtDate}</div>
+  </div>`;
 
   // 페이지 1
-  const p1Rows = rows.slice(0, ROWS_PAGE1);
+  const p1 = rows.slice(0, ROWS_PAGE1);
   const hasMore = rows.length > ROWS_PAGE1;
-  pages.push(`
-    <div class="a4-page">
-      ${headerHTML(d)}
-      <table class="qt-table">
-        <thead>${TH_ROW}</thead>
-        <tbody>${p1Rows.map(rowHTML).join('')}</tbody>
-        ${!hasMore ? `<tfoot><tr style="background:#dbeafe">
-          <td colspan="9" style="text-align:right;font-weight:700;color:#1a5fad;font-size:11px">합 계</td>
-          <td style="text-align:right;font-weight:700">${fmtN(d.supplyTotal)}</td>
-          <td style="text-align:right;font-weight:700;color:#1a5fad">${fmtN(d.supplyTotal)}</td>
-        </tr></tfoot>` : ''}
-      </table>
-      ${!hasMore ? totalHTML(d)+condHTML(d) : ''}
-      <div class="page-num">${!hasMore?`1 / 1`:`1 / ${totalPages}`}</div>
-    </div>`);
+  pages.push(`<div class="a4-page">
+    ${headerHTML(d)}
+    ${makeTable(p1, !hasMore, d)}
+    ${!hasMore ? totalHTML(d)+condHTML(d) : ''}
+    <div class="page-num">1 / ${totalPages}</div>
+  </div>`);
 
-  // 페이지 2 이상
+  // 2페이지~
   if(hasMore){
-    let remaining = rows.slice(ROWS_PAGE1);
-    let pageIdx = 2;
-    while(remaining.length > 0){
-      const chunk = remaining.splice(0, ROWS_PER);
-      const isLast = remaining.length === 0;
-      // 계속 페이지는 헤더 간소화 (견적번호+고객사만)
-      const contHeader=`<div style="display:flex;justify-content:space-between;align-items:center;
-        margin-bottom:12px;padding-bottom:10px;border-bottom:2px solid var(--blue)">
-        <div style="font-size:13px;font-weight:700;color:var(--blue)">${d.co.name||'(주)인시스'}</div>
-        <div style="font-size:12px;color:var(--gray)">견적번호: <strong>${d.qtNo}</strong> | 수신: <strong>${d.custName}</strong> | ${d.qtDate}</div>
-      </div>`;
-      pages.push(`
-        <div class="a4-page">
-          ${contHeader}
-          <table class="qt-table">
-            <thead>${TH_ROW}</thead>
-            <tbody>${chunk.map(rowHTML).join('')}</tbody>
-            ${isLast ? `<tfoot><tr style="background:#dbeafe">
-              <td colspan="9" style="text-align:right;font-weight:700;color:#1a5fad;font-size:11px">합 계</td>
-              <td style="text-align:right;font-weight:700">${fmtN(d.supplyTotal)}</td>
-              <td style="text-align:right;font-weight:700;color:#1a5fad">${fmtN(d.supplyTotal)}</td>
-            </tr></tfoot>` : ''}
-          </table>
-          ${isLast ? totalHTML(d)+condHTML(d) : ''}
-          <div class="page-num">${pageIdx} / ${totalPages}</div>
-        </div>`);
-      pageIdx++;
+    let rem = rows.slice(ROWS_PAGE1);
+    let pi = 2;
+    while(rem.length>0){
+      const chunk = rem.splice(0, ROWS_PER);
+      const isLast = rem.length===0;
+      pages.push(`<div class="a4-page">
+        ${contHdr}
+        ${makeTable(chunk, isLast, d)}
+        ${isLast ? totalHTML(d)+condHTML(d) : ''}
+        <div class="page-num">${pi} / ${totalPages}</div>
+      </div>`);
+      pi++;
     }
   }
   return pages.join('');
@@ -1231,6 +1606,7 @@ function buildPages(){
 
 // ── 미리보기 ──
 function showPreview(){
+  if (!currentQType) { toast('견적 유형을 먼저 선택하세요.','error'); return; }
   document.getElementById('quote-doc').innerHTML = buildPages();
   document.getElementById('preview-area').style.display='block';
   document.getElementById('preview-area').scrollTop=0;
@@ -1241,244 +1617,179 @@ function closePreview(){document.getElementById('preview-area').style.display='n
 function exportPDF(){
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-  const PW=210, ML=14, MR=14, CW=PW-ML-MR; // 182mm 유효폭
+  const PW=210, ML=14, MR=14, CW=PW-ML-MR;
   const d=collectQuoteData();
+  if(!d){toast('견적 유형을 먼저 선택하세요.','error');return;}
   const co=d.co;
-
-  // ── 페이지당 반복 헤더 (didDrawPage 콜백) ──
-  let totalPageCount=0;
   const addPageNum=(data)=>{
-    const pageCount=doc.internal.getNumberOfPages();
-    totalPageCount=pageCount;
     const cur=data.pageNumber;
-    doc.setFont('helvetica','normal');
-    doc.setFontSize(8);
-    doc.setTextColor(138,154,176);
-    // 우측 하단 페이지 번호 (임시: cur / ? → 후처리에서 교체)
+    doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(138,154,176);
     doc.text(`${cur}`,PW-MR,292,{align:'right'});
-    // 하단 회사명
     doc.setFontSize(7);
-    doc.text(`${co.name||'INSYS GROUP'}  |  견적번호: ${d.qtNo}  |  인시스 그룹 견적 작성 시스템 v2.6`,ML,292);
-    // 2페이지부터 상단 continuation 헤더
+    doc.text(`${co.name||'INSYS GROUP'}  |  견적번호: ${d.qtNo}  |  인시스 그룹 견적 작성 시스템 v3.0`,ML,292);
     if(cur>1){
       doc.setFontSize(9);doc.setTextColor(26,95,173);doc.setFont('helvetica','bold');
       doc.text(co.name||'(주)인시스', ML, 12);
       doc.setFont('helvetica','normal');doc.setTextColor(90,106,122);
-      doc.text(`견적번호: ${d.qtNo}  |  수신: ${d.custName}  |  ${d.qtDate}`, ML+40, 12);
+      doc.text(`견적번호: ${d.qtNo}  |  수신: ${d.custName}  |  ${d.qtDate}  [${d.qtypeLabel}]`, ML+40, 12);
       doc.line(ML,14,PW-MR,14);
     }
   };
 
-  // ── 1페이지 헤더 ──
   doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(26,95,173);
-  doc.text(d.qtTitle||'FORKLIFT RENTAL QUOTATION', ML, 14);
-  doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(30,45,61);
-  doc.text(`${co.name||'–'}  |  사업자: ${co.bizno||'–'}  |  대표: ${co.ceo||'–'}  |  대표전화: ${co.phone||'–'}  |  담당: ${co.manager||'–'}  |  ${co.tel||'–'}`, ML, 21);
+  doc.text(d.qtTitle, ML, 14);
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(90,106,122);
+  doc.text(`[${d.qtypeLabel}]  ${co.name||'–'}  |  사업자: ${co.bizno||'–'}  |  대표: ${co.ceo||'–'}  |  대표전화: ${co.phone||'–'}  |  담당: ${co.manager||'–'}  ${co.tel||''}`, ML, 21);
   doc.text(`수신: ${d.custName}  |  담당: ${d.custContact||'–'}  |  주소: ${d.custAddr||'–'}`, ML, 27);
   doc.setDrawColor(26,95,173);doc.setLineWidth(0.5);doc.line(ML,30,PW-MR,30);
-
-  // 견적조건 박스 (2컬럼)
   doc.setFontSize(8);doc.setTextColor(90,106,122);
   doc.text(`견적번호: ${d.qtNo}   작성일: ${d.qtDate}   유효기간: ${d.qtValid}`, ML, 36);
-  doc.text(`임대기간: ${d.qtPeriod}   결제: ${d.qtPayment}   납기: ${d.qtDelivery||'협의'}`, ML, 41);
+  doc.text(`계약기간: ${d.qtPeriod}   결제: ${d.qtPayment}   납기/시작: ${d.qtDelivery||'협의'}`, ML, 41);
   doc.line(ML,43,PW-MR,43);
 
-  // ── 장비 명세 테이블 ──
-  const tableRows=d.rows.map(item=>[
-    item.no, item.code,
-    item.zone.length>14?item.zone.substring(0,14)+'…':item.zone,
-    item.type==='리튬신차'?'리튬신차':'납산중고',
-    item.seat,
-    `${item.cap}T/${item.h>0?item.h+'M':'표준'}`,
-    item.opts.length>18?item.opts.substring(0,18)+'…':(item.opts||'–'),
-    item.ins?'O':'–', '1',
-    fmtN(item.unitPrice),
-    fmtN(item.unitPrice),
-  ]);
+  // 유형별 테이블 컬럼
+  const tmpl = QTYPES[d.qtype];
+  const printCols = tmpl.thead.filter(h=>!['시장원가(월)','마진단가(월)','견적단가(월)','시장원가','마진단가'].includes(h));
+  const tableRows = d.rows.map(item=>{
+    const qty=item.qty||1;
+    const total=item.unitPrice*qty;
+    if(d.qtype==='forklift') return [item.no,item.code,item.desc.substring(0,14),item.spec.substring(0,18),item.opts?.substring(0,16)||'–',item.ins?'O':'–','1',fmtN(item.unitPrice),fmtN(total)];
+    if(d.qtype==='building') return [item.no,item.code,item.desc,item.spec.substring(0,18),item.unit,fmtN(item.unitPrice),qty,item.unit,fmtN(total)];
+    if(d.qtype==='washing')  return [item.no,item.code,item.desc,item.spec.substring(0,14),item.method||'–',item.unit,fmtN(item.unitPrice),qty,fmtN(total)];
+    if(d.qtype==='manpower') return [item.no,item.code,item.desc,item.spec.substring(0,16),item.shift||'–','인/월',fmtN(item.unitPrice),qty,fmtN(total)];
+    return [item.no,item.desc,fmtN(item.unitPrice),fmtN(total)];
+  });
+  const lastCol=printCols.length-1;
+  const footRow=Array(printCols.length).fill('');
+  footRow[printCols.length-2]='합계'; footRow[lastCol]=fmtN(d.supplyTotal);
 
   doc.autoTable({
-    startY: 45,
-    head:[['No','코드','구역/용도','동력','승차','적재/높이','주요옵션','보험','수량','월단가(원)','월합계(원)']],
-    body: tableRows,
-    foot:[['','','','','','','','','합계','',fmtN(d.supplyTotal)]],
-    styles:        {font:'helvetica',fontSize:7.5,cellPadding:2,valign:'middle',overflow:'linebreak'},
-    headStyles:    {fillColor:[26,95,173],textColor:255,fontStyle:'bold',fontSize:7.5},
-    footStyles:    {fillColor:[219,234,254],textColor:[26,64,175],fontStyle:'bold',fontSize:8},
+    startY:45,
+    head:[printCols],
+    body:tableRows,
+    foot:[footRow],
+    styles:{font:'helvetica',fontSize:7.5,cellPadding:1.8,valign:'middle',overflow:'linebreak'},
+    headStyles:{fillColor:[26,95,173],textColor:255,fontStyle:'bold',fontSize:7.5},
+    footStyles:{fillColor:[219,234,254],textColor:[26,64,175],fontStyle:'bold',fontSize:8},
     alternateRowStyles:{fillColor:[249,251,255]},
-    columnStyles:{
-      0:{halign:'center',cellWidth:8},
-      1:{halign:'center',cellWidth:14},
-      2:{halign:'left',  cellWidth:30},
-      3:{halign:'center',cellWidth:16},
-      4:{halign:'center',cellWidth:13},
-      5:{halign:'center',cellWidth:16},
-      6:{halign:'left',  cellWidth:30},
-      7:{halign:'center',cellWidth:8},
-      8:{halign:'center',cellWidth:8},
-      9:{halign:'right', cellWidth:19},
-      10:{halign:'right',cellWidth:20},
-    },
     margin:{left:ML,right:MR,top:18,bottom:16},
-    showFoot:'lastPage',
-    showHead:'everyPage',
-    didDrawPage: addPageNum,
+    showFoot:'lastPage', showHead:'everyPage',
+    didDrawPage:addPageNum,
   });
 
-  // ── 합계 박스 ──
   let fy=doc.lastAutoTable.finalY+6;
-  // 페이지 넘침 방지
   if(fy>270){doc.addPage();fy=20;}
   doc.setFillColor(240,244,255);doc.setDrawColor(26,95,173);doc.setLineWidth(0.5);
-  doc.roundedRect(ML,fy,CW,18,2,2,'FD');
+  doc.roundedRect(ML,fy,CW,16,2,2,'FD');
   doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(26,45,74);
-  doc.text(`공급가: ${fmtN(d.supplyTotal)} 원`, ML+6, fy+6);
-  doc.text(`부가세(10%): ${fmtN(d.vat)} 원`, ML+60, fy+6);
+  doc.text(`공급가: ${fmtN(d.supplyTotal)}원`,ML+4,fy+6);
+  doc.text(`부가세(10%): ${fmtN(d.vat)}원`,ML+56,fy+6);
   doc.setTextColor(26,95,173);doc.setFontSize(11);
-  doc.text(`월 합계 (VAT포함): ${fmtN(d.grand)} 원`, ML+110, fy+6);
-  // 조건
-  doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(90,106,122);
-  const conds=[
-    '1. 임대기간: 기본 5년 / 라인변경 감차 가능 / 별도입찰 없을 경우 자동 1년 연장',
-    '2. 소모품(타이어·배터리) 무상교환 / 부주의 파손 유상수리',
-    '3. 보험: 도급+임대 동시 운영(리튬 8대) 시 대인5천만·대물1억·적재물배상1천만 가입',
-    '4. 상시 AS 체계 구축(창원 서비스센터 운영) / 리튬 8대 신차 / 납산 29대 중고 무관',
-    '5. 본 견적은 유효기간 내에만 유효합니다.',
-  ];
-  let cy=fy+24;
+  doc.text(`합계(VAT포함): ${fmtN(d.grand)}원`,ML+108,fy+6);
+  let cy=fy+22;
   if(cy>270){doc.addPage();cy=20;}
-  doc.setTextColor(30,45,61);doc.setFontSize(7.5);
-  conds.forEach(c=>{doc.text(c,ML,cy);cy+=5;});
-  // 서명
+  doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(30,45,61);
+  (d.conditions||[]).forEach((c,i)=>{
+    const txt=`${i+1}. ${c}`;
+    doc.text(txt,ML,cy);cy+=5;
+    if(cy>270){doc.addPage();cy=20;}
+  });
   cy+=4;
   if(cy>270){doc.addPage();cy=20;}
   doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(26,45,74);
   doc.text('위와 같이 견적을 제출합니다.',PW-MR-60,cy,{align:'right'});
-  cy+=6;
-  doc.setDrawColor(200,210,220);doc.setLineWidth(0.3);
-  doc.line(PW-MR-60,cy,PW-MR,cy);
-  cy+=5;
-  doc.setFont('helvetica','normal');doc.setFontSize(8.5);
+  cy+=6;doc.setDrawColor(200,210,220);doc.setLineWidth(0.3);doc.line(PW-MR-60,cy,PW-MR,cy);
+  cy+=5;doc.setFont('helvetica','normal');doc.setFontSize(8.5);
   doc.text(`${co.name||'(주)인시스'}  대표이사 ${co.ceo||''}  (인)`,PW-MR,cy,{align:'right'});
 
-  // ── 전체 페이지 수 후처리 (페이지 번호 업데이트) ──
   const totalPgs=doc.internal.getNumberOfPages();
   for(let i=1;i<=totalPgs;i++){
     doc.setPage(i);
     doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(138,154,176);
-    // 이전에 단순 번호만 찍었으므로 "X / N" 형태로 덮어쓰기
-    doc.setFillColor(255,255,255);
-    doc.rect(PW-MR-14,288,18,6,'F'); // 흰 박스로 가리고
+    doc.setFillColor(255,255,255);doc.rect(PW-MR-14,288,18,6,'F');
     doc.text(`${i} / ${totalPgs}`,PW-MR,292,{align:'right'});
   }
-
   doc.save(`견적서_${d.custName}_${d.qtNo}.pdf`);
-  toast(`PDF 저장 완료 (총 ${totalPgs}페이지)`, 'success');
+  toast(`PDF 저장 완료 (총 ${totalPgs}페이지)`,'success');
 }
 
 // ── Excel 출력 ──
 function exportExcel(){
-  const co=currentIssuer||{};
-  const custName=document.getElementById('cust-name').value||'고객사';
-  const qtNo=document.getElementById('q-no').value;
-  const qtDate=document.getElementById('q-date').value;
-  const disc=+document.getElementById('mg-disc').value||0;
+  const d=collectQuoteData();
+  if(!d){toast('견적 유형을 먼저 선택하세요.','error');return;}
+  const co=d.co;
   const wb=XLSX.utils.book_new();
-  let sup=0;
   const data=[
-    ['인시스 그룹 견적 작성 시스템 v2.6'],[''],
-    ['견적번호',qtNo,'','발행일',qtDate],
+    [`인시스 그룹 견적 작성 시스템 v3.0 — ${d.qtypeLabel}`],[''],
+    ['견적번호',d.qtNo,'','발행일',d.qtDate],
     ['발행사',co.name||'–','','대표이사',co.ceo||'–'],
     ['사업자번호',co.bizno||'–','','담당자',co.manager||'–'],
-    ['고객사',custName,'','고객담당',document.getElementById('cust-contact').value||'–'],
-    [''],
-    ['No','관리번호','구역/용도','동력','승차형태','적재','높이','주요옵션','보험','수량','월단가(원)','월합계(원)']
+    ['고객사',d.custName,'','고객담당',d.custContact||'–'],[''],
+    ['No','코드','항목/내용','규격/세부','단위','수량','단가(원)','합계(원)']
   ];
-  ITEMS.forEach((item,i)=>{
-    const unitEl=document.getElementById(`c-unit-${i}`);
-    const mpTxt=document.getElementById(`c-mp-${i}`).textContent;
-    const mp=parseInt(mpTxt.replace(/[^0-9]/g,'')||0);
-    const up=(unitEl.value&&unitEl.value!=='')?+unitEl.value:round100(mp*(1-disc/100));
-    sup+=up;
-    data.push([item.no,item.code,item.zone,item.type,item.seat,item.cap+'T',item.h>0?item.h+'M':'표준',item.opts||'–',item.ins?'필요':'–',1,up,up]);
+  d.rows.forEach(item=>{
+    const qty=item.qty||1;
+    data.push([item.no,item.code,item.desc,item.spec||'',item.unit||'식',qty,item.unitPrice,item.unitPrice*qty]);
   });
-  const vat=Math.round(sup*.1);
-  data.push(['','','','','','','','','','공급가 합계','',sup]);
-  data.push(['','','','','','','','','','부가세(10%)','',vat]);
-  data.push(['','','','','','','','','','월합계(VAT포함)','',sup+vat]);
+  data.push(['','','','','','','공급가',d.supplyTotal]);
+  data.push(['','','','','','','부가세(10%)',d.vat]);
+  data.push(['','','','','','','합계(VAT포함)',d.grand]);
   data.push(['']);
-  data.push(['※ 인시스 그룹 견적 작성 시스템 v2.6 | insys-work Firebase']);
+  (d.conditions||[]).forEach((c,i)=>data.push([`${i+1}. ${c}`]));
   const ws=XLSX.utils.aoa_to_sheet(data);
-  ws['!cols']=[{wch:4},{wch:8},{wch:18},{wch:10},{wch:8},{wch:6},{wch:6},{wch:22},{wch:6},{wch:6},{wch:12},{wch:12}];
+  ws['!cols']=[{wch:4},{wch:10},{wch:22},{wch:20},{wch:8},{wch:6},{wch:14},{wch:14}];
   XLSX.utils.book_append_sheet(wb,ws,'견적서');
-  // 원가비교 시트
-  const d2=[['원가 분석'],['코드','구역','원가','마진단가','견적단가','마진액','마진율(%)']];
-  ITEMS.forEach((item,i)=>{
-    const cost=COSTS[item.ck]||0;
+  // 원가분석 시트
+  const d2=[['원가 분석'],['코드','항목','원가','마진단가','견적단가','마진액','마진율(%)']];
+  currentItems.forEach((item,i)=>{
+    const cost=item.cost||0;
+    const mpEl=document.getElementById(`c-mp-${i}`);
+    const mp=parseInt(mpEl?.textContent.replace(/[^0-9]/g,'')||0);
     const unitEl=document.getElementById(`c-unit-${i}`);
-    const mpTxt=document.getElementById(`c-mp-${i}`).textContent;
-    const mp=parseInt(mpTxt.replace(/[^0-9]/g,'')||0);
-    const up=(unitEl.value&&unitEl.value!=='')?+unitEl.value:round100(mp*(1-disc/100));
-    d2.push([item.code,item.zone,cost,mp,up,up-cost,cost>0?(((up-cost)/cost)*100).toFixed(1):0]);
+    const disc=+document.getElementById('mg-disc').value||0;
+    const up=(unitEl?.value&&unitEl.value!=='')?+unitEl.value:round100(mp*(1-disc/100));
+    d2.push([item.code,item.desc,cost,mp,up,up-cost,cost>0?(((up-cost)/cost)*100).toFixed(1):0]);
   });
   const ws2=XLSX.utils.aoa_to_sheet(d2);
-  ws2['!cols']=[{wch:8},{wch:18},{wch:12},{wch:12},{wch:12},{wch:10},{wch:10}];
+  ws2['!cols']=[{wch:10},{wch:22},{wch:12},{wch:12},{wch:12},{wch:10},{wch:10}];
   XLSX.utils.book_append_sheet(wb,ws2,'원가분석');
-  XLSX.writeFile(wb,`견적서_${custName}_${qtNo}.xlsx`);
+  XLSX.writeFile(wb,`견적서_${d.custName}_${d.qtNo}.xlsx`);
   toast('Excel 다운로드 완료','success');
 }
 
 // ── Firebase 저장 ──
 async function saveQuote(){
-  if (!currentIssuer) { toast('먼저 발행 사업자를 선택하세요.','error'); openCoSelector(); return; }
-  const disc=+document.getElementById('mg-disc').value||0;
-  let sup=0;
-  const items=ITEMS.map((item,i)=>{
-    const unitEl=document.getElementById(`c-unit-${i}`);
-    const mpTxt=document.getElementById(`c-mp-${i}`).textContent;
-    const mp=parseInt(mpTxt.replace(/[^0-9]/g,'')||0);
-    const up=(unitEl.value&&unitEl.value!=='')?+unitEl.value:round100(mp*(1-disc/100));
-    sup+=up;
-    return {...item,unitPrice:up,rowTotal:up};
-  });
-  const vat=Math.round(sup*.1);
-  const qno=document.getElementById('q-no').value;
-  const data={
-    quoteNo:qno,
-    quoteDate:document.getElementById('q-date').value,
-    title:document.getElementById('q-title').value,
+  if(!currentIssuer){toast('먼저 발행 사업자를 선택하세요.','error');openCoSelector();return;}
+  if(!currentQType){toast('견적 유형을 선택하세요.','error');return;}
+  const d=collectQuoteData();
+  const qno=d.qtNo;
+  const saveData={
+    quoteNo:qno, quoteDate:d.qtDate, title:d.qtTitle,
+    qtype:d.qtype, qtypeLabel:d.qtypeLabel,
     issuer:{...currentIssuer},
-    customer:{
-      name:document.getElementById('cust-name').value,
-      contact:document.getElementById('cust-contact').value,
+    customer:{name:d.custName,contact:d.custContact,
       tel:document.getElementById('cust-tel').value,
-      email:document.getElementById('cust-email').value,
-      addr:document.getElementById('cust-addr').value,
-    },
-    margins:{
-      pb:+document.getElementById('mg-pb').value,
-      li:+document.getElementById('mg-li').value,
-      sp:+document.getElementById('mg-sp').value,
-      disc,
-    },
-    supplyTotal:sup,vatAmt:vat,grandTotal:sup+vat,
-    status:'작성중',submitDate:'',memo:'',
+      email:document.getElementById('cust-email').value,addr:d.custAddr},
+    supplyTotal:d.supplyTotal, vatAmt:d.vat, grandTotal:d.grand,
+    status:'작성중', submitDate:'', memo:'',
     notes:document.getElementById('q-notes').value,
-    items,
-    createdAt:new Date().toISOString(),
+    items:d.rows, createdAt:new Date().toISOString(),
   };
-  try {
-    await db.collection(COL_Q()).doc(qno).set(data);
+  try{
+    await db.collection(COL_Q()).doc(qno).set(saveData);
     toast('Firebase에 저장 완료!','success');
-  } catch(e) {
+  }catch(e){
     const ls=JSON.parse(localStorage.getItem('fq_list')||'[]');
     const idx=ls.findIndex(q=>q.quoteNo===qno);
-    if(idx>=0)ls[idx]=data;else ls.push(data);
+    if(idx>=0)ls[idx]=saveData;else ls.push(saveData);
     localStorage.setItem('fq_list',JSON.stringify(ls));
     toast('로컬 저장 완료 (Firebase 오류)','info');
   }
   await loadMgmt();
   genQuoteNo();
 }
+      addr:document.getElementById('cust-addr').value,
+    },
 
 // ── 견적 관리 ──
 async function loadMgmt(){
@@ -1584,19 +1895,30 @@ async function delQuote(no){
   await loadMgmt(); toast('삭제 완료','info');
 }
 
-// ── 원가 설정 ──
+// ── 원가 설정 (유형별 템플릿 기본 원가 표시) ──
 function renderCostSettings(){
-  document.getElementById('cost-settings').innerHTML=Object.keys(COSTS).map(k=>`
-    <div style="display:grid;grid-template-columns:1fr 110px;gap:8px;align-items:center">
-      <label style="font-size:13px;color:var(--gray)">${COST_LABELS[k]}</label>
-      <input type="number" class="fc" id="cs-${k}" value="${COSTS[k]}" style="text-align:right;font-size:14px">
-    </div>`).join('');
+  const el=document.getElementById('cost-settings');
+  if(!el)return;
+  let html='';
+  Object.entries(QTYPES).forEach(([key,tmpl])=>{
+    html+=`<div style="margin-bottom:16px"><div style="font-size:13px;font-weight:700;color:var(--blue);margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border)">${tmpl.icon} ${tmpl.label}</div>`;
+    tmpl.items.forEach((item,i)=>{
+      html+=`<div style="display:grid;grid-template-columns:1fr 110px;gap:8px;align-items:center;margin-bottom:6px">
+        <label style="font-size:13px;color:var(--gray)">${item.code} — ${item.desc}</label>
+        <input type="number" class="fc" id="cs-${key}-${i}" value="${item.cost}" style="text-align:right;font-size:13px" onchange="updateCost('${key}',${i},this.value)">
+      </div>`;
+    });
+    html+='</div>';
+  });
+  el.innerHTML=html;
 }
-function saveCostSet(){
-  Object.keys(COSTS).forEach(k=>{const v=+document.getElementById(`cs-${k}`).value;if(!isNaN(v))COSTS[k]=v;});
-  ITEMS.forEach((_,i)=>{document.getElementById(`c-cost-${i}`).textContent=fmtW(COSTS[ITEMS[i].ck]);});
-  recalc();toast('원가 설정 저장 완료','success');
+function updateCost(key,i,val){
+  const v=+val;
+  if(!isNaN(v)&&QTYPES[key]?.items[i]) QTYPES[key].items[i].cost=v;
+  if(currentQType===key){ currentItems[i] && (currentItems[i].cost=v); recalc(); }
+  toast('원가 업데이트','success');
 }
+function saveCostSet(){ toast('원가가 저장되었습니다.','success'); }
 async function testFB(){
   const el=document.getElementById('fb-stat');
   try{await db.collection(COL_Q()).limit(1).get();el.textContent='✅ Firebase 연결 성공!';el.style.color='green';}
