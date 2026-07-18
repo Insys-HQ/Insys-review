@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>인시스 그룹 견적 작성 시스템 v4.3</title>
+<title>인시스 그룹 견적 작성 시스템 v4.4</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <!-- Firebase SDK는 body 끝에서 로딩 (타이밍 문제 방지) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -182,23 +182,29 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
   --pg-top:20mm; --pg-left:14mm; --pg-right:14mm; --pg-bottom:16mm;
 }
 .a4-page{
-  width:794px;min-height:1123px;margin:16px auto 0;
+  /* 실제 A4 규격 (210×297mm) — 화면·PDF·인쇄 완전 동일 */
+  width:210mm;min-height:297mm;margin:26px auto 0;
   background:#fff;box-shadow:0 4px 24px rgba(0,0,0,.25);
   padding:var(--pg-top) var(--pg-right) var(--pg-bottom) var(--pg-left);
   position:relative;box-sizing:border-box;
   page-break-after:always;
   display:flex;flex-direction:column;
+  overflow:hidden;
 }
 /* 본문이 여백 안을 가득 채우도록 */
 .a4-body{flex:1;display:flex;flex-direction:column;min-height:0}
 .a4-body .qt-table{width:100%}
 .a4-foot{margin-top:auto;padding-top:6px}
+/* A4 규격 표시 배지 (화면 전용, 인쇄 시 숨김) */
+.a4-badge{position:absolute;top:-13px;left:0;font-size:10px;color:#7a8ba0;
+  font-weight:600;letter-spacing:.3px;background:#eef1f6;padding:1px 8px;border-radius:4px}
+@media print{ .a4-badge{display:none!important} }
 /* 페이지 번호는 하단 여백 안쪽에 고정 */
 .a4-page .page-num{position:absolute;right:var(--pg-right);
   bottom:calc(var(--pg-bottom) - 12px);font-size:9.5px;color:#8a9ab0;font-weight:500}
-/* 가로(landscape) 모드 */
+/* 가로(landscape) 모드 — A4 297×210mm */
 .a4-page.landscape{
-  width:1123px;min-height:794px;
+  width:297mm;min-height:210mm;
 }
 .a4-page:last-child{page-break-after:auto}
 
@@ -271,11 +277,11 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
   .a4-page{
     box-shadow:none!important;margin:0!important;
     page-break-after:always;break-after:page;
-    width:210mm!important;min-height:296mm!important;
+    width:210mm!important;min-height:297mm!important;
     padding:var(--pg-top) var(--pg-right) var(--pg-bottom) var(--pg-left)!important;
   }
   .a4-page.landscape{
-    width:297mm!important;min-height:209mm!important;
+    width:297mm!important;min-height:210mm!important;
   }
   .a4-page:last-child{page-break-after:auto;break-after:auto}
   @page{size:A4 portrait;margin:0}
@@ -330,7 +336,7 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
 }
 /* A4 미리보기는 고정 규격 유지 — 작은 화면에서는 가로 스크롤 */
 #preview-area{overflow-x:auto}
-.preview-wrap{min-width:794px}
+.preview-wrap{min-width:210mm}
 /* PDF 캡처 중에는 변형 제거 */
 .capturing .preview-wrap{transform:none!important}
 </style>
@@ -357,7 +363,7 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
       <button class="btn btn-ghost btn-sm" onclick="openCoSelector()" id="nav-co-btn">
         🏢 <span id="nav-co-name">사업자 선택</span>
       </button>
-      <div class="nav-ver">v4.3</div>
+      <div class="nav-ver">v4.4</div>
     </div>
   </div>
 </nav>
@@ -1639,20 +1645,26 @@ function condHTML(d){
 let pageOrientation = 'portrait';   // 'portrait' | 'landscape'
 let pageMargins = { top:20, left:14, right:14, bottom:16 };   // mm
 
-const MM = 3.7795;              // 1mm → px
-const PAGE_H = { portrait:1123, landscape:794 };   // A4 px 높이
-const ROW_H  = 17.5;            // 표 1행 평균 높이(px)
-const HEAD_H = 178;             // 1p 상단 블록(발행사+수신처+견적조건) 높이
-const CONT_H = 34;              // 2p~ 간이 헤더 높이
-const TH_H   = 20;              // 표 헤더 행
-const FOOT_H = 196;             // 합계+조건+서명 블록 높이
+// ── A4 규격 상수 (모두 mm 기준) ──
+const A4 = { w:210, h:297 };
+const PAGE_MM = {
+  portrait : { w:A4.w, h:A4.h },
+  landscape: { w:A4.h, h:A4.w },
+};
+const MM = 3.7795;              // 1mm → px (96dpi)
+const ROW_MM   = 4.7;           // 표 1행 평균 높이(mm)
+const HEAD_MM  = 47;            // 1p 상단 블록(발행사+수신처+견적조건)
+const CONT_MM  = 9;             // 2p~ 간이 헤더
+const TH_MM    = 5.5;           // 표 헤더 행
+const FOOT_MM  = 52;            // 합계+조건+서명 블록
+const PGNO_MM  = 5;             // 페이지번호 영역
 
-// 현재 여백 기준 페이지당 행 수 자동 계산
+// 현재 여백 기준 페이지당 행 수 자동 계산 (mm 기준)
 function calcRowsPerPage(){
-  const ph = PAGE_H[pageOrientation];
-  const usable = ph - (pageMargins.top + pageMargins.bottom) * MM - 18;  // 18=페이지번호 영역
-  const first = Math.max(4, Math.floor((usable - HEAD_H - TH_H) / ROW_H));
-  const next  = Math.max(4, Math.floor((usable - CONT_H - TH_H) / ROW_H));
+  const ph = PAGE_MM[pageOrientation].h;
+  const usable = ph - pageMargins.top - pageMargins.bottom - PGNO_MM;
+  const first = Math.max(4, Math.floor((usable - HEAD_MM - TH_MM) / ROW_MM));
+  const next  = Math.max(4, Math.floor((usable - CONT_MM - TH_MM) / ROW_MM));
   return { first, next };
 }
 
@@ -1727,7 +1739,9 @@ function buildPages(){
 
   const p1 = rows.slice(0, R1);
   const hasMore = rows.length > R1;
+  const sizeLabel = pageOrientation==='landscape' ? 'A4 가로 297×210mm' : 'A4 세로 210×297mm';
   pages.push(`<div class="a4-page${oriCls}">
+    <div class="a4-badge">${sizeLabel} · 여백 상${pageMargins.top}/좌${pageMargins.left}/우${pageMargins.right}/하${pageMargins.bottom}mm</div>
     <div class="a4-body">
       ${headerHTML(d)}
       ${makeTable(p1, !hasMore, d)}
@@ -1743,6 +1757,7 @@ function buildPages(){
       const chunk = rem.splice(0, RN);
       const isLast = rem.length===0;
       pages.push(`<div class="a4-page${oriCls}">
+        <div class="a4-badge">${sizeLabel}</div>
         <div class="a4-body">
           ${contHdr}
           ${makeTable(chunk, isLast, d)}
@@ -1840,25 +1855,38 @@ async function exportPDF(){
   const { jsPDF } = window.jspdf;
   const isLand = (pageOrientation === 'landscape');
   const doc = new jsPDF({ orientation: isLand?'landscape':'portrait', unit:'mm', format:'a4', compress:true });
-  const PW = isLand ? 297 : 210;
-  const PH = isLand ? 210 : 297;
+  const PW = PAGE_MM[pageOrientation].w;   // 210 또는 297
+  const PH = PAGE_MM[pageOrientation].h;   // 297 또는 210
 
   try{
     for(let i=0; i<pages.length; i++){
-      const canvas = await html2canvas(pages[i], {
-        scale: 2,                    // 고해상도
+      const el = pages[i];
+      // 실제 렌더 크기 (px)
+      const rectW = el.offsetWidth;
+      const rectH = el.offsetHeight;
+
+      const canvas = await html2canvas(el, {
+        scale: 2.5,                  // 고해상도 (A4 기준 약 190dpi)
         backgroundColor: '#ffffff',
         useCORS: true,
         logging: false,
-        windowWidth: pages[i].scrollWidth,
-        windowHeight: pages[i].scrollHeight,
+        width:  rectW,
+        height: rectH,
+        windowWidth:  rectW,
+        windowHeight: rectH,
+        scrollX: 0,
+        scrollY: 0,
+        ignoreElements: (node)=> node.classList && node.classList.contains('a4-badge'),
       });
-      const imgData = canvas.toDataURL('image/jpeg', 0.92);
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.94);
       if(i > 0) doc.addPage(undefined, isLand?'landscape':'portrait');
+
+      // A4 전면에 정확히 배치 (비율 왜곡 방지: 캡처 영역 자체가 A4 비율)
       doc.addImage(imgData, 'JPEG', 0, 0, PW, PH, undefined, 'FAST');
     }
     doc.save(`견적서_${d.custName}_${d.qtNo}.pdf`);
-    toast(`PDF 저장 완료 (총 ${pages.length}페이지)`,'success');
+    toast(`PDF 저장 완료 (A4 ${isLand?'가로':'세로'} · ${pages.length}페이지)`,'success');
   }catch(e){
     console.error(e);
     toast('PDF 생성 실패: '+e.message,'error');
