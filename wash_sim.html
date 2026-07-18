@@ -3,639 +3,443 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>세척건조기 통합 시뮬레이터 v2.0 | 인시스 AI혁신 R&D센터</title>
+<title>세척건조기 통합 시뮬레이터 v3.0 | 인시스 AI혁신 R&D센터</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 :root{
-  --pri:#1a4f8a;--pri2:#1565c0;--acc:#0c7a69;
-  --w:#1565c0;--a:#00796b;--d:#6a1b9a;--g:#455a64;--o:#e65100;
-  --bg:#f0f4f8;--card:#fff;--border:#cfd8e3;
-  --text:#1e2a38;--t2:#4a5568;--t3:#718096;
-  --rec:#e3f4fd;--auto:#e8f5e9;--usr:#fff9e6;
+  --pri:#1a4f8a;--w:#1565c0;--a:#00796b;--d:#6a1b9a;--o:#e65100;
+  --bg:#eef2f7;--card:#fff;--border:#d0d8e4;
+  --text:#1e2a38;--t2:#4a5568;--t3:#8a96a3;
+  --ok:#2e7d32;--ng:#c62828;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);font-size:12px;overflow-x:hidden}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);font-size:12px}
 
 /* HEADER */
-.hdr{background:var(--pri);width:100%;position:sticky;top:0;z-index:200;box-shadow:0 2px 8px rgba(0,0,0,.2)}
-.hdr-in{max-width:1600px;margin:0 auto;padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:48px}
+.hdr{background:var(--pri);position:sticky;top:0;z-index:100;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+.hdr-in{max-width:1600px;margin:0 auto;padding:0 16px;display:flex;align-items:center;justify-content:space-between;height:44px}
 .hdr-t{color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px}
-.ver-badge{background:rgba(255,255,255,.2);color:#fff;font-size:10px;padding:2px 7px;border-radius:10px}
-.hdr-dept{color:rgba(255,255,255,.7);font-size:11px}
+.vbadge{background:rgba(255,255,255,.2);color:#fff;font-size:10px;padding:1px 7px;border-radius:10px}
+.hdr-r{color:rgba(255,255,255,.7);font-size:11px}
 
-/* LAYOUT */
-.wrap{max-width:1600px;margin:0 auto;padding:10px 20px 24px;display:grid;grid-template-columns:420px 1fr;gap:12px;align-items:start}
+/* WRAP: 3-column grid */
+.wrap{max-width:1600px;margin:0 auto;padding:10px 16px 20px;display:grid;grid-template-columns:360px 1fr;gap:10px}
 
-/* ── LEFT ── */
-.left{display:flex;flex-direction:column;gap:8px}
+/* ── LEFT: input panel ── */
+.left{display:flex;flex-direction:column;gap:6px}
 
-/* section card */
-.sec{background:var(--card);border-radius:8px;border:1px solid var(--border);overflow:hidden}
-.sec-hdr{display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;user-select:none}
-.sec-hdr:hover{background:#f8fafc}
-.sec-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
-.sec-dot.w{background:var(--w)}.sec-dot.a{background:var(--a)}.sec-dot.d{background:var(--d)}.sec-dot.g{background:var(--g)}.sec-dot.o{background:var(--o)}
+.sec{background:var(--card);border-radius:7px;border:1px solid var(--border);overflow:hidden}
+.sec-hdr{display:flex;align-items:center;gap:6px;padding:7px 10px;cursor:pointer;user-select:none;background:#f7f9fc}
+.sec-hdr:hover{background:#f0f4fa}
+.dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.dot.g{background:#455a64}.dot.w{background:var(--w)}.dot.a{background:var(--a)}.dot.d{background:var(--d)}.dot.o{background:var(--o)}
 .sec-title{font-size:12px;font-weight:700;flex:1}
-.sec-arrow{font-size:10px;color:var(--t3);transition:transform .2s}
-.sec-arrow.open{transform:rotate(90deg)}
-.sec-body{padding:10px 12px;border-top:1px solid var(--border);display:none}
+.sec-apply{display:flex;align-items:center;gap:4px;margin-left:auto}
+.sec-apply label{font-size:10px;color:var(--t3)}
+.tog{position:relative;display:inline-block;width:30px;height:16px}
+.tog input{opacity:0;width:0;height:0}
+.tog-sl{position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:16px;transition:.2s}
+.tog-sl:before{position:absolute;content:"";height:11px;width:11px;left:2px;bottom:2px;background:#fff;border-radius:50%;transition:.2s}
+.tog input:checked+.tog-sl{background:var(--pri)}
+.tog input:checked+.tog-sl:before{transform:translateX(14px)}
+.sec-arr{font-size:9px;color:var(--t3);margin-left:4px;transition:transform .2s}
+.sec-arr.open{transform:rotate(90deg)}
+
+.sec-body{display:none;border-top:1px solid var(--border)}
 .sec-body.open{display:block}
 
-/* apply toggle header */
-.sec-apply{display:flex;align-items:center;gap:6px;margin-left:auto}
-.sec-apply label{font-size:10px;color:var(--t3)}
+/* ROW: label | bar-input | result-cell */
+.row{display:grid;grid-template-columns:140px 1fr 90px;align-items:center;gap:0;border-bottom:1px solid #f2f4f7;min-height:36px}
+.row:last-child{border-bottom:none}
+.row.hd{background:#f7f9fc;min-height:24px}
 
-/* toggle */
-.tog{position:relative;display:inline-block;width:32px;height:17px}
-.tog input{opacity:0;width:0;height:0}
-.tog-sl{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#ccc;border-radius:17px;transition:.25s}
-.tog-sl:before{position:absolute;content:"";height:12px;width:12px;left:2px;bottom:2px;background:#fff;border-radius:50%;transition:.25s}
-.tog input:checked+.tog-sl{background:var(--pri2)}
-.tog input:checked+.tog-sl:before{transform:translateX(15px)}
+.row-label{padding:4px 8px 4px 10px;font-size:11px;color:var(--t2);font-weight:500;line-height:1.3}
+.row-label small{display:block;font-size:10px;color:var(--t3);font-weight:400}
+.row-label.sub{font-size:10px;font-weight:700;color:var(--t3);letter-spacing:.04em;padding-left:10px}
 
-/* item rows */
-.item{display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid #f0f4f8}
-.item:last-child{border-bottom:none}
-.item-chk{width:14px;height:14px;accent-color:var(--pri2);cursor:pointer;flex-shrink:0}
-.item-label{flex:1;font-size:11px;color:var(--t2);font-weight:500;min-width:0}
-.item-label small{display:block;font-size:10px;color:var(--t3);font-weight:400;margin-top:1px}
-.item-ctrl{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.row-inp{padding:3px 6px;border-right:1px solid #f0f2f5}
+.row-res{padding:3px 6px;text-align:right;font-size:11px;font-weight:600;color:var(--pri);white-space:nowrap}
+.row-res.ok{color:var(--ok)}.row-res.ng{color:var(--ng)}.row-res.na{color:var(--t3);font-weight:400}
 
-/* bar-input */
-.bar-inp{display:flex;flex-direction:column;gap:2px;min-width:120px}
-.bar-inp-row{display:flex;align-items:center;gap:4px}
-.bar-inp input[type=number]{width:58px;padding:3px 5px;border:1px solid var(--border);border-radius:4px;font-size:11px;font-family:inherit;text-align:right;background:var(--usr)}
-.bar-inp input[type=number]:focus{outline:none;border-color:var(--pri2)}
-.bar-inp .unit{font-size:10px;color:var(--t3);white-space:nowrap}
-.bar-track{height:7px;background:#e2e8f0;border-radius:3px;position:relative;overflow:hidden;flex:1;min-width:60px}
-.bar-opt{position:absolute;height:100%;background:rgba(46,125,50,.18)}
-.bar-fill{position:absolute;height:100%;border-radius:3px;transition:width .25s}
-.bar-fill.ok{background:#2e7d32}.bar-fill.lo{background:#f9a825}.bar-fill.hi{background:#c62828}
-.bar-state{font-size:9px;color:var(--t3)}
+/* bar input */
+.bi{display:flex;flex-direction:column;gap:2px}
+.bi-top{display:flex;align-items:center;gap:4px}
+.bi-top input[type=number]{width:60px;padding:3px 5px;border:1px solid var(--border);border-radius:4px;font-size:11px;font-family:inherit;text-align:right;background:#fff9e6;color:var(--text)}
+.bi-top input[type=number]:focus{outline:none;border-color:var(--w)}
+.bi-top .un{font-size:10px;color:var(--t3);flex-shrink:0}
+.bi-bar{height:5px;background:#e2e8f0;border-radius:3px;position:relative;overflow:hidden;flex:1;min-width:40px}
+.bi-opt{position:absolute;height:100%;background:rgba(46,125,50,.2)}
+.bi-fill{position:absolute;height:100%;border-radius:3px;transition:width .2s}
+.bi-fill.ok{background:#2e7d32}.bi-fill.lo{background:#f9a825}.bi-fill.hi{background:#c62828}
+.bi-hint{font-size:9px;color:var(--t3)}
 
-/* select, small input */
-.inp-s{padding:3px 5px;border:1px solid var(--border);border-radius:4px;font-size:11px;font-family:inherit;background:var(--usr)}
-.inp-s:focus{outline:none;border-color:var(--pri2)}
-.inp-rec{background:var(--rec)!important}
-.inp-auto{background:var(--auto)!important}
+/* select / checkbox */
+.inp-s{padding:3px 4px;border:1px solid var(--border);border-radius:4px;font-size:11px;font-family:inherit;background:#fff;color:var(--text);width:100%}
+.inp-s:focus{outline:none;border-color:var(--w)}
+.ck{width:13px;height:13px;accent-color:var(--w);cursor:pointer;flex-shrink:0}
+.ck-row{display:flex;align-items:center;gap:5px}
 
-/* divider */
-.dv{height:1px;background:var(--border);margin:6px 0}
+/* ── RIGHT: result panel ── */
+.right{display:flex;flex-direction:column;gap:8px}
 
-/* conv link box */
-.conv-box{background:#fff3e0;border:1px solid #ffb74d;border-radius:6px;padding:8px 10px}
-.conv-title{font-size:11px;font-weight:700;color:var(--o);margin-bottom:6px}
-.conv-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-.conv-ch{background:#fff;border:1px solid #ffe0b2;border-radius:5px;padding:6px;text-align:center}
-.conv-ch-lbl{font-size:9px;color:var(--t3);margin-bottom:3px}
-.conv-ch input{width:100%;border:1px solid #ffb74d;background:#fff8f0;border-radius:4px;text-align:center;font-size:12px;font-weight:700;font-family:inherit;padding:2px}
-.conv-ch input:focus{outline:none}
-.conv-ch-unit{font-size:9px;color:var(--t3);margin-top:2px}
+.panel{background:var(--card);border-radius:7px;border:1px solid var(--border);overflow:hidden}
+.ph{display:flex;align-items:center;gap:6px;padding:7px 12px;border-bottom:1px solid var(--border);background:#f7f9fc}
+.ph h3{font-size:12px;font-weight:700}
+.ph.w{border-left:3px solid var(--w)}.ph.a{border-left:3px solid var(--a)}.ph.d{border-left:3px solid var(--d)}
+.pb{padding:10px 12px}
 
-/* ── RIGHT ── */
-.right{display:flex;flex-direction:column;gap:10px}
-
-/* panel card */
-.panel{background:var(--card);border-radius:8px;border:1px solid var(--border);overflow:hidden}
-.panel-hdr{display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid var(--border)}
-.panel-hdr h3{font-size:13px;font-weight:700}
-.panel-body{padding:12px 14px}
+/* KPI strip */
+.kpi-strip{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.kpi{border:1px solid var(--border);border-radius:6px;padding:6px 8px;text-align:center}
+.kpi.w{border-top:2px solid var(--w)}.kpi.a{border-top:2px solid var(--a)}.kpi.d{border-top:2px solid var(--d)}
+.kpi-lbl{font-size:10px;color:var(--t3);margin-bottom:1px}
+.kpi-val{font-size:17px;font-weight:700;line-height:1.1}
+.kpi-u{font-size:10px;color:var(--t3)}
+.kpi-s{font-size:10px;margin-top:1px}
 
 /* flow */
-.flow{display:flex;align-items:center;gap:0;overflow-x:auto;padding:4px 0}
-.flow-box{flex-shrink:0;border:2px solid var(--border);border-radius:7px;padding:8px 12px;text-align:center;min-width:100px;background:#f8fafc}
-.flow-box.w{border-color:var(--w);background:#e8f0fe}
-.flow-box.a{border-color:var(--a);background:#e0f2f1}
-.flow-box.d{border-color:var(--d);background:#f3e5f5}
-.flow-icon{font-size:20px}
-.flow-name{font-size:11px;font-weight:700;margin:2px 0}
-.flow-stat{font-size:11px;font-weight:600}
-.flow-stat.ok{color:#2e7d32}.flow-stat.ng{color:var(--o)}.flow-stat.na{color:var(--t3)}
-.flow-arr{font-size:16px;color:#ccc;padding:0 4px;flex-shrink:0}
+.flow{display:flex;align-items:center;gap:0;overflow-x:auto;padding:2px 0}
+.fb{flex-shrink:0;border:2px solid var(--border);border-radius:6px;padding:6px 10px;text-align:center;min-width:90px;background:#f8fafc}
+.fb.w{border-color:var(--w);background:#e8f0fe}.fb.a{border-color:var(--a);background:#e0f2f1}.fb.d{border-color:var(--d);background:#f3e5f5}
+.fi{font-size:18px}.fn{font-size:10px;font-weight:700;margin:1px 0}.fs{font-size:11px;font-weight:600}
+.fs.ok{color:var(--ok)}.fs.ng{color:var(--o)}.fs.na{color:var(--t3)}
+.fa{font-size:14px;color:#ccc;padding:0 3px;flex-shrink:0}
 
-/* KPI row */
-.kpi-row{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
-.kpi{border:1px solid var(--border);border-radius:7px;padding:8px;text-align:center}
-.kpi.w{border-top:3px solid var(--w)}.kpi.a{border-top:3px solid var(--a)}.kpi.d{border-top:3px solid var(--d)}
-.kpi-lbl{font-size:10px;color:var(--t3);margin-bottom:2px}
-.kpi-val{font-size:18px;font-weight:700;line-height:1.1}
-.kpi-unit{font-size:10px;color:var(--t3)}
-.kpi-sub{font-size:10px;margin-top:2px}
+/* chart grid */
+.cg2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.cg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px}
+.ct{font-size:10px;font-weight:600;color:var(--t2);margin-bottom:3px}
+.cw{position:relative;height:170px}
 
-/* chart container */
-.chart-wrap{position:relative;height:200px;width:100%}
-.chart-wrap.tall{height:260px}
-
-/* grid 2col */
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
-
-/* result table */
-.rt{width:100%;border-collapse:collapse;font-size:11px}
-.rt th{background:#eef2f7;color:var(--text);font-weight:600;padding:5px 8px;border-bottom:2px solid var(--border);text-align:left;font-size:10px}
-.rt td{padding:5px 8px;border-bottom:1px solid #f0f4f8;vertical-align:middle}
-.rt tr:last-child td{border-bottom:none}
-.rt .tot td{background:#e3f0ff;font-weight:700;color:var(--pri)}
-.bw{background:#dbeafe;color:var(--w);padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600}
-.ba{background:#d1fae5;color:var(--a);padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600}
-.bd{background:#ede9fe;color:var(--d);padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600}
+/* summary table */
+.st{width:100%;border-collapse:collapse;font-size:11px}
+.st th{background:#eef2f7;padding:4px 8px;font-size:10px;font-weight:600;border-bottom:2px solid var(--border);text-align:left}
+.st td{padding:4px 8px;border-bottom:1px solid #f0f4f8}
+.st tr:last-child td{border-bottom:none}
+.st .tot td{background:#e3f0ff;font-weight:700;color:var(--pri)}
+.bw{background:#dbeafe;color:var(--w);padding:1px 5px;border-radius:6px;font-size:10px;font-weight:600}
+.ba{background:#d1fae5;color:var(--a);padding:1px 5px;border-radius:6px;font-size:10px;font-weight:600}
+.bd{background:#ede9fe;color:var(--d);padding:1px 5px;border-radius:6px;font-size:10px;font-weight:600}
 
 /* cost */
-.cost-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-.cost-it{background:#f8fafc;border:1px solid var(--border);border-radius:6px;padding:9px}
-.cost-lbl{font-size:10px;color:var(--t3);margin-bottom:2px}
-.cost-val{font-size:15px;font-weight:700}
-.cost-unit{font-size:10px;color:var(--t3)}
-.cost-tot{background:linear-gradient(135deg,#1a4f8a,#1565c0);color:#fff;border-radius:7px;padding:12px;text-align:center;grid-column:1/-1}
-.cost-tot-lbl{font-size:11px;opacity:.8;margin-bottom:3px}
-.cost-tot-val{font-size:22px;font-weight:700}
+.cg{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+.ci{background:#f8fafc;border:1px solid var(--border);border-radius:5px;padding:7px}
+.cl{font-size:10px;color:var(--t3);margin-bottom:1px}
+.cv{font-size:14px;font-weight:700}
+.cu{font-size:10px;color:var(--t3)}
+.ctot{background:linear-gradient(135deg,#1a4f8a,#1565c0);color:#fff;border-radius:6px;padding:10px;text-align:center;grid-column:1/-1}
+.ctl{font-size:10px;opacity:.8;margin-bottom:2px}
+.ctv{font-size:20px;font-weight:700}
 
-/* motor rec */
-.mot-rec{background:#fff9c4;color:#5d4037;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700}
+/* motor */
+.mr{background:#fff9c4;color:#5d4037;padding:1px 6px;border-radius:6px;font-size:10px;font-weight:700}
 
 /* alert */
-.alert{border-radius:5px;padding:7px 10px;font-size:11px;margin-bottom:5px}
+.al{border-radius:5px;padding:6px 10px;font-size:11px;margin-bottom:4px}
+.al:last-child{margin-bottom:0}
 .al-ok{background:#e8f5e9;border:1px solid #a5d6a7;color:#2e7d32}
 .al-w{background:#fff3e0;border:1px solid #ffcc80;color:#e65100}
 .al-i{background:#e3f4fd;border:1px solid #90caf9;color:#1565c0}
 
-/* section sub-label */
-.sub-lbl{font-size:10px;color:var(--t3);margin:4px 0 2px;font-weight:600;letter-spacing:.03em}
+/* conv box */
+.conv-box{background:#fff3e0;border:1px solid #ffb74d;border-radius:6px;padding:8px 10px}
+.conv-title{font-size:11px;font-weight:700;color:var(--o);margin-bottom:5px}
+.conv-g{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:5px}
+.cc{background:#fff;border:1px solid #ffe0b2;border-radius:4px;padding:5px;text-align:center}
+.ccl{font-size:9px;color:var(--t3);margin-bottom:2px}
+.cc input{width:100%;border:1px solid #ffb74d;background:#fff8f0;border-radius:3px;text-align:center;font-size:12px;font-weight:700;font-family:inherit;padding:2px;color:var(--text)}
+.ccu{font-size:9px;color:var(--t3);margin-top:1px}
 
-/* chart title */
-.ct{font-size:11px;font-weight:600;color:var(--t2);margin-bottom:4px}
-
-canvas{display:block}
-
-@media(max-width:1100px){.wrap{grid-template-columns:1fr}.kpi-row{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:640px){.wrap{padding:8px 8px 16px}.kpi-row{grid-template-columns:repeat(2,1fr)}.grid2,.grid3{grid-template-columns:1fr}}
+footer{text-align:center;font-size:10px;color:var(--t3);padding:6px 0}
 </style>
 </head>
 <body>
 
 <div class="hdr">
   <div class="hdr-in">
-    <div class="hdr-t">🏭 세척건조기 통합 시뮬레이터 <span class="ver-badge">v2.0</span></div>
-    <div class="hdr-dept">인시스 AI혁신 R&D센터</div>
+    <div class="hdr-t">🏭 세척건조기 통합 시뮬레이터 <span class="vbadge">v3.0</span></div>
+    <div class="hdr-r">인시스 AI혁신 R&D센터</div>
   </div>
 </div>
 
 <div class="wrap">
 
-<!-- ===================== LEFT ===================== -->
+<!-- ═══════════════ LEFT ═══════════════ -->
 <div class="left">
 
 <!-- A. 기본 공통 정보 -->
 <div class="sec">
-  <div class="sec-hdr" onclick="toggleSec('secA')">
-    <span class="sec-dot g"></span>
-    <span class="sec-title">A. 기본 공통 정보</span>
-    <span class="sec-arrow open" id="arrA">▶</span>
+  <div class="sec-hdr" onclick="tog('sA')">
+    <span class="dot g"></span><span class="sec-title">A. 기본 공통 정보</span>
+    <span class="sec-arr open" id="arA">▶</span>
   </div>
-  <div class="sec-body open" id="secA">
-    <div class="item">
-      <span class="item-label">피처리물 종류</span>
-      <div class="item-ctrl">
-        <select class="inp-s" id="itype" onchange="sim()">
-          <option value="tray" selected>트레이</option>
-          <option value="box">박스</option>
-        </select>
+  <div class="sec-body open" id="sA">
+    <div class="row">
+      <div class="row-label">피처리물 종류</div>
+      <div class="row-inp"><select class="inp-s" id="itype" onchange="sim()"><option value="tray" selected>트레이</option><option value="box">박스</option></select></div>
+      <div class="row-res" id="r_itype">-</div>
+    </div>
+    <div class="row">
+      <div class="row-label">채널 수</div>
+      <div class="row-inp"><select class="inp-s" id="ch" onchange="sim()"><option value="1" selected>1채널</option><option value="2">2채널</option></select></div>
+      <div class="row-res" id="r_ch">-</div>
+    </div>
+    <div class="row">
+      <div class="row-label">가로 W<small>피처리물 기준</small></div>
+      <div class="row-inp">
+        <div class="bi"><div class="bi-top"><input type="number" id="iW" value="400" min="100" max="2000" oninput="bf('iW',100,2000);sim()"><span class="un">mm</span><div class="bi-bar"><div class="bi-opt" style="left:15%;width:60%"></div><div class="bi-fill ok" id="bf_iW" style="width:15%"></div></div></div><div class="bi-hint">100~2000mm</div></div>
       </div>
+      <div class="row-res" id="r_iW">-</div>
     </div>
-    <div class="item">
-      <span class="item-label">채널 수</span>
-      <div class="item-ctrl">
-        <select class="inp-s" id="ch_count" onchange="sim()">
-          <option value="1" selected>1채널</option>
-          <option value="2">2채널</option>
-        </select>
+    <div class="row">
+      <div class="row-label">세로 L</div>
+      <div class="row-inp">
+        <div class="bi"><div class="bi-top"><input type="number" id="iL" value="600" min="100" max="2000" oninput="bf('iL',100,2000);sim()"><span class="un">mm</span><div class="bi-bar"><div class="bi-opt" style="left:15%;width:60%"></div><div class="bi-fill ok" id="bf_iL" style="width:25%"></div></div></div><div class="bi-hint">100~2000mm</div></div>
       </div>
+      <div class="row-res" id="r_iL">-</div>
     </div>
-    <div class="item">
-      <span class="item-label">가로 W <small>피처리물 기준</small></span>
-      <div class="item-ctrl"><div class="bar-inp">
-        <div class="bar-inp-row">
-          <input type="number" id="iW" value="400" min="100" max="2000" oninput="bi('iW',100,2000);sim()">
-          <span class="unit">mm</span>
-        </div>
-        <div class="bar-track"><div class="bar-opt" style="left:15%;width:60%"></div><div class="bar-fill ok" id="bf_iW" style="width:18%"></div></div>
-        <div class="bar-state">100 ~ 2000mm</div>
-      </div></div>
-    </div>
-    <div class="item">
-      <span class="item-label">세로 L</span>
-      <div class="item-ctrl"><div class="bar-inp">
-        <div class="bar-inp-row">
-          <input type="number" id="iL" value="600" min="100" max="2000" oninput="bi('iL',100,2000);sim()">
-          <span class="unit">mm</span>
-        </div>
-        <div class="bar-track"><div class="bar-opt" style="left:15%;width:60%"></div><div class="bar-fill ok" id="bf_iL" style="width:25%"></div></div>
-        <div class="bar-state">100 ~ 2000mm</div>
-      </div></div>
-    </div>
-    <div class="item">
-      <span class="item-label">높이 H</span>
-      <div class="item-ctrl"><div class="bar-inp">
-        <div class="bar-inp-row">
-          <input type="number" id="iH" value="150" min="5" max="500" oninput="bi('iH',5,500);sim()">
-          <span class="unit">mm</span>
-        </div>
-        <div class="bar-track"><div class="bar-opt" style="left:5%;width:50%"></div><div class="bar-fill ok" id="bf_iH" style="width:29%"></div></div>
-        <div class="bar-state">5 ~ 500mm</div>
-      </div></div>
-    </div>
-    <div class="item">
-      <span class="item-label">목표 처리량</span>
-      <div class="item-ctrl"><div class="bar-inp">
-        <div class="bar-inp-row">
-          <input type="number" id="iqty" value="200" min="10" max="5000" oninput="bi('iqty',10,5000);sim()">
-          <span class="unit">개/h</span>
-        </div>
-        <div class="bar-track"><div class="bar-fill ok" id="bf_iqty" style="width:4%"></div></div>
-        <div class="bar-state">10 ~ 5000 개/h</div>
-      </div></div>
-    </div>
-    <div class="item">
-      <span class="item-label">오염도</span>
-      <div class="item-ctrl">
-        <select class="inp-s" id="dlv" onchange="sim()">
-          <option value="0">① 경미</option>
-          <option value="1">② 보통</option>
-          <option value="2" selected>③ 중간</option>
-          <option value="3">④ 심함</option>
-          <option value="4">⑤ 극심</option>
-        </select>
+    <div class="row">
+      <div class="row-label">높이 H</div>
+      <div class="row-inp">
+        <div class="bi"><div class="bi-top"><input type="number" id="iH" value="150" min="5" max="500" oninput="bf('iH',5,500);sim()"><span class="un">mm</span><div class="bi-bar"><div class="bi-fill ok" id="bf_iH" style="width:29%"></div></div></div><div class="bi-hint">5~500mm</div></div>
       </div>
+      <div class="row-res" id="r_iH">-</div>
     </div>
-    <div class="dv"></div>
-    <div class="item">
-      <span class="item-label">물 단가</span>
-      <div class="item-ctrl"><input type="number" id="waterPrice" value="1200" min="100" max="9999" class="inp-s" style="width:70px" oninput="sim()"> <span class="unit">원/m³</span></div>
+    <div class="row">
+      <div class="row-label">목표 처리량</div>
+      <div class="row-inp">
+        <div class="bi"><div class="bi-top"><input type="number" id="iqty" value="200" min="10" max="5000" oninput="bf('iqty',10,5000);sim()"><span class="un">개/h</span><div class="bi-bar"><div class="bi-fill ok" id="bf_iqty" style="width:4%"></div></div></div><div class="bi-hint">10~5000개/h</div></div>
+      </div>
+      <div class="row-res" id="r_iqty">-</div>
     </div>
-    <div class="item">
-      <span class="item-label">전기 단가</span>
-      <div class="item-ctrl"><input type="number" id="elecPrice" value="120" min="50" max="999" class="inp-s" style="width:70px" oninput="sim()"> <span class="unit">원/kWh</span></div>
+    <div class="row">
+      <div class="row-label">오염도</div>
+      <div class="row-inp"><select class="inp-s" id="dlv" onchange="sim()"><option value="0">① 경미</option><option value="1">② 보통</option><option value="2" selected>③ 중간</option><option value="3">④ 심함</option><option value="4">⑤ 극심</option></select></div>
+      <div class="row-res" id="r_dlv">-</div>
+    </div>
+    <div class="row">
+      <div class="row-label">물 단가</div>
+      <div class="row-inp"><div class="bi-top"><input type="number" id="wP" value="1200" min="100" max="9999" oninput="sim()" style="width:70px"><span class="un">원/m³</span></div></div>
+      <div class="row-res" id="r_wP">-</div>
+    </div>
+    <div class="row">
+      <div class="row-label">전기 단가</div>
+      <div class="row-inp"><div class="bi-top"><input type="number" id="eP" value="120" min="50" max="999" oninput="sim()" style="width:70px"><span class="un">원/kWh</span></div></div>
+      <div class="row-res" id="r_eP">-</div>
     </div>
   </div>
 </div>
 
 <!-- B. 세척기 -->
 <div class="sec">
-  <div class="sec-hdr" onclick="toggleSec('secB')">
-    <span class="sec-dot w"></span>
-    <span class="sec-title">B. 세척기</span>
-    <div class="sec-apply">
-      <label class="tog"><input type="checkbox" id="apW" checked onchange="sim()"><span class="tog-sl"></span></label>
-      <label for="apW">적용</label>
-    </div>
-    <span class="sec-arrow open" id="arrB" style="margin-left:8px">▶</span>
+  <div class="sec-hdr" onclick="tog('sB')">
+    <span class="dot w"></span><span class="sec-title">B. 세척기</span>
+    <div class="sec-apply"><label class="tog"><input type="checkbox" id="apW" checked onchange="sim()"><span class="tog-sl"></span></label><label for="apW">적용</label></div>
+    <span class="sec-arr open" id="arB" style="margin-left:6px">▶</span>
   </div>
-  <div class="sec-body open" id="secB">
-
-    <div class="sub-lbl">■ 공정 구성</div>
-    <div class="item">
-      <input type="checkbox" class="item-chk" id="ck_zcnt" checked onchange="sim()">
-      <span class="item-label">세척 단수 <small>단수가 많을수록 세척율 향상</small></span>
-      <div class="item-ctrl">
-        <select class="inp-s" id="zcnt" onchange="sim()">
-          <option value="1">1단</option><option value="2">2단</option><option value="3">3단</option><option value="4" selected>4단</option>
-        </select>
+  <div class="sec-body open" id="sB">
+    <div class="row hd"><div class="row-label sub">■ 공정 구성</div><div class="row-inp"></div><div class="row-res" style="font-size:10px;color:var(--t3)">결과값</div></div>
+    <div class="row">
+      <div class="row-label"><div class="ck-row"><input type="checkbox" class="ck" id="ck_zc" checked onchange="sim()">세척 단수<small style="margin-left:18px">단수↑ → 세척율↑</small></div></div>
+      <div class="row-inp"><select class="inp-s" id="zcnt" onchange="sim()"><option value="1">1단</option><option value="2">2단</option><option value="3">3단</option><option value="4" selected>4단</option></select></div>
+      <div class="row-res" id="r_zcnt">-</div>
+    </div>
+    <div class="row">
+      <div class="row-label"><div class="ck-row"><input type="checkbox" class="ck" id="ck_fm" checked onchange="sim()">투입 방식<small style="margin-left:18px">2열=채널 격벽, 처리량 2배</small></div></div>
+      <div class="row-inp"><select class="inp-s" id="fmode" onchange="sim()"><option value="1" selected>1열</option><option value="2">2열(격벽)</option></select></div>
+      <div class="row-res" id="r_fmode">-</div>
+    </div>
+    <div class="row hd"><div class="row-label sub">■ 노즐 / 분사</div><div class="row-inp"></div><div class="row-res"></div></div>
+    <div class="row">
+      <div class="row-label"><div class="ck-row"><input type="checkbox" class="ck" id="ck_np" checked onchange="sim()">분사압<small style="margin-left:18px">높을수록 세척력↑, 펌프동력↑</small></div></div>
+      <div class="row-inp"><div class="bi"><div class="bi-top"><input type="number" id="nP" value="200" min="50" max="500" oninput="bf('nP',50,500);sim()"><span class="un">kPa</span><div class="bi-bar"><div class="bi-opt" style="left:22%;width:42%"></div><div class="bi-fill ok" id="bf_nP" style="width:33%"></div></div></div><div class="bi-hint">최적 150~280kPa</div></div></div>
+      <div class="row-res" id="r_nP">-</div>
+    </div>
+    <div class="row">
+      <div class="row-label"><div class="ck-row"><input type="checkbox" class="ck" id="ck_nt" checked onchange="sim()">세척수 온도<small style="margin-left:18px">높을수록 세척력↑, 히터↑</small></div></div>
+      <div class="row-inp"><div class="bi"><div class="bi-top"><input type="number" id="nT" value="60" min="20" max="90" oninput="bf('nT',20,90);sim()"><span class="un">°C</span><div class="bi-bar"><div class="bi-opt" style="left:43%;width:43%"></div><div class="bi-fill ok" id="bf_nT" style="width:57%"></div></div></div><div class="bi-hint">최적 50~80°C</div></div></div>
+      <div class="row-res" id="r_nT">-</div>
+    </div>
+    <div class="row">
+      <div class="row-label"><div class="ck-row"><input type="checkbox" class="ck" id="ck_nh" checked onchange="sim()">노즐 홀직경<small style="margin-left:18px">작을수록 분사속도↑</small></div></div>
+      <div class="row-inp"><div class="bi"><div class="bi-top"><input type="number" id="nH" value="2.5" min="1.0" max="5.0" step="0.1" oninput="bf10x('nH',1.0,5.0);sim()"><span class="un">mm</span><div class="bi-bar"><div class="bi-opt" style="left:18%;width:45%"></div><div class="bi-fill ok" id="bf_nH" style="width:35%"></div></div></div><div class="bi-hint">최적 1.8~3.0mm</div></div></div>
+      <div class="row-res" id="r_nH">-</div>
+    </div>
+    <div class="row hd"><div class="row-label sub">■ 세척조 치수</div><div class="row-inp"></div><div class="row-res"></div></div>
+    <div class="row">
+      <div class="row-label"><div class="ck-row"><input type="checkbox" class="ck" id="ck_zl" checked onchange="sim()">세척조 길이/단<small style="margin-left:18px">길수록 체류시간↑</small></div></div>
+      <div class="row-inp"><div class="bi"><div class="bi-top"><input type="number" id="zlen" value="1200" min="300" max="3000" oninput="bf('zlen',300,3000);sim()"><span class="un">mm</span><div class="bi-bar"><div class="bi-opt" style="left:20%;width:55%"></div><div class="bi-fill ok" id="bf_zlen" style="width:33%"></div></div></div><div class="bi-hint">300~3000mm</div></div></div>
+      <div class="row-res" id="r_zlen">-</div>
+    </div>
+    <div class="row">
+      <div class="row-label"><div class="ck-row"><input type="checkbox" class="ck" id="ck_zd" checked onchange="sim()">세척조 깊이<small style="margin-left:18px">탱크 용량 결정</small></div></div>
+      <div class="row-inp"><div class="bi"><div class="bi-top"><input type="number" id="zdep" value="500" min="200" max="1200" oninput="bf('zdep',200,1200);sim()"><span class="un">mm</span><div class="bi-bar"><div class="bi-fill ok" id="bf_zdep" style="width:30%"></div></div></div><div class="bi-hint">200~1200mm</div></div></div>
+      <div class="row-res" id="r_zdep">-</div>
+    </div>
+    <div class="row hd"><div class="row-label sub">■ 펌프</div><div class="row-inp"></div><div class="row-res"></div></div>
+    <div class="row">
+      <div class="row-label"><div class="ck-row"><input type="checkbox" class="ck" id="ck_pe" checked onchange="sim()">펌프 효율<small style="margin-left:18px">낮을수록 소비전력↑</small></div></div>
+      <div class="row-inp"><div class="bi"><div class="bi-top"><input type="number" id="pEff" value="75" min="50" max="95" oninput="bf('pEff',50,95);sim()"><span class="un">%</span><div class="bi-bar"><div class="bi-opt" style="left:44%;width:44%"></div><div class="bi-fill ok" id="bf_pEff" style="width:56%"></div></div></div><div class="bi-hint">최적 70~90%</div></div></div>
+      <div class="row-res" id="r_pEff">-</div>
+    </div>
+    <div class="row hd"><div class="row-label sub">■ 세척제</div><div class="row-inp"></div><div class="row-res"></div></div>
+    <div class="row">
+      <div class="row-label"><div class="ck-row"><input type="checkbox" class="ck" id="ck_det" onchange="toggleDet();sim()">세척제 사용<small style="margin-left:18px">체크 시 농도 입력</small></div></div>
+      <div class="row-inp">
+        <div class="bi" id="det_bi" style="opacity:.35;pointer-events:none">
+          <div class="bi-top"><input type="number" id="det" value="5" min="0" max="20" oninput="bf('det',0,20);sim()"><span class="un">%</span><div class="bi-bar"><div class="bi-opt" style="left:15%;width:50%"></div><div class="bi-fill ok" id="bf_det" style="width:25%"></div></div></div>
+          <div class="bi-hint">최적 3~10%</div>
+        </div>
       </div>
-    </div>
-    <div class="item">
-      <input type="checkbox" class="item-chk" id="ck_fmode" checked onchange="sim()">
-      <span class="item-label">투입 방식 <small>2열=채널 격벽 분리, 처리량 2배</small></span>
-      <div class="item-ctrl">
-        <select class="inp-s" id="fmode" onchange="sim()">
-          <option value="1" selected>1열</option><option value="2">2열(격벽)</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="sub-lbl">■ 노즐 / 분사</div>
-    <div class="item">
-      <input type="checkbox" class="item-chk" id="ck_nPress" checked onchange="sim()">
-      <span class="item-label">분사압 <small>높을수록 세척력↑, 펌프 동력↑</small></span>
-      <div class="item-ctrl"><div class="bar-inp">
-        <div class="bar-inp-row"><input type="number" id="nPress" value="200" min="50" max="500" oninput="bi('nPress',50,500);sim()"><span class="unit">kPa</span></div>
-        <div class="bar-track"><div class="bar-opt" style="left:22%;width:42%"></div><div class="bar-fill ok" id="bf_nPress" style="width:33%"></div></div>
-        <div class="bar-state">최적 150~280kPa</div>
-      </div></div>
-    </div>
-    <div class="item">
-      <input type="checkbox" class="item-chk" id="ck_nTemp" checked onchange="sim()">
-      <span class="item-label">세척수 온도 <small>높을수록 세척력↑, 히터 용량↑</small></span>
-      <div class="item-ctrl"><div class="bar-inp">
-        <div class="bar-inp-row"><input type="number" id="nTemp" value="60" min="20" max="90" oninput="bi('nTemp',20,90);sim()"><span class="unit">°C</span></div>
-        <div class="bar-track"><div class="bar-opt" style="left:43%;width:43%"></div><div class="bar-fill ok" id="bf_nTemp" style="width:57%"></div></div>
-        <div class="bar-state">최적 50~80°C</div>
-      </div></div>
-    </div>
-    <div class="item">
-      <input type="checkbox" class="item-chk" id="ck_nHole" checked onchange="sim()">
-      <span class="item-label">노즐 홀직경 <small>작을수록 분사속도↑, 커버리지↓</small></span>
-      <div class="item-ctrl"><div class="bar-inp">
-        <div class="bar-inp-row"><input type="number" id="nHole" value="2.5" min="1.0" max="5.0" step="0.1" oninput="bi10x('nHole',1.0,5.0);sim()"><span class="unit">mm</span></div>
-        <div class="bar-track"><div class="bar-opt" style="left:18%;width:45%"></div><div class="bar-fill ok" id="bf_nHole" style="width:35%"></div></div>
-        <div class="bar-state">최적 1.8~3.0mm</div>
-      </div></div>
-    </div>
-
-    <div class="sub-lbl">■ 세척조 치수</div>
-    <div class="item">
-      <input type="checkbox" class="item-chk" id="ck_zlen" checked onchange="sim()">
-      <span class="item-label">세척조 길이/단 <small>길수록 체류시간↑ → 세척율↑</small></span>
-      <div class="item-ctrl"><div class="bar-inp">
-        <div class="bar-inp-row"><input type="number" id="zlen" value="1200" min="300" max="3000" oninput="bi('zlen',300,3000);sim()"><span class="unit">mm</span></div>
-        <div class="bar-track"><div class="bar-opt" style="left:20%;width:55%"></div><div class="bar-fill ok" id="bf_zlen" style="width:33%"></div></div>
-        <div class="bar-state">300 ~ 3000mm</div>
-      </div></div>
-    </div>
-    <div class="item">
-      <input type="checkbox" class="item-chk" id="ck_zdep" checked onchange="sim()">
-      <span class="item-label">세척조 깊이 <small>탱크 용량 결정</small></span>
-      <div class="item-ctrl"><div class="bar-inp">
-        <div class="bar-inp-row"><input type="number" id="zdep" value="500" min="200" max="1200" oninput="bi('zdep',200,1200);sim()"><span class="unit">mm</span></div>
-        <div class="bar-track"><div class="bar-fill ok" id="bf_zdep" style="width:30%"></div></div>
-        <div class="bar-state">200 ~ 1200mm</div>
-      </div></div>
-    </div>
-
-    <div class="sub-lbl">■ 펌프</div>
-    <div class="item">
-      <input type="checkbox" class="item-chk" id="ck_pEff" checked onchange="sim()">
-      <span class="item-label">펌프 효율 <small>낮을수록 소비전력↑</small></span>
-      <div class="item-ctrl"><div class="bar-inp">
-        <div class="bar-inp-row"><input type="number" id="pEff" value="75" min="50" max="95" oninput="bi('pEff',50,95);sim()"><span class="unit">%</span></div>
-        <div class="bar-track"><div class="bar-opt" style="left:44%;width:45%"></div><div class="bar-fill ok" id="bf_pEff" style="width:56%"></div></div>
-        <div class="bar-state">최적 70~90%</div>
-      </div></div>
-    </div>
-
-    <div class="sub-lbl">■ 세척제</div>
-    <div class="item">
-      <input type="checkbox" class="item-chk" id="ck_det" onchange="toggleDet();sim()">
-      <span class="item-label">세척제 사용 <small>체크 시 농도 입력 활성화</small></span>
-      <div class="item-ctrl"><div class="bar-inp" id="det_ctrl" style="opacity:.4;pointer-events:none">
-        <div class="bar-inp-row"><input type="number" id="det" value="5" min="0" max="20" oninput="bi('det',0,20);sim()"><span class="unit">%</span></div>
-        <div class="bar-track"><div class="bar-opt" style="left:15%;width:50%"></div><div class="bar-fill ok" id="bf_det" style="width:25%"></div></div>
-        <div class="bar-state">최적 3~10%</div>
-      </div></div>
+      <div class="row-res" id="r_det">-</div>
     </div>
   </div>
 </div>
 
 <!-- C. 에어나이프 -->
 <div class="sec">
-  <div class="sec-hdr" onclick="toggleSec('secC')">
-    <span class="sec-dot a"></span>
-    <span class="sec-title">C. 에어나이프 건조</span>
-    <div class="sec-apply">
-      <label class="tog"><input type="checkbox" id="apA" checked onchange="sim()"><span class="tog-sl"></span></label>
-      <label for="apA">적용</label>
-    </div>
-    <span class="sec-arrow open" id="arrC" style="margin-left:8px">▶</span>
+  <div class="sec-hdr" onclick="tog('sC')">
+    <span class="dot a"></span><span class="sec-title">C. 에어나이프 건조</span>
+    <div class="sec-apply"><label class="tog"><input type="checkbox" id="apA" checked onchange="sim()"><span class="tog-sl"></span></label><label for="apA">적용</label></div>
+    <span class="sec-arr open" id="arC" style="margin-left:6px">▶</span>
   </div>
-  <div class="sec-body open" id="secC">
-
-    <div class="sub-lbl">■ AK 구성</div>
-    <div class="item">
-      <input type="checkbox" class="item-chk" id="ck_aks" checked onchange="sim()">
-      <span class="item-label">단수 <small>단수↑ → 제거율↑, 전력↑</small></span>
-      <div class="item-ctrl">
-        <select class="inp-s" id="ak_stages" onchange="sim()">
-          <option value="1">1단</option><option value="2" selected>2단</option><option value="3">3단</option><option value="4">4단</option><option value="6">6단</option>
-        </select>
-      </div>
+  <div class="sec-body open" id="sC">
+    <div class="row hd"><div class="row-label sub">■ AK 구성</div><div class="row-inp"></div><div class="row-res" style="font-size:10px;color:var(--t3)">결과값</div></div>
+    <div class="row">
+      <div class="row-label"><div class="ck-row"><input type="checkbox" class="ck" id="ck_aks" checked onchange="sim()">단수<small style="margin-left:18px">단수↑ → 제거율↑, 전력↑</small></div></div>
+      <div class="row-inp"><select class="inp-s" id="aks" onchange="sim()"><option value="1">1단</option><option value="2" selected>2단</option><option value="3">3단</option><option value="4">4단</option><option value="6">6단</option></select></div>
+      <div class="row-res" id="r_aks">-</div>
     </div>
-    <div class="item">
-      <input type="checkbox" class="item-chk" id="ck_akpos" checked onchange="sim()">
-      <span class="item-label">설치 면 <small>양면=제거율↑(최대70%), 단면=최대50%</small></span>
-      <div class="item-ctrl">
-        <select class="inp-s" id="ak_pos" onchange="sim()">
-          <option value="both" selected>양면</option><option value="one">단면</option>
-        </select>
-      </div>
+    <div class="row">
+      <div class="row-label"><div class="ck-row"><input type="checkbox" class="ck" id="ck_ap" checked onchange="sim()">설치 면<small style="margin-left:18px">양면=최대70%, 단면=50%</small></div></div>
+      <div class="row-inp"><select class="inp-s" id="akpos" onchange="sim()"><option value="both" selected>양면</option><option value="one">단면</option></select></div>
+      <div class="row-res" id="r_ap">-</div>
     </div>
-    <div class="item">
-      <input type="checkbox" class="item-chk" id="ck_bhp" checked onchange="sim()">
-      <span class="item-label">브로어 마력 <small>마력↑ → 풍속↑ → 제거율↑</small></span>
-      <div class="item-ctrl">
-        <select class="inp-s" id="blower_hp" onchange="sim()">
-          <option value="0.5">0.5HP</option><option value="1">1HP</option><option value="2">2HP</option>
-          <option value="3" selected>3HP</option><option value="5">5HP</option><option value="7.5">7.5HP</option><option value="10">10HP</option><option value="15">15HP</option>
-        </select>
-      </div>
+    <div class="row">
+      <div class="row-label"><div class="ck-row"><input type="checkbox" class="ck" id="ck_hp" checked onchange="sim()">브로어 마력<small style="margin-left:18px">마력↑ → 풍속↑</small></div></div>
+      <div class="row-inp"><select class="inp-s" id="bhp" onchange="sim()"><option value="0.5">0.5HP</option><option value="1">1HP</option><option value="2">2HP</option><option value="3" selected>3HP</option><option value="5">5HP</option><option value="7.5">7.5HP</option><option value="10">10HP</option><option value="15">15HP</option></select></div>
+      <div class="row-res" id="r_hp">-</div>
     </div>
-    <div class="item">
-      <input type="checkbox" class="item-chk" id="ck_bpf" checked onchange="sim()">
-      <span class="item-label">면당 브로어 수 <small>대수↑ → 총 풍량↑</small></span>
-      <div class="item-ctrl">
-        <select class="inp-s" id="bpf" onchange="sim()">
-          <option value="1" selected>1대</option><option value="2">2대</option><option value="3">3대</option>
-        </select>
-      </div>
+    <div class="row">
+      <div class="row-label"><div class="ck-row"><input type="checkbox" class="ck" id="ck_bpf" checked onchange="sim()">면당 브로어 수<small style="margin-left:18px">대수↑ → 총 풍량↑</small></div></div>
+      <div class="row-inp"><select class="inp-s" id="bpf" onchange="sim()"><option value="1" selected>1대</option><option value="2">2대</option><option value="3">3대</option></select></div>
+      <div class="row-res" id="r_bpf">-</div>
     </div>
-
-    <div class="sub-lbl">■ 슬릿 / 분사 각도</div>
-    <div class="item">
-      <input type="checkbox" class="item-chk" id="ck_sg" checked onchange="sim()">
-      <span class="item-label">슬릿 간격 <small>좁을수록 풍속↑, 수막파단↑</small></span>
-      <div class="item-ctrl"><div class="bar-inp">
-        <div class="bar-inp-row"><input type="number" id="sg" value="1.0" min="0.5" max="5.0" step="0.1" oninput="bi10x('sg',0.5,5.0);sim()"><span class="unit">mm</span></div>
-        <div class="bar-track"><div class="bar-opt" style="left:0%;width:11%"></div><div class="bar-fill ok" id="bf_sg" style="width:11%"></div></div>
-        <div class="bar-state">최적 ≤1.0mm</div>
-      </div></div>
+    <div class="row hd"><div class="row-label sub">■ 슬릿 / 각도</div><div class="row-inp"></div><div class="row-res"></div></div>
+    <div class="row">
+      <div class="row-label"><div class="ck-row"><input type="checkbox" class="ck" id="ck_sg" checked onchange="sim()">슬릿 간격<small style="margin-left:18px">좁을수록 풍속↑</small></div></div>
+      <div class="row-inp"><div class="bi"><div class="bi-top"><input type="number" id="sg" value="1.0" min="0.5" max="5.0" step="0.1" oninput="bf10x('sg',0.5,5.0);sim()"><span class="un">mm</span><div class="bi-bar"><div class="bi-opt" style="left:0%;width:11%"></div><div class="bi-fill ok" id="bf_sg" style="width:11%"></div></div></div><div class="bi-hint">최적 ≤1.0mm</div></div></div>
+      <div class="row-res" id="r_sg">-</div>
     </div>
-    <div class="item">
-      <input type="checkbox" class="item-chk" id="ck_sw" checked onchange="sim()">
-      <span class="item-label">스윕각 θ₁ <small>15~25°에서 충돌효율 최대</small></span>
-      <div class="item-ctrl"><div class="bar-inp">
-        <div class="bar-inp-row"><input type="number" id="sw" value="20" min="0" max="30" oninput="bi('sw',0,30);sim()"><span class="unit">°</span></div>
-        <div class="bar-track"><div class="bar-opt" style="left:50%;width:33%"></div><div class="bar-fill ok" id="bf_sw" style="width:67%"></div></div>
-        <div class="bar-state">최적 15~25°</div>
-      </div></div>
+    <div class="row">
+      <div class="row-label"><div class="ck-row"><input type="checkbox" class="ck" id="ck_sw" checked onchange="sim()">스윕각 θ₁<small style="margin-left:18px">15~25°에서 충돌효율 최대</small></div></div>
+      <div class="row-inp"><div class="bi"><div class="bi-top"><input type="number" id="sw" value="20" min="0" max="30" oninput="bf('sw',0,30);sim()"><span class="un">°</span><div class="bi-bar"><div class="bi-opt" style="left:50%;width:33%"></div><div class="bi-fill ok" id="bf_sw" style="width:67%"></div></div></div><div class="bi-hint">최적 15~25°</div></div></div>
+      <div class="row-res" id="r_sw">-</div>
     </div>
-    <div class="item">
-      <input type="checkbox" class="item-chk" id="ck_sa" checked onchange="sim()">
-      <span class="item-label">분사각 θ₂ <small>25~45°에서 충돌성분 최대</small></span>
-      <div class="item-ctrl"><div class="bar-inp">
-        <div class="bar-inp-row"><input type="number" id="sa" value="35" min="0" max="60" oninput="bi('sa',0,60);sim()"><span class="unit">°</span></div>
-        <div class="bar-track"><div class="bar-opt" style="left:42%;width:33%"></div><div class="bar-fill ok" id="bf_sa" style="width:58%"></div></div>
-        <div class="bar-state">최적 25~45°</div>
-      </div></div>
+    <div class="row">
+      <div class="row-label"><div class="ck-row"><input type="checkbox" class="ck" id="ck_sa" checked onchange="sim()">분사각 θ₂<small style="margin-left:18px">25~45°에서 최대 효과</small></div></div>
+      <div class="row-inp"><div class="bi"><div class="bi-top"><input type="number" id="sa" value="35" min="0" max="60" oninput="bf('sa',0,60);sim()"><span class="un">°</span><div class="bi-bar"><div class="bi-opt" style="left:42%;width:33%"></div><div class="bi-fill ok" id="bf_sa" style="width:58%"></div></div></div><div class="bi-hint">최적 25~45°</div></div></div>
+      <div class="row-res" id="r_sa">-</div>
     </div>
-    <div class="item">
-      <input type="checkbox" class="item-chk" id="ck_ad" checked onchange="sim()">
-      <span class="item-label">AK-대상 거리 <small>멀수록 풍속 감쇠, 20~60mm 최적</small></span>
-      <div class="item-ctrl"><div class="bar-inp">
-        <div class="bar-inp-row"><input type="number" id="ad" value="40" min="10" max="200" oninput="bi('ad',10,200);sim()"><span class="unit">mm</span></div>
-        <div class="bar-track"><div class="bar-opt" style="left:5%;width:26%"></div><div class="bar-fill ok" id="bf_ad" style="width:16%"></div></div>
-        <div class="bar-state">최적 20~60mm</div>
-      </div></div>
+    <div class="row">
+      <div class="row-label"><div class="ck-row"><input type="checkbox" class="ck" id="ck_ad" checked onchange="sim()">AK-대상 거리<small style="margin-left:18px">멀수록 풍속 감쇠</small></div></div>
+      <div class="row-inp"><div class="bi"><div class="bi-top"><input type="number" id="ad" value="40" min="10" max="200" oninput="bf('ad',10,200);sim()"><span class="un">mm</span><div class="bi-bar"><div class="bi-opt" style="left:5%;width:26%"></div><div class="bi-fill ok" id="bf_ad" style="width:16%"></div></div></div><div class="bi-hint">최적 20~60mm</div></div></div>
+      <div class="row-res" id="r_ad">-</div>
     </div>
-
-    <div class="sub-lbl">■ 수분 목표</div>
-    <div class="item">
-      <input type="checkbox" class="item-chk" id="ck_iw" checked onchange="sim()">
-      <span class="item-label">초기 물기량 <small>세척 후 피처리물 잔류 수분</small></span>
-      <div class="item-ctrl"><div class="bar-inp">
-        <div class="bar-inp-row"><input type="number" id="iw" value="80" min="1" max="2000" oninput="bi('iw',1,2000);sim()"><span class="unit">g/개</span></div>
-        <div class="bar-track"><div class="bar-fill lo" id="bf_iw" style="width:4%"></div></div>
-        <div class="bar-state">1 ~ 2000g</div>
-      </div></div>
+    <div class="row hd"><div class="row-label sub">■ 수분 목표</div><div class="row-inp"></div><div class="row-res"></div></div>
+    <div class="row">
+      <div class="row-label"><div class="ck-row"><input type="checkbox" class="ck" id="ck_iw" checked onchange="sim()">초기 물기량<small style="margin-left:18px">세척 후 잔류 수분</small></div></div>
+      <div class="row-inp"><div class="bi"><div class="bi-top"><input type="number" id="iw" value="80" min="1" max="2000" oninput="bf('iw',1,2000);sim()"><span class="un">g/개</span><div class="bi-bar"><div class="bi-fill lo" id="bf_iw" style="width:4%"></div></div></div><div class="bi-hint">1~2000g</div></div></div>
+      <div class="row-res" id="r_iw">-</div>
     </div>
-    <div class="item">
-      <input type="checkbox" class="item-chk" id="ck_tw" checked onchange="sim()">
-      <span class="item-label">목표 잔류 물기 <small>이 이하면 AK 목표 달성</small></span>
-      <div class="item-ctrl"><div class="bar-inp">
-        <div class="bar-inp-row"><input type="number" id="tw" value="20" min="0" max="500" oninput="bi('tw',0,500);sim()"><span class="unit">g/개</span></div>
-        <div class="bar-track"><div class="bar-fill ok" id="bf_tw" style="width:4%"></div></div>
-        <div class="bar-state">0 ~ 500g</div>
-      </div></div>
+    <div class="row">
+      <div class="row-label"><div class="ck-row"><input type="checkbox" class="ck" id="ck_tw" checked onchange="sim()">목표 잔류 물기<small style="margin-left:18px">이하면 목표 달성</small></div></div>
+      <div class="row-inp"><div class="bi"><div class="bi-top"><input type="number" id="tw" value="20" min="0" max="500" oninput="bf('tw',0,500);sim()"><span class="un">g/개</span><div class="bi-bar"><div class="bi-fill ok" id="bf_tw" style="width:4%"></div></div></div><div class="bi-hint">0~500g</div></div></div>
+      <div class="row-res" id="r_tw">-</div>
     </div>
   </div>
 </div>
 
-<!-- D. 최종건조기 -->
+<!-- D. 건조기 -->
 <div class="sec">
-  <div class="sec-hdr" onclick="toggleSec('secD')">
-    <span class="sec-dot d"></span>
-    <span class="sec-title">D. 최종 건조기 (시로코팬)</span>
-    <div class="sec-apply">
-      <label class="tog"><input type="checkbox" id="apD" checked onchange="sim()"><span class="tog-sl"></span></label>
-      <label for="apD">적용</label>
-    </div>
-    <span class="sec-arrow open" id="arrD" style="margin-left:8px">▶</span>
+  <div class="sec-hdr" onclick="tog('sD')">
+    <span class="dot d"></span><span class="sec-title">D. 최종 건조기 (시로코팬)</span>
+    <div class="sec-apply"><label class="tog"><input type="checkbox" id="apD" checked onchange="sim()"><span class="tog-sl"></span></label><label for="apD">적용</label></div>
+    <span class="sec-arr open" id="arD" style="margin-left:6px">▶</span>
   </div>
-  <div class="sec-body open" id="secD">
-
-    <div class="sub-lbl">■ 건조실 치수</div>
-    <div class="item">
-      <input type="checkbox" class="item-chk" id="ck_dl" checked onchange="sim()">
-      <span class="item-label">건조기 길이 <small>길수록 체류시간↑</small></span>
-      <div class="item-ctrl"><div class="bar-inp">
-        <div class="bar-inp-row"><input type="number" id="dl" value="4000" min="500" max="15000" oninput="bi('dl',500,15000);sim()"><span class="unit">mm</span></div>
-        <div class="bar-track"><div class="bar-fill ok" id="bf_dl" style="width:24%"></div></div>
-        <div class="bar-state">500 ~ 15000mm</div>
-      </div></div>
+  <div class="sec-body open" id="sD">
+    <div class="row hd"><div class="row-label sub">■ 건조실 치수</div><div class="row-inp"></div><div class="row-res" style="font-size:10px;color:var(--t3)">결과값</div></div>
+    <div class="row">
+      <div class="row-label"><div class="ck-row"><input type="checkbox" class="ck" id="ck_dl" checked onchange="sim()">건조기 길이<small style="margin-left:18px">길수록 체류시간↑</small></div></div>
+      <div class="row-inp"><div class="bi"><div class="bi-top"><input type="number" id="dl" value="4000" min="500" max="15000" oninput="bf('dl',500,15000);sim()"><span class="un">mm</span><div class="bi-bar"><div class="bi-fill ok" id="bf_dl" style="width:24%"></div></div></div><div class="bi-hint">500~15000mm</div></div></div>
+      <div class="row-res" id="r_dl">-</div>
     </div>
-    <div class="item">
-      <input type="checkbox" class="item-chk" id="ck_dw" checked onchange="sim()">
-      <span class="item-label">건조기 폭 <small>체적 = L×W×H</small></span>
-      <div class="item-ctrl"><div class="bar-inp">
-        <div class="bar-inp-row"><input type="number" id="dw" value="800" min="300" max="3000" oninput="bi('dw',300,3000);sim()"><span class="unit">mm</span></div>
-        <div class="bar-track"><div class="bar-fill ok" id="bf_dw" style="width:19%"></div></div>
-        <div class="bar-state">300 ~ 3000mm</div>
-      </div></div>
+    <div class="row">
+      <div class="row-label"><div class="ck-row"><input type="checkbox" class="ck" id="ck_dw" checked onchange="sim()">건조기 폭<small style="margin-left:18px">내부 체적 결정</small></div></div>
+      <div class="row-inp"><div class="bi"><div class="bi-top"><input type="number" id="dw" value="800" min="300" max="3000" oninput="bf('dw',300,3000);sim()"><span class="un">mm</span><div class="bi-bar"><div class="bi-fill ok" id="bf_dw" style="width:19%"></div></div></div><div class="bi-hint">300~3000mm</div></div></div>
+      <div class="row-res" id="r_dw">-</div>
     </div>
-    <div class="item">
-      <input type="checkbox" class="item-chk" id="ck_dh" checked onchange="sim()">
-      <span class="item-label">건조기 높이 <small>체적 결정, 팬 대수에 영향</small></span>
-      <div class="item-ctrl"><div class="bar-inp">
-        <div class="bar-inp-row"><input type="number" id="dh" value="600" min="200" max="2000" oninput="bi('dh',200,2000);sim()"><span class="unit">mm</span></div>
-        <div class="bar-track"><div class="bar-fill ok" id="bf_dh" style="width:22%"></div></div>
-        <div class="bar-state">200 ~ 2000mm</div>
-      </div></div>
+    <div class="row">
+      <div class="row-label"><div class="ck-row"><input type="checkbox" class="ck" id="ck_dh" checked onchange="sim()">건조기 높이<small style="margin-left:18px">팬 대수 영향</small></div></div>
+      <div class="row-inp"><div class="bi"><div class="bi-top"><input type="number" id="dh" value="600" min="200" max="2000" oninput="bf('dh',200,2000);sim()"><span class="un">mm</span><div class="bi-bar"><div class="bi-fill ok" id="bf_dh" style="width:22%"></div></div></div><div class="bi-hint">200~2000mm</div></div></div>
+      <div class="row-res" id="r_dh">-</div>
     </div>
-
-    <div class="sub-lbl">■ 열풍 설정</div>
-    <div class="item">
-      <input type="checkbox" class="item-chk" id="ck_dt" checked onchange="sim()">
-      <span class="item-label">건조 온도 <small>높을수록 건조력↑, 히터 소비↑</small></span>
-      <div class="item-ctrl"><div class="bar-inp">
-        <div class="bar-inp-row"><input type="number" id="dt" value="60" min="30" max="100" oninput="bi('dt',30,100);sim()"><span class="unit">°C</span></div>
-        <div class="bar-track"><div class="bar-opt" style="left:29%;width:43%"></div><div class="bar-fill ok" id="bf_dt" style="width:43%"></div></div>
-        <div class="bar-state">최적 50~80°C</div>
-      </div></div>
+    <div class="row hd"><div class="row-label sub">■ 열풍 설정</div><div class="row-inp"></div><div class="row-res"></div></div>
+    <div class="row">
+      <div class="row-label"><div class="ck-row"><input type="checkbox" class="ck" id="ck_dt" checked onchange="sim()">건조 온도<small style="margin-left:18px">높을수록 건조력↑</small></div></div>
+      <div class="row-inp"><div class="bi"><div class="bi-top"><input type="number" id="dt" value="60" min="30" max="100" oninput="bf('dt',30,100);sim()"><span class="un">°C</span><div class="bi-bar"><div class="bi-opt" style="left:29%;width:43%"></div><div class="bi-fill ok" id="bf_dt" style="width:43%"></div></div></div><div class="bi-hint">최적 50~80°C</div></div></div>
+      <div class="row-res" id="r_dt">-</div>
     </div>
-    <div class="item">
-      <input type="checkbox" class="item-chk" id="ck_fc" checked onchange="sim()">
-      <span class="item-label">시로코팬 대수 <small>대수↑ → 총 풍량↑, 순환 균일성↑</small></span>
-      <div class="item-ctrl">
-        <select class="inp-s" id="fc" onchange="sim()">
-          <option value="1">1대</option><option value="2">2대</option><option value="3" selected>3대</option><option value="4">4대</option><option value="6">6대</option>
-        </select>
-      </div>
+    <div class="row">
+      <div class="row-label"><div class="ck-row"><input type="checkbox" class="ck" id="ck_fc" checked onchange="sim()">시로코팬 대수<small style="margin-left:18px">대수↑ → 총 풍량↑</small></div></div>
+      <div class="row-inp"><select class="inp-s" id="fc" onchange="sim()"><option value="1">1대</option><option value="2">2대</option><option value="3" selected>3대</option><option value="4">4대</option><option value="6">6대</option></select></div>
+      <div class="row-res" id="r_fc">-</div>
     </div>
-    <div class="item">
-      <input type="checkbox" class="item-chk" id="ck_circ" checked onchange="sim()">
-      <span class="item-label">내부 순환율 <small>순환↑ → 히터 절감↑(최대 45%)</small></span>
-      <div class="item-ctrl">
-        <select class="inp-s" id="circ" onchange="sim()">
-          <option value="0">비순환 0%</option><option value="50" selected>50% 순환</option><option value="100">전량 순환</option>
-        </select>
-      </div>
+    <div class="row">
+      <div class="row-label"><div class="ck-row"><input type="checkbox" class="ck" id="ck_ci" checked onchange="sim()">내부 순환율<small style="margin-left:18px">순환↑ → 히터 절감↑</small></div></div>
+      <div class="row-inp"><select class="inp-s" id="circ" onchange="sim()"><option value="0">비순환 0%</option><option value="50" selected>50% 순환</option><option value="100">전량 순환</option></select></div>
+      <div class="row-res" id="r_ci">-</div>
     </div>
-    <div class="item">
-      <input type="checkbox" class="item-chk" id="ck_dht" checked onchange="sim()">
-      <span class="item-label">히터 용량 <small>건조온도 유지에 필요한 투입 열량</small></span>
-      <div class="item-ctrl"><div class="bar-inp">
-        <div class="bar-inp-row"><input type="number" id="dht" value="30" min="1" max="200" oninput="bi('dht',1,200);sim()"><span class="unit">kW</span></div>
-        <div class="bar-track"><div class="bar-fill ok" id="bf_dht" style="width:15%"></div></div>
-        <div class="bar-state">1 ~ 200kW</div>
-      </div></div>
+    <div class="row">
+      <div class="row-label"><div class="ck-row"><input type="checkbox" class="ck" id="ck_dht" checked onchange="sim()">히터 용량<small style="margin-left:18px">온도 유지 투입 열량</small></div></div>
+      <div class="row-inp"><div class="bi"><div class="bi-top"><input type="number" id="dht" value="30" min="1" max="200" oninput="bf('dht',1,200);sim()"><span class="un">kW</span><div class="bi-bar"><div class="bi-fill ok" id="bf_dht" style="width:15%"></div></div></div><div class="bi-hint">1~200kW</div></div></div>
+      <div class="row-res" id="r_dht">-</div>
     </div>
-    <div class="item">
-      <input type="checkbox" class="item-chk" id="ck_deh" onchange="sim()">
-      <span class="item-label">제습기 <small>체크 시 제습기 적용, 응결수 배출</small></span>
-      <div class="item-ctrl"><div class="bar-inp">
-        <div class="bar-inp-row"><input type="number" id="deh" value="20" min="0" max="200" oninput="bi('deh',0,200);sim()"><span class="unit">L/h</span></div>
-        <div class="bar-track"><div class="bar-fill lo" id="bf_deh" style="width:10%"></div></div>
-        <div class="bar-state">0 ~ 200 L/h</div>
-      </div></div>
+    <div class="row">
+      <div class="row-label"><div class="ck-row"><input type="checkbox" class="ck" id="ck_deh" onchange="sim()">제습기<small style="margin-left:18px">체크 시 적용</small></div></div>
+      <div class="row-inp"><div class="bi"><div class="bi-top"><input type="number" id="deh" value="20" min="0" max="200" oninput="bf('deh',0,200);sim()"><span class="un">L/h</span><div class="bi-bar"><div class="bi-fill lo" id="bf_deh" style="width:10%"></div></div></div><div class="bi-hint">0~200L/h</div></div></div>
+      <div class="row-res" id="r_deh">-</div>
     </div>
   </div>
 </div>
 
-<!-- E. 가동 조건 + 컨베이어 연동 -->
+<!-- E. 가동조건 -->
 <div class="sec">
-  <div class="sec-hdr" onclick="toggleSec('secE')">
-    <span class="sec-dot o"></span>
-    <span class="sec-title">E. 가동 조건 &amp; 컨베이어 연동</span>
-    <span class="sec-arrow open" id="arrE">▶</span>
+  <div class="sec-hdr" onclick="tog('sE')">
+    <span class="dot o"></span><span class="sec-title">E. 가동 조건 &amp; 컨베이어 연동</span>
+    <span class="sec-arr open" id="arE">▶</span>
   </div>
-  <div class="sec-body open" id="secE">
-    <div class="item">
-      <input type="checkbox" class="item-chk" id="ck_oh" checked onchange="sim()">
-      <span class="item-label">일 가동 시간 <small>월 비용 산출 기준</small></span>
-      <div class="item-ctrl"><div class="bar-inp">
-        <div class="bar-inp-row"><input type="number" id="oh" value="8" min="1" max="24" oninput="bi('oh',1,24);sim()"><span class="unit">h</span></div>
-        <div class="bar-track"><div class="bar-opt" style="left:29%;width:46%"></div><div class="bar-fill ok" id="bf_oh" style="width:33%"></div></div>
-        <div class="bar-state">1 ~ 24h</div>
-      </div></div>
+  <div class="sec-body open" id="sE">
+    <div class="row hd"><div class="row-label sub">■ 가동 조건</div><div class="row-inp"></div><div class="row-res" style="font-size:10px;color:var(--t3)">결과값</div></div>
+    <div class="row">
+      <div class="row-label"><div class="ck-row"><input type="checkbox" class="ck" id="ck_oh" checked onchange="sim()">일 가동 시간<small style="margin-left:18px">월 비용 산출 기준</small></div></div>
+      <div class="row-inp"><div class="bi"><div class="bi-top"><input type="number" id="oh" value="8" min="1" max="24" oninput="bf('oh',1,24);sim()"><span class="un">h</span><div class="bi-bar"><div class="bi-opt" style="left:29%;width:46%"></div><div class="bi-fill ok" id="bf_oh" style="width:33%"></div></div></div><div class="bi-hint">1~24h</div></div></div>
+      <div class="row-res" id="r_oh">-</div>
     </div>
-    <div class="item">
-      <input type="checkbox" class="item-chk" id="ck_od" checked onchange="sim()">
-      <span class="item-label">월 가동 일수 <small>월 비용 = 일 비용 × 일수</small></span>
-      <div class="item-ctrl"><div class="bar-inp">
-        <div class="bar-inp-row"><input type="number" id="od" value="22" min="1" max="31" oninput="bi('od',1,31);sim()"><span class="unit">일</span></div>
-        <div class="bar-track"><div class="bar-opt" style="left:55%;width:39%"></div><div class="bar-fill ok" id="bf_od" style="width:68%"></div></div>
-        <div class="bar-state">1 ~ 31일</div>
-      </div></div>
+    <div class="row">
+      <div class="row-label"><div class="ck-row"><input type="checkbox" class="ck" id="ck_od" checked onchange="sim()">월 가동 일수<small style="margin-left:18px">월 비용 = 일비용×일수</small></div></div>
+      <div class="row-inp"><div class="bi"><div class="bi-top"><input type="number" id="od" value="22" min="1" max="31" oninput="bf('od',1,31);sim()"><span class="un">일</span><div class="bi-bar"><div class="bi-opt" style="left:55%;width:39%"></div><div class="bi-fill ok" id="bf_od" style="width:68%"></div></div></div><div class="bi-hint">1~31일</div></div></div>
+      <div class="row-res" id="r_od">-</div>
     </div>
-    <div class="dv"></div>
-    <div class="conv-box">
-      <div class="conv-title">🔗 컨베이어 속도 연동</div>
-      <div class="item" style="padding:0 0 6px 0;border:none">
-        <input type="checkbox" class="item-chk" id="conv_link" checked onchange="sim()">
-        <label for="conv_link" style="font-size:11px;color:var(--t2);cursor:pointer">3구간 속도 동기화 — 한 값 변경 시 전체 연동</label>
-      </div>
-      <div class="conv-grid">
-        <div class="conv-ch">
-          <div class="conv-ch-lbl">🔵 세척기</div>
-          <input type="number" id="csW" value="2.0" min="0.5" max="15" step="0.1" oninput="convSync('W')">
-          <div class="conv-ch-unit">m/min</div>
-        </div>
-        <div class="conv-ch">
-          <div class="conv-ch-lbl">🟢 에어나이프</div>
-          <input type="number" id="csA" value="2.0" min="0.5" max="15" step="0.1" oninput="convSync('A')">
-          <div class="conv-ch-unit">m/min</div>
-        </div>
-        <div class="conv-ch">
-          <div class="conv-ch-lbl">🟣 건조기</div>
-          <input type="number" id="csD" value="2.0" min="0.5" max="15" step="0.1" oninput="convSync('D')">
-          <div class="conv-ch-unit">m/min</div>
+    <div class="row" style="display:block;padding:8px 10px">
+      <div class="conv-box">
+        <div class="conv-title">🔗 컨베이어 속도 연동</div>
+        <div class="ck-row" style="margin-bottom:4px"><input type="checkbox" class="ck" id="conv_lk" checked><label for="conv_lk" style="font-size:11px;color:var(--t2);cursor:pointer">3구간 동기화 — 하나 변경 시 전체 연동</label></div>
+        <div class="conv-g">
+          <div class="cc"><div class="ccl">🔵 세척기</div><input type="number" id="csW" value="2.0" min="0.5" max="15" step="0.1" oninput="csync('W')"><div class="ccu">m/min</div></div>
+          <div class="cc"><div class="ccl">🟢 에어나이프</div><input type="number" id="csA" value="2.0" min="0.5" max="15" step="0.1" oninput="csync('A')"><div class="ccu">m/min</div></div>
+          <div class="cc"><div class="ccl">🟣 건조기</div><input type="number" id="csD" value="2.0" min="0.5" max="15" step="0.1" oninput="csync('D')"><div class="ccu">m/min</div></div>
         </div>
       </div>
     </div>
@@ -644,172 +448,111 @@ canvas{display:block}
 
 </div><!-- /left -->
 
-<!-- ===================== RIGHT ===================== -->
+<!-- ═══════════════ RIGHT ═══════════════ -->
 <div class="right">
 
-<!-- 공정 흐름도 -->
+<!-- 공정 흐름 + KPI -->
 <div class="panel">
-  <div class="panel-hdr"><h3>📊 공정 흐름도 &amp; 상태</h3></div>
-  <div class="panel-body">
-    <div class="flow">
-      <div class="flow-box"><div class="flow-icon">📦</div><div class="flow-name">투입</div><div class="flow-stat" id="f_in">-</div></div>
-      <div class="flow-arr">→</div>
-      <div class="flow-box w"><div class="flow-icon">🚿</div><div class="flow-name">세척기</div><div class="flow-stat" id="f_w">-</div></div>
-      <div class="flow-arr">→</div>
-      <div class="flow-box a"><div class="flow-icon">💨</div><div class="flow-name">에어나이프</div><div class="flow-stat" id="f_a">-</div></div>
-      <div class="flow-arr">→</div>
-      <div class="flow-box d"><div class="flow-icon">🌀</div><div class="flow-name">건조기</div><div class="flow-stat" id="f_d">-</div></div>
-      <div class="flow-arr">→</div>
-      <div class="flow-box"><div class="flow-icon">✅</div><div class="flow-name">완료</div><div class="flow-stat ok" id="f_out">-</div></div>
+  <div class="ph"><h3>📊 공정 흐름 &amp; 핵심 지표</h3></div>
+  <div class="pb">
+    <div class="flow" style="margin-bottom:10px">
+      <div class="fb"><div class="fi">📦</div><div class="fn">투입</div><div class="fs" id="f_in">-</div></div>
+      <div class="fa">→</div>
+      <div class="fb w"><div class="fi">🚿</div><div class="fn">세척기</div><div class="fs" id="f_w">-</div></div>
+      <div class="fa">→</div>
+      <div class="fb a"><div class="fi">💨</div><div class="fn">에어나이프</div><div class="fs" id="f_a">-</div></div>
+      <div class="fa">→</div>
+      <div class="fb d"><div class="fi">🌀</div><div class="fn">건조기</div><div class="fs" id="f_d">-</div></div>
+      <div class="fa">→</div>
+      <div class="fb"><div class="fi">✅</div><div class="fn">완료</div><div class="fs ok" id="f_out">-</div></div>
+    </div>
+    <div class="kpi-strip">
+      <div class="kpi w"><div class="kpi-lbl">세척율</div><div class="kpi-val"><span id="kv_cr">--</span><span class="kpi-u">%</span></div><div class="kpi-s" id="ks_cr">-</div></div>
+      <div class="kpi w"><div class="kpi-lbl">세척 체류시간</div><div class="kpi-val"><span id="kv_dw">--</span><span class="kpi-u">s</span></div><div class="kpi-s">목표 ≥30s</div></div>
+      <div class="kpi a"><div class="kpi-lbl">AK 제거율</div><div class="kpi-val"><span id="kv_ak">--</span><span class="kpi-u">%</span></div><div class="kpi-s" id="ks_ak">-</div></div>
+      <div class="kpi a"><div class="kpi-lbl">AK 후 잔류수분</div><div class="kpi-val"><span id="kv_wr">--</span><span class="kpi-u">g</span></div><div class="kpi-s" id="ks_wr">-</div></div>
+      <div class="kpi d"><div class="kpi-lbl">건조 체류시간</div><div class="kpi-val"><span id="kv_dd">--</span><span class="kpi-u">s</span></div><div class="kpi-s">건조기 길이 기준</div></div>
+      <div class="kpi d"><div class="kpi-lbl">최대 처리량</div><div class="kpi-val"><span id="kv_qt">--</span><span class="kpi-u">개/h</span></div><div class="kpi-s" id="ks_qt">-</div></div>
     </div>
   </div>
 </div>
 
-<!-- KPI -->
+<!-- 세척기 효과 그래프 -->
 <div class="panel">
-  <div class="panel-hdr"><h3>📈 핵심 성능 지표 (KPI)</h3></div>
-  <div class="panel-body">
-    <div class="kpi-row">
-      <div class="kpi w"><div class="kpi-lbl">세척율</div><div class="kpi-val"><span id="kv_clean">--</span><span class="kpi-unit">%</span></div><div class="kpi-sub" id="ks_clean">-</div></div>
-      <div class="kpi w"><div class="kpi-lbl">세척 체류시간</div><div class="kpi-val"><span id="kv_dwell">--</span><span class="kpi-unit">s</span></div><div class="kpi-sub">목표 ≥30s</div></div>
-      <div class="kpi a"><div class="kpi-lbl">AK 제거율</div><div class="kpi-val"><span id="kv_ak">--</span><span class="kpi-unit">%</span></div><div class="kpi-sub" id="ks_ak">-</div></div>
-      <div class="kpi a"><div class="kpi-lbl">AK 후 잔류수분</div><div class="kpi-val"><span id="kv_wrem">--</span><span class="kpi-unit">g</span></div><div class="kpi-sub" id="ks_wrem">-</div></div>
-      <div class="kpi d"><div class="kpi-lbl">건조 체류시간</div><div class="kpi-val"><span id="kv_ddwell">--</span><span class="kpi-unit">s</span></div><div class="kpi-sub">건조기 길이 기준</div></div>
-      <div class="kpi d"><div class="kpi-lbl">최대 처리량</div><div class="kpi-val"><span id="kv_qty">--</span><span class="kpi-unit">개/h</span></div><div class="kpi-sub" id="ks_qty">-</div></div>
+  <div class="ph w"><h3 style="color:var(--w)">🚿 세척기 효과 분석</h3></div>
+  <div class="pb">
+    <div class="cg2">
+      <div><div class="ct">세척 기여 요소 (점수)</div><div class="cw"><canvas id="c_contrib"></canvas></div></div>
+      <div><div class="ct">컨베이어 속도별 세척율 (%)</div><div class="cw"><canvas id="c_spd_cr"></canvas></div></div>
+    </div>
+    <div class="cg2">
+      <div><div class="ct">분사압별 펌프 총 동력 (kW)</div><div class="cw"><canvas id="c_press"></canvas></div></div>
+      <div><div class="ct">온도별 히터 총 용량 (kW)</div><div class="cw"><canvas id="c_temp"></canvas></div></div>
     </div>
   </div>
 </div>
 
-<!-- 효과 그래프: 세척기 -->
+<!-- 에어나이프 효과 그래프 -->
 <div class="panel">
-  <div class="panel-hdr" style="border-bottom-color:var(--w)"><h3 style="color:var(--w)">🚿 세척기 — 설정값 효과 분석</h3></div>
-  <div class="panel-body">
-    <div class="grid2">
-      <div>
-        <div class="ct">세척 기여 요소 (점수)</div>
-        <div class="chart-wrap"><canvas id="c_contrib"></canvas></div>
-      </div>
-      <div>
-        <div class="ct">컨베이어 속도별 세척율 변화</div>
-        <div class="chart-wrap"><canvas id="c_speed_clean"></canvas></div>
-      </div>
+  <div class="ph a"><h3 style="color:var(--a)">💨 에어나이프 효과 분석</h3></div>
+  <div class="pb">
+    <div class="cg2">
+      <div><div class="ct">단수별 잔류수분 (g/개)</div><div class="cw"><canvas id="c_ak_stg"></canvas></div></div>
+      <div><div class="ct">거리별 유효 풍속 (m/s)</div><div class="cw"><canvas id="c_ak_d"></canvas></div></div>
     </div>
-    <div class="grid2" style="margin-top:10px">
-      <div>
-        <div class="ct">분사압별 펌프 동력 (kW)</div>
-        <div class="chart-wrap"><canvas id="c_press_pump"></canvas></div>
-      </div>
-      <div>
-        <div class="ct">온도별 히터 용량 (kW)</div>
-        <div class="chart-wrap"><canvas id="c_temp_heat"></canvas></div>
-      </div>
+    <div class="cg2">
+      <div><div class="ct">슬릿 간격별 풍속 &amp; Weber수</div><div class="cw"><canvas id="c_ak_sl"></canvas></div></div>
+      <div><div class="ct">브로어 마력별 총 전력 (kW)</div><div class="cw"><canvas id="c_ak_hp"></canvas></div></div>
     </div>
   </div>
 </div>
 
-<!-- 효과 그래프: 에어나이프 -->
+<!-- 건조기 효과 그래프 -->
 <div class="panel">
-  <div class="panel-hdr" style="border-bottom-color:var(--a)"><h3 style="color:var(--a)">💨 에어나이프 — 설정값 효과 분석</h3></div>
-  <div class="panel-body">
-    <div class="grid2">
-      <div>
-        <div class="ct">단수별 잔류 수분 (g/개)</div>
-        <div class="chart-wrap"><canvas id="c_ak_stages"></canvas></div>
-      </div>
-      <div>
-        <div class="ct">거리별 유효 풍속 (m/s)</div>
-        <div class="chart-wrap"><canvas id="c_ak_dist"></canvas></div>
-      </div>
+  <div class="ph d"><h3 style="color:var(--d)">🌀 건조기 효과 분석</h3></div>
+  <div class="pb">
+    <div class="cg2">
+      <div><div class="ct">온도별 팬 1대 풍량 (m³/h)</div><div class="cw"><canvas id="c_dry_t"></canvas></div></div>
+      <div><div class="ct">속도별 체류시간(s) &amp; 처리량(개/h)</div><div class="cw"><canvas id="c_dry_s"></canvas></div></div>
     </div>
-    <div class="grid2" style="margin-top:10px">
-      <div>
-        <div class="ct">슬릿 간격별 풍속 &amp; We수</div>
-        <div class="chart-wrap"><canvas id="c_ak_slit"></canvas></div>
-      </div>
-      <div>
-        <div class="ct">브로어 마력별 총 전력 (kW)</div>
-        <div class="chart-wrap"><canvas id="c_ak_hp"></canvas></div>
-      </div>
+    <div class="cg2">
+      <div><div class="ct">순환율별 유효 히터 (kW)</div><div class="cw"><canvas id="c_dry_c"></canvas></div></div>
+      <div><div class="ct">건조기 전력 구성 (kW)</div><div class="cw"><canvas id="c_dry_p"></canvas></div></div>
     </div>
   </div>
 </div>
 
-<!-- 효과 그래프: 건조기 -->
+<!-- 합산 + 모터 + 비용 -->
 <div class="panel">
-  <div class="panel-hdr" style="border-bottom-color:var(--d)"><h3 style="color:var(--d)">🌀 건조기 — 설정값 효과 분석</h3></div>
-  <div class="panel-body">
-    <div class="grid2">
+  <div class="ph"><h3>⚡ 합산 · 모터 · 월 운영비</h3></div>
+  <div class="pb">
+    <div class="cg2" style="gap:12px">
       <div>
-        <div class="ct">온도별 순환 횟수 &amp; 팬 풍량</div>
-        <div class="chart-wrap"><canvas id="c_dry_temp"></canvas></div>
-      </div>
-      <div>
-        <div class="ct">속도별 체류시간 &amp; 처리량</div>
-        <div class="chart-wrap"><canvas id="c_dry_speed"></canvas></div>
-      </div>
-    </div>
-    <div class="grid2" style="margin-top:10px">
-      <div>
-        <div class="ct">순환율별 히터 절감 효과</div>
-        <div class="chart-wrap"><canvas id="c_dry_circ"></canvas></div>
-      </div>
-      <div>
-        <div class="ct">전력 구성 (kW)</div>
-        <div class="chart-wrap"><canvas id="c_dry_power"></canvas></div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- 물·전력 합산 -->
-<div class="panel">
-  <div class="panel-hdr"><h3>⚡ 물·전력 사용량 합산</h3></div>
-  <div class="panel-body">
-    <div class="grid2">
-      <div>
-        <table class="rt">
-          <thead><tr><th>구분</th><th>전력 kW</th><th>물 L/h</th></tr></thead>
+        <div class="ct" style="margin-bottom:5px">물·전력 합산</div>
+        <table class="st">
+          <thead><tr><th>구분</th><th>전력(kW)</th><th>물(L/h)</th></tr></thead>
           <tbody id="sum_tb"></tbody>
         </table>
-      </div>
-      <div>
-        <div class="ct">전력 구성 비율</div>
-        <div class="chart-wrap" style="height:160px"><canvas id="c_power_pie"></canvas></div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- 컨베이어 구동모터 -->
-<div class="panel">
-  <div class="panel-hdr"><h3>⚙️ 컨베이어 구동모터 추천</h3></div>
-  <div class="panel-body">
-    <table class="rt">
-      <thead><tr><th>구간</th><th>속도</th><th>길이</th><th>산출 용량</th><th>추천 규격</th><th>근거</th></tr></thead>
-      <tbody id="mot_tb"></tbody>
-    </table>
-    <div class="al-i alert" style="margin-top:8px">💡 체인 컨베이어 기준 | 부하계수 1.5× · 안전율 1.2× 적용 | 실 설치 시 부하 측정 후 최종 확정</div>
-  </div>
-</div>
-
-<!-- 월 운영비 -->
-<div class="panel">
-  <div class="panel-hdr"><h3>💰 월 운영비 산출</h3></div>
-  <div class="panel-body">
-    <div class="grid2">
-      <div class="cost-grid" style="grid-template-columns:1fr 1fr">
-        <div class="cost-it"><div class="cost-lbl">💧 월 물 사용량</div><div class="cost-val" id="cv_wm">-</div><div class="cost-unit">m³/월</div></div>
-        <div class="cost-it"><div class="cost-lbl">⚡ 월 전력 사용량</div><div class="cost-val" id="cv_em">-</div><div class="cost-unit">kWh/월</div></div>
-        <div class="cost-it"><div class="cost-lbl">💧 월 수도요금</div><div class="cost-val" id="cv_wc">-</div><div class="cost-unit">원/월</div></div>
-        <div class="cost-it"><div class="cost-lbl">⚡ 월 전기요금</div><div class="cost-val" id="cv_ec">-</div><div class="cost-unit">원/월</div></div>
-        <div class="cost-tot" style="grid-column:1/-1">
-          <div class="cost-tot-lbl">월 총 운영비</div>
-          <div class="cost-tot-val">₩ <span id="cv_tot">-</span></div>
+        <div style="margin-top:8px">
+          <div class="ct">전력 구성 비율</div>
+          <div class="cw" style="height:140px"><canvas id="c_pie"></canvas></div>
         </div>
       </div>
       <div>
-        <div class="ct">비용 구성</div>
-        <div class="chart-wrap" style="height:180px"><canvas id="c_cost"></canvas></div>
+        <div class="ct" style="margin-bottom:5px">컨베이어 구동모터 추천</div>
+        <table class="st">
+          <thead><tr><th>구간</th><th>속도</th><th>산출</th><th>추천</th></tr></thead>
+          <tbody id="mot_tb"></tbody>
+        </table>
+        <div class="al al-i" style="margin-top:5px">💡 체인 컨베이어 | 부하계수 1.5× | 안전율 1.2×</div>
+        <div style="margin-top:10px">
+          <div class="ct">월 운영비</div>
+          <div class="cg" style="margin-top:4px">
+            <div class="ci"><div class="cl">💧 월 수도요금</div><div class="cv" id="cv_wc">-</div><div class="cu">원/월</div></div>
+            <div class="ci"><div class="cl">⚡ 월 전기요금</div><div class="cv" id="cv_ec">-</div><div class="cu">원/월</div></div>
+            <div class="ctot"><div class="ctl">월 총 운영비 (수도+전기)</div><div class="ctv">₩ <span id="cv_tot">-</span></div></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -817,9 +560,9 @@ canvas{display:block}
 
 <!-- 부품 구성 -->
 <div class="panel">
-  <div class="panel-hdr"><h3>🔩 부품 구성 시뮬레이션</h3></div>
-  <div class="panel-body">
-    <table class="rt">
+  <div class="ph"><h3>🔩 부품 구성 시뮬레이션</h3></div>
+  <div class="pb">
+    <table class="st">
       <thead><tr><th>구분</th><th>부품명</th><th>규격/사양</th><th>수량</th><th>비고</th></tr></thead>
       <tbody id="parts_tb"></tbody>
     </table>
@@ -829,577 +572,405 @@ canvas{display:block}
 <!-- 권장 사항 -->
 <div id="recs"></div>
 
-<div style="text-align:center;font-size:10px;color:var(--t3);padding:6px 0">
-  인시스 AI혁신 R&D센터 | wash_sim.html v2.0 | 2026-07-18
-</div>
-
+<footer>인시스 AI혁신 R&D센터 | wash_sim.html v3.0 | 2026-07-18</footer>
 </div><!-- /right -->
 </div><!-- /wrap -->
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-// ─── UI HELPERS ───
-function toggleSec(id){
-  var b=document.getElementById(id),arr=document.getElementById('arr'+id.slice(-1));
+// ─── HELPERS ───
+function g(id){return document.getElementById(id)}
+function gv(id){return parseFloat(g(id).value)||0}
+function gvi(id){return parseInt(g(id).value)||0}
+function gvs(id){return g(id).value}
+function gck(id){var e=g(id);return e?e.checked:false}
+function fmt(v,d){return(isNaN(v)||v===undefined)?'-':v.toFixed(d===undefined?1:d)}
+function fmtN(v){return Math.round(v).toLocaleString()}
+function setRes(id,txt,cls){var e=g(id);if(!e)return;e.textContent=txt;e.className='row-res'+(cls?' '+cls:'')}
+
+function tog(id){
+  var b=g(id),s=id.slice(-1);
   var open=b.classList.toggle('open');
-  arr.classList.toggle('open',open);
+  var ar=g('ar'+s);if(ar)ar.classList.toggle('open',open);
 }
 function toggleDet(){
-  var on=document.getElementById('ck_det').checked;
-  document.getElementById('det_ctrl').style.opacity=on?'1':'0.4';
-  document.getElementById('det_ctrl').style.pointerEvents=on?'auto':'none';
+  var on=gck('ck_det');
+  var el=g('det_bi');
+  el.style.opacity=on?'1':'0.35';
+  el.style.pointerEvents=on?'auto':'none';
 }
-function bi(id,mn,mx){
-  var el=document.getElementById(id),v=parseFloat(el.value)||0;
-  v=Math.max(mn,Math.min(mx,v));
-  var bf=document.getElementById('bf_'+id);
-  if(bf){var pct=(v-mn)/(mx-mn)*100;bf.style.width=pct+'%';}
+function bf(id,mn,mx){
+  var v=parseFloat(g(id).value)||0;v=Math.max(mn,Math.min(mx,v));
+  var el=g('bf_'+id);if(!el)return;
+  el.style.width=((v-mn)/(mx-mn)*100)+'%';
 }
-function bi10x(id,mn,mx){
-  var el=document.getElementById(id),v=parseFloat(el.value)||0;
-  v=Math.max(mn,Math.min(mx,v));
-  var bf=document.getElementById('bf_'+id);
-  if(bf){var pct=(v-mn)/(mx-mn)*100;bf.style.width=pct+'%';}
+function bf10x(id,mn,mx){
+  var v=parseFloat(g(id).value)||0;v=Math.max(mn,Math.min(mx,v));
+  var el=g('bf_'+id);if(!el)return;
+  el.style.width=((v-mn)/(mx-mn)*100)+'%';
 }
-function convSync(src){
-  if(document.getElementById('conv_link').checked){
-    var v=document.getElementById('cs'+src).value;
-    ['W','A','D'].forEach(function(c){if(c!==src)document.getElementById('cs'+c).value=v;});
+function csync(src){
+  if(gck('conv_lk')){
+    var v=g('cs'+src).value;
+    ['W','A','D'].forEach(function(c){if(c!==src)g('cs'+c).value=v;});
   }
   sim();
 }
-function g(id){return document.getElementById(id);}
-function gv(id){return parseFloat(g(id).value)||0;}
-function gvi(id){return parseInt(g(id).value)||0;}
-function gvs(id){return g(id).value;}
-function gck(id){var el=g(id);return el?el.checked:false;}
-function fmt(v,d){return(isNaN(v)||v===undefined)?'-':v.toFixed(d===undefined?1:d);}
-function fmtN(v){return Math.round(v).toLocaleString();}
 
-// ─── CHARTS registry ───
-var CHARTS={};
-function mkChart(id,cfg){
-  if(CHARTS[id])CHARTS[id].destroy();
-  var ctx=document.getElementById(id);
-  if(!ctx)return;
-  CHARTS[id]=new Chart(ctx,cfg);
-  return CHARTS[id];
-}
-
-// ─── SIM TIMER ───
-var T=null;
-function sim(){clearTimeout(T);T=setTimeout(runSim,180);}
+// ─── CHARTS ───
+var CH={};
+function mc(id,cfg){if(CH[id])CH[id].destroy();var c=g(id);if(!c)return;CH[id]=new Chart(c,cfg);}
+var fnt={size:9,family:'Noto Sans KR'};
+var CW='#1565c0',CA='#00796b',CD='#6a1b9a',CO='#e65100';
+function bOpt(yl){return{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:fnt}},y:{title:{display:!!yl,text:yl||'',font:{size:9}},ticks:{font:fnt}}}};}
+function lOpt(dss){return{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:dss.length>1,labels:{font:fnt,boxWidth:8}}},scales:{x:{ticks:{font:fnt}},y:{ticks:{font:fnt}}}};}
 
 // ─── PHYSICS ───
-var DIRT=[
-  {flux:4.0,press:100,temp:40,hole:3.0},
-  {flux:7.0,press:150,temp:50,hole:2.5},
-  {flux:12.0,press:200,temp:60,hole:2.5},
-  {flux:18.0,press:280,temp:70,hole:2.0},
-  {flux:25.0,press:350,temp:80,hole:1.8}
-];
-
-function calcWasher(p){
-  if(!p.apW)return null;
-  var dlv=p.dlv;
-  var Cd=0.62,r2=(p.nHole/1000/2),A=Math.PI*r2*r2;
-  var dP=p.nPress*1000;
-  var qNoz=Cd*A*Math.sqrt(2*dP/1000)*1000*60;
-  var tgtGap=[150,120,100,80,60][dlv];
-  var nc=Math.max(2,Math.round(p.iW/tgtGap));
-  var nr=Math.max(2,Math.round(p.iH/tgtGap));
-  var fpc=(p.itype==='box')?4:2;
-  var totalF=fpc*p.fmode;
-  var qFace=qNoz*nc*nr;
-  var qTot=qFace*totalF;
-  var qm3s=qTot/60/1000;
-  var pumpKW=qm3s*(dP)/(p.pEff/100)/1000;
+function calcW(p){
+  var Cd=0.62,r2=p.nH/1000/2,A=Math.PI*r2*r2,dP=p.nP*1000;
+  var qN=Cd*A*Math.sqrt(2*dP/1000)*1000*60;
+  var tgt=[150,120,100,80,60][p.dlv];
+  var nc=Math.max(2,Math.round(p.iW/tgt)),nr=Math.max(2,Math.round(p.iH/tgt));
+  var fpc=(p.itype==='box')?4:2,totF=fpc*p.fmode;
+  var qT=qN*nc*nr*totF,qm=qT/60/1000;
+  var pKW=qm*dP/(p.pEff/100)/1000;
   var zwid=p.iW+200;
-  var tankVol=p.zlen*zwid*p.zdep*0.75/1e6;
-  var heatKW=tankVol*4.18*(p.nTemp-20)/3600*1.35;
-  var totPumpKW=pumpKW*p.zcnt;
-  var totHeatKW=heatKW*p.zcnt;
-  var totalKW=totPumpKW+totHeatKW;
-  var totalLen=p.zlen*p.zcnt/1000;
-  var cspd=p.csW/60;
-  var dwell=totalLen/cspd;
-  var bases=[52,68,80,90];
-  var base=bases[Math.min(p.zcnt-1,3)];
-  var dirtP=[0,0,-3,-9,-18,-32][dlv]||0;
-  var tempB=Math.min(18,(p.nTemp-25)*0.36);
-  var pressB=Math.min(10,(p.nPress-100)*0.028);
+  var tVol=p.zlen*zwid*p.zdep*0.75/1e6;
+  var hKW=tVol*4.18*(p.nT-20)/3600*1.35;
+  var totPKW=pKW*p.zcnt,totHKW=hKW*p.zcnt,totKW=totPKW+totHKW;
+  var dwell=(p.zlen*p.zcnt/1000)/(p.csW/60);
+  var bases=[52,68,80,90],base=bases[Math.min(p.zcnt-1,3)];
+  var dP2=[0,0,-3,-9,-18,-32][p.dlv]||0;
+  var tB=Math.min(18,(p.nT-25)*0.36),prB=Math.min(10,(p.nP-100)*0.028);
   var detB=gck('ck_det')?Math.min(12,p.det*1.1):0;
-  var dwellB=Math.min(8,(dwell-30)*0.05);
-  var spdP=Math.max(-14,-(p.csW-2)*2.5);
-  var gX=p.iW/(nc+1),gY=p.iH/(nr+1);
-  var sr=Math.tan(30*Math.PI/180)*100;
-  var covX=Math.min(p.iW,(nc-1)*gX+2*sr);
-  var covY=Math.min(p.iH,(nr-1)*gY+2*sr);
-  var cov=(covX/p.iW)*(covY/p.iH)*100;
-  var covF=0.6+0.4*(cov/100);
-  var cr=(base+dirtP+tempB+pressB+detB+dwellB+spdP)*covF;
-  cr=Math.max(5,Math.min(99.9,cr));
-  var waterLph=qTot*60*0.03*p.zcnt+tankVol*p.zcnt/8;
-  var thruput=(p.csW/(p.iL/1000))*60*p.fmode;
-  return{cr,dwell,qTot,pumpKW,pumpHP:pumpKW*1.341,heatKW,totPumpKW,totHeatKW,totalKW,
-    tankVol,waterLph,thruput,nc,nr,nFace:nc*nr,totalF,cov,
-    contrib:{base,dirtP,tempB,pressB,detB,dwellB,spdP},zwid};
+  var dwB=Math.min(8,(dwell-30)*0.05),spP=Math.max(-14,-(p.csW-2)*2.5);
+  var gX=p.iW/(nc+1),gY=p.iH/(nr+1),sr=Math.tan(30*Math.PI/180)*100;
+  var covX=Math.min(p.iW,(nc-1)*gX+2*sr),covY=Math.min(p.iH,(nr-1)*gY+2*sr);
+  var cov=(covX/p.iW)*(covY/p.iH)*100,covF=0.6+0.4*(cov/100);
+  var cr=Math.max(5,Math.min(99.9,(base+dP2+tB+prB+detB+dwB+spP)*covF));
+  var waterLph=qT*60*0.03*p.zcnt+tVol*p.zcnt/8;
+  return{cr,dwell,pKW,hKW,totPKW,totHKW,totKW,tVol,waterLph,nc,nr,nF:nc*nr,totF,cov,zwid,
+    thru:(p.csW/(p.iL/1000))*60*p.fmode,
+    contrib:{base,dP2,tB,prB,detB,dwB,spP}};
 }
-
-function akPhysics(HP,bpf,sg_mm,sw_deg,sa_deg,dist_mm,ch,fmode,iW,iH,iL,csA,stages,pos,init_water){
-  var gap=sg_mm/1000;
-  var L_ak=iW/1000;
-  var Q_bl=HP*0.65;
-  var Q_face=bpf*Q_bl;
-  var A_slit=L_ak*gap;
-  var v0=(Q_face/60)/A_slit;
-  var eta_d=Math.min(1.2,Math.sqrt(30/dist_mm));
-  var v_eff=Math.min(v0*eta_d,v0*1.15);
-  var We=1.2*v_eff*v_eff*0.0003/0.0728;
-  var Re=v_eff*gap/1.516e-5;
-  var f_vel=Math.min(1,v_eff/60);
-  var f_sl=Math.min(1,Math.max(0.05,(3-sg_mm)/3));
-  var sw=sw_deg*Math.PI/180;
-  var f_sw=Math.sin(sw)*Math.max(0.4,1-Math.abs(sw_deg-20)/50);
-  var f_sa=Math.sin(sa_deg*Math.PI/180);
-  var f_di=Math.min(1,eta_d);
-  var air_b=(f_vel*0.45+f_sl*0.25+f_sw*0.20+f_sa*0.15+f_di*0.05)/1.10;
-  var f_pock=1/(1+iH/60);
-  var air_str=air_b*f_pock;
-  var t=(iL/1000)/(csA/60);
-  var r_i=air_str*0.55;
-  var r_t=air_str*0.45*(1-Math.exp(-t/2.5));
-  var r_fr=Math.min(0.45,r_i+r_t);
-  var r_stg,faceC;
-  if(pos==='both'){r_stg=Math.min(0.70,1-(1-r_fr)*(1-r_fr*0.90));faceC=2;}
-  else{r_stg=Math.min(0.50,r_fr);faceC=1;}
-  var Wn=init_water*Math.pow(1-r_stg,stages);
-  var eta=1-Math.pow(1-r_stg,stages);
-  var n_min=init_water>1?Math.ceil(Math.log(Math.max(0.01,1)/init_water)/Math.log(1-r_stg)):1;
-  var kW_ea=HP*0.7457;
-  var blowers=faceC*bpf*stages*ch;
-  var totalKW=kW_ea*blowers;
-  var thruput=(csA/(iL/1000))*60*fmode;
-  return{v0,v_eff,We,Re,r_stg,eta,Wn,n_min,totalKW,blowers,thruput,faceC};
+function calcWcr(p,csW){
+  var pp=Object.assign({},p,{csW:csW});
+  var r=calcW(pp);return r.cr;
 }
-
+function akP(HP,bpf,sg,sw,sa,dist,iW,iH,iL,csA,stages,pos,iw){
+  var gap=sg/1000,Lak=iW/1000;
+  var Qb=HP*0.65,Qf=bpf*Qb,As=Lak*gap,v0=(Qf/60)/As;
+  var etad=Math.min(1.2,Math.sqrt(30/dist)),veff=Math.min(v0*etad,v0*1.15);
+  var We=1.2*veff*veff*0.0003/0.0728,Re=veff*gap/1.516e-5;
+  var fv=Math.min(1,veff/60),fsl=Math.min(1,Math.max(0.05,(3-sg)/3));
+  var sw2=sw*Math.PI/180,fsw=Math.sin(sw2)*Math.max(0.4,1-Math.abs(sw-20)/50);
+  var fsa=Math.sin(sa*Math.PI/180),fdi=Math.min(1,etad);
+  var airb=(fv*0.45+fsl*0.25+fsw*0.20+fsa*0.15+fdi*0.05)/1.10;
+  var fpk=1/(1+iH/60),airs=airb*fpk;
+  var t=(iL/1000)/(csA/60),ri=airs*0.55,rt=airs*0.45*(1-Math.exp(-t/2.5));
+  var rfr=Math.min(0.45,ri+rt),rstg,fc;
+  if(pos==='both'){rstg=Math.min(0.70,1-(1-rfr)*(1-rfr*0.90));fc=2;}
+  else{rstg=Math.min(0.50,rfr);fc=1;}
+  var Wn=iw*Math.pow(1-rstg,stages),eta=1-(Math.pow(1-rstg,stages));
+  var nmin=iw>1?Math.ceil(Math.log(Math.max(0.001,0.01)/iw)/Math.log(1-rstg)):1;
+  return{v0,veff,We,Re,rstg,eta,Wn,nmin,blowers:fc*bpf*stages,fc,
+    totKW:HP*0.7457*fc*bpf*stages,
+    thru:(csA/(iL/1000))*60};
+}
 function calcAK(p){
-  if(!p.apA)return null;
-  return akPhysics(p.HP,p.bpf,p.sg,p.sw,p.sa,p.ad,parseInt(p.ch_count),p.fmode,p.iW,p.iH,p.iL,p.csA,p.aks,p.akpos,p.iw);
+  return akP(p.HP,p.bpf,p.sg,p.sw,p.sa,p.ad,p.iW,p.iH,p.iL,p.csA,p.aks,p.akpos,p.iw);
 }
-
-function calcDryer(p){
-  if(!p.apD)return null;
+function calcD(p){
   var vol=p.dl*p.dw*p.dh/1e9;
   var cr=p.dt<=40?35:p.dt<=50?45:55;
-  var totFlow=vol*cr*1.15*1.1;
-  var fanFlow=totFlow/p.fc;
+  var totF=vol*cr*1.15*1.1,fanF=totF/p.fc;
   var sp=p.dt<=40?50:p.dt<=50?70:90;
-  var mKW=(fanFlow/3600)*sp/0.45*1.15;
-  var fanKW=mKW*p.fc;
-  var circSave=p.circ===0?0:p.circ===50?22:45;
-  var effHeat=p.dht*(1-circSave/100);
-  var dehumKW=gck('ck_deh')?p.deh*0.5:0;
-  var totalKW=fanKW+effHeat+dehumKW;
-  var dwell=(p.dl/1000)/(p.csD/60);
-  var thruput=(p.csD/(p.iL/1000))*60*p.fmode;
-  return{vol,totFlow,fanFlow,mKW,fanKW,effHeat,circSave,dehumKW,totalKW,dwell,thruput};
+  var mKW=(fanF/3600)*sp/0.45*1.15,fanKW=mKW*p.fc;
+  var cs=p.circ===0?0:p.circ===50?22:45;
+  var effH=p.dht*(1-cs/100),dehKW=gck('ck_deh')?p.deh*0.5:0;
+  var totKW=fanKW+effH+dehKW;
+  return{vol,totF,fanF,mKW,fanKW,effH,cs,dehKW,totKW,
+    dwell:(p.dl/1000)/(p.csD/60),
+    thru:(p.csD/(p.iL/1000))*60*p.fmode,
+    waterLph:gck('ck_deh')?p.deh:0};
 }
-
-function calcMotors(p,W,AK,D){
+function motorRec(len,spd,iW,iL,iH){
   var STD=[0.1,0.2,0.4,0.75,1.1,1.5,2.2,3.7,5.5,7.5,11,15,18.5,22,30];
-  function rec(pD){return STD.find(function(m){return m>=pD;})||30;}
-  function calc(name,len,spd,tag){
-    var chainW=len*15,prod=p.iW/1000*p.iL/1000*p.iH/1000*30*5;
-    var F=(chainW+prod)*9.81*0.15;
-    var P_raw=F*(spd/60)/1000;
-    var P_des=P_raw*1.5*1.2;
-    return{name,len,spd,P_raw,P_des,rec:rec(P_des),tag};
-  }
-  var res=[];
-  if(W) res.push(calc('세척기',p.zlen*p.zcnt/1000,p.csW,'w'));
-  if(AK) res.push(calc('에어나이프',Math.max(1,(p.iL/1000)*p.aks*2),p.csA,'a'));
-  if(D) res.push(calc('건조기',p.dl/1000,p.csD,'d'));
-  return res;
+  var F=(len*15+iW/1000*iL/1000*iH/1000*30*5)*9.81*0.15;
+  var Pd=F*(spd/60)/1000*1.5*1.2;
+  return{Pd,rec:STD.find(function(m){return m>=Pd;})||30};
 }
 
-// ─── COLLECT PARAMS ───
-function collectP(){
+// ─── COLLECT ───
+function cP(){
   return{
     apW:gck('apW'),apA:gck('apA'),apD:gck('apD'),
-    itype:gvs('itype'),ch_count:gvi('ch_count'),
+    itype:gvs('itype'),fmode:gvi('fmode'),ch:gvi('ch'),
     iW:gv('iW'),iL:gv('iL'),iH:gv('iH'),
-    iqty:gv('iqty'),dlv:gvi('dlv'),
-    waterPrice:gv('waterPrice'),elecPrice:gv('elecPrice'),
-    // washer
-    zcnt:gvi('zcnt'),fmode:gvi('fmode'),
-    nPress:gv('nPress'),nTemp:gv('nTemp'),nHole:gv('nHole'),
-    pEff:gv('pEff'),zlen:gv('zlen'),zdep:gv('zdep'),
-    det:gv('det'),
+    iqty:gv('iqty'),dlv:gvi('dlv'),wP:gv('wP'),eP:gv('eP'),
+    zcnt:gvi('zcnt'),nP:gv('nP'),nT:gv('nT'),nH:gv('nH'),
+    pEff:gv('pEff'),zlen:gv('zlen'),zdep:gv('zdep'),det:gv('det'),
     csW:gv('csW'),
-    // ak
-    aks:gvi('ak_stages'),akpos:gvs('ak_pos'),
-    HP:gv('blower_hp'),bpf:gvi('bpf'),
+    HP:gv('bhp'),bpf:gvi('bpf'),aks:gvi('aks'),akpos:gvs('akpos'),
     sg:gv('sg'),sw:gv('sw'),sa:gv('sa'),ad:gv('ad'),
-    iw:gv('iw'),tw:gv('tw'),
-    csA:gv('csA'),
-    // dryer
-    dl:gv('dl'),dw:gv('dw'),dh:gv('dh'),
-    dt:gv('dt'),fc:gvi('fc'),circ:gvi('circ'),
-    dht:gv('dht'),deh:gv('deh'),
-    csD:gv('csD'),
-    // ops
+    iw:gv('iw'),tw:gv('tw'),csA:gv('csA'),
+    dl:gv('dl'),dw:gv('dw'),dh:gv('dh'),dt:gv('dt'),
+    fc:gvi('fc'),circ:gvi('circ'),dht:gv('dht'),deh:gv('deh'),csD:gv('csD'),
     oh:gv('oh'),od:gv('od'),
   };
 }
 
-// ─── MAIN RUN ───
-function runSim(){
-  var p=collectP();
-  var W=calcWasher(p);
-  var AK=calcAK(p);
-  var D=calcDryer(p);
-  var M=calcMotors(p,W,AK,D);
-  renderFlow(p,W,AK,D);
-  renderKPI(p,W,AK,D);
-  renderWasherCharts(p,W);
-  renderAKCharts(p,AK);
-  renderDryerCharts(p,D);
-  renderSum(p,W,AK,D);
-  renderMotors(M);
-  renderCost(p,W,AK,D);
-  renderParts(p,W,AK,D,M);
-  renderRecs(p,W,AK,D);
+// ─── SIM ───
+var TM=null;
+function sim(){clearTimeout(TM);TM=setTimeout(run,160);}
+
+function run(){
+  var p=cP();
+  var W=p.apW?calcW(p):null;
+  var AK=p.apA?calcAK(p):null;
+  var D=p.apD?calcD(p):null;
+  updateRowRes(p,W,AK,D);
+  updateFlow(p,W,AK,D);
+  updateKPI(p,W,AK,D);
+  drawWasher(p,W);
+  drawAK(p,AK);
+  drawDryer(p,D);
+  updateSum(p,W,AK,D);
+  updateMotors(p,W,AK,D);
+  updateCost(p,W,AK,D);
+  updateParts(p,W,AK,D);
+  updateRecs(p,W,AK,D);
 }
 
-// ─── RENDER FLOW ───
-function renderFlow(p,W,AK,D){
-  g('f_in').textContent=p.ch_count+'채널 '+p.iW+'×'+p.iL+'mm';
-  if(W){g('f_w').textContent=fmt(W.cr)+'% 세척';g('f_w').className='flow-stat '+(W.cr>=80?'ok':'ng');}
-  else{g('f_w').textContent='미적용';g('f_w').className='flow-stat na';}
-  if(AK){g('f_a').textContent=fmt(AK.eta*100)+'% 제거';g('f_a').className='flow-stat '+(AK.eta>=0.6?'ok':'ng');}
-  else{g('f_a').textContent='미적용';g('f_a').className='flow-stat na';}
-  if(D){g('f_d').textContent=fmt(D.dwell)+'s 체류';g('f_d').className='flow-stat ok';}
-  else{g('f_d').textContent='미적용';g('f_d').className='flow-stat na';}
-  var mx=W?W.thruput:AK?AK.thruput:D?D.thruput:0;
+// ─── ROW RESULT VALUES ───
+function updateRowRes(p,W,AK,D){
+  // A
+  setRes('r_itype',p.itype==='tray'?'트레이':'박스');
+  setRes('r_ch',p.ch+'채널');
+  setRes('r_iW',p.iW+'mm');setRes('r_iL',p.iL+'mm');setRes('r_iH',p.iH+'mm');
+  setRes('r_iqty',fmtN(p.iqty)+'개/h');
+  var dlvn=['경미','보통','중간','심함','극심'][p.dlv];
+  setRes('r_dlv',dlvn);
+  setRes('r_wP',fmtN(p.wP)+'원');setRes('r_eP',p.eP+'원');
+  // B washer
+  if(W){
+    setRes('r_zcnt',p.zcnt+'단 → 세척율기반 '+fmt(W.cr)+'%');
+    setRes('r_fmode',p.fmode==='2'||p.fmode===2?'2열 격벽':'1열 단열');
+    setRes('r_nP',fmt(W.pKW,2)+'kW/단');
+    setRes('r_nT',fmt(W.hKW,1)+'kW/단');
+    setRes('r_nH',W.nc+'×'+W.nr+'='+W.nF+'개/면');
+    setRes('r_zlen',fmt(W.dwell,1)+'s 체류',W.dwell>=30?'ok':'ng');
+    setRes('r_zdep',fmt(W.tVol,0)+'L/탱크');
+    setRes('r_pEff',fmt(W.totKW,2)+'kW 합계');
+    setRes('r_det',gck('ck_det')?'+'+fmt(p.det*1.1,1)+'점':'미사용','na');
+  }else{
+    ['r_zcnt','r_fmode','r_nP','r_nT','r_nH','r_zlen','r_zdep','r_pEff','r_det'].forEach(function(id){setRes(id,'미적용','na');});
+  }
+  // C AK
+  if(AK){
+    setRes('r_aks',fmt(AK.eta*100)+'% 제거');
+    setRes('r_ap',AK.fc===2?'양면':'단면');
+    setRes('r_hp',fmt(p.HP*0.7457,2)+'kW/대');
+    setRes('r_bpf',AK.blowers+'대 합계');
+    setRes('r_sg',fmt(AK.veff,1)+'m/s',AK.We>=12?'ok':'ng');
+    setRes('r_sw',fmt(Math.sin(p.sw*Math.PI/180)*100,0)+'%효율');
+    setRes('r_sa',fmt(Math.sin(p.sa*Math.PI/180)*100,0)+'%효율');
+    setRes('r_ad',fmt(AK.veff,1)+'m/s',AK.veff>=30?'ok':'ng');
+    setRes('r_iw',p.iw+'g');
+    setRes('r_tw',fmt(AK.Wn,1)+'g 잔류',AK.Wn<=p.tw?'ok':'ng');
+  }else{
+    ['r_aks','r_ap','r_hp','r_bpf','r_sg','r_sw','r_sa','r_ad','r_iw','r_tw'].forEach(function(id){setRes(id,'미적용','na');});
+  }
+  // D dryer
+  if(D){
+    setRes('r_dl',fmt(D.dwell,1)+'s 체류');
+    setRes('r_dw',fmt(D.vol,2)+'m³');
+    setRes('r_dh',fmt(D.totF,0)+'m³/h 총풍량');
+    setRes('r_dt',fmt(D.fanF,0)+'m³/h/대');
+    setRes('r_fc',fmt(D.fanKW,2)+'kW 합계');
+    setRes('r_ci',D.cs+'% 절감');
+    setRes('r_dht',fmt(D.effH,1)+'kW 유효');
+    setRes('r_deh',gck('ck_deh')?fmt(D.dehKW,2)+'kW':'미사용','na');
+  }else{
+    ['r_dl','r_dw','r_dh','r_dt','r_fc','r_ci','r_dht','r_deh'].forEach(function(id){setRes(id,'미적용','na');});
+  }
+  // E
+  setRes('r_oh',p.oh+'h/일');
+  setRes('r_od',p.od+'일/월');
+}
+
+function updateFlow(p,W,AK,D){
+  g('f_in').textContent=p.ch+'채널 '+p.iW+'×'+p.iL;
+  if(W){g('f_w').textContent=fmt(W.cr)+'%';g('f_w').className='fs '+(W.cr>=80?'ok':'ng');}
+  else{g('f_w').textContent='미적용';g('f_w').className='fs na';}
+  if(AK){g('f_a').textContent=fmt(AK.eta*100)+'%';g('f_a').className='fs '+(AK.eta>=0.6?'ok':'ng');}
+  else{g('f_a').textContent='미적용';g('f_a').className='fs na';}
+  if(D){g('f_d').textContent=fmt(D.dwell)+'s';g('f_d').className='fs ok';}
+  else{g('f_d').textContent='미적용';g('f_d').className='fs na';}
+  var mx=W?W.thru:AK?AK.thru:D?D.thru:0;
   g('f_out').textContent=fmtN(Math.min(p.iqty,mx))+'개/h';
 }
 
-// ─── RENDER KPI ───
-function renderKPI(p,W,AK,D){
-  if(W){
-    g('kv_clean').textContent=fmt(W.cr);
-    g('ks_clean').textContent=W.cr>=80?'✅ 목표달성':'⚠️ 조건 재검토';
-    g('kv_clean').style.color=W.cr>=80?'#2e7d32':'#e65100';
-    g('kv_dwell').textContent=fmt(W.dwell);
-    g('kv_dwell').style.color=W.dwell>=30?'#2e7d32':'#e65100';
-  }else{g('kv_clean').textContent='--';g('ks_clean').textContent='미적용';g('kv_dwell').textContent='--';}
-  if(AK){
-    g('kv_ak').textContent=fmt(AK.eta*100);
-    g('ks_ak').textContent=AK.We>=12?'✅ We≥12 수막파단':'⚠️ We부족';
-    g('kv_ak').style.color=AK.eta>=0.6?'#2e7d32':'#e65100';
-    g('kv_wrem').textContent=fmt(AK.Wn,1);
-    g('ks_wrem').textContent=AK.Wn<=p.tw?'✅ 목표 이하':'⚠️ '+fmt(p.tw)+'g 초과';
-    g('kv_wrem').style.color=AK.Wn<=p.tw?'#2e7d32':'#e65100';
-  }else{g('kv_ak').textContent='--';g('ks_ak').textContent='미적용';g('kv_wrem').textContent='--';g('ks_wrem').textContent='미적용';}
-  if(D){
-    g('kv_ddwell').textContent=fmt(D.dwell);
-    g('kv_qty').textContent=fmtN(Math.min(p.iqty,D.thruput));
-    g('ks_qty').textContent=D.thruput>=p.iqty?'✅ 목표충족':'⚠️ 목표미달';
-    g('kv_qty').style.color=D.thruput>=p.iqty?'#2e7d32':'#e65100';
-  }else{g('kv_ddwell').textContent='--';g('kv_qty').textContent='--';g('ks_qty').textContent='미적용';}
-}
-
-// ─── CHART COLORS ───
-var CW='#1565c0',CA='#00796b',CD='#6a1b9a',CO='#e65100';
-function opts(title){return{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},title:{display:false}},scales:{x:{ticks:{font:{size:10,family:'Noto Sans KR'}}},y:{ticks:{font:{size:10,family:'Noto Sans KR'}}}}};}
-function barCfg(labels,data,color,yLabel){
-  return{type:'bar',data:{labels,datasets:[{data,backgroundColor:data.map(function(){return color;}),borderRadius:3,borderSkipped:false}]},
-    options:{...opts(),plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:9}}},y:{title:{display:true,text:yLabel||'',font:{size:9}},ticks:{font:{size:9}}}}}};
-}
-function lineCfg(labels,datasets){
-  return{type:'line',data:{labels,datasets},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:datasets.length>1,labels:{font:{size:9},boxWidth:10}}},scales:{x:{ticks:{font:{size:9}}},y:{ticks:{font:{size:9}}}}}};
+function updateKPI(p,W,AK,D){
+  function sv(vid,v,sid,s,ok){g(vid).textContent=v;if(ok!==undefined)g(vid).style.color=ok?'var(--ok)':'var(--ng)';if(sid)g(sid).textContent=s;}
+  if(W){sv('kv_cr',fmt(W.cr),'ks_cr',W.cr>=80?'✅달성':'⚠️미달',W.cr>=80);sv('kv_dw',fmt(W.dwell),null,null,W.dwell>=30);}
+  else{sv('kv_cr','--','ks_cr','미적용');sv('kv_dw','--');}
+  if(AK){sv('kv_ak',fmt(AK.eta*100),'ks_ak',AK.We>=12?'We≥12✅':'We부족⚠️',AK.eta>=0.6);sv('kv_wr',fmt(AK.Wn,1),'ks_wr',AK.Wn<=p.tw?'✅목표이하':'⚠️초과',AK.Wn<=p.tw);}
+  else{sv('kv_ak','--','ks_ak','미적용');sv('kv_wr','--','ks_wr','미적용');}
+  if(D){sv('kv_dd',fmt(D.dwell));var mx=Math.min(p.iqty,D.thru);sv('kv_qt',fmtN(mx),'ks_qt',D.thru>=p.iqty?'✅충족':'⚠️미달',D.thru>=p.iqty);}
+  else{sv('kv_dd','--');sv('kv_qt','--','ks_qt','미적용');}
 }
 
 // ─── WASHER CHARTS ───
-function renderWasherCharts(p,W){
-  // 1. 기여 요소
+function drawWasher(p,W){
+  // 1. contrib
   if(W){
     var c=W.contrib;
-    var labels=['기본세척력','온도기여','압력기여','세척제','체류시간','오염페널티'];
-    var vals=[Math.max(0,c.base),Math.max(0,c.tempB),Math.max(0,c.pressB),Math.max(0,c.detB),Math.max(0,c.dwellB),Math.abs(Math.min(0,c.dirtP))];
-    var colors=[CW,'#e65100','#6a1b9a','#00796b','#558b2f','#c62828'];
-    mkChart('c_contrib',{type:'bar',data:{labels,datasets:[{data:vals,backgroundColor:colors,borderRadius:3}]},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:9}}},y:{title:{display:true,text:'기여 점수',font:{size:9}},ticks:{font:{size:9}}}}}});
-  }else{mkChart('c_contrib',barCfg(['N/A'],[0],CW,''));}
-
-  // 2. 컨베이어 속도 vs 세척율
-  var speeds=[0.5,1,1.5,2,2.5,3,4,5,6];
-  var cleanVals=speeds.map(function(s){
-    var pp=Object.assign({},p,{csW:s});
-    var r=calcWasherCR(pp);
-    return r;
-  });
-  var curIdx=speeds.findIndex(function(s){return Math.abs(s-p.csW)<0.3;})||4;
-  var bgs=speeds.map(function(s,i){return Math.abs(s-p.csW)<0.3?CO:CW+'99';});
-  mkChart('c_speed_clean',{type:'bar',data:{labels:speeds.map(function(s){return s+'m/min';}),datasets:[{data:cleanVals,backgroundColor:bgs,borderRadius:3}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},annotation:{}},scales:{x:{ticks:{font:{size:9}}},y:{min:0,max:100,title:{display:true,text:'세척율 %',font:{size:9}},ticks:{font:{size:9}}}}}});
-
-  // 3. 분사압 vs 펌프동력
-  var pressArr=[50,100,150,200,250,280,350,400,500];
-  var pumpArr=pressArr.map(function(pr){
-    var Cd=0.62,r2=(p.nHole/1000/2),A=Math.PI*r2*r2;
-    var dP=pr*1000;
-    var qNoz=Cd*A*Math.sqrt(2*dP/1000)*1000*60;
-    var fpc=(p.itype==='box')?4:2;
-    var nF=fpc*p.fmode;
+    var lbs=['기본세척력','온도','압력','세척제','체류시간','오염페널티'];
+    var vs=[Math.max(0,c.base),Math.max(0,c.tB),Math.max(0,c.prB),Math.max(0,c.detB),Math.max(0,c.dwB),Math.abs(Math.min(0,c.dP2))];
+    var cls=[CW,'#e65100','#6a1b9a',CA,'#558b2f','#c62828'];
+    mc('c_contrib',{type:'bar',data:{labels:lbs,datasets:[{data:vs,backgroundColor:cls,borderRadius:3}]},options:bOpt('점수')});
+  }
+  // 2. speed vs clean
+  var sp=[0.5,1,1.5,2,2.5,3,4,5,6];
+  var cv=sp.map(function(s){return calcWcr(p,s);});
+  var sbg=sp.map(function(s){return Math.abs(s-p.csW)<0.3?CO:CW+'88';});
+  mc('c_spd_cr',{type:'bar',data:{labels:sp.map(function(s){return s+'m/m';}),datasets:[{data:cv,backgroundColor:sbg,borderRadius:3}]},options:{...bOpt('%'),scales:{x:{ticks:{font:fnt}},y:{min:0,max:100,ticks:{font:fnt}}}}});
+  // 3. press vs pump kW
+  var pa=[50,100,150,200,250,280,350,500];
+  var pk=pa.map(function(pr){
+    var dP=pr*1000,Cd=0.62,r2=p.nH/1000/2,A=Math.PI*r2*r2;
+    var qN=Cd*A*Math.sqrt(2*dP/1000)*1000*60;
     var tgt=[150,120,100,80,60][p.dlv];
     var nc=Math.max(2,Math.round(p.iW/tgt)),nr=Math.max(2,Math.round(p.iH/tgt));
-    var qT=qNoz*nc*nr*nF;
-    var qm=qT/60/1000;
-    return qm*(dP)/(p.pEff/100)/1000*p.zcnt;
+    var fpc=(p.itype==='box')?4:2,totF=fpc*p.fmode;
+    return qN*nc*nr*totF/60/1000*dP/(p.pEff/100)/1000*p.zcnt;
   });
-  var pbgs=pressArr.map(function(pr){return Math.abs(pr-p.nPress)<30?CO:CW+'99';});
-  mkChart('c_press_pump',{type:'bar',data:{labels:pressArr.map(function(v){return v+'kPa';}),datasets:[{data:pumpArr,backgroundColor:pbgs,borderRadius:3}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:9}}},y:{title:{display:true,text:'펌프 동력 kW',font:{size:9}},ticks:{font:{size:9}}}}}});
-
-  // 4. 온도 vs 히터용량
-  var temps=[20,30,40,50,60,70,80,90];
-  var heatArr=temps.map(function(t){
-    var zwid=p.iW+200;
-    var tankVol=p.zlen*zwid*p.zdep*0.75/1e6;
-    return tankVol*4.18*(t-20)/3600*1.35*p.zcnt;
-  });
-  var tbgs=temps.map(function(t){return Math.abs(t-p.nTemp)<6?CO:CA+'99';});
-  mkChart('c_temp_heat',{type:'bar',data:{labels:temps.map(function(v){return v+'°C';}),datasets:[{data:heatArr,backgroundColor:tbgs,borderRadius:3}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:9}}},y:{title:{display:true,text:'히터 용량 kW',font:{size:9}},ticks:{font:{size:9}}}}}});
-}
-
-function calcWasherCR(p){
-  var Cd=0.62,r2=(p.nHole/1000/2),A=Math.PI*r2*r2;
-  var dP=p.nPress*1000;
-  var bases=[52,68,80,90];
-  var base=bases[Math.min(p.zcnt-1,3)];
-  var dirtP=[0,0,-3,-9,-18,-32][p.dlv]||0;
-  var tempB=Math.min(18,(p.nTemp-25)*0.36);
-  var pressB=Math.min(10,(p.nPress-100)*0.028);
-  var detB=gck('ck_det')?Math.min(12,p.det*1.1):0;
-  var totalLen=p.zlen*p.zcnt/1000;
-  var dwell=totalLen/(p.csW/60);
-  var dwellB=Math.min(8,(dwell-30)*0.05);
-  var spdP=Math.max(-14,-(p.csW-2)*2.5);
-  var tgt=[150,120,100,80,60][p.dlv];
-  var nc=Math.max(2,Math.round(p.iW/tgt)),nr=Math.max(2,Math.round(p.iH/tgt));
-  var gX=p.iW/(nc+1),gY=p.iH/(nr+1);
-  var sr=Math.tan(30*Math.PI/180)*100;
-  var covX=Math.min(p.iW,(nc-1)*gX+2*sr),covY=Math.min(p.iH,(nr-1)*gY+2*sr);
-  var cov=(covX/p.iW)*(covY/p.iH)*100;
-  var covF=0.6+0.4*(cov/100);
-  var cr=(base+dirtP+tempB+pressB+detB+dwellB+spdP)*covF;
-  return Math.max(5,Math.min(99.9,cr));
+  var pbg=pa.map(function(pr){return Math.abs(pr-p.nP)<30?CO:CW+'88';});
+  mc('c_press',{type:'bar',data:{labels:pa.map(function(v){return v+'kPa';}),datasets:[{data:pk,backgroundColor:pbg,borderRadius:3}]},options:bOpt('kW')});
+  // 4. temp vs heat
+  var ta=[20,30,40,50,60,70,80,90];
+  var tk=ta.map(function(t){var v=p.zlen*(p.iW+200)*p.zdep*0.75/1e6;return v*4.18*(t-20)/3600*1.35*p.zcnt;});
+  var tbg=ta.map(function(t){return Math.abs(t-p.nT)<6?CO:CA+'88';});
+  mc('c_temp',{type:'bar',data:{labels:ta.map(function(v){return v+'°C';}),datasets:[{data:tk,backgroundColor:tbg,borderRadius:3}]},options:bOpt('kW')});
 }
 
 // ─── AK CHARTS ───
-function renderAKCharts(p,AK){
-  // 1. 단수별 잔류수분
-  var stageArr=[1,2,3,4,5,6,7,8];
-  var wArr=stageArr.map(function(s){
-    var r=akPhysics(p.HP,p.bpf,p.sg,p.sw,p.sa,p.ad,parseInt(p.ch_count),p.fmode,p.iW,p.iH,p.iL,p.csA,s,p.akpos,p.iw);
-    return r.Wn;
-  });
-  var stgBgs=stageArr.map(function(s){return s===p.aks?CO:CA+'99';});
-  var twLine=stageArr.map(function(){return p.tw;});
-  mkChart('c_ak_stages',{type:'bar',data:{labels:stageArr.map(function(s){return s+'단';}),
-    datasets:[{data:wArr,backgroundColor:stgBgs,borderRadius:3,label:'잔류수분'},
-    {type:'line',data:twLine,borderColor:'red',borderDash:[4,3],borderWidth:1.5,pointRadius:0,label:'목표'}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{font:{size:9},boxWidth:10}}},scales:{x:{ticks:{font:{size:9}}},y:{title:{display:true,text:'잔류수분 g',font:{size:9}},ticks:{font:{size:9}}}}}});
-
-  // 2. 거리별 유효풍속
-  var distArr=[10,20,30,40,50,60,80,100,120,150,200];
-  var vArr=distArr.map(function(d){
-    var r=akPhysics(p.HP,p.bpf,p.sg,p.sw,p.sa,d,parseInt(p.ch_count),p.fmode,p.iW,p.iH,p.iL,p.csA,p.aks,p.akpos,p.iw);
-    return r.v_eff;
-  });
-  var dBgs=distArr.map(function(d){return Math.abs(d-p.ad)<10?CO:CA+'99';});
-  mkChart('c_ak_dist',{type:'bar',data:{labels:distArr.map(function(d){return d+'mm';}),datasets:[{data:vArr,backgroundColor:dBgs,borderRadius:3}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:9}}},y:{title:{display:true,text:'v_eff m/s',font:{size:9}},ticks:{font:{size:9}}}}}});
-
-  // 3. 슬릿간격 vs 풍속 & We
-  var slitArr=[0.5,0.8,1.0,1.5,2.0,2.5,3.0,3.5,4.0,5.0];
-  var vSlArr=slitArr.map(function(sg){
-    var r=akPhysics(p.HP,p.bpf,sg,p.sw,p.sa,p.ad,parseInt(p.ch_count),p.fmode,p.iW,p.iH,p.iL,p.csA,p.aks,p.akpos,p.iw);
-    return r.v_eff;
-  });
-  var weArr=slitArr.map(function(sg){
-    var r=akPhysics(p.HP,p.bpf,sg,p.sw,p.sa,p.ad,parseInt(p.ch_count),p.fmode,p.iW,p.iH,p.iL,p.csA,p.aks,p.akpos,p.iw);
-    return r.We;
-  });
-  mkChart('c_ak_slit',{type:'line',data:{labels:slitArr.map(function(v){return v+'mm';}),
-    datasets:[{data:vSlArr,borderColor:CA,borderWidth:2,label:'v_eff(m/s)',tension:0.3,pointRadius:3},
-    {data:weArr,borderColor:CO,borderWidth:2,label:'We(×0.1표시)',tension:0.3,yAxisID:'y2',pointRadius:3}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{font:{size:9},boxWidth:10}}},
-    scales:{x:{ticks:{font:{size:9}}},y:{title:{display:true,text:'v_eff m/s',font:{size:9}},ticks:{font:{size:9}}},y2:{position:'right',title:{display:true,text:'We',font:{size:9}},ticks:{font:{size:9}},grid:{drawOnChartArea:false}}}}});
-
-  // 4. 마력별 총전력
-  var hpArr=[0.5,1,2,3,5,7.5,10,15];
-  var kwArr=hpArr.map(function(hp){
-    var r=akPhysics(hp,p.bpf,p.sg,p.sw,p.sa,p.ad,parseInt(p.ch_count),p.fmode,p.iW,p.iH,p.iL,p.csA,p.aks,p.akpos,p.iw);
-    return r.totalKW;
-  });
-  var hpBgs=hpArr.map(function(hp){return Math.abs(hp-p.HP)<0.3?CO:CA+'99';});
-  mkChart('c_ak_hp',{type:'bar',data:{labels:hpArr.map(function(v){return v+'HP';}),datasets:[{data:kwArr,backgroundColor:hpBgs,borderRadius:3}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:9}}},y:{title:{display:true,text:'총 전력 kW',font:{size:9}},ticks:{font:{size:9}}}}}});
+function drawAK(p,AK){
+  var sa=[1,2,3,4,5,6,7,8];
+  var sw=sa.map(function(s){return akP(p.HP,p.bpf,p.sg,p.sw,p.sa,p.ad,p.iW,p.iH,p.iL,p.csA,s,p.akpos,p.iw).Wn;});
+  var tl=sa.map(function(){return p.tw;});
+  var sbg=sa.map(function(s){return s===p.aks?CO:CA+'88';});
+  mc('c_ak_stg',{type:'bar',data:{labels:sa.map(function(s){return s+'단';}),datasets:[{data:sw,backgroundColor:sbg,borderRadius:3,label:'잔류수분'},{type:'line',data:tl,borderColor:'red',borderDash:[4,3],borderWidth:1.5,pointRadius:0,label:'목표'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{font:fnt,boxWidth:8}}},scales:{x:{ticks:{font:fnt}},y:{ticks:{font:fnt}}}}});
+  var da=[10,20,30,40,50,60,80,100,150,200];
+  var dv=da.map(function(d){return akP(p.HP,p.bpf,p.sg,p.sw,p.sa,d,p.iW,p.iH,p.iL,p.csA,p.aks,p.akpos,p.iw).veff;});
+  var dbg=da.map(function(d){return Math.abs(d-p.ad)<10?CO:CA+'88';});
+  mc('c_ak_d',{type:'bar',data:{labels:da.map(function(d){return d+'mm';}),datasets:[{data:dv,backgroundColor:dbg,borderRadius:3}]},options:bOpt('m/s')});
+  var sl=[0.5,0.8,1.0,1.5,2.0,2.5,3.0,4.0,5.0];
+  var sv2=sl.map(function(s){return akP(p.HP,p.bpf,s,p.sw,p.sa,p.ad,p.iW,p.iH,p.iL,p.csA,p.aks,p.akpos,p.iw).veff;});
+  var we=sl.map(function(s){return akP(p.HP,p.bpf,s,p.sw,p.sa,p.ad,p.iW,p.iH,p.iL,p.csA,p.aks,p.akpos,p.iw).We;});
+  mc('c_ak_sl',{type:'line',data:{labels:sl.map(function(v){return v+'mm';}),datasets:[{data:sv2,borderColor:CA,borderWidth:2,label:'v_eff(m/s)',tension:0.3,pointRadius:3},{data:we,borderColor:CO,borderWidth:2,label:'We',tension:0.3,yAxisID:'y2',pointRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{font:fnt,boxWidth:8}}},scales:{x:{ticks:{font:fnt}},y:{ticks:{font:fnt}},y2:{position:'right',ticks:{font:fnt},grid:{drawOnChartArea:false}}}}});
+  var ha=[0.5,1,2,3,5,7.5,10,15];
+  var hk=ha.map(function(hp){return akP(hp,p.bpf,p.sg,p.sw,p.sa,p.ad,p.iW,p.iH,p.iL,p.csA,p.aks,p.akpos,p.iw).totKW;});
+  var hbg=ha.map(function(hp){return Math.abs(hp-p.HP)<0.3?CO:CA+'88';});
+  mc('c_ak_hp',{type:'bar',data:{labels:ha.map(function(v){return v+'HP';}),datasets:[{data:hk,backgroundColor:hbg,borderRadius:3}]},options:bOpt('kW')});
 }
 
 // ─── DRYER CHARTS ───
-function renderDryerCharts(p,D){
-  // 1. 온도별 순환횟수 & 팬풍량
-  var tArr=[40,50,60,70,80,90,100];
-  var cycArr=tArr.map(function(t){return t<=40?35:t<=50?45:55;});
-  var flowArr=tArr.map(function(t){
-    var vol=p.dl*p.dw*p.dh/1e9;
-    var cr=t<=40?35:t<=50?45:55;
-    return vol*cr*1.15*1.1/p.fc;
-  });
-  mkChart('c_dry_temp',{type:'line',data:{labels:tArr.map(function(t){return t+'°C';}),
-    datasets:[{data:cycArr,borderColor:CD,borderWidth:2,label:'순환횟수(회/h)',tension:0.3,pointRadius:3},
-    {data:flowArr,borderColor:CO,borderWidth:2,label:'팬1대 풍량(m³/h)',tension:0.3,yAxisID:'y2',pointRadius:3}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{font:{size:9},boxWidth:10}}},
-    scales:{x:{ticks:{font:{size:9}}},y:{title:{display:true,text:'순환횟수',font:{size:9}},ticks:{font:{size:9}}},y2:{position:'right',title:{display:true,text:'팬 풍량',font:{size:9}},ticks:{font:{size:9}},grid:{drawOnChartArea:false}}}}});
-
-  // 2. 속도별 체류시간 & 처리량
-  var sArr=[0.5,1,1.5,2,2.5,3,4,5,6];
-  var dwArr=sArr.map(function(s){return(p.dl/1000)/(s/60);});
-  var thArr=sArr.map(function(s){return(s/(p.iL/1000))*60*p.fmode;});
-  mkChart('c_dry_speed',{type:'line',data:{labels:sArr.map(function(s){return s+'m/m';}),
-    datasets:[{data:dwArr,borderColor:CD,borderWidth:2,label:'체류시간(s)',tension:0.3,pointRadius:3},
-    {data:thArr,borderColor:CA,borderWidth:2,label:'처리량(개/h)',tension:0.3,yAxisID:'y2',pointRadius:3}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{font:{size:9},boxWidth:10}}},
-    scales:{x:{ticks:{font:{size:9}}},y:{title:{display:true,text:'체류시간 s',font:{size:9}},ticks:{font:{size:9}}},y2:{position:'right',title:{display:true,text:'처리량 개/h',font:{size:9}},ticks:{font:{size:9}},grid:{drawOnChartArea:false}}}}});
-
-  // 3. 순환율별 히터절감
-  var circArr=['비순환\n0%','50%\n순환','전량\n100%'];
-  var saveArr=[0,22,45];
-  var effArr=saveArr.map(function(s){return p.dht*(1-s/100);});
-  mkChart('c_dry_circ',{type:'bar',data:{labels:['비순환 0%','50% 순환','전량 순환'],
-    datasets:[{data:effArr,backgroundColor:[CD+'cc',CD,CO],borderRadius:3,label:'유효 히터(kW)'}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:9}}},y:{title:{display:true,text:'유효 히터 kW',font:{size:9}},ticks:{font:{size:9}}}}}});
-
-  // 4. 전력 구성
-  if(D){
-    var labels2=['팬 전력','히터','제습기'];
-    var vals2=[D.fanKW,D.effHeat,D.dehumKW];
-    var colors2=[CD,CO,'#f57c00'];
-    mkChart('c_dry_power',{type:'doughnut',data:{labels:labels2,datasets:[{data:vals2,backgroundColor:colors2,borderWidth:1}]},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'bottom',labels:{font:{size:9},boxWidth:10}}}}});
-  }
+function drawDryer(p,D){
+  var ta=[40,50,60,70,80,90,100];
+  var ff=ta.map(function(t){var vol=p.dl*p.dw*p.dh/1e9,cr=t<=40?35:t<=50?45:55;return vol*cr*1.15*1.1/p.fc;});
+  mc('c_dry_t',{type:'bar',data:{labels:ta.map(function(t){return t+'°C';}),datasets:[{data:ff,backgroundColor:ta.map(function(t){return Math.abs(t-p.dt)<6?CO:CD+'88';}),borderRadius:3}]},options:bOpt('m³/h')});
+  var sp=[0.5,1,1.5,2,2.5,3,4,5,6];
+  var dw=sp.map(function(s){return(p.dl/1000)/(s/60);});
+  var th=sp.map(function(s){return(s/(p.iL/1000))*60*p.fmode;});
+  mc('c_dry_s',{type:'line',data:{labels:sp.map(function(s){return s+'m/m';}),datasets:[{data:dw,borderColor:CD,borderWidth:2,label:'체류(s)',tension:0.3,pointRadius:3},{data:th,borderColor:CA,borderWidth:2,label:'처리량',tension:0.3,yAxisID:'y2',pointRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{font:fnt,boxWidth:8}}},scales:{x:{ticks:{font:fnt}},y:{ticks:{font:fnt}},y2:{position:'right',ticks:{font:fnt},grid:{drawOnChartArea:false}}}}});
+  var sv=[0,22,45];
+  var eh=sv.map(function(s){return p.dht*(1-s/100);});
+  mc('c_dry_c',{type:'bar',data:{labels:['비순환','50%순환','전량순환'],datasets:[{data:eh,backgroundColor:[CD+'88',CD,CO],borderRadius:3}]},options:bOpt('kW')});
+  if(D){mc('c_dry_p',{type:'doughnut',data:{labels:['팬','히터','제습기'],datasets:[{data:[D.fanKW,D.effH,D.dehKW],backgroundColor:[CD,CO,'#f57c00'],borderWidth:1}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'bottom',labels:{font:fnt,boxWidth:8}}}}});}
 }
 
 // ─── SUM TABLE ───
-function renderSum(p,W,AK,D){
-  var wKW=W?W.totalKW:0,aKW=AK?AK.totalKW:0,dKW=D?D.totalKW:0;
-  var wW=W?W.waterLph:0,aW=0,dW=D&&gck('ck_deh')?p.deh:0;
-  var totKW=wKW+aKW+dKW,totW=wW+aW+dW;
+function updateSum(p,W,AK,D){
+  var wKW=W?W.totKW:0,aKW=AK?AK.totKW:0,dKW=D?D.totKW:0;
+  var wW=W?W.waterLph:0,dW=D?D.waterLph:0,tot=wKW+aKW+dKW;
   g('sum_tb').innerHTML=
     '<tr><td><span class="bw">세척기</span></td><td>'+fmt(wKW,2)+'</td><td>'+fmt(wW,1)+'</td></tr>'+
     '<tr><td><span class="ba">에어나이프</span></td><td>'+fmt(aKW,2)+'</td><td>0</td></tr>'+
     '<tr><td><span class="bd">건조기</span></td><td>'+fmt(dKW,2)+'</td><td>'+fmt(dW,1)+'</td></tr>'+
-    '<tr class="tot"><td><strong>합계</strong></td><td>'+fmt(totKW,2)+' kW</td><td>'+fmt(totW,1)+' L/h</td></tr>';
-
-  // power pie
-  var pLabels=['세척기','에어나이프','건조기'];
-  var pVals=[wKW,aKW,dKW];
-  mkChart('c_power_pie',{type:'doughnut',data:{labels:pLabels,datasets:[{data:pVals,backgroundColor:[CW,CA,CD],borderWidth:1}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'bottom',labels:{font:{size:9},boxWidth:10}}}}});
+    '<tr class="tot"><td>합계</td><td>'+fmt(tot,2)+' kW</td><td>'+fmt(wW+dW,1)+' L/h</td></tr>';
+  mc('c_pie',{type:'doughnut',data:{labels:['세척기','에어나이프','건조기'],datasets:[{data:[wKW,aKW,dKW],backgroundColor:[CW,CA,CD],borderWidth:1}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'bottom',labels:{font:fnt,boxWidth:8}}}}});
 }
 
 // ─── MOTORS ───
-function renderMotors(M){
-  var bmap={w:'bw',a:'ba',d:'bd'};
-  g('mot_tb').innerHTML=M.map(function(m){
-    return '<tr><td><span class="'+bmap[m.tag]+'">'+m.name+'</span></td>'+
-      '<td>'+fmt(m.spd,1)+' m/min</td><td>'+fmt(m.len,1)+' m</td>'+
-      '<td>'+fmt(m.P_des,3)+' kW</td>'+
-      '<td><span class="mot-rec">'+m.rec+' kW</span></td>'+
-      '<td style="font-size:10px;color:var(--t3)">부하×1.5, 안전×1.2</td></tr>';
-  }).join('');
+function updateMotors(p,W,AK,D){
+  var rows=[];
+  if(W){var m=motorRec(p.zlen*p.zcnt/1000,p.csW,p.iW,p.iL,p.iH);rows.push('<tr><td><span class="bw">세척기</span></td><td>'+fmt(p.csW,1)+'m/m</td><td>'+fmt(m.Pd,3)+'kW</td><td><span class="mr">'+m.rec+'kW</span></td></tr>');}
+  if(AK){var m2=motorRec(Math.max(1,p.iL/1000*p.aks*2),p.csA,p.iW,p.iL,p.iH);rows.push('<tr><td><span class="ba">에어나이프</span></td><td>'+fmt(p.csA,1)+'m/m</td><td>'+fmt(m2.Pd,3)+'kW</td><td><span class="mr">'+m2.rec+'kW</span></td></tr>');}
+  if(D){var m3=motorRec(p.dl/1000,p.csD,p.iW,p.iL,p.iH);rows.push('<tr><td><span class="bd">건조기</span></td><td>'+fmt(p.csD,1)+'m/m</td><td>'+fmt(m3.Pd,3)+'kW</td><td><span class="mr">'+m3.rec+'kW</span></td></tr>');}
+  g('mot_tb').innerHTML=rows.join('');
 }
 
 // ─── COST ───
-function renderCost(p,W,AK,D){
-  var totKW=(W?W.totalKW:0)+(AK?AK.totalKW:0)+(D?D.totalKW:0);
-  var totW=(W?W.waterLph:0)+(D&&gck('ck_deh')?p.deh:0);
-  var wCostM=totW*p.oh*p.od/1000*p.waterPrice;
-  var eCostM=totKW*p.oh*p.od*p.elecPrice;
-  var totM=wCostM+eCostM;
-  g('cv_wm').textContent=fmt(totW*p.oh*p.od/1000,1);
-  g('cv_em').textContent=fmtN(Math.round(totKW*p.oh*p.od));
-  g('cv_wc').textContent=fmtN(Math.round(wCostM));
-  g('cv_ec').textContent=fmtN(Math.round(eCostM));
-  g('cv_tot').textContent=fmtN(Math.round(totM));
-  mkChart('c_cost',{type:'bar',data:{labels:['수도요금','전기요금'],datasets:[{data:[Math.round(wCostM),Math.round(eCostM)],backgroundColor:['#1565c0','#e65100'],borderRadius:4}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:9}}},y:{ticks:{font:{size:9},callback:function(v){return fmtN(v)+'원';}}}}}});
+function updateCost(p,W,AK,D){
+  var totKW=(W?W.totKW:0)+(AK?AK.totKW:0)+(D?D.totKW:0);
+  var totW=(W?W.waterLph:0)+(D?D.waterLph:0);
+  var wCm=totW*p.oh*p.od/1000*p.wP;
+  var eCm=totKW*p.oh*p.od*p.eP;
+  g('cv_wc').textContent=fmtN(Math.round(wCm));
+  g('cv_ec').textContent=fmtN(Math.round(eCm));
+  g('cv_tot').textContent=fmtN(Math.round(wCm+eCm));
 }
 
 // ─── PARTS ───
-function renderParts(p,W,AK,D,M){
+function updateParts(p,W,AK,D){
   var rows=[];
   if(W){
-    rows.push(['세척기','워터 펌프',fmt(W.pumpKW,2)+'kW / '+fmt(W.pumpHP,2)+'HP',p.zcnt+'대','단당 1대']);
-    rows.push(['세척기','분사 노즐','Ø'+p.nHole+'mm',W.nFace+'개/면 × '+W.totalF+'면','오리피스형']);
-    rows.push(['세척기','전기 히터',fmt(W.heatKW,1)+'kW/단',p.zcnt+'단','침수형 SUS304']);
-    rows.push(['세척기','세척조 탱크',p.zlen+'×'+W.zwid+'×'+p.zdep+'mm',p.zcnt+'개',fmt(W.tankVol,0)+'L/개']);
+    rows.push(['세척기','워터 펌프',fmt(W.pKW,2)+'kW/'+fmt(W.pKW*1.341,2)+'HP',p.zcnt+'대','단당 1대']);
+    rows.push(['세척기','분사 노즐','Ø'+p.nH+'mm',W.nF+'개/면×'+W.totF+'면','오리피스형']);
+    rows.push(['세척기','전기 히터',fmt(W.hKW,1)+'kW/단',p.zcnt+'단',fmt(W.tVol,0)+'L 탱크']);
   }
   if(AK){
-    rows.push(['에어나이프','링블로어',p.HP+'HP ('+fmt(p.HP*0.7457,2)+'kW)',AK.blowers+'대','정격압 200mmAq']);
-    rows.push(['에어나이프','에어나이프 본체',p.iW+'mm',p.aks+'단×'+AK.faceC+'면','슬릿 '+p.sg+'mm']);
+    rows.push(['에어나이프','링블로어',p.HP+'HP/'+fmt(p.HP*0.7457,2)+'kW',AK.blowers+'대','슬릿 '+p.sg+'mm']);
+    rows.push(['에어나이프','AK 본체',p.iW+'mm 길이',p.aks+'단×'+AK.fc+'면','정격압 200mmAq']);
   }
   if(D){
     rows.push(['건조기','시로코팬',fmt(D.mKW,2)+'kW/대',p.fc+'대','총 '+fmt(D.fanKW,2)+'kW']);
-    rows.push(['건조기','전기 히터',p.dht+'kW','1식','유효 '+fmt(D.effHeat,1)+'kW (순환절감 '+D.circSave+'%)']);
-    rows.push(['건조기','건조 챔버',p.dl+'×'+p.dw+'×'+p.dh+'mm','1식','체적 '+fmt(D.vol,2)+'m³']);
-    if(gck('ck_deh'))rows.push(['건조기','제습기',p.deh+'L/h','1대',fmt(D.dehumKW,2)+'kW']);
+    rows.push(['건조기','전기 히터',p.dht+'kW','1식','유효 '+fmt(D.effH,1)+'kW']);
+    rows.push(['건조기','건조 챔버',p.dl+'×'+p.dw+'×'+p.dh+'mm','1식',fmt(D.vol,2)+'m³']);
+    if(gck('ck_deh'))rows.push(['건조기','제습기',p.deh+'L/h','1대',fmt(D.dehKW,2)+'kW']);
   }
-  M.forEach(function(m){
-    var bmap={w:'세척기',a:'에어나이프',d:'건조기'};
-    rows.push([bmap[m.tag]+' 컨베이어','체인 구동모터',m.rec+'kW','1대',fmt(m.spd,1)+'m/min 기준']);
-  });
-  var bmap2={세척기:'bw',에어나이프:'ba',건조기:'bd'};
+  var bm={'세척기':'bw','에어나이프':'ba','건조기':'bd'};
   g('parts_tb').innerHTML=rows.map(function(r,i){
-    var seg=r[0].replace(' 컨베이어','');
-    var bc=bmap2[seg]||'bw';
-    return '<tr style="background:'+(i%2?'#fafafa':'#fff')+'"><td><span class="'+bc+'" style="font-size:10px">'+r[0]+'</span></td>'+
-      '<td>'+r[1]+'</td><td>'+r[2]+'</td><td style="text-align:center">'+r[3]+'</td><td style="color:var(--t3)">'+r[4]+'</td></tr>';
+    return '<tr style="background:'+(i%2?'#fafafa':'#fff')+'"><td><span class="'+bm[r[0]]+'">'+r[0]+'</span></td><td>'+r[1]+'</td><td>'+r[2]+'</td><td style="text-align:center">'+r[3]+'</td><td style="color:var(--t3)">'+r[4]+'</td></tr>';
   }).join('');
 }
 
 // ─── RECS ───
-function renderRecs(p,W,AK,D){
-  var recs=[];
-  if(W&&W.cr<80)recs.push({c:'al-w',t:'⚠️ 세척율 '+fmt(W.cr)+'% — 온도 상승 또는 단수 증가로 80% 이상 목표 확보 권장'});
-  if(W&&W.dwell<30)recs.push({c:'al-w',t:'⚠️ 세척 체류시간 '+fmt(W.dwell)+'s — 세척조 길이 연장 또는 컨베이어 속도 감소 검토'});
-  if(AK&&AK.We<12)recs.push({c:'al-w',t:'⚠️ We='+fmt(AK.We,1)+' (기준 12 미달) — 슬릿 간격 축소 또는 브로어 마력 상향 필요'});
-  if(AK&&AK.Wn>p.tw)recs.push({c:'al-w',t:'⚠️ AK 후 잔류수분 '+fmt(AK.Wn,1)+'g — 목표 '+p.tw+'g 미달, 단수 증가(최소 '+AK.n_min+'단) 권장'});
-  if(D&&D.thruput<p.iqty)recs.push({c:'al-w',t:'⚠️ 처리량 '+fmtN(D.thruput)+'개/h — 목표 '+fmtN(p.iqty)+'개/h 미달, 속도 상향 또는 채널 추가 검토'});
-  if(recs.length===0)recs.push({c:'al-ok',t:'✅ 모든 설계 조건이 권장 범위 내에 있습니다.'});
-  g('recs').innerHTML=recs.map(function(r){return '<div class="alert '+r.c+'">'+r.t+'</div>';}).join('');
+function updateRecs(p,W,AK,D){
+  var rs=[];
+  if(W&&W.cr<80)rs.push({c:'al-w',t:'⚠️ 세척율 '+fmt(W.cr)+'% — 온도 상승 또는 단수 증가로 80% 이상 권장'});
+  if(W&&W.dwell<30)rs.push({c:'al-w',t:'⚠️ 세척 체류시간 '+fmt(W.dwell)+'s — 세척조 길이 연장 또는 속도 감소 검토'});
+  if(AK&&AK.We<12)rs.push({c:'al-w',t:'⚠️ We='+fmt(AK.We,1)+' (기준 12 미달) — 슬릿 간격 축소 또는 브로어 마력 상향'});
+  if(AK&&AK.Wn>p.tw)rs.push({c:'al-w',t:'⚠️ AK 후 잔류수분 '+fmt(AK.Wn,1)+'g — 목표 '+p.tw+'g 미달, 단수 증가 권장'});
+  if(D&&D.thru<p.iqty)rs.push({c:'al-w',t:'⚠️ 처리량 '+fmtN(D.thru)+'개/h — 목표 미달, 속도 상향 또는 채널 추가 검토'});
+  if(rs.length===0)rs.push({c:'al-ok',t:'✅ 모든 설계 조건이 권장 범위 내에 있습니다.'});
+  g('recs').innerHTML=rs.map(function(r){return '<div class="al '+r.c+'">'+r.t+'</div>';}).join('');
 }
 
 // ─── INIT ───
 window.addEventListener('DOMContentLoaded',function(){
-  // init bar fills
   var inits={iW:[100,2000],iL:[100,2000],iH:[5,500],iqty:[10,5000],
-    nPress:[50,500],nTemp:[20,90],nHole:[1,5],pEff:[50,95],zlen:[300,3000],zdep:[200,1200],det:[0,20],
+    nP:[50,500],nT:[20,90],nH:[1,5],pEff:[50,95],zlen:[300,3000],zdep:[200,1200],det:[0,20],
     sg:[0.5,5],sw:[0,30],sa:[0,60],ad:[10,200],iw:[1,2000],tw:[0,500],
     dl:[500,15000],dw:[300,3000],dh:[200,2000],dt:[30,100],dht:[1,200],deh:[0,200],
     oh:[1,24],od:[1,31]};
   Object.keys(inits).forEach(function(id){
-    var r=inits[id],el=document.getElementById(id);
-    if(!el)return;
-    bi(id,r[0],r[1]);
+    var r=inits[id],el=g(id);if(!el)return;
+    var v=parseFloat(el.value)||0,mn=r[0],mx=r[1];
+    var bf=g('bf_'+id);if(bf)bf.style.width=((v-mn)/(mx-mn)*100)+'%';
   });
-  runSim();
+  run();
 });
 </script>
 </body>
