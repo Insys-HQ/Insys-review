@@ -3,10 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>인시스 그룹 견적 작성 시스템 v4.4</title>
+<title>인시스 그룹 견적 작성 시스템 v4.5</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <!-- Firebase SDK는 body 끝에서 로딩 (타이밍 문제 방지) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- xlsx-js-style: 셀 서식(색상·테두리·병합) 지원 SheetJS 포크 -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
@@ -363,7 +364,7 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
       <button class="btn btn-ghost btn-sm" onclick="openCoSelector()" id="nav-co-btn">
         🏢 <span id="nav-co-name">사업자 선택</span>
       </button>
-      <div class="nav-ver">v4.4</div>
+      <div class="nav-ver">v4.5</div>
     </div>
   </div>
 </nav>
@@ -1895,85 +1896,197 @@ async function exportPDF(){
   }
 }
 
-// ── Excel 출력: 미리보기와 동일한 컬럼 구성 ──
+// ── Excel 출력: 미리보기/PDF와 동일한 견적서 레이아웃 ──
 function exportExcel(){
   const d = previewData || collectQuoteData();
   if(!d){ toast('견적 유형을 먼저 선택하세요.','error'); return; }
   const co   = d.co;
   const tmpl = QTYPES[d.qtype] || QTYPES.forklift;
   const cols = tmpl.printThead || tmpl.thead;
-  const wb   = XLSX.utils.book_new();
+  const N    = cols.length;
 
-  // 미리보기 행 → Excel 배열 (printRowHTML과 동일 순서)
+  // ── 스타일 정의 (미리보기 색상과 동일) ──
+  const BLUE = '1A5FAD', LIGHT = 'DBEAFE', SOFT = 'F0F4FF', GRAY = '5A6A7A', DARK = '1E2D3D';
+  const bd = (c='DDE3EA')=>({ style:'thin', color:{rgb:c} });
+  const BOX = { top:bd(), bottom:bd(), left:bd(), right:bd() };
+
+  const S = {
+    coName : { font:{name:'맑은 고딕',sz:16,bold:true,color:{rgb:BLUE}}, alignment:{vertical:'center'} },
+    title  : { font:{name:'맑은 고딕',sz:20,bold:true,color:{rgb:'1A2E4A'}}, alignment:{horizontal:'right',vertical:'center'} },
+    sub    : { font:{name:'맑은 고딕',sz:9,color:{rgb:GRAY}}, alignment:{vertical:'center',wrapText:true} },
+    subR   : { font:{name:'맑은 고딕',sz:9,color:{rgb:GRAY}}, alignment:{horizontal:'right',vertical:'center'} },
+    boxHd  : { font:{name:'맑은 고딕',sz:9,bold:true,color:{rgb:BLUE}},
+               fill:{fgColor:{rgb:'E8F0FB'}}, border:BOX, alignment:{vertical:'center'} },
+    boxTxt : { font:{name:'맑은 고딕',sz:10,color:{rgb:DARK}}, border:BOX, alignment:{vertical:'center',wrapText:true} },
+    boxBig : { font:{name:'맑은 고딕',sz:12,bold:true,color:{rgb:DARK}}, border:BOX, alignment:{vertical:'center'} },
+    th     : { font:{name:'맑은 고딕',sz:9,bold:true,color:{rgb:'FFFFFF'}},
+               fill:{fgColor:{rgb:BLUE}}, border:{top:bd(BLUE),bottom:bd(BLUE),left:bd(BLUE),right:bd(BLUE)},
+               alignment:{horizontal:'center',vertical:'center',wrapText:true} },
+    td     : { font:{name:'맑은 고딕',sz:9,color:{rgb:DARK}}, border:BOX,
+               alignment:{horizontal:'center',vertical:'center'} },
+    tdL    : { font:{name:'맑은 고딕',sz:9,color:{rgb:DARK}}, border:BOX,
+               alignment:{horizontal:'left',vertical:'center',wrapText:true} },
+    tdN    : { font:{name:'맑은 고딕',sz:9,color:{rgb:DARK}}, border:BOX,
+               alignment:{horizontal:'right',vertical:'center'}, numFmt:'#,##0' },
+    tdNb   : { font:{name:'맑은 고딕',sz:9,bold:true,color:{rgb:DARK}}, border:BOX,
+               alignment:{horizontal:'right',vertical:'center'}, numFmt:'#,##0' },
+    ftL    : { font:{name:'맑은 고딕',sz:10,bold:true,color:{rgb:BLUE}},
+               fill:{fgColor:{rgb:LIGHT}}, border:BOX, alignment:{horizontal:'right',vertical:'center'} },
+    ftN    : { font:{name:'맑은 고딕',sz:10,bold:true,color:{rgb:BLUE}},
+               fill:{fgColor:{rgb:LIGHT}}, border:BOX, alignment:{horizontal:'right',vertical:'center'}, numFmt:'#,##0' },
+    sumL   : { font:{name:'맑은 고딕',sz:10,bold:true,color:{rgb:DARK}},
+               fill:{fgColor:{rgb:SOFT}}, border:BOX, alignment:{horizontal:'right',vertical:'center'} },
+    sumV   : { font:{name:'맑은 고딕',sz:11,bold:true,color:{rgb:BLUE}},
+               fill:{fgColor:{rgb:SOFT}}, border:BOX, alignment:{horizontal:'right',vertical:'center'}, numFmt:'#,##0"원"' },
+    condHd : { font:{name:'맑은 고딕',sz:10,bold:true,color:{rgb:'1A2E4A'}}, alignment:{vertical:'center'} },
+    cond   : { font:{name:'맑은 고딕',sz:9,color:{rgb:GRAY}}, alignment:{vertical:'center',wrapText:true} },
+    sign   : { font:{name:'맑은 고딕',sz:11,bold:true,color:{rgb:DARK}}, alignment:{horizontal:'center',vertical:'center'} },
+    signSub: { font:{name:'맑은 고딕',sz:9,color:{rgb:GRAY}}, alignment:{horizontal:'center',vertical:'center'} },
+  };
+
+  // ── 시트 데이터 (2차원 배열, 셀 객체로) ──
+  const ws = {};
+  const merges = [];
+  let R = 0;
+  const setC = (r,c,v,st)=>{
+    const addr = XLSX.utils.encode_cell({r,c});
+    const isNum = (typeof v === 'number');
+    ws[addr] = { t: isNum?'n':'s', v: (v===undefined||v===null)?'':v, s: st||{} };
+  };
+  const blankRow = (r)=>{ for(let c=0;c<N;c++) setC(r,c,'',{}); };
+
+  // ① 발행사명 + 견적서 제목
+  setC(R,0, co.name||'(주)인시스', S.coName);
+  setC(R,N-4, d.qtTitle, S.title);
+  merges.push({s:{r:R,c:0},e:{r:R,c:N-5}}, {s:{r:R,c:N-4},e:{r:R,c:N-1}});
+  R++;
+
+  // ② 발행사 상세 + 견적번호
+  setC(R,0, `사업자번호: ${co.bizno||'–'}  |  대표이사: ${co.ceo||'–'}  |  대표전화: ${co.phone||'–'}  |  팩스: ${co.fax||'–'}`, S.sub);
+  setC(R,N-4, `[${d.qtypeLabel}]  견적번호: ${d.qtNo}`, S.subR);
+  merges.push({s:{r:R,c:0},e:{r:R,c:N-5}}, {s:{r:R,c:N-4},e:{r:R,c:N-1}});
+  R++;
+  setC(R,0, `주소: ${co.addr||'–'}  |  업태: ${co.biz||'–'}  |  종목: ${co.item||'–'}`, S.sub);
+  setC(R,N-4, `작성일: ${d.qtDate}`, S.subR);
+  merges.push({s:{r:R,c:0},e:{r:R,c:N-5}}, {s:{r:R,c:N-4},e:{r:R,c:N-1}});
+  R++;
+  setC(R,0, `담당: ${co.manager||'–'}  |  휴대폰: ${co.tel||'–'}  |  이메일: ${co.email||'–'}${co.tel2?'  |  세금계산서: '+co.tel2:''}`, S.sub);
+  merges.push({s:{r:R,c:0},e:{r:R,c:N-1}});
+  R++;
+  blankRow(R); R++;
+
+  // ③ 수신처 / 견적조건 박스
+  const half = Math.floor(N/2);
+  setC(R,0,'수신처',S.boxHd); setC(R,half,'견적 조건',S.boxHd);
+  for(let c=1;c<half;c++) setC(R,c,'',S.boxHd);
+  for(let c=half+1;c<N;c++) setC(R,c,'',S.boxHd);
+  merges.push({s:{r:R,c:0},e:{r:R,c:half-1}}, {s:{r:R,c:half},e:{r:R,c:N-1}});
+  R++;
+
+  const L = [
+    `${d.custName} 귀중`,
+    `담당자: ${d.custContact||'–'}`,
+    `주소: ${d.custAddr||'–'}`,
+  ];
+  const Rt = [
+    `유효기간: ${d.qtValid||'–'}   |   계약기간: ${d.qtPeriod||'–'}`,
+    `결제조건: ${d.qtPayment||'–'}`,
+    `납기/시작: ${d.qtDelivery||'협의'}`,
+  ];
+  for(let i=0;i<3;i++){
+    setC(R,0, L[i], i===0?S.boxBig:S.boxTxt);
+    for(let c=1;c<half;c++) setC(R,c,'',i===0?S.boxBig:S.boxTxt);
+    setC(R,half, Rt[i], S.boxTxt);
+    for(let c=half+1;c<N;c++) setC(R,c,'',S.boxTxt);
+    merges.push({s:{r:R,c:0},e:{r:R,c:half-1}}, {s:{r:R,c:half},e:{r:R,c:N-1}});
+    R++;
+  }
+  blankRow(R); R++;
+
+  // ④ 명세 테이블 헤더
+  cols.forEach((h,c)=> setC(R,c,h,S.th));
+  R++;
+
+  // ⑤ 데이터 행 (printRowHTML과 동일 순서)
   const rowToArr = (item)=>{
-    const qty = item.qty || 1;
-    const total = item.unitPrice * qty;
+    const qty = item.qty||1, total = item.unitPrice*qty;
     switch(d.qtype){
-      case 'forklift':
-        return [item.no, item.code, item.desc, `${item.dept||''} ${item.mgr||''}`.trim()||'–',
-                item.spec, item.opts||'–', item.ins?'필요':'–', 1, item.unitPrice, total];
-      case 'building':
-        return [item.no, item.code, item.desc, item.spec, item.unit, item.unitPrice, qty, item.unit, total];
-      case 'washing':
-        return [item.no, item.code, item.desc, item.spec, item.method||'–', item.unit, item.unitPrice, qty, total];
-      case 'manpower':
-        return [item.no, item.code, item.desc, item.spec, item.shift||'–', '인/월', item.unitPrice, qty, total];
-      default:
-        return [item.no, item.desc, item.unitPrice, total];
+      case 'forklift': return [item.no,item.code,item.desc,`${item.dept||''} ${item.mgr||''}`.trim()||'–',
+                               item.spec,item.opts||'–',item.ins?'필요':'–',1,item.unitPrice,total];
+      case 'building': return [item.no,item.code,item.desc,item.spec,item.unit,item.unitPrice,qty,item.unit,total];
+      case 'washing' : return [item.no,item.code,item.desc,item.spec,item.method||'–',item.unit,item.unitPrice,qty,total];
+      case 'manpower': return [item.no,item.code,item.desc,item.spec,item.shift||'–','인/월',item.unitPrice,qty,total];
+      default        : return [item.no,item.desc,item.unitPrice,total];
     }
   };
+  d.rows.forEach(item=>{
+    const arr = rowToArr(item);
+    arr.forEach((v,c)=>{
+      let st = S.td;
+      if(typeof v === 'number' && c >= N-2) st = (c===N-1) ? S.tdNb : S.tdN;
+      else if(typeof v === 'string' && v.length > 6) st = S.tdL;
+      setC(R,c,v,st);
+    });
+    R++;
+  });
 
-  const data = [
-    [d.qtTitle],
-    [`[${d.qtypeLabel}]`],
-    [''],
-    ['발행사',   co.name||'–',    '', '사업자번호', co.bizno||'–',   '', '대표이사', co.ceo||'–'],
-    ['주소',     co.addr||'–',    '', '대표전화',   co.phone||'–',   '', '팩스',     co.fax||'–'],
-    ['담당자',   co.manager||'–', '', '휴대폰',     co.tel||'–',     '', '이메일',   co.email||'–'],
-    [''],
-    ['수신처',   d.custName,      '', '담당자',     d.custContact||'–', '', '주소',  d.custAddr||'–'],
-    ['견적번호', d.qtNo,          '', '작성일',     d.qtDate,        '', '유효기간', d.qtValid||'–'],
-    ['계약기간', d.qtPeriod||'–', '', '결제조건',   d.qtPayment||'–','', '납기',    d.qtDelivery||'협의'],
-    [''],
-    cols,
-  ];
+  // ⑥ 합계 행 (테이블 내부)
+  for(let c=0;c<N-1;c++) setC(R,c, c===N-2?'합 계':'', S.ftL);
+  setC(R,N-1, d.supplyTotal, S.ftN);
+  merges.push({s:{r:R,c:0},e:{r:R,c:N-2}});
+  R++;
+  blankRow(R); R++;
 
-  d.rows.forEach(item => data.push(rowToArr(item)));
+  // ⑦ 합계 박스 (공급가/부가세/총계)
+  const sums = [['공급가 합계',d.supplyTotal],['부가세 (10%)',d.vat],['합계 (VAT포함)',d.grand]];
+  sums.forEach(([lab,val])=>{
+    for(let c=0;c<N-2;c++) setC(R,c,'',{});
+    setC(R,N-2, lab, S.sumL);
+    setC(R,N-1, val, S.sumV);
+    R++;
+  });
+  blankRow(R); R++;
 
-  const n = cols.length;
-  const pad = (label, val) => {
-    const r = Array(n).fill('');
-    r[n-2] = label; r[n-1] = val;
-    return r;
-  };
-  data.push(pad('공급가 합계',    d.supplyTotal));
-  data.push(pad('부가세 (10%)',   d.vat));
-  data.push(pad('합계 (VAT포함)', d.grand));
-  data.push(['']);
-  data.push(['▶ 계약 조건 및 특기사항']);
-  (d.conditions||[]).forEach((c,i)=> data.push([`${i+1}. ${c}`]));
+  // ⑧ 계약 조건
+  setC(R,0,'▶ 계약 조건 및 특기사항',S.condHd);
+  merges.push({s:{r:R,c:0},e:{r:R,c:N-1}}); R++;
+  (d.conditions||[]).forEach((c,i)=>{
+    setC(R,0, `${i+1}. ${c}`, S.cond);
+    merges.push({s:{r:R,c:0},e:{r:R,c:N-1}});
+    R++;
+  });
+  blankRow(R); R++;
 
-  const ws = XLSX.utils.aoa_to_sheet(data);
+  // ⑨ 서명란
+  setC(R,N-4,'위와 같이 견적을 제출합니다.',S.signSub);
+  merges.push({s:{r:R,c:N-4},e:{r:R,c:N-1}}); R++;
+  setC(R,N-4, `${co.name||'(주)인시스'}  대표이사 ${co.ceo||''}  (인)`, S.sign);
+  merges.push({s:{r:R,c:N-4},e:{r:R,c:N-1}}); R++;
 
-  // 컬럼 폭: printWidths 비율 반영
+  // ── 시트 마무리 ──
+  ws['!ref']    = XLSX.utils.encode_range({s:{r:0,c:0},e:{r:R,c:N-1}});
+  ws['!merges'] = merges;
   const W = tmpl.printWidths || [];
-  ws['!cols'] = cols.map((c,i)=>({ wch: W[i] ? Math.max(6, Math.round(W[i]*1.15)) : 12 }));
+  ws['!cols']   = cols.map((c,i)=>({ wch: W[i] ? Math.max(6, Math.round(W[i]*1.4)) : 13 }));
+  ws['!rows']   = [{hpt:26},{hpt:15},{hpt:15},{hpt:15},{hpt:6}];
 
-  // 제목 셀 병합
-  ws['!merges'] = [
-    { s:{r:0,c:0}, e:{r:0,c:n-1} },
-    { s:{r:1,c:0}, e:{r:1,c:n-1} },
-  ];
-
+  const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, '견적서');
 
-  // ── 원가분석 시트 (작성 중 견적일 때만) ──
+  // ── 원가분석 시트 (작성 중일 때만) ──
   if(!previewData && currentItems.length){
     const disc = +document.getElementById('mg-disc').value || 0;
-    const d2 = [
-      ['원가 분석 — '+d.qtypeLabel],[''],
-      ['코드','항목','시장원가','마진단가','견적단가','수량','마진액','마진율(%)']
-    ];
+    const ws2 = {};
+    const m2 = [];
+    let r2 = 0;
+    const set2 = (r,c,v,st)=>{
+      ws2[XLSX.utils.encode_cell({r,c})] = { t:(typeof v==='number')?'n':'s', v:v??'', s:st||{} };
+    };
+    set2(0,0,'원가 분석 — '+d.qtypeLabel, S.coName);
+    m2.push({s:{r:0,c:0},e:{r:0,c:7}});
+    r2 = 2;
+    ['코드','항목','시장원가','마진단가','견적단가','수량','마진액','마진율(%)'].forEach((h,c)=>set2(r2,c,h,S.th));
+    r2++;
     currentItems.forEach((item,i)=>{
       const cost = item.cost||0;
       const mp   = parseInt((document.getElementById(`c-mp-${i}`)?.textContent||'').replace(/[^0-9]/g,'')||0);
@@ -1981,16 +2094,19 @@ function exportExcel(){
       const up   = (uEl?.value && uEl.value!=='') ? +uEl.value : round100(mp*(1-disc/100));
       const qEl  = document.getElementById(`c-qty-${i}`);
       const qty  = qEl ? (+qEl.value||1) : 1;
-      d2.push([item.code, item.desc, cost, mp, up, qty, (up-cost)*qty,
-               cost>0 ? (((up-cost)/cost)*100).toFixed(1) : 0]);
+      const vals = [item.code, item.desc, cost, mp, up, qty, (up-cost)*qty,
+                    cost>0 ? +(((up-cost)/cost)*100).toFixed(1) : 0];
+      vals.forEach((v,c)=> set2(r2,c,v, (typeof v==='number' && c>=2) ? S.tdN : (c===1?S.tdL:S.td)));
+      r2++;
     });
-    const ws2 = XLSX.utils.aoa_to_sheet(d2);
-    ws2['!cols'] = [{wch:10},{wch:24},{wch:13},{wch:13},{wch:13},{wch:7},{wch:13},{wch:11}];
+    ws2['!ref']  = XLSX.utils.encode_range({s:{r:0,c:0},e:{r:r2,c:7}});
+    ws2['!merges']= m2;
+    ws2['!cols'] = [{wch:11},{wch:26},{wch:13},{wch:13},{wch:13},{wch:7},{wch:14},{wch:11}];
     XLSX.utils.book_append_sheet(wb, ws2, '원가분석');
   }
 
   XLSX.writeFile(wb, `견적서_${d.custName}_${d.qtNo}.xlsx`);
-  toast('Excel 다운로드 완료','success');
+  toast('Excel 다운로드 완료 (견적서 서식 적용)','success');
 }
 
 // ── Firebase 저장 ──
