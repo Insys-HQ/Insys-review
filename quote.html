@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>인시스 그룹 견적 작성 시스템 v4.8</title>
+<title>인시스 그룹 견적 작성 시스템 v4.9</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <!-- Firebase SDK는 body 끝에서 로딩 (타이밍 문제 방지) -->
 <!-- xlsx-js-style: 셀 서식(색상·테두리·병합) 지원 SheetJS 포크 -->
@@ -264,10 +264,15 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
   border-top:1px solid var(--border);padding-top:8px}
 .q-cond h4{font-size:10.5px;font-weight:700;color:#1a2e4a;margin-bottom:3px}
 .q-sign{display:flex;justify-content:flex-end;margin-top:13px;gap:18px}
-.q-sign-box{text-align:center;border:1px solid var(--border);border-radius:5px;padding:9px 22px}
-.q-sign-box p{font-size:9.5px;color:var(--gray);margin-bottom:14px}
-.q-sign-box strong{font-size:11px;color:#1a2e4a;display:block;
-  border-top:1px solid var(--border);padding-top:6px}
+.q-sign-box{text-align:center;border:1px solid var(--border);border-radius:5px;padding:12px 26px 10px}
+.q-sign-box p{font-size:14px;color:#2c3e50;font-weight:500;margin-bottom:16px;letter-spacing:-.2px}
+.q-sign-box strong{font-size:12.5px;color:#1a2e4a;display:block;
+  border-top:1px solid var(--border);padding-top:9px;white-space:nowrap}
+/* 이름과 (인) 사이 여백 */
+.q-sign-box strong .sig-seal{margin-left:26px;font-weight:700}
+/* 직인생략 문구 */
+.q-sign-box .sig-note{display:block;margin-top:6px;font-size:10px;color:#7a8ba0;
+  letter-spacing:3px;font-weight:500}
 
 /* 인쇄/PDF 전용 스타일 */
 @media print{
@@ -365,7 +370,7 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
       <button class="btn btn-ghost btn-sm" onclick="openCoSelector()" id="nav-co-btn">
         🏢 <span id="nav-co-name">사업자 선택</span>
       </button>
-      <div class="nav-ver">v4.8</div>
+      <div class="nav-ver">v4.9</div>
     </div>
   </div>
 </nav>
@@ -1665,7 +1670,8 @@ function condHTML(d){
   <div class="q-sign">
     <div class="q-sign-box">
       <p>위와 같이 견적을 제출합니다.</p>
-      <strong>${d.co.name||'(주)인시스'} 대표이사 ${d.co.ceo||''} (인)</strong>
+      <strong>${d.co.name||'(주)인시스'} 대표이사 ${d.co.ceo||''}<span class="sig-seal">(인)</span></strong>
+      <span class="sig-note">직 인 생 략</span>
     </div>
   </div>`;
 }
@@ -2025,7 +2031,8 @@ function exportExcel(){
     condHd : { font:{name:'맑은 고딕',sz:10,bold:true,color:{rgb:'1A2E4A'}}, alignment:{vertical:'center'} },
     cond   : { font:{name:'맑은 고딕',sz:9,color:{rgb:GRAY}}, alignment:{vertical:'center',wrapText:true} },
     sign   : { font:{name:'맑은 고딕',sz:11,bold:true,color:{rgb:DARK}}, alignment:{horizontal:'center',vertical:'center'} },
-    signSub: { font:{name:'맑은 고딕',sz:9,color:{rgb:GRAY}}, alignment:{horizontal:'center',vertical:'center'} },
+    signSub: { font:{name:'맑은 고딕',sz:11,color:{rgb:'2C3E50'}}, alignment:{horizontal:'center',vertical:'center'} },
+    signNote:{ font:{name:'맑은 고딕',sz:9,color:{rgb:'7A8BA0'}}, alignment:{horizontal:'center',vertical:'center'} },
   };
 
   // ── 시트 데이터 (2차원 배열, 셀 객체로) ──
@@ -2144,7 +2151,9 @@ function exportExcel(){
   // ⑨ 서명란
   setC(R,N-4,'위와 같이 견적을 제출합니다.',S.signSub);
   merges.push({s:{r:R,c:N-4},e:{r:R,c:N-1}}); R++;
-  setC(R,N-4, `${co.name||'(주)인시스'}  대표이사 ${co.ceo||''}  (인)`, S.sign);
+  setC(R,N-4, `${co.name||'(주)인시스'}  대표이사 ${co.ceo||''}          (인)`, S.sign);
+  merges.push({s:{r:R,c:N-4},e:{r:R,c:N-1}}); R++;
+  setC(R,N-4, '직 인 생 략', S.signNote);
   merges.push({s:{r:R,c:N-4},e:{r:R,c:N-1}}); R++;
 
   // ── 시트 마무리 ──
