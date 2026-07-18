@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>세척건조기 통합 시뮬레이터 v3.4 | 인시스 AI혁신 R&D센터</title>
+<title>세척건조기 통합 시뮬레이터 v3.5 | 인시스 AI혁신 R&D센터</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
@@ -178,7 +178,7 @@ footer{text-align:center;font-size:10px;color:var(--t3);padding:6px 0}
 
 <div class="hdr">
   <div class="hdr-in">
-    <div class="hdr-t">🏭 세척건조기 통합 시뮬레이터 <span class="vbadge">v3.4</span></div>
+    <div class="hdr-t">🏭 세척건조기 통합 시뮬레이터 <span class="vbadge">v3.5</span></div>
     <div style="display:flex;align-items:center;gap:10px">
       <button class="opt-all-btn" onclick="applyAllOpt()">⚡ 전체 최적값 적용</button>
       <div class="hdr-r">인시스 AI혁신 R&D센터</div>
@@ -595,7 +595,7 @@ footer{text-align:center;font-size:10px;color:var(--t3);padding:6px 0}
 <!-- 권장 사항 -->
 <div id="recs"></div>
 
-<footer>인시스 AI혁신 R&D센터 | wash_sim.html v3.4 | 2026-07-18</footer>
+<footer>인시스 AI혁신 R&D센터 | wash_sim.html v3.5 | 2026-07-18</footer>
 </div><!-- /right -->
 </div><!-- /wrap -->
 
@@ -683,19 +683,27 @@ function calcW(p){
   var hKW=tVol*4.18*(p.nT-20)/3600*1.35;
   var totPKW=pKW*p.zcnt,totHKW=hKW*p.zcnt,totKW=totPKW+totHKW;
   var dwell=(p.zlen*p.zcnt/1000)/(p.csW/60);
-  var bases=[52,68,80,90],base=bases[Math.min(p.zcnt-1,3)];
-  var dP2=[0,0,-3,-9,-18,-32][p.dlv]||0;
-  var tB=Math.min(18,(p.nT-25)*0.36),prB=Math.min(10,(p.nP-100)*0.028);
-  var detB=gck('ck_det')?Math.min(12,p.det*1.1):0;
-  var dwB=Math.min(8,(dwell-30)*0.05),spP=Math.max(-14,-(p.csW-2)*2.5);
+  // 커버리지
   var gX=p.iW/(nc+1),gY=p.iH/(nr+1),sr=Math.tan(30*Math.PI/180)*100;
   var covX=Math.min(p.iW,(nc-1)*gX+2*sr),covY=Math.min(p.iH,(nr-1)*gY+2*sr);
   var cov=(covX/p.iW)*(covY/p.iH)*100,covF=0.6+0.4*(cov/100);
-  var cr=Math.max(5,Math.min(99.9,(base+dP2+tB+prB+detB+dwB+spP)*covF));
+  // ── 세척율: 1차 반응속도 지수 모델 ──
+  // 세척율 = 1-(1-r1)^n, r1 = 1-exp(-k×t1)
+  // k = k0(오염도) × f온도 × f압력 × f세척제 × 커버리지
+  var k0=[0.035,0.025,0.018,0.012,0.008][p.dlv];         // 오염도별 제거상수 [1/s]
+  var fT=0.6+0.4*(Math.min(90,Math.max(20,p.nT))-20)/60;  // 20°C→0.60, 80°C→1.00
+  var fP=0.7+0.3*(Math.min(500,Math.max(50,p.nP))-100)/250; // 100kPa→0.70, 350kPa→1.00
+  var detOn=gck('ck_det');
+  var fD=1+(detOn?p.det:0)*0.03;                            // 세척제 10%→1.30배
+  var k=k0*fT*fP*fD*covF;
+  var t1=(p.zlen/1000)/(p.csW/60);                          // 단당 체류시간 [s]
+  var r1=1-Math.exp(-k*t1);                                  // 단당 세척율
+  var cr=Math.max(1,Math.min(99.9,(1-Math.pow(1-r1,p.zcnt))*100));
   var waterLph=qT*60*0.03*p.zcnt+tVol*p.zcnt/8;
   return{cr,dwell,pKW,hKW,totPKW,totHKW,totKW,tVol,waterLph,nc,nr,nF:nc*nr,totF,cov,zwid,
     thru:(p.csW/(p.iL/1000))*60*p.fmode,
-    contrib:{base,dP2,tB,prB,detB,dwB,spP}};
+    r1:r1*100,t1:t1,k:k,
+    contrib:{k0:k0,fT:fT,fP:fP,fD:fD,covF:covF,r1:r1*100,t1:t1}};
 }
 function calcWcr(p,csW){return calcW(Object.assign({},p,{csW:csW})).cr;}
 function akP(HP,bpf,sg,sw,sa,dist,iW,iH,iL,csA,stages,pos,iw){
@@ -708,12 +716,18 @@ function akP(HP,bpf,sg,sw,sa,dist,iW,iH,iL,csA,stages,pos,iw){
   var fsa=Math.sin(sa*Math.PI/180),fdi=Math.min(1,etad);
   var airb=(fv*0.45+fsl*0.25+fsw*0.20+fsa*0.15+fdi*0.05)/1.10;
   var fpk=1/(1+iH/60),airs=airb*fpk;
-  var t=(iL/1000)/(csA/60),ri=airs*0.55,rt=airs*0.45*(1-Math.exp(-t/2.5));
+  // 제트 노출시간: 슬릿 유효폭(확산 포함 약 20mm)이 지나가는 시간
+  // 속도↑ → 노출시간↓ → 포켓 배수 제거율↓ (물리적으로 속도 민감)
+  var jetW=0.020;                       // 유효 제트 폭 [m]
+  var t=jetW/(csA/60);                  // 노출시간 [s]
+  var tau=1.2;                          // 포켓 배수 시정수 [s]
+  var ri=airs*0.55;                     // 즉시 제거 (표면수)
+  var rt=airs*0.45*(1-Math.exp(-t/tau));// 시간 의존 제거 (포켓수)
   var rfr=Math.min(0.45,ri+rt),rstg,fc;
   if(pos==='both'){rstg=Math.min(0.70,1-(1-rfr)*(1-rfr*0.90));fc=2;}
   else{rstg=Math.min(0.50,rfr);fc=1;}
   var Wn=iw*Math.pow(1-rstg,stages),eta=1-Math.pow(1-rstg,stages);
-  return{v0,veff,We,rstg,eta,Wn,blowers:fc*bpf*stages,fc,
+  return{v0,veff,We,rstg,eta,Wn,blowers:fc*bpf*stages,fc,texp:t,
     totKW:HP*0.7457*fc*bpf*stages,
     thru:(csA/(iL/1000))*60};
 }
@@ -917,15 +931,15 @@ function updateRowRes(p,W,AK,D){
   setRes('r_wP',fmtN(p.wP)+'원');setRes('r_eP',p.eP+'원');
   // B washer
   if(W){
-    setRes('r_zcnt',p.zcnt+'단 → 세척율기반 '+fmt(W.cr)+'%');
-    setRes('r_fmode',p.fmode==='2'||p.fmode===2?'2열 격벽':'1열 단열');
+    setRes('r_zcnt',p.zcnt+'단 세척율 '+fmt(W.cr)+'%',W.cr>=80?'ok':'ng');
+    setRes('r_fmode',p.fmode===2?'2열 격벽':'1열 단열');
     setRes('r_nP',fmt(W.pKW,2)+'kW/단');
     setRes('r_nT',fmt(W.hKW,1)+'kW/단');
     setRes('r_nH',W.nc+'×'+W.nr+'='+W.nF+'개/면');
-    setRes('r_zlen',fmt(W.dwell,1)+'s 체류',W.dwell>=30?'ok':'ng');
+    setRes('r_zlen',fmt(W.t1,0)+'s/단 체류',W.t1>=30?'ok':'ng');
     setRes('r_zdep',fmt(W.tVol,0)+'L/탱크');
     setRes('r_pEff',fmt(W.totKW,2)+'kW 합계');
-    setRes('r_det',gck('ck_det')?'+'+fmt(p.det*1.1,1)+'점':'미사용','na');
+    setRes('r_det',gck('ck_det')?'×'+fmt(W.contrib.fD,2)+'배':'미사용','na');
   }else{
     ['r_zcnt','r_fmode','r_nP','r_nT','r_nH','r_zlen','r_zdep','r_pEff','r_det'].forEach(function(id){setRes(id,'미적용','na');});
   }
@@ -992,13 +1006,18 @@ function tip(parentId,txt){
 
 // ─── WASHER CHARTS ───
 function drawWasher(p,W,OPT){
-  // 1. 세척 기여 요소 (읽기 전용 — 클릭 없음)
+  // 1. 세척 인자 분석 (지수 모델 계수)
   if(W){
     var c=W.contrib;
-    var lbs=['기본세척력','온도','압력','세척제','체류시간','오염페널티'];
-    var vs=[Math.max(0,c.base),Math.max(0,c.tB),Math.max(0,c.prB),Math.max(0,c.detB),Math.max(0,c.dwB),Math.abs(Math.min(0,c.dP2))];
-    var cls=[CW,'#e65100','#6a1b9a',CA,'#558b2f','#c62828'];
-    mc('c_contrib',{type:'bar',data:{labels:lbs,datasets:[{data:vs,backgroundColor:cls,borderRadius:3}]},options:bOpt('점수')});
+    var lbs=['온도인자 fT','압력인자 fP','세척제 fD','커버리지','단당세척율 r1'];
+    var vs=[c.fT*100,c.fP*100,c.fD*100,c.covF*100,c.r1];
+    var cls=['#e65100','#6a1b9a',CA,'#558b2f',CW];
+    var oc={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
+      tooltip:{callbacks:{label:function(ctx){
+        var names=['온도인자 (100%=최대)','압력인자 (100%=최대)','세척제 배율','노즐 커버리지','1개 세척조 통과 시 세척율'];
+        return names[ctx.dataIndex]+': '+fmt(ctx.parsed.y,1)+'%';}}}},
+      scales:{x:{ticks:{font:fnt}},y:{min:0,max:130,title:{display:true,text:'%',font:{size:10}},ticks:{font:fnt}}}};
+    mc('c_contrib',{type:'bar',data:{labels:lbs,datasets:[{data:vs,backgroundColor:cls,borderRadius:3}]},options:oc});
   }
 
   // 2. 컨베이어 속도 vs 세척율 — 클릭 시 속도 변경
