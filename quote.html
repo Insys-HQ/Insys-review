@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>인시스 그룹 견적 작성 시스템 v4.6</title>
+<title>인시스 그룹 견적 작성 시스템 v4.7</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <!-- Firebase SDK는 body 끝에서 로딩 (타이밍 문제 방지) -->
 <!-- xlsx-js-style: 셀 서식(색상·테두리·병합) 지원 SheetJS 포크 -->
@@ -191,7 +191,6 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
   page-break-after:always;
   display:flex;flex-direction:column;
   overflow:hidden;
-  max-height:297mm;
 }
 /* 본문이 여백 안을 가득 채우도록 */
 .a4-body{flex:1;display:flex;flex-direction:column;min-height:0}
@@ -206,7 +205,7 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
   bottom:calc(var(--pg-bottom) - 12px);font-size:9.5px;color:#8a9ab0;font-weight:500}
 /* 가로(landscape) 모드 — A4 297×210mm */
 .a4-page.landscape{
-  width:297mm;min-height:210mm;max-height:210mm;
+  width:297mm;min-height:210mm;
 }
 .a4-page:last-child{page-break-after:auto}
 
@@ -365,7 +364,7 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
       <button class="btn btn-ghost btn-sm" onclick="openCoSelector()" id="nav-co-btn">
         🏢 <span id="nav-co-name">사업자 선택</span>
       </button>
-      <div class="nav-ver">v4.6</div>
+      <div class="nav-ver">v4.7</div>
     </div>
   </div>
 </nav>
@@ -762,6 +761,15 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
 ═══════════════════════════════════════════ -->
 <script>
 // ── Firebase ── (SDK 로딩은 body 끝 스크립트에서 처리)
+// ── localStorage 안전 래퍼 (프라이빗 모드·차단 환경 대응) ──
+const LS = {
+  get(k, def){ try{ const v=localStorage.getItem(k); return v===null?def:v; }catch(e){ return def; } },
+  set(k, v){ try{ localStorage.setItem(k, v); return true; }catch(e){ console.warn('localStorage 저장 불가'); return false; } },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){} },
+  getJSON(k, def){ try{ return JSON.parse(localStorage.getItem(k)) ?? def; }catch(e){ return def; } },
+  setJSON(k, o){ return LS.set(k, JSON.stringify(o)); },
+};
+
 // ════════════════════════════════════════════
 // ── Firestore REST API 클라이언트 ──
 // (GitHub Pages CSP가 Firebase SDK를 차단하므로 REST 방식 사용)
@@ -770,7 +778,8 @@ const FB_PROJECT = 'insys-work';
 const FB_APIKEY  = 'AIzaSyBYqd2uRr1ZvFLDCWuS15h9qFkT-Dvg5Es';
 const FS_BASE    = `https://firestore.googleapis.com/v1/projects/${FB_PROJECT}/databases/(default)/documents`;
 
-let fbOnline = false;   // Firestore 연결 가능 여부
+let fbOnline = false;     // Firestore 연결 가능 여부
+let fbChecked = false;    // 연결 확인 완료 여부 (실패 후 재시도 방지)
 
 const COL_Q  = () => document.getElementById('fb-col-quote')?.value || 'forklift_quotes';
 const COL_CO = () => document.getElementById('fb-col-co')?.value   || 'insys_companies';
@@ -811,6 +820,7 @@ function fromFsFields(fields){
 
 // ── REST 헬퍼 ──
 async function fsList(collection){
+  if(fbChecked && !fbOnline) throw new Error('offline');   // 오프라인 확정 시 요청 생략
   const url = `${FS_BASE}/${collection}?key=${FB_APIKEY}&pageSize=300`;
   const res = await fetch(url);
   if (!res.ok) throw new Error('fsList '+res.status);
@@ -821,6 +831,7 @@ async function fsList(collection){
   }));
 }
 async function fsSet(collection, docId, data){
+  if(fbChecked && !fbOnline) throw new Error('offline');
   const url = `${FS_BASE}/${collection}/${encodeURIComponent(docId)}?key=${FB_APIKEY}`;
   const res = await fetch(url, {
     method:'PATCH',
@@ -831,6 +842,7 @@ async function fsSet(collection, docId, data){
   return await res.json();
 }
 async function fsAdd(collection, data){
+  if(fbChecked && !fbOnline) throw new Error('offline');
   const url = `${FS_BASE}/${collection}?key=${FB_APIKEY}`;
   const res = await fetch(url, {
     method:'POST',
@@ -841,6 +853,7 @@ async function fsAdd(collection, data){
   return await res.json();
 }
 async function fsDelete(collection, docId){
+  if(fbChecked && !fbOnline) throw new Error('offline');
   const url = `${FS_BASE}/${collection}/${encodeURIComponent(docId)}?key=${FB_APIKEY}`;
   const res = await fetch(url, { method:'DELETE' });
   if (!res.ok) throw new Error('fsDelete '+res.status);
@@ -850,8 +863,19 @@ async function fsPing(){
   try{
     const res = await fetch(`${FS_BASE}/${COL_CO()}?key=${FB_APIKEY}&pageSize=1`);
     fbOnline = res.ok;
-    return res.ok;
-  }catch(e){ fbOnline = false; return false; }
+  }catch(e){
+    fbOnline = false;
+  }
+  fbChecked = true;
+  return fbOnline;
+}
+// 수동 재연결 (배너 재시도 버튼용)
+async function retryFirebase(){
+  fbChecked = false;
+  const ok = await fsPing();
+  if(ok){ hideFBBanner(); toast('Firestore 연결 성공','success'); }
+  else  { showFBBanner(); toast('연결 실패 — 로컬 모드 유지','info'); }
+  loadCompanies(); loadMgmt();
 }
 
 // ── 장비 데이터 (37대) ──
@@ -1121,7 +1145,7 @@ function selectQType(key) {
   genQuoteNo();
   renderItemTable();
   recalc();
-  document.getElementById('quote-form-wrap').scrollIntoView({behavior:'smooth'});
+  safeScroll(document.getElementById('quote-form-wrap'));
 }
 
 function resetQType() {
@@ -1204,6 +1228,9 @@ function recalc() {
   document.getElementById('est-profit').textContent = fmtW(supplyTotal-costTotal);
 }
 
+function safeScroll(el){
+  try{ if(el && typeof el.scrollIntoView === 'function') el.scrollIntoView({behavior:'smooth',block:'nearest'}); }catch(e){}
+}
 function round100(n){ return Math.round(n/100)*100; }
 function fmtN(n){ return n?n.toLocaleString('ko-KR'):'0'; }
 function fmtW(n){ return n?n.toLocaleString('ko-KR')+'원':'–'; }
@@ -1255,7 +1282,7 @@ function showRec() {
     </div>`;
   }).join('');
   panel.style.display='block';
-  panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+  safeScroll(panel);
 }
 function applyRec(idx){
   const r=RECS[idx];
@@ -1274,7 +1301,7 @@ async function loadCompanies() {
     allCompanies.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
     fbOnline = true; hideFBBanner();
   } catch(e) {
-    const ls = JSON.parse(localStorage.getItem('insys_companies')||'[]');
+    const ls = LS.getJSON('insys_companies', []);
     allCompanies = ls;
   }
   renderCoList();
@@ -1335,10 +1362,10 @@ async function saveCo() {
     }
   } catch(e) {
     // 로컬 백업
-    const ls = JSON.parse(localStorage.getItem('insys_companies')||'[]');
+    const ls = LS.getJSON('insys_companies', []);
     const idx = ls.findIndex(c=>c.id===editId);
     if (idx>=0) ls[idx]={...ls[idx],...data}; else ls.push({id:'local_'+Date.now(),...data});
-    localStorage.setItem('insys_companies',JSON.stringify(ls));
+    LS.setJSON('insys_companies', ls);
   }
   toast(editId?'사업자 정보가 수정되었습니다.':'사업자가 등록되었습니다.','success');
   clearCoForm();
@@ -1375,8 +1402,8 @@ function clearCoForm() {
 async function deleteCo(id) {
   if (!confirm('사업자를 삭제하시겠습니까?')) return;
   try { await fsDelete(COL_CO(), id); } catch(e) { console.warn(e.message); }
-  const ls = JSON.parse(localStorage.getItem('insys_companies')||'[]');
-  localStorage.setItem('insys_companies', JSON.stringify(ls.filter(c=>c.id!==id)));
+  const ls = LS.getJSON('insys_companies', []);
+  LS.setJSON('insys_companies', ls.filter(c=>c.id!==id));
   await loadCompanies();
   toast('삭제되었습니다.','info');
 }
@@ -1436,7 +1463,7 @@ function genQuoteNo() {
   const prefix = `${init}${yy}${mm}${dd}-`;
 
   // 기존 견적 조회 (Firestore 로드분 + 로컬 백업분 통합)
-  const localList = JSON.parse(localStorage.getItem('fq_list')||'[]');
+  const localList = LS.getJSON('fq_list', []);
   const allNos = [
     ...(allQuotes||[]).map(q=>q.quoteNo),
     ...localList.map(q=>q.quoteNo)
@@ -1704,114 +1731,115 @@ function getMeasureBox(){
   if(!box){
     box = document.createElement('div');
     box.id = 'measure-box';
-    box.style.cssText = 'position:fixed;left:-99999px;top:0;visibility:hidden;pointer-events:none;z-index:-1';
+    box.style.cssText = 'position:absolute;left:-99999px;top:0;width:auto;'+
+                        'visibility:hidden;pointer-events:none;z-index:-1';
     document.body.appendChild(box);
   }
   return box;
 }
 
-// ── 실제 DOM 높이 측정 기반 페이지 분할 ──
+// ── 페이지 분할 (1회 측정 · O(n)) ──
 function buildPages(){
   const d = previewData || collectQuoteData();
   if (!d) { toast('견적 유형을 먼저 선택하세요.','error'); return ''; }
 
-  const rows     = d.rows;
+  const rows     = d.rows || [];
   const oriCls   = pageOrientation==='landscape' ? ' landscape' : '';
   const colCount = printColCount(d.qtype);
   const sizeLabel= pageOrientation==='landscape' ? 'A4 가로 297×210mm' : 'A4 세로 210×297mm';
 
-  const tblOpen  = `<table class="qt-table">${colGroup(d.qtype)}<thead>${thRow(d)}</thead><tbody>`;
-  const tblClose = `</tbody></table>`;
+  const rowHTMLs = rows.map(r=>printRowHTML(r,d));
+
+  const thead    = `<thead>${thRow(d)}</thead>`;
   const footRow  = `<tfoot><tr style="background:#dbeafe">
       <td colspan="${colCount-1}" style="text-align:right;font-weight:700;color:#1a5fad;padding-right:6px">합 계</td>
       <td class="num" style="font-weight:700;color:#1a5fad">${fmtN(d.supplyTotal)}</td>
     </tr></tfoot>`;
+  const mkTable  = (rowsHTML, withFoot)=>
+    `<table class="qt-table">${colGroup(d.qtype)}${thead}<tbody>${rowsHTML}</tbody>${withFoot?footRow:''}</table>`;
 
   const contHdr = `<div style="display:flex;justify-content:space-between;align-items:center;
     margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid var(--blue)">
     <div style="font-size:11.5px;font-weight:700;color:var(--blue)">${d.co.name||'(주)인시스'}</div>
     <div style="font-size:10px;color:var(--gray)">견적번호: <strong>${d.qtNo}</strong> | 수신: <strong>${d.custName}</strong> | ${d.qtDate}</div>
   </div>`;
-
   const footBlock = `<div class="a4-foot">${totalHTML(d)}${condHTML(d)}</div>`;
 
-  // ── 측정용 페이지 생성 ──
+  // ── 【1회 측정】 모든 요소 높이를 한 번에 수집 ──
   const box = getMeasureBox();
-  const mkPage = (inner)=>`<div class="a4-page${oriCls}" style="margin:0">${inner}</div>`;
+  const pw  = (pageOrientation==='landscape' ? 297 : 210);
+  // 측정용 페이지: max-height/overflow 해제하여 실제 높이 확보
+  box.innerHTML =
+    `<div class="a4-page${oriCls}" id="mz-page" style="margin:0;max-height:none;overflow:visible;min-height:0">
+       <div id="mz-head">${headerHTML(d)}</div>
+       <div id="mz-cont">${contHdr}</div>
+       <div id="mz-tbl">${mkTable(rowHTMLs.join(''), true)}</div>
+       <div id="mz-foot">${footBlock}</div>
+     </div>`;
 
-  // 사용 가능 본문 높이 = 페이지 높이 − 상하 여백 − 페이지번호
+  const q = (id)=>box.querySelector('#'+id);
+  const tblEl = q('mz-tbl')?.querySelector('table');
+  // 측정값(px). 0이면 측정 불가 환경 → 추정값 사용
+  const px = (v, fallbackMM)=> (v && v > 0) ? v : (fallbackMM * MM);
+  const headH = px(q('mz-head')?.offsetHeight, 47);
+  const contH = px(q('mz-cont')?.offsetHeight,  9);
+  const footH = px(q('mz-foot')?.offsetHeight, 52);
+  const theadH= px(tblEl?.querySelector('thead')?.offsetHeight, 5.5);
+  const tfootH= px(tblEl?.querySelector('tfoot')?.offsetHeight, 5.5);
+  // 각 행의 실제 높이 배열 (1회 수집) — 측정 불가 시 6mm 추정
+  const DEF_ROW = 6 * MM;
+  const rowHs = Array.from(tblEl?.querySelectorAll('tbody > tr') || [])
+                     .map(tr => (tr.offsetHeight && tr.offsetHeight > 0) ? tr.offsetHeight : DEF_ROW);
+  box.innerHTML = '';
+
+  // 사용 가능 본문 높이(px)
   const pageHpx = (pageOrientation==='landscape' ? 210 : 297) * MM;
-  const padPx   = (pageMargins.top + pageMargins.bottom) * MM;
-  const usable  = pageHpx - padPx - (PGNO_MM * MM);
+  const usable  = pageHpx - (pageMargins.top + pageMargins.bottom) * MM - (PGNO_MM * MM);
 
-  // 특정 HTML의 높이 측정
-  const measure = (innerHTML)=>{
-    box.innerHTML = mkPage(`<div class="a4-body">${innerHTML}</div>`);
-    const body = box.querySelector('.a4-body');
-    const h = body ? body.scrollHeight : 0;
-    return h;
-  };
+  // ── 분할 (누적 합산만 수행) ──
+  const chunks = [];
+  let cur = [], curH = 0, i = 0, first = true;
 
-  const headH = measure(headerHTML(d));   // 1p 상단 블록
-  const contH = measure(contHdr);         // 2p~ 간이 헤더
-  const footH = (()=>{ box.innerHTML = mkPage(footBlock);
-                       const f = box.querySelector('.a4-foot');
-                       return f ? f.scrollHeight : 0; })();
+  while(i < rowHTMLs.length){
+    const base = (first ? headH : contH) + theadH;
+    const rh   = rowHs[i] || DEF_ROW;
+    const last = (i === rowHTMLs.length - 1);
+    const extra= last ? (tfootH + footH) : 0;
 
-  // 행 단위 실제 높이 측정 (누적 방식)
-  const rowHTMLs = rows.map(r=>printRowHTML(r,d));
-  const measureTable = (htmlRows, withFoot)=>
-    measure(tblOpen + htmlRows.join('') + tblClose.replace('</tbody></table>',
-      '</tbody>'+(withFoot?footRow:'')+'</table>'));
-
-  // ── 페이지 분할 ──
-  const chunks = [];       // 각 페이지에 들어갈 행 인덱스 배열
-  let cur = [], idx = 0;
-  let isFirst = true;
-
-  while(idx < rowHTMLs.length){
-    cur.push(rowHTMLs[idx]);
-    const baseH = isFirst ? headH : contH;
-    const isLastRow = (idx === rowHTMLs.length - 1);
-    // 마지막 행이면 합계/조건 블록도 함께 들어가는지 확인
-    const need = baseH + measureTable(cur, isLastRow) + (isLastRow ? footH : 0);
-
-    if(need > usable && cur.length > 1){
-      // 현재 행은 다음 페이지로
-      cur.pop();
+    if(cur.length && (base + curH + rh + extra) > usable){
       chunks.push(cur);
-      cur = [rowHTMLs[idx]];
-      isFirst = false;
-      continue;   // idx 증가 없이 재검사
+      cur = []; curH = 0; first = false;
+      continue;                       // 같은 행을 새 페이지에서 재검토
     }
-    idx++;
+    cur.push(rowHTMLs[i]); curH += rh; i++;
   }
   if(cur.length) chunks.push(cur);
+  if(!chunks.length) chunks.push([]);
 
-  // 마지막 페이지에 합계/조건이 안 들어가면 별도 페이지 추가
+  // 마지막 페이지에 합계+조건이 안 들어가면 별도 페이지
   let footOnNewPage = false;
-  if(chunks.length){
-    const lastBase = (chunks.length===1) ? headH : contH;
-    const lastNeed = lastBase + measureTable(chunks[chunks.length-1], true) + footH;
-    if(lastNeed > usable) footOnNewPage = true;
+  {
+    const base = (chunks.length===1 ? headH : contH) + theadH + tfootH;
+    const lastH = chunks[chunks.length-1]
+      .reduce((sum,_,k,arr)=> sum + (rowHs[rowHTMLs.length-arr.length+k] || DEF_ROW), 0);
+    if(base + lastH + footH > usable) footOnNewPage = true;
   }
 
   const totalPages = chunks.length + (footOnNewPage ? 1 : 0);
 
-  // ── 페이지 HTML 생성 ──
-  const pages = chunks.map((chunkRows, i)=>{
-    const isFirstPage = (i === 0);
-    const isLastChunk = (i === chunks.length - 1);
-    const showFoot    = isLastChunk && !footOnNewPage;
-    const tbl = tblOpen + chunkRows.join('') + '</tbody>' + (isLastChunk ? footRow : '') + '</table>';
+  // ── HTML 생성 ──
+  const pages = chunks.map((chunkRows, idx)=>{
+    const isFirst = (idx === 0);
+    const isLast  = (idx === chunks.length - 1);
+    const showFoot= isLast && !footOnNewPage;
     return `<div class="a4-page${oriCls}">
-      <div class="a4-badge">${sizeLabel}${isFirstPage?` · 여백 상${pageMargins.top}/좌${pageMargins.left}/우${pageMargins.right}/하${pageMargins.bottom}mm`:''}</div>
+      <div class="a4-badge">${sizeLabel}${isFirst?` · 여백 상${pageMargins.top}/좌${pageMargins.left}/우${pageMargins.right}/하${pageMargins.bottom}mm`:''}</div>
       <div class="a4-body">
-        ${isFirstPage ? headerHTML(d) : contHdr}
-        ${tbl}
+        ${isFirst ? headerHTML(d) : contHdr}
+        ${mkTable(chunkRows.join(''), isLast)}
       </div>
       ${showFoot ? footBlock : ''}
-      <div class="page-num">${i+1} / ${totalPages}</div>
+      <div class="page-num">${idx+1} / ${totalPages}</div>
     </div>`;
   });
 
@@ -1824,7 +1852,6 @@ function buildPages(){
     </div>`);
   }
 
-  box.innerHTML = '';
   return pages.join('');
 }
 
@@ -1840,7 +1867,7 @@ function showPreview(){
 // 저장된 견적을 미리보기 (견적 관리 탭에서 호출)
 function previewSaved(quoteNo){
   const q = allQuotes.find(x=>x.quoteNo===quoteNo)
-         || JSON.parse(localStorage.getItem('fq_list')||'[]').find(x=>x.quoteNo===quoteNo);
+         || LS.getJSON('fq_list', []).find(x=>x.quoteNo===quoteNo);
   if(!q){ toast('견적 데이터를 찾을 수 없습니다.','error'); return; }
   previewData = savedToPreview(q);
   openPreviewPanel(q.quoteNo + ' · ' + (q.customer?.name||''));
@@ -2189,10 +2216,10 @@ async function saveQuote(){
     await fsSet(COL_Q(), qno, saveData);
     toast('Firebase에 저장 완료!','success');
   }catch(e){
-    const ls=JSON.parse(localStorage.getItem('fq_list')||'[]');
+    const ls=LS.getJSON('fq_list', []);
     const idx=ls.findIndex(q=>q.quoteNo===qno);
     if(idx>=0)ls[idx]=saveData;else ls.push(saveData);
-    localStorage.setItem('fq_list',JSON.stringify(ls));
+    LS.setJSON('fq_list', ls);
     toast('로컬 저장 완료 (Firebase 오류)','info');
   }
   await loadMgmt();
@@ -2206,7 +2233,7 @@ async function loadMgmt(){
     allQuotes.sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
     fbOnline = true; hideFBBanner();
   } catch(e) {
-    allQuotes=JSON.parse(localStorage.getItem('fq_list')||'[]');
+    allQuotes=LS.getJSON('fq_list', []);
   }
   renderMgmt(allQuotes);
   updateMgmtCompanyFilter();
@@ -2293,9 +2320,9 @@ async function saveStatus(){
     const cur = allQuotes.find(q=>q.quoteNo===no) || {};
     await fsSet(COL_Q(), no, {...cur, ...upd});
   }catch(e){ console.warn(e.message); }
-  const ls=JSON.parse(localStorage.getItem('fq_list')||'[]');
+  const ls=LS.getJSON('fq_list', []);
   const idx=ls.findIndex(q=>q.quoteNo===no);
-  if(idx>=0){ls[idx]={...ls[idx],...upd};localStorage.setItem('fq_list',JSON.stringify(ls));}
+  if(idx>=0){ls[idx]={...ls[idx],...upd};LS.setJSON('fq_list', ls);}
   closeStatusModal();
   await loadMgmt();
   toast('상태 업데이트 완료','success');
@@ -2303,8 +2330,8 @@ async function saveStatus(){
 async function delQuote(no){
   if(!confirm('삭제하시겠습니까?'))return;
   try{ await fsDelete(COL_Q(), no); }catch(e){ console.warn(e.message); }
-  const ls=JSON.parse(localStorage.getItem('fq_list')||'[]');
-  localStorage.setItem('fq_list',JSON.stringify(ls.filter(q=>q.quoteNo!==no)));
+  const ls=LS.getJSON('fq_list', []);
+  LS.setJSON('fq_list', ls.filter(q=>q.quoteNo!==no));
   await loadMgmt(); toast('삭제 완료','info');
 }
 
@@ -2383,9 +2410,9 @@ function showFBBanner(){
   b.style.cssText = 'position:fixed;bottom:16px;left:16px;z-index:99999;background:#fef3c7;'+
     'border:1px solid #f59e0b;color:#92400e;padding:10px 16px;border-radius:8px;'+
     'font-size:13px;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,.15);font-family:"Noto Sans KR",sans-serif';
-  b.innerHTML = '\u26a0\ufe0f Firestore \uc5f0\uacb0 \uc2e4\ud328 \u2014 <strong>\ub85c\uceec \uc800\uc7a5 \ubaa8\ub4dc</strong> ' +
-    '<button onclick="testFB();location.reload()" style="margin-left:8px;background:#f59e0b;color:#fff;border:none;'+
-    'padding:3px 10px;border-radius:5px;cursor:pointer;font-family:inherit;font-size:12px">\uc7ac\uc2dc\ub3c4</button>';
+  b.innerHTML = '\u26a0\ufe0f <strong>\ub85c\uceec \uc800\uc7a5 \ubaa8\ub4dc</strong> \u2014 \uacac\uc801 \uc791\uc131\u00b7\ucd9c\ub825\uc740 \uc815\uc0c1 \ub3d9\uc791\ud569\ub2c8\ub2e4 ' +
+    '<button onclick="retryFirebase()" style="margin-left:8px;background:#f59e0b;color:#fff;border:none;'+
+    'padding:3px 10px;border-radius:5px;cursor:pointer;font-family:inherit;font-size:12px">\uc7ac\uc5f0\uacb0</button>';
   document.body.appendChild(b);
 }
 function hideFBBanner(){
