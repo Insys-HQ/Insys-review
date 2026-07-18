@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>인시스 그룹 견적 작성 시스템 v3.4</title>
+<title>인시스 그룹 견적 작성 시스템 v3.5</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <!-- Firebase SDK는 body 끝에서 로딩 (타이밍 문제 방지) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -313,7 +313,7 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
       <button class="btn btn-ghost btn-sm" onclick="openCoSelector()" id="nav-co-btn">
         🏢 <span id="nav-co-name">사업자 선택</span>
       </button>
-      <div class="nav-ver">v3.4</div>
+      <div class="nav-ver">v3.5</div>
     </div>
   </div>
 </nav>
@@ -393,7 +393,7 @@ td input[type="number"]:focus{outline:none;border-color:var(--blue2)}
                 <button class="btn btn-sm btn-outline" onclick="genQuoteNo()">🔄</button>
               </div>
             </div>
-            <div class="fg"><label class="fl req">작성일자</label><input class="fc" id="q-date" type="date"></div>
+            <div class="fg"><label class="fl req">작성일자</label><input class="fc" id="q-date" type="date" onchange="genQuoteNo()"></div>
             <div class="fg"><label class="fl">유효기간</label><input class="fc" id="q-valid" value="30일"></div>
             <div class="fg"><label class="fl">부가세</label>
               <select class="fc" id="q-vat">
@@ -1347,12 +1347,32 @@ function selectIssuer(id) {
 // ── 견적번호 생성 ──
 function genQuoteNo() {
   const init = currentIssuer ? currentIssuer.init : 'IS';
-  const d = new Date();
+  // 작성일자 기준 (입력값 우선, 없으면 오늘)
+  const dateVal = document.getElementById('q-date')?.value;
+  const d = dateVal ? new Date(dateVal) : new Date();
   const yy = String(d.getFullYear()).slice(-2);
   const mm = String(d.getMonth()+1).padStart(2,'0');
   const dd = String(d.getDate()).padStart(2,'0');
-  const seq = String(Math.floor(Math.random()*90)+10);
-  document.getElementById('q-no').value = `${init}${yy}${mm}${dd}-${seq}`;
+  const prefix = `${init}${yy}${mm}${dd}-`;
+
+  // 기존 견적 조회 (Firestore 로드분 + 로컬 백업분 통합)
+  const localList = JSON.parse(localStorage.getItem('fq_list')||'[]');
+  const allNos = [
+    ...(allQuotes||[]).map(q=>q.quoteNo),
+    ...localList.map(q=>q.quoteNo)
+  ].filter(Boolean);
+
+  // 같은 prefix 중 최대 일련번호 찾기
+  let maxSeq = 0;
+  allNos.forEach(no=>{
+    if (no.startsWith(prefix)) {
+      const n = parseInt(no.slice(prefix.length), 10);
+      if (!isNaN(n) && n > maxSeq) maxSeq = n;
+    }
+  });
+
+  const seq = String(maxSeq + 1).padStart(2,'0');
+  document.getElementById('q-no').value = prefix + seq;
 }
 
 // ── 파일 첨부 ──
@@ -1601,7 +1621,7 @@ function exportPDF(){
     doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(138,154,176);
     doc.text(`${cur}`,PW-MR,292,{align:'right'});
     doc.setFontSize(7);
-    doc.text(`${co.name||'INSYS GROUP'}  |  견적번호: ${d.qtNo}  |  인시스 그룹 견적 작성 시스템 v3.4`,ML,292);
+    doc.text(`${co.name||'INSYS GROUP'}  |  견적번호: ${d.qtNo}  |  인시스 그룹 견적 작성 시스템 v3.5`,ML,292);
     if(cur>1){
       doc.setFontSize(9);doc.setTextColor(26,95,173);doc.setFont('helvetica','bold');
       doc.text(co.name||'(주)인시스', ML, 12);
@@ -1695,7 +1715,7 @@ function exportExcel(){
   const co=d.co;
   const wb=XLSX.utils.book_new();
   const data=[
-    [`인시스 그룹 견적 작성 시스템 v3.4 — ${d.qtypeLabel}`],[''],
+    [`인시스 그룹 견적 작성 시스템 v3.5 — ${d.qtypeLabel}`],[''],
     ['견적번호',d.qtNo,'','발행일',d.qtDate],
     ['발행사',co.name||'–','','대표이사',co.ceo||'–'],
     ['사업자번호',co.bizno||'–','','담당자',co.manager||'–'],
