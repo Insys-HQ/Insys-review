@@ -187,6 +187,20 @@ body{font-family:'Noto Sans KR',sans-serif;background:#e9edf2;color:#1a2535;font
 #pvCv{width:100%;display:block;border-radius:6px;border:1px solid #cad8e2;}
 
 footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
+
+/* ── 세척제 토글 ── */
+.det-box{background:#f5f8fb;border:1px solid #dde5ee;border-radius:9px;padding:10px 12px;margin-top:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.det-toggle{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;}
+.det-toggle input[type=checkbox]{display:none;}
+.det-toggle-sw{width:40px;height:22px;background:#c5cdd5;border-radius:22px;position:relative;transition:.25s;flex-shrink:0;}
+.det-toggle-sw:before{content:'';position:absolute;width:16px;height:16px;background:#fff;border-radius:50%;top:3px;left:3px;transition:.25s;box-shadow:0 1px 3px rgba(0,0,0,.2);}
+.det-toggle input:checked+.det-toggle-sw{background:#0d7fa8;}
+.det-toggle input:checked+.det-toggle-sw:before{transform:translateX(18px);}
+.det-toggle-lbl{font-size:13px;font-weight:700;color:#1a3a5a;}
+.det-badge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:8px;}
+.det-badge.off{background:#e9ecef;color:#6c757d;border:1px solid #dee2e6;}
+.det-badge.on{background:#d4edda;color:#155724;border:1px solid #c3e6cb;}
+.det-inputs{background:#fff;border:1px solid #c8dcea;border-radius:8px;padding:8px 10px;}
 .live-chip{font-size:11px;font-weight:700;padding:2px 9px;border-radius:8px;background:#fff;border:1px solid #c8dcea;color:#0b5a80;white-space:nowrap;}
 .live-chip.good{background:#d4edda;border-color:#a5d6a7;color:#1b5e20;}
 .live-chip.warn{background:#fff3cd;border-color:#ffb300;color:#856404;}
@@ -610,7 +624,7 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
   <div class="card">
     <div class="ch"><span class="ci">🏭</span><span class="cl">STEP 4 — 컨베이어 / 세척제</span></div>
     <div class="cb">
-      <div class="g3">
+      <div class="g2">
         <div class="fl">
           <label>컨베이어 속도 <span class="lbadge lbadge-r">추천</span></label>
           <input type="number" id="cSpd" class="s-rec" value="2.5" step="0.1" min="0.5" max="15">
@@ -621,11 +635,38 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
           <input type="number" id="cPitch" value="50" min="10" max="300">
           <span class="un">mm</span>
         </div>
-        <div class="fl">
-          <label>세척제 농도 <span class="lbadge lbadge-r">추천</span></label>
-          <input type="number" id="det" class="s-rec" value="0" step="0.5" min="0" max="15">
-          <span class="un">% → 세척율 연동</span>
+      </div>
+      <!-- 세척제 사용 여부 -->
+      <div class="det-box" id="detBox">
+        <label class="det-toggle">
+          <input type="checkbox" id="detUse" onchange="onDetUseChange()">
+          <span class="det-toggle-sw"></span>
+          <span class="det-toggle-lbl">세척제 사용</span>
+        </label>
+        <span class="det-badge off" id="detBadge">미사용 (기본값 0%)</span>
+        <div class="det-inputs" id="detInputs" style="display:none;">
+          <div class="g2" style="margin-top:8px;">
+            <div class="fl">
+              <label>세척제 농도</label>
+              <input type="number" id="det" class="s-user" value="0" step="0.5" min="0" max="15">
+              <span class="un">% → 세척율 연동</span>
+            </div>
+            <div class="fl">
+              <label>세척제 종류</label>
+              <select id="detType">
+                <option value="alkaline">알칼리계 (유지·기름 제거)</option>
+                <option value="acid">산성계 (스케일·녹 제거)</option>
+                <option value="neutral">중성계 (일반 이물)</option>
+                <option value="enzyme">효소계 (식품·유기물)</option>
+              </select>
+            </div>
+          </div>
         </div>
+      </div>
+      <!-- 세척조별 세척제 사용 여부 (detUse 체크 시 표시) -->
+      <div id="zdetSection" style="display:none;margin-top:6px;">
+        <div style="font-size:11px;font-weight:700;color:#1a4060;margin-bottom:5px;">세척조별 농도 설정</div>
+        <div id="zdetInputs" class="g4"></div>
       </div>
     </div>
   </div>
@@ -924,7 +965,8 @@ function calcOptimal(){
   if(lay0.gapY){ setRec('nGapY', lay0.gapY); }
   setRec('nManW',  Math.max(iW,iD));
   setRec('cSpd',   rSpd.toFixed(2));
-  setRec('det',    rDet.toFixed(1));
+  // 세척제: 사용 여부 체크박스가 꺼져 있으면 추천값 무시
+  if(gi('detUse')?.checked) setRec('det', rDet.toFixed(1));
 
   // 자동계산값
   updateAutoCalc();
@@ -1402,7 +1444,7 @@ function buildZonePanels(){
         <div class="fl"><label>히터(kW)<span class="lbadge lbadge-r" style="margin-left:4px;">추천</span></label>
           <input type="number" class="s-rec" id="zheat${i}" value="${hA[i].toFixed(1)}" step=".5"></div>
         <div class="fl"><label>세척제(%)</label>
-          <input type="number" id="zdet${i}" value="${dA[i].toFixed(1)}" step=".5"></div>
+          <input type="number" id="zdet${i}" value="0" step=".5" style="background:#f0f4f8;color:#9aa8b5;" readonly title="STEP4 세척제 섹션에서 설정"></div>
       </div>
       <div class="g4">
         <div class="fl"><label>펌프(LPM)<span class="lbadge lbadge-r" style="margin-left:4px;">추천</span></label>
@@ -1495,7 +1537,8 @@ function runSim(){
   const pPipe=+gv('pPipe')||50;
   const pEff=(+gv('pEff')||75)/100;
   const cSpd=+gv('cSpd')||2.5, cPitch=+gv('cPitch')||50;
-  const detVal=+gv('det')||3;
+  // 세척제 미사용 체크 시 0 강제
+  const detVal = gi('detUse')?.checked ? (+gv('det')||0) : 0;
 
   // 채널 구성 계산 (ch 변수 여기서 선언)
   const chInfo  = getChannelInfo(itype, fmode, iW, iD, iH);
@@ -1924,7 +1967,7 @@ function updateFlow(zcnt,fmode,avgTemp){
 function buildRec(cr,tgt,dlv,zcnt,hole,press,temp,det,cov,cSpd,optSpd,qty,iqty){
   const recs=[];
   if(cr>=tgt) recs.push({e:'🟢',t:`세척율 <b>${cr.toFixed(1)}%</b> — 목표 ${tgt}% 달성.`});
-  else if(cr>=tgt-5) recs.push({e:'🟡',t:`세척율 <b>${cr.toFixed(1)}%</b> — 세척제 +1% 또는 온도 +5°C 시 달성 가능.`});
+  else if(cr>=tgt-5) recs.push({e:'🟡',t:`세척율 <b>${cr.toFixed(1)}%</b> — 온도 +5°C 또는 컨베이어 속도 감소 시 달성 가능.`});
   else recs.push({e:'🔴',t:`세척율 <b>${cr.toFixed(1)}%</b> — 목표 미달. 세척조 +1단 또는 속도 감소 권장.`});
   if(cov<75) recs.push({e:'⚠️',t:`커버리지 <b>${cov.toFixed(0)}%</b> — 노즐 수량 증가 또는 간격 조정 필요.`});
   if(hole<1.8) recs.push({e:'⚠️',t:`홀 Ø<b>${hole}mm</b> — 막힘 위험. 필터(100μm↓) 필수.`});
@@ -1974,7 +2017,7 @@ function collectSettings(){
     nManW:+gv('nManW'),nDist:+gv('nDist'),
     nManSpec:gv('nManSpec'),pPipeSpec:gv('pPipeSpec'),nSusMat:gv('nSusMat'),
     pFlow:+gv('pFlow'),pPipe:+gv('pPipe'),pEff:+gv('pEff'),
-    cSpd:+gv('cSpd'),cPitch:+gv('cPitch'),det:+gv('det'),
+    cSpd:+gv('cSpd'),cPitch:+gv('cPitch'),det:+gv('det'),detUse:!!gi('detUse')?.checked,
     gapLocked,zones,
     resultCr:+(gi('kC')?.textContent?.replace('%','')||0),
     resultQty:+(gi('kQ')?.textContent?.replace(/,/g,'')||0),
@@ -2017,6 +2060,11 @@ function applySettings(s){
   sv2('cSpd',   s.cSpd,   s.cSpd   ? 's-rec' : '');
   sv2('cPitch', s.cPitch);
   sv2('det',    s.det !== undefined ? s.det : 0);
+  // 세척제 사용 여부 복원
+  if(gi('detUse')){
+    gi('detUse').checked = !!s.detUse;
+    onDetUseChange();
+  }
 
   // 5. gapLocked 복원
   if(s.gapLocked !== undefined) gapLocked = !!s.gapLocked;
@@ -2340,6 +2388,45 @@ function triggerSim(){
 // ══════════════════════════════════════════════
 // 이벤트 등록
 // ══════════════════════════════════════════════
+// ── 세척제 사용 여부 토글 ──
+function onDetUseChange(){
+  const use = gi('detUse')?.checked;
+  const badge    = gi('detBadge');
+  const inputs   = gi('detInputs');
+  const zdetSec  = gi('zdetSection');
+  const zdetInps = gi('zdetInputs');
+
+  if(use){
+    if(badge)  { badge.textContent='사용 중'; badge.className='det-badge on'; }
+    if(inputs)   inputs.style.display='block';
+    if(zdetSec)  zdetSec.style.display='block';
+    // 세척조별 농도 입력 동적 생성
+    if(zdetInps){
+      const zcnt = +gv('zcnt')||3;
+      const dArr = [3.0, 2.0, 0.5, 0];
+      zdetInps.innerHTML = '';
+      for(let i=0;i<4;i++){
+        const div = document.createElement('div');
+        div.className = 'fl';
+        div.style.display = i < zcnt ? '' : 'none';
+        div.innerHTML = '<label>'+(i+1)+'단 세척제(%)</label>'
+          +'<input type="number" id="zdet'+i+'" value="'+(i<zcnt?dArr[i]:0)+'" step="0.5" min="0" max="15">';
+        zdetInps.appendChild(div);
+        div.querySelector('input')?.addEventListener('input', triggerSim);
+      }
+    }
+  } else {
+    if(badge)  { badge.textContent='미사용 (기본값 0%)'; badge.className='det-badge off'; }
+    if(inputs)   inputs.style.display='none';
+    if(zdetSec)  zdetSec.style.display='none';
+    // 세척제 농도 0으로 리셋
+    const detEl = gi('det'); if(detEl) detEl.value='0';
+    for(let i=0;i<4;i++){ const e=gi('zdet'+i); if(e) e.value='0'; }
+  }
+  triggerSim();
+}
+window.onDetUseChange = onDetUseChange;
+
 gi('btnOpt').addEventListener('click', calcOptimal);
 // 슬라이더 초기화
 initSliders();
@@ -2349,7 +2436,7 @@ gi('btnReset').addEventListener('click',()=>{ HIST=[]; gi('histBars').innerHTML=
 const baseIds=['itype','fmode','iW','iD','iH','dlv','tgtClean','iqty','zcnt'];
 const nozIds=['nManW','nGapX','nGapY']; // nHole~nDist는 initSliders에서 처리
 const pumpIds=['pFlow','pEff'];
-const convIds=['cSpd','cPitch','det'];
+const convIds=['cSpd','cPitch']; // det는 onDetUseChange에서 처리
 
 [...nozIds,...pumpIds,...convIds].forEach(id=>{
   const e=gi(id); if(!e) return;
