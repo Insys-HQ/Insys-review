@@ -128,6 +128,25 @@ input[type=range]{flex:1;height:4px;accent-color:#1a4f96;cursor:pointer}
 .factor-table td:nth-child(3){color:#4a5568}
 .hl{background:#fef9c3;padding:1px 4px;border-radius:3px;font-weight:700;color:#92400e}
 .badge-ref{display:inline-block;background:#e0e7ff;color:#3730a3;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;margin-left:4px}
+
+/* ── 단수 선택 막대 그래프 ── */
+.stage-picker{display:flex;gap:4px;align-items:flex-end;height:60px;margin:4px 0}
+.stage-bar-btn{
+  flex:1;border:2px solid #c8d8ec;border-radius:4px 4px 0 0;
+  background:#e8f2fc;cursor:pointer;position:relative;
+  transition:all .2s;display:flex;align-items:flex-end;justify-content:center;
+  min-width:0;
+}
+.stage-bar-btn:hover{background:#c3d8ef;border-color:#1a4f96}
+.stage-bar-btn.active{background:#0a1f3d;border-color:#0a1f3d}
+.stage-bar-btn.active .sbnum{color:#fff}
+.stage-bar-btn.recommended{border-color:#059669}
+.stage-bar-btn.recommended .sbnum{color:#059669}
+.stage-bar-btn.active.recommended{background:#059669;border-color:#059669}
+.stage-bar-btn.active.recommended .sbnum{color:#fff}
+.sbnum{font-size:11px;font-weight:700;color:#1a4f96;padding-bottom:2px;line-height:1}
+.stage-picker-label{display:flex;justify-content:space-between;font-size:9px;color:#718096;margin-top:2px}
+.stage-rec-txt{font-size:10px;color:#059669;font-weight:600;margin-top:3px;min-height:14px}
 </style>
 </head>
 <body>
@@ -202,12 +221,26 @@ input[type=range]{flex:1;height:4px;accent-color:#1a4f96;cursor:pointer}
         <div class="ch">🌬️ 에어나이프 설정</div>
         <div class="cb">
           <div class="sec">단수 & 길이</div>
-          <div class="f2">
-            <div class="f"><label>에어나이프 단수</label>
-              <select id="ak_stages" onchange="calc()"><option value="1">1단</option><option value="2" selected>2단</option><option value="3">3단</option><option value="4">4단</option><option value="5">5단</option><option value="6">6단</option><option value="8">8단</option></select></div>
-            <div class="f"><label>AK 길이 <span class="u">mm (100단위)</span></label>
-              <select id="ak_length" onchange="calc()"></select></div>
+          <div class="f">
+            <label>에어나이프 단수 <span class="u">(클릭으로 선택)</span></label>
+            <!-- 막대 높이: 1단=18%, 2단=26%, 3단=36%, 4단=46%, 5단=57%, 6단=68%, 7단=79%, 8단=90% -->
+            <div class="stage-picker" id="stage-picker">
+              <div class="stage-bar-btn" data-v="1" style="height:18%" onclick="setStage(1)"><span class="sbnum">1</span></div>
+              <div class="stage-bar-btn active" data-v="2" style="height:26%" onclick="setStage(2)"><span class="sbnum">2</span></div>
+              <div class="stage-bar-btn" data-v="3" style="height:36%" onclick="setStage(3)"><span class="sbnum">3</span></div>
+              <div class="stage-bar-btn" data-v="4" style="height:46%" onclick="setStage(4)"><span class="sbnum">4</span></div>
+              <div class="stage-bar-btn" data-v="5" style="height:57%" onclick="setStage(5)"><span class="sbnum">5</span></div>
+              <div class="stage-bar-btn" data-v="6" style="height:68%" onclick="setStage(6)"><span class="sbnum">6</span></div>
+              <div class="stage-bar-btn" data-v="7" style="height:79%" onclick="setStage(7)"><span class="sbnum">7</span></div>
+              <div class="stage-bar-btn" data-v="8" style="height:90%" onclick="setStage(8)"><span class="sbnum">8</span></div>
+            </div>
+            <div class="stage-picker-label"><span>1단</span><span>목표 달성 최소 단수 →</span><span>8단</span></div>
+            <div class="stage-rec-txt" id="stage-rec-txt">-</div>
+            <!-- hidden input for compatibility -->
+            <input type="hidden" id="ak_stages" value="2">
           </div>
+          <div class="f"><label>AK 길이 <span class="u">mm (100단위)</span></label>
+            <select id="ak_length" onchange="calc()"></select></div>
           <div style="background:#f0f7ff;border-radius:6px;padding:6px 10px;font-size:10px;color:#1a4f96;margin-bottom:8px" id="ak_hint"></div>
           <div class="sec">슬릿 간격</div>
           <div class="f">
@@ -732,6 +765,36 @@ window._fbLoad=async()=>{if(!db)return null;try{const q=query(collection(db,'air
 // HELPERS
 // ──────────────────────────────────────────
 function syncR(id,vid){document.getElementById(vid).textContent=parseFloat(document.getElementById(id).value).toFixed(id==='slit_gap'?1:0);}
+
+// ── 단수 막대 그래프 피커 ──────────────────────────────────
+function setStage(n){
+  // hidden input 값 갱신
+  document.getElementById('ak_stages').value = n;
+  // 활성 바 표시
+  document.querySelectorAll('.stage-bar-btn').forEach(btn=>{
+    const v = parseInt(btn.dataset.v);
+    btn.classList.toggle('active', v===n);
+  });
+  calc();
+}
+
+function updateStagePicker(nMin){
+  // 추천 단수 강조 (초록 테두리)
+  document.querySelectorAll('.stage-bar-btn').forEach(btn=>{
+    const v=parseInt(btn.dataset.v);
+    btn.classList.toggle('recommended', typeof nMin==='number' && v===nMin);
+  });
+  // 추천 텍스트
+  const el=document.getElementById('stage-rec-txt');
+  if(!el) return;
+  if(typeof nMin==='number'){
+    const cur=+document.getElementById('ak_stages').value;
+    if(cur>=nMin) el.innerHTML='<span style="color:#059669">✅ 목표 달성 충분</span> (최소 '+nMin+'단 필요)';
+    else          el.innerHTML='<span style="color:#dc2626">⚠️ 단수 부족</span> — 최소 <b>'+nMin+'단</b> 필요';
+  } else {
+    el.innerHTML='<span style="color:#d97706">'+nMin+'단 필요 (범위 초과)</span>';
+  }
+}
 function $(id){return document.getElementById(id);}
 function setB(bi,bv,p,lbl){$(bi).style.width=Math.min(Math.max(p,0),100)+'%';$(bv).textContent=lbl;}
 function scC(s){return s>=85?'#059669':s>=70?'#1a4f96':s>=55?'#d97706':'#dc2626';}
@@ -1198,6 +1261,7 @@ function calc(){
   // Target pct & needed stages
   $('tgt_pct').textContent=R.targRem.toFixed(1)+'%';
   $('need_stage').textContent=(typeof R.nMin==='number'?R.nMin+'단':R.nMin);
+  updateStagePicker(R.nMin);
 
   // KPIs
   $('kv1').textContent=R.totalRem.toFixed(1);
