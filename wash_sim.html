@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>세척건조기 통합 시뮬레이터 v3.6 | 인시스 AI혁신 R&D센터</title>
+<title>세척건조기 통합 시뮬레이터 v3.7 | 인시스 AI혁신 R&D센터</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
@@ -178,7 +178,7 @@ footer{text-align:center;font-size:10px;color:var(--t3);padding:6px 0}
 
 <div class="hdr">
   <div class="hdr-in">
-    <div class="hdr-t">🏭 세척건조기 통합 시뮬레이터 <span class="vbadge">v3.6</span></div>
+    <div class="hdr-t">🏭 세척건조기 통합 시뮬레이터 <span class="vbadge">v3.7</span></div>
     <div style="display:flex;align-items:center;gap:10px">
       <button class="opt-all-btn" onclick="applyAllOpt()">⚡ 전체 최적값 적용</button>
       <div class="hdr-r">인시스 AI혁신 R&D센터</div>
@@ -263,6 +263,11 @@ footer{text-align:center;font-size:10px;color:var(--t3);padding:6px 0}
   </div>
   <div class="sec-body open" id="sB">
     <div class="row hd"><div class="row-label sub">■ 공정 구성</div><div class="row-inp"></div><div class="row-res" style="font-size:10px;color:var(--t3)">결과값</div></div>
+    <div class="row">
+      <div class="row-label">목표 세척율<small>이 값 달성에 필요한 단수 추천</small></div>
+      <div class="row-inp"><div class="bi"><div class="bi-top"><input type="number" id="tgtCr" value="85" min="50" max="99" oninput="bf('tgtCr',50,99);sim()"><span class="un">%</span><div class="bi-bar"><div class="bi-opt" style="left:61%;width:29%"></div><div class="bi-fill ok" id="bf_tgtCr" style="width:71%"></div></div></div></div></div>
+      <div class="row-res" id="r_tgtCr">-</div>
+    </div>
     <div class="row">
       <div class="row-label"><div class="ck-row"><input type="checkbox" class="ck" id="ck_zc" checked onchange="sim()">세척 단수<small style="margin-left:4px">단수↑ → 세척율↑</small></div></div>
       <div class="row-inp"><select class="inp-s" id="zcnt" onchange="sim()"><option value="1">1단</option><option value="2">2단</option><option value="3">3단</option><option value="4" selected>4단</option></select></div>
@@ -515,6 +520,29 @@ footer{text-align:center;font-size:10px;color:var(--t3);padding:6px 0}
   </div>
 </div>
 
+<!-- 세척조 설계 추천 -->
+<div class="panel">
+  <div class="ph w"><h3 style="color:var(--w)">🔧 세척조 설계 추천 (목표 세척율 · 속도 기반 자동 산출)</h3></div>
+  <div class="pb">
+    <div id="rec_summary" style="margin-bottom:8px"></div>
+    <table class="st">
+      <thead><tr>
+        <th>항목</th><th>추천값</th><th>산출 근거</th>
+      </tr></thead>
+      <tbody id="rec_design_tb"></tbody>
+    </table>
+    <div style="margin-top:8px">
+      <table class="st">
+        <thead><tr>
+          <th>단</th><th>노즐 배치<br>(가로×세로)</th><th>노즐수<br>/면</th><th>총 노즐<br>(전체면)</th><th>펌프 유량<br>(LPM)</th><th>펌프 동력</th><th>분사관<br>(SUS)</th><th>공급관<br>(SUS)</th>
+        </tr></thead>
+        <tbody id="rec_zone_tb"></tbody>
+      </table>
+    </div>
+    <div class="al al-i" style="margin-top:6px">💡 분사관 유속 ≤2.5m/s, 공급관 유속 ≤1.8m/s 기준 (KS B 1501 스케줄 10S) | 펌프 효율 반영</div>
+  </div>
+</div>
+
 <!-- 에어나이프 효과 그래프 -->
 <div class="panel">
   <div class="ph a"><h3 style="color:var(--a)">💨 에어나이프 효과 분석</h3></div>
@@ -595,7 +623,7 @@ footer{text-align:center;font-size:10px;color:var(--t3);padding:6px 0}
 <!-- 권장 사항 -->
 <div id="recs"></div>
 
-<footer>인시스 AI혁신 R&D센터 | wash_sim.html v3.6 | 2026-07-18</footer>
+<footer>인시스 AI혁신 R&D센터 | wash_sim.html v3.7 | 2026-07-18</footer>
 </div><!-- /right -->
 </div><!-- /wrap -->
 
@@ -793,6 +821,66 @@ function motorRec(len,spd,iW,iL,iH){
   return{Pd,rec:STD.find(function(m){return m>=Pd;})||30};
 }
 
+// ─── SUS 배관 규격 (KS B 1501, 스케줄 10S) ───
+var SUS=[
+  {nm:'8A', id:6.30},{nm:'10A',id:9.24},{nm:'15A',id:15.80},{nm:'20A',id:20.93},
+  {nm:'25A',id:26.64},{nm:'32A',id:35.04},{nm:'40A',id:40.90},{nm:'50A',id:52.51},
+  {nm:'65A',id:62.71},{nm:'80A',id:77.92},{nm:'100A',id:102.26},{nm:'125A',id:126.60},{nm:'150A',id:150.88}
+];
+// 유량[LPM]과 최대유속[m/s]으로 최소 SUS 규격 선택
+function pickSUS(lpm,vmax){
+  var Q=lpm/60000; // m³/s
+  var dReq=Math.sqrt(4*Q/(Math.PI*vmax))*1000; // 필요 내경 mm
+  var pipe=SUS.find(function(s){return s.id>=dReq;})||SUS[SUS.length-1];
+  var vAct=Q/(Math.PI*Math.pow(pipe.id/2000,2)); // 실제 유속
+  return{nm:pipe.nm,id:pipe.id,dReq:dReq,vAct:vAct};
+}
+
+// ─── 세척조 설계 추천: 목표 세척율·속도 기반 ───
+function calcWasherRec(p){
+  // 1) 현재 조건의 단당 세척율 r1 계산 (calcW와 동일 모델)
+  var tgt=[150,120,100,80,60][p.dlv];
+  var nc=Math.max(2,Math.round(p.iW/tgt)),nr=Math.max(2,Math.round(p.iH/tgt));
+  var gX=p.iW/(nc+1),gY=p.iH/(nr+1),sr=Math.tan(30*Math.PI/180)*100;
+  var covX=Math.min(p.iW,(nc-1)*gX+2*sr),covY=Math.min(p.iH,(nr-1)*gY+2*sr);
+  var cov=(covX/p.iW)*(covY/p.iH)*100,covF=0.6+0.4*(cov/100);
+  var k0=[0.035,0.025,0.018,0.012,0.008][p.dlv];
+  var fT=0.6+0.4*(Math.min(90,Math.max(20,p.nT))-20)/60;
+  var fP=0.7+0.3*(Math.min(500,Math.max(50,p.nP))-100)/250;
+  var fD=1+(gck('ck_det')?p.det:0)*0.03;
+  var k=k0*fT*fP*fD*covF;
+  var t1=(p.zlen/1000)/(p.csW/60);
+  var r1=1-Math.exp(-k*t1);
+  // 2) 필요 단수: 1-(1-r1)^n ≥ 목표 → n = ceil(ln(1-목표)/ln(1-r1))
+  var tgtCr=p.tgtCr/100;
+  var needN=r1>0.001?Math.ceil(Math.log(1-tgtCr)/Math.log(1-r1)):9;
+  needN=clamp(needN,1,8);
+  var achievable=needN<=8;
+  var crAtNeed=(1-Math.pow(1-r1,needN))*100;
+  // 3) 노즐 유량 (오리피스)
+  var Cd=0.62,r2=p.nH/1000/2,A=Math.PI*r2*r2,dP=p.nP*1000;
+  var qN=Cd*A*Math.sqrt(2*dP/1000)*1000*60; // L/min/노즐
+  // 4) 면 구성
+  var fpc=(p.itype==='box')?4:2;    // 면수/채널
+  var totF=fpc*p.fmode;             // 전체 면수
+  var qFace=qN*nc*nr;               // 면당 유량 LPM
+  var qStage=qFace*totF;            // 단당 총 유량 LPM
+  // 5) 펌프 (단당 1대)
+  var pumpKW=(qStage/60000)*dP/(p.pEff/100)/1000;
+  var pumpHP=pumpKW*1.341;
+  var STD_P=[0.4,0.75,1.5,2.2,3.7,5.5,7.5,11,15];
+  var pumpStd=STD_P.find(function(m){return m>=pumpKW;})||15;
+  // 6) 배관: 분사관=면당 유량 v≤2.5 / 공급관=단당 유량 v≤1.8
+  var sprayPipe=pickSUS(qFace,2.5);
+  var supplyPipe=pickSUS(qStage,1.8);
+  return{r1:r1*100,needN:needN,achievable:achievable,crAtNeed:crAtNeed,
+    nc:nc,nr:nr,nozPerFace:nc*nr,totF:totF,totNoz:nc*nr*totF,
+    qN:qN,qFace:qFace,qStage:qStage,
+    pumpKW:pumpKW,pumpHP:pumpHP,pumpStd:pumpStd,
+    sprayPipe:sprayPipe,supplyPipe:supplyPipe,
+    gapX:gX,gapY:gY};
+}
+
 // ─── 동적 최적값 계산 ───
 // 각 파라미터의 최적값을 현재 설정 기반으로 동적 산출
 function calcOptVals(p){
@@ -873,7 +961,7 @@ function cP(){
     itype:gvs('itype'),fmode:gvi('fmode'),ch:gvi('ch'),
     iW:gv('iW'),iL:gv('iL'),iH:gv('iH'),
     iqty:gv('iqty'),dlv:gvi('dlv'),wP:gv('wP'),eP:gv('eP'),
-    zcnt:gvi('zcnt'),nP:gv('nP'),nT:gv('nT'),nH:gv('nH'),
+    zcnt:gvi('zcnt'),tgtCr:gv('tgtCr'),nP:gv('nP'),nT:gv('nT'),nH:gv('nH'),
     pEff:gv('pEff'),zlen:gv('zlen'),zdep:gv('zdep'),det:gv('det'),
     csW:gv('csW'),
     HP:gv('bhp'),bpf:gvi('bpf'),aks:gvi('aks'),akpos:gvs('akpos'),
@@ -935,6 +1023,7 @@ function run(){
     function(){updateFlow(p,W,AK,D);},
     function(){updateKPI(p,W,AK,D);},
     function(){drawWasher(p,W,OPT);},
+    function(){renderWasherRec(p,W);},
     function(){drawAK(p,AK,OPT);},
     function(){drawDryer(p,D,OPT);},
     function(){updateSum(p,W,AK,D);},
@@ -958,6 +1047,52 @@ function updateOptBadges(p,OPT){
   renderOptBadge('dl', OPT.dl,  'mm',  500, 15000, 0);
   renderOptBadge('dt', OPT.dt,  '°C',  30,  100,   0);
   renderOptBadge('dht',OPT.dht, 'kW',  1,   200,   0);
+}
+
+// ─── 세척조 설계 추천 렌더 ───
+function renderWasherRec(p,W){
+  var sumEl=g('rec_summary'),dtb=g('rec_design_tb'),ztb=g('rec_zone_tb');
+  if(!sumEl)return;
+  if(!p.apW){
+    sumEl.innerHTML='<div class="al al-i">세척기 미적용 상태입니다.</div>';
+    dtb.innerHTML='';ztb.innerHTML='';
+    setRes('r_tgtCr','미적용','na');
+    return;
+  }
+  var R=calcWasherRec(p);
+  // 목표 세척율 결과칸
+  setRes('r_tgtCr','필요 '+R.needN+'단',R.needN<=p.zcnt?'ok':'ng');
+  // 요약
+  var ok=p.zcnt>=R.needN;
+  sumEl.innerHTML='<div class="al '+(ok?'al-ok':'al-w')+'">'+
+    (ok?'✅ 현재 '+p.zcnt+'단으로 목표 세척율 '+p.tgtCr+'% 달성 가능 (달성치 '+fmt(W?W.cr:0)+'%)'
+       :'⚠️ 목표 '+p.tgtCr+'% 달성에 <b>'+R.needN+'단</b> 필요 — 현재 '+p.zcnt+'단 부족'+(R.achievable?'':' (8단 초과: 속도·온도 조정 필요)'))+
+    ' | 단당 세척율 r₁='+fmt(R.r1)+'% | 속도 '+fmt(p.csW,1)+'m/min 기준</div>';
+  // 설계 요약 표
+  dtb.innerHTML=
+    '<tr><td>권장 세척 단수</td><td class="val-hi" style="font-weight:700">'+R.needN+'단</td><td>목표 '+p.tgtCr+'% ← 단당 r₁='+fmt(R.r1)+'% 지수 누적, '+R.needN+'단 시 '+fmt(R.crAtNeed)+'%</td></tr>'+
+    '<tr><td>노즐 배치 (면당)</td><td style="font-weight:700">'+R.nc+'×'+R.nr+' = '+R.nozPerFace+'개</td><td>분사면 '+p.iW+'×'+p.iH+'mm, 간격 가로 '+fmt(R.gapX,0)+'mm / 세로 '+fmt(R.gapY,0)+'mm (오염도 기준)</td></tr>'+
+    '<tr><td>총 노즐 수 (단당)</td><td style="font-weight:700">'+R.totNoz+'개</td><td>'+R.nozPerFace+'개/면 × '+R.totF+'면 ('+(p.itype==='box'?'박스 4면':'트레이 2면')+' × '+p.fmode+'열)</td></tr>'+
+    '<tr><td>단당 펌프 유량</td><td style="font-weight:700">'+fmt(R.qStage,0)+' LPM</td><td>노즐 '+fmt(R.qN,2)+'L/min × '+R.totNoz+'개 (Ø'+p.nH+'mm @'+p.nP+'kPa)</td></tr>'+
+    '<tr><td>단당 펌프 용량</td><td style="font-weight:700">'+R.pumpStd+'kW ('+fmt(R.pumpStd*1.341,1)+'HP)</td><td>산출 '+fmt(R.pumpKW,2)+'kW → 표준 규격 상향, 효율 '+p.pEff+'%</td></tr>'+
+    '<tr><td>분사관 규격</td><td style="font-weight:700">SUS '+R.sprayPipe.nm+'</td><td>면당 '+fmt(R.qFace,0)+'LPM, 필요내경 '+fmt(R.sprayPipe.dReq,1)+'mm, 실유속 '+fmt(R.sprayPipe.vAct,2)+'m/s (≤2.5)</td></tr>'+
+    '<tr><td>공급관 규격</td><td style="font-weight:700">SUS '+R.supplyPipe.nm+'</td><td>단당 '+fmt(R.qStage,0)+'LPM, 필요내경 '+fmt(R.supplyPipe.dReq,1)+'mm, 실유속 '+fmt(R.supplyPipe.vAct,2)+'m/s (≤1.8)</td></tr>';
+  // 단별 상세 표 (권장 단수 기준)
+  var rows='';
+  for(var i=1;i<=R.needN;i++){
+    var role=i===1?'예세척':i===R.needN?'최종헹굼':(i===2?'본세척':'헹굼');
+    var isCur=i<=p.zcnt;
+    rows+='<tr style="background:'+(isCur?'#fff':'#fff8e6')+'">'+
+      '<td><b>'+i+'단</b> <span style="font-size:10px;color:var(--t3)">'+role+'</span>'+(isCur?'':' <span style="font-size:10px;color:#e65100">추가필요</span>')+'</td>'+
+      '<td style="text-align:center;font-weight:600">'+R.nc+'×'+R.nr+'</td>'+
+      '<td style="text-align:center">'+R.nozPerFace+'</td>'+
+      '<td style="text-align:center">'+R.totNoz+'</td>'+
+      '<td style="text-align:center;font-weight:600">'+fmt(R.qStage,0)+'</td>'+
+      '<td style="text-align:center"><span class="mr">'+R.pumpStd+'kW</span></td>'+
+      '<td style="text-align:center;font-weight:600">'+R.sprayPipe.nm+'</td>'+
+      '<td style="text-align:center;font-weight:600">'+R.supplyPipe.nm+'</td></tr>';
+  }
+  ztb.innerHTML=rows;
 }
 
 // ─── ROW RESULT VALUES ───
