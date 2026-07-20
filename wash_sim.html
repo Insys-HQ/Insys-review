@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>세척건조기 통합 시뮬레이터 v3.8 | 인시스 AI혁신 R&D센터</title>
+<title>세척건조기 통합 시뮬레이터 v3.9 | 인시스 AI혁신 R&D센터</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
@@ -178,7 +178,7 @@ footer{text-align:center;font-size:10px;color:var(--t3);padding:6px 0}
 
 <div class="hdr">
   <div class="hdr-in">
-    <div class="hdr-t">🏭 세척건조기 통합 시뮬레이터 <span class="vbadge">v3.8</span></div>
+    <div class="hdr-t">🏭 세척건조기 통합 시뮬레이터 <span class="vbadge">v3.9</span></div>
     <div style="display:flex;align-items:center;gap:10px">
       <button class="opt-all-btn" onclick="applyAllOpt()">⚡ 전체 최적값 적용</button>
       <div class="hdr-r">인시스 AI혁신 R&D센터</div>
@@ -211,18 +211,23 @@ footer{text-align:center;font-size:10px;color:var(--t3);padding:6px 0}
       <div class="row-res" id="r_iW">-</div>
     </div>
     <div class="row">
-      <div class="row-label">세로 L</div>
+      <div class="row-label">세로 L<small id="lbl_iL_hint">트레이=세워서 투입 시 분사면 높이</small></div>
       <div class="row-inp">
         <div class="bi"><div class="bi-top"><input type="number" id="iL" value="600" min="100" max="2000" oninput="bf('iL',100,2000);dimChanged()"><span class="un">mm</span><div class="bi-bar"><div class="bi-opt" style="left:15%;width:60%"></div><div class="bi-fill ok" id="bf_iL" style="width:25%"></div></div></div><div class="bi-hint">100~2000mm</div></div>
       </div>
       <div class="row-res" id="r_iL">-</div>
     </div>
     <div class="row">
-      <div class="row-label">높이 H</div>
+      <div class="row-label">높이 H<small id="lbl_iH_hint">트레이=두께(피치), 박스=분사면 높이</small></div>
       <div class="row-inp">
         <div class="bi"><div class="bi-top"><input type="number" id="iH" value="150" min="5" max="500" oninput="bf('iH',5,500);sim()"><span class="un">mm</span><div class="bi-bar"><div class="bi-fill ok" id="bf_iH" style="width:29%"></div></div></div><div class="bi-hint">5~500mm</div></div>
       </div>
       <div class="row-res" id="r_iH">-</div>
+    </div>
+    <div class="row">
+      <div class="row-label" style="white-space:normal">📌 세워서 투입 안내</div>
+      <div class="row-inp" style="border-right:none"><div style="font-size:10px;color:var(--t3);line-height:1.4">트레이는 항상 세워서 투입(공정 고정) — 분사면은 <b>가로W×세로L</b>. 박스는 눕혀 이송 — 분사면은 <b>가로W×높이H</b></div></div>
+      <div class="row-res"></div>
     </div>
     <div class="row">
       <div class="row-label">목표 처리량<small>🔗 컨베이어 속도와 양방향 연동</small></div>
@@ -637,7 +642,7 @@ footer{text-align:center;font-size:10px;color:var(--t3);padding:6px 0}
 <!-- 권장 사항 -->
 <div id="recs"></div>
 
-<footer>인시스 AI혁신 R&D센터 | wash_sim.html v3.8 | 2026-07-18</footer>
+<footer>인시스 AI혁신 R&D센터 | wash_sim.html v3.9 | 2026-07-18</footer>
 </div><!-- /right -->
 </div><!-- /wrap -->
 
@@ -752,12 +757,22 @@ function interactOpt(yl,onPick){
   return base;
 }
 
+// ─── 분사면 실치수 결정 ───
+// 트레이는 "세워서 투입"이 기본(공정 스펙 고정 가정) → 기립 시 수직 치수는 세로 L
+//   예: 가로(W)400 × 세로(L)600 트레이가 세워지면, 분사면은 400×600 (H는 두께/피치일 뿐 분사면과 무관)
+// 박스는 눕힌 상태로 이송(4면 분사) → 높이 H가 실제 분사면 높이
+function sprayFace(p){
+  if(p.itype==='tray') return {fw:p.iW, fh:p.iL};
+  return {fw:p.iW, fh:p.iH};
+}
+
 // ─── PHYSICS ───
 function calcW(p){
   var Cd=0.62,r2=p.nH/1000/2,A=Math.PI*r2*r2,dP=p.nP*1000;
   var qN=Cd*A*Math.sqrt(2*dP/1000)*1000*60;
   var tgt=[150,120,100,80,60][p.dlv];
-  var nc=Math.max(2,Math.round(p.iW/tgt)),nr=Math.max(2,Math.round(p.iH/tgt));
+  var F=sprayFace(p);
+  var nc=Math.max(2,Math.round(F.fw/tgt)),nr=Math.max(2,Math.round(F.fh/tgt));
   var fpc=(p.itype==='box')?4:2,totF=fpc*p.fmode;
   var qT=qN*nc*nr*totF,qm=qT/60/1000;
   var pKW=qm*dP/(p.pEff/100)/1000;
@@ -766,10 +781,10 @@ function calcW(p){
   var hKW=tVol*4.18*(p.nT-20)/3600*1.35;
   var totPKW=pKW*p.zcnt,totHKW=hKW*p.zcnt,totKW=totPKW+totHKW;
   var dwell=(p.zlen*p.zcnt/1000)/(p.csW/60);
-  // 커버리지
-  var gX=p.iW/(nc+1),gY=p.iH/(nr+1),sr=Math.tan(30*Math.PI/180)*100;
-  var covX=Math.min(p.iW,(nc-1)*gX+2*sr),covY=Math.min(p.iH,(nr-1)*gY+2*sr);
-  var cov=(covX/p.iW)*(covY/p.iH)*100,covF=0.6+0.4*(cov/100);
+  // 커버리지 (분사면 실치수 기준)
+  var gX=F.fw/(nc+1),gY=F.fh/(nr+1),sr=Math.tan(30*Math.PI/180)*100;
+  var covX=Math.min(F.fw,(nc-1)*gX+2*sr),covY=Math.min(F.fh,(nr-1)*gY+2*sr);
+  var cov=(covX/F.fw)*(covY/F.fh)*100,covF=0.6+0.4*(cov/100);
   // ── 세척율: 1차 반응속도 지수 모델 ──
   // 세척율 = 1-(1-r1)^n, r1 = 1-exp(-k×t1)
   // k = k0(오염도) × f온도 × f압력 × f세척제 × 커버리지
@@ -868,10 +883,11 @@ function pickSUS(lpm,vmax){
 function calcWasherRec(p){
   // 1) 현재 조건의 단당 세척율 r1 계산 (calcW와 동일 모델)
   var tgt=[150,120,100,80,60][p.dlv];
-  var nc=Math.max(2,Math.round(p.iW/tgt)),nr=Math.max(2,Math.round(p.iH/tgt));
-  var gX=p.iW/(nc+1),gY=p.iH/(nr+1),sr=Math.tan(30*Math.PI/180)*100;
-  var covX=Math.min(p.iW,(nc-1)*gX+2*sr),covY=Math.min(p.iH,(nr-1)*gY+2*sr);
-  var cov=(covX/p.iW)*(covY/p.iH)*100,covF=0.6+0.4*(cov/100);
+  var F=sprayFace(p);
+  var nc=Math.max(2,Math.round(F.fw/tgt)),nr=Math.max(2,Math.round(F.fh/tgt));
+  var gX=F.fw/(nc+1),gY=F.fh/(nr+1),sr=Math.tan(30*Math.PI/180)*100;
+  var covX=Math.min(F.fw,(nc-1)*gX+2*sr),covY=Math.min(F.fh,(nr-1)*gY+2*sr);
+  var cov=(covX/F.fw)*(covY/F.fh)*100,covF=0.6+0.4*(cov/100);
   var k0=[0.035,0.025,0.018,0.012,0.008][p.dlv];
   var fT=0.6+0.4*(Math.min(90,Math.max(20,p.nT))-20)/60;
   var fP=0.7+0.3*(Math.min(500,Math.max(50,p.nP))-100)/250;
@@ -922,8 +938,9 @@ function calcOptVals(p){
   // 세척조 길이: 컨베이어 속도 × 목표 체류시간(45s)
   var optZlen=Math.round(p.csW/60*45*1000/p.zcnt/100)*100;
   optZlen=clamp(optZlen,600,2500);
-  // 세척조 깊이: 피처리물 높이 + 여유
-  var optZdep=clamp(Math.round((p.iH+200)/100)*100,300,900);
+  // 세척조 깊이: 세워진 피처리물의 실제 침수 높이(트레이=세로L, 박스=높이H) + 여유 200mm
+  var standH=(p.itype==='tray')?p.iL:p.iH;
+  var optZdep=clamp(Math.round((standH+200)/100)*100,300,1200);
   // AK 슬릿: iH가 클수록 포켓 깊어 좁은 슬릿 필요
   var optSg=p.iH>200?0.8:p.iH>100?1.0:1.2;
   // AK 거리: 피처리물 높이에 비례 (낮은 대상 → 가깝게)
@@ -1301,7 +1318,8 @@ function drawWasher(p,W,OPT){
     var dP=pr*1000,Cd=0.62,r2=p.nH/1000/2,A=Math.PI*r2*r2;
     var qN=Cd*A*Math.sqrt(2*dP/1000)*1000*60;
     var tgt=[150,120,100,80,60][p.dlv];
-    var nc=Math.max(2,Math.round(p.iW/tgt)),nr=Math.max(2,Math.round(p.iH/tgt));
+    var F=sprayFace(p);
+    var nc=Math.max(2,Math.round(F.fw/tgt)),nr=Math.max(2,Math.round(F.fh/tgt));
     var fpc=(p.itype==='box')?4:2,totF=fpc*p.fmode;
     return qN*nc*nr*totF/60/1000*dP/(p.pEff/100)/1000*p.zcnt;
   });
