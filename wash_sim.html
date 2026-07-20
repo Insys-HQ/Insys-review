@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>세척건조기 통합 시뮬레이터 v3.7 | 인시스 AI혁신 R&D센터</title>
+<title>세척건조기 통합 시뮬레이터 v3.8 | 인시스 AI혁신 R&D센터</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
@@ -178,7 +178,7 @@ footer{text-align:center;font-size:10px;color:var(--t3);padding:6px 0}
 
 <div class="hdr">
   <div class="hdr-in">
-    <div class="hdr-t">🏭 세척건조기 통합 시뮬레이터 <span class="vbadge">v3.7</span></div>
+    <div class="hdr-t">🏭 세척건조기 통합 시뮬레이터 <span class="vbadge">v3.8</span></div>
     <div style="display:flex;align-items:center;gap:10px">
       <button class="opt-all-btn" onclick="applyAllOpt()">⚡ 전체 최적값 적용</button>
       <div class="hdr-r">인시스 AI혁신 R&D센터</div>
@@ -202,11 +202,6 @@ footer{text-align:center;font-size:10px;color:var(--t3);padding:6px 0}
       <div class="row-label">피처리물 종류</div>
       <div class="row-inp"><select class="inp-s" id="itype" onchange="sim()"><option value="tray" selected>트레이</option><option value="box">박스</option></select></div>
       <div class="row-res" id="r_itype">-</div>
-    </div>
-    <div class="row">
-      <div class="row-label">채널 수</div>
-      <div class="row-inp"><select class="inp-s" id="ch" onchange="sim()"><option value="1" selected>1채널</option><option value="2">2채널</option></select></div>
-      <div class="row-res" id="r_ch">-</div>
     </div>
     <div class="row">
       <div class="row-label">가로 W<small>피처리물 기준</small></div>
@@ -274,8 +269,8 @@ footer{text-align:center;font-size:10px;color:var(--t3);padding:6px 0}
       <div class="row-res" id="r_zcnt">-</div>
     </div>
     <div class="row">
-      <div class="row-label"><div class="ck-row"><input type="checkbox" class="ck" id="ck_fm" checked onchange="sim()">투입 방식<small style="margin-left:4px">2열=채널 격벽, 처리량 2배</small></div></div>
-      <div class="row-inp"><select class="inp-s" id="fmode" onchange="dimChanged()"><option value="1" selected>1열</option><option value="2">2열(격벽)</option></select></div>
+      <div class="row-label"><div class="ck-row"><input type="checkbox" class="ck" id="ck_fm" checked onchange="sim()">채널 구성<small style="margin-left:4px">1채널=1열 / 2채널=2열 격벽, 처리량·노즐·배관 전체 배수</small></div></div>
+      <div class="row-inp"><select class="inp-s" id="fmode" onchange="dimChanged()"><option value="1" selected>1채널 (1열)</option><option value="2">2채널 (2열 격벽)</option></select></div>
       <div class="row-res" id="r_fmode">-</div>
     </div>
     <div class="row hd"><div class="row-label sub">■ 노즐 / 분사</div><div class="row-inp"></div><div class="row-res"></div></div>
@@ -353,6 +348,12 @@ footer{text-align:center;font-size:10px;color:var(--t3);padding:6px 0}
       <div class="row-label"><div class="ck-row"><input type="checkbox" class="ck" id="ck_bpf" checked onchange="sim()">면당 브로어 수<small style="margin-left:4px">대수↑ → 총 풍량↑</small></div></div>
       <div class="row-inp"><select class="inp-s" id="bpf" onchange="sim()"><option value="1" selected>1대</option><option value="2">2대</option><option value="3">3대</option></select></div>
       <div class="row-res" id="r_bpf">-</div>
+    </div>
+    <div class="row hd"><div class="row-label sub">■ 블로어-AK 연결배관</div><div class="row-inp"></div><div class="row-res" style="font-size:10px;color:var(--t3)">유속</div></div>
+    <div class="row">
+      <div class="row-label">덕트 규격<small style="margin-left:4px">📐 추천값 자동 선택, 변경 가능</small></div>
+      <div class="row-inp"><select class="inp-s" id="ak_duct" onchange="sim()"></select></div>
+      <div class="row-res" id="r_akduct">-</div>
     </div>
     <div class="row hd"><div class="row-label sub">■ 슬릿 / 각도</div><div class="row-inp"></div><div class="row-res"></div></div>
     <div class="row">
@@ -558,6 +559,19 @@ footer{text-align:center;font-size:10px;color:var(--t3);padding:6px 0}
   </div>
 </div>
 
+<!-- 에어나이프 연결배관 추천 -->
+<div class="panel">
+  <div class="ph a"><h3 style="color:var(--a)">🔧 링블로어-에어나이프 연결배관 추천</h3></div>
+  <div class="pb">
+    <div id="ak_duct_summary" style="margin-bottom:8px"></div>
+    <table class="st">
+      <thead><tr><th>구간</th><th>필요 풍량</th><th>추천 규격</th><th>추천 유속</th><th>현재 선택</th><th>선택 유속</th></tr></thead>
+      <tbody id="ak_duct_tb"></tbody>
+    </table>
+    <div class="al al-i" style="margin-top:6px">💡 목표 유속 18m/s 기준 (소음·압력손실 균형) | 원형 스파이럴 덕트 표준 규격 | 8~25m/s 범위 권장</div>
+  </div>
+</div>
+
 <!-- 건조기 효과 그래프 -->
 <div class="panel">
   <div class="ph d"><h3 style="color:var(--d)">🌀 건조기 효과 분석</h3></div>
@@ -623,7 +637,7 @@ footer{text-align:center;font-size:10px;color:var(--t3);padding:6px 0}
 <!-- 권장 사항 -->
 <div id="recs"></div>
 
-<footer>인시스 AI혁신 R&D센터 | wash_sim.html v3.7 | 2026-07-18</footer>
+<footer>인시스 AI혁신 R&D센터 | wash_sim.html v3.8 | 2026-07-18</footer>
 </div><!-- /right -->
 </div><!-- /wrap -->
 
@@ -775,7 +789,8 @@ function calcW(p){
     contrib:{k0:k0,fT:fT,fP:fP,fD:fD,covF:covF,r1:r1*100,t1:t1}};
 }
 function calcWcr(p,csW){return calcW(Object.assign({},p,{csW:csW})).cr;}
-function akP(HP,bpf,sg,sw,sa,dist,iW,iH,iL,csA,stages,pos,iw){
+function akP(HP,bpf,sg,sw,sa,dist,iW,iH,iL,csA,stages,pos,iw,ch){
+  ch=ch||1;
   var gap=sg/1000,Lak=iW/1000;
   var Qb=HP*0.65,Qf=bpf*Qb,As=Lak*gap,v0=(Qf/60)/As;
   var etad=Math.min(1.2,Math.sqrt(30/dist)),veff=Math.min(v0*etad,v0*1.15);
@@ -796,11 +811,13 @@ function akP(HP,bpf,sg,sw,sa,dist,iW,iH,iL,csA,stages,pos,iw){
   if(pos==='both'){rstg=Math.min(0.70,1-(1-rfr)*(1-rfr*0.90));fc=2;}
   else{rstg=Math.min(0.50,rfr);fc=1;}
   var Wn=iw*Math.pow(1-rstg,stages),eta=1-Math.pow(1-rstg,stages);
-  return{v0,veff,We,rstg,eta,Wn,blowers:fc*bpf*stages,fc,texp:t,
-    totKW:HP*0.7457*fc*bpf*stages,
-    thru:(csA/(iL/1000))*60};
+  // 채널 수만큼 AK 세트(블로어) 배수 — 채널별 독립 에어나이프 필요
+  var blowersPerCh=fc*bpf*stages;
+  return{v0,veff,We,rstg,eta,Wn,blowers:blowersPerCh*ch,fc,texp:t,Qface:Qf,
+    totKW:HP*0.7457*blowersPerCh*ch,
+    thru:(csA/(iL/1000))*60*ch};
 }
-function calcAK(p){return akP(p.HP,p.bpf,p.sg,p.sw,p.sa,p.ad,p.iW,p.iH,p.iL,p.csA,p.aks,p.akpos,p.iw);}
+function calcAK(p){return akP(p.HP,p.bpf,p.sg,p.sw,p.sa,p.ad,p.iW,p.iH,p.iL,p.csA,p.aks,p.akpos,p.iw,p.fmode);}
 function calcD(p){
   var vol=p.dl*p.dw*p.dh/1e9;
   var cr=p.dt<=40?35:p.dt<=50?45:55;
@@ -821,7 +838,18 @@ function motorRec(len,spd,iW,iL,iH){
   return{Pd,rec:STD.find(function(m){return m>=Pd;})||30};
 }
 
-// ─── SUS 배관 규격 (KS B 1501, 스케줄 10S) ───
+// ─── 링블로어-에어나이프 연결 덕트 규격 (원형 스파이럴 덕트, 상용 표준) ───
+var DUCT=[50,65,80,100,125,150,175,200,250,300];
+// 필요풍량(m³/min)과 목표유속(m/s)으로 최적 덕트 규격 추천
+function pickDuct(m3min,vTarget){
+  var Q=m3min/60; // m³/s
+  var dReq=Math.sqrt(4*Q/(Math.PI*vTarget))*1000; // 필요 내경 mm
+  var d=DUCT.find(function(x){return x>=dReq;})||DUCT[DUCT.length-1];
+  var vAct=Q/(Math.PI*Math.pow(d/2000,2));
+  return{d:d,dReq:dReq,vAct:vAct};
+}
+// 블로어→에어나이프 덕트 추천 (면당 1세트 기준, 목표유속 18m/s 권장 — 소음/압손 균형)
+// (populateDuctSelect / renderAKDuctRes에서 pickDuct를 직접 호출하므로 별도 래퍼 불필요)
 var SUS=[
   {nm:'8A', id:6.30},{nm:'10A',id:9.24},{nm:'15A',id:15.80},{nm:'20A',id:20.93},
   {nm:'25A',id:26.64},{nm:'32A',id:35.04},{nm:'40A',id:40.90},{nm:'50A',id:52.51},
@@ -958,7 +986,7 @@ function renderOptBadge(inputId,optVal,unit,mn,mx,dec){
 function cP(){
   return{
     apW:gck('apW'),apA:gck('apA'),apD:gck('apD'),
-    itype:gvs('itype'),fmode:gvi('fmode'),ch:gvi('ch'),
+    itype:gvs('itype'),fmode:gvi('fmode'),ch:gvi('fmode'),
     iW:gv('iW'),iL:gv('iL'),iH:gv('iH'),
     iqty:gv('iqty'),dlv:gvi('dlv'),wP:gv('wP'),eP:gv('eP'),
     zcnt:gvi('zcnt'),tgtCr:gv('tgtCr'),nP:gv('nP'),nT:gv('nT'),nH:gv('nH'),
@@ -1025,6 +1053,7 @@ function run(){
     function(){drawWasher(p,W,OPT);},
     function(){renderWasherRec(p,W);},
     function(){drawAK(p,AK,OPT);},
+    function(){renderAKDuctRes(p);},
     function(){drawDryer(p,D,OPT);},
     function(){updateSum(p,W,AK,D);},
     function(){updateMotors(p,W,AK,D);},
@@ -1095,11 +1124,63 @@ function renderWasherRec(p,W){
   ztb.innerHTML=rows;
 }
 
+// ─── AK 덕트 select 옵션 채우기 (추천값 표시 포함) ───
+function populateDuctSelect(p){
+  var sel=g('ak_duct'); if(!sel)return;
+  var Qb=p.HP*0.65, Qface=p.bpf*Qb;
+  var rec=pickDuct(Qface,18);
+  var curVal=sel.value?parseInt(sel.value):rec.d;
+  var html='';
+  DUCT.forEach(function(d){
+    var Qm3s=Qface/60;
+    var v=Qm3s/(Math.PI*Math.pow(d/2000,2));
+    var tag=(d===rec.d)?' ⭐추천':'';
+    var warn=v>30?' ⚠️고유속':v<8?' (저유속)':'';
+    html+='<option value="'+d+'">Ø'+d+'mm ('+v.toFixed(1)+'m/s)'+tag+warn+'</option>';
+  });
+  var changed=sel.innerHTML!==html;
+  if(changed){
+    sel.innerHTML=html;
+    // 최초 로드 또는 조건 변화로 목록 갱신 시 추천값 자동 선택 유지
+    var wantVal=DUCT.indexOf(curVal)>=0?curVal:rec.d;
+    sel.value=wantVal;
+  }
+  return rec;
+}
+// AK 덕트 결과칸 렌더 + 우측 요약 패널
+function renderAKDuctRes(p){
+  var rec=populateDuctSelect(p);
+  if(!rec){setRes('r_akduct','-','na');return;}
+  var selD=parseInt(gvs('ak_duct'))||rec.d;
+  var Qb=p.HP*0.65, Qface=p.bpf*Qb, Qm3s=Qface/60;
+  var vSel=Qm3s/(Math.PI*Math.pow(selD/2000,2));
+  var isRec=selD===rec.d;
+  var ok=vSel>=8&&vSel<=25;
+  setRes('r_akduct',fmt(vSel,1)+'m/s'+(isRec?' ✅':''),ok?'ok':'ng');
+
+  // 우측 요약 패널
+  var sumEl=g('ak_duct_summary'),tb=g('ak_duct_tb');
+  if(!sumEl)return;
+  if(!p.apA){
+    sumEl.innerHTML='<div class="al al-i">에어나이프 미적용 상태입니다.</div>';
+    if(tb)tb.innerHTML='';
+    return;
+  }
+  sumEl.innerHTML='<div class="al '+(ok?'al-ok':'al-w')+'">'+
+    (isRec?'✅ 추천 규격 선택됨 — ':'⚠️ 추천값과 다른 규격 선택됨 — ')+
+    'Ø'+selD+'mm, 유속 '+fmt(vSel,1)+'m/s'+(ok?' (권장범위 8~25m/s 충족)':' (권장범위 벗어남 — 재선택 권장)')+
+    ' | 브로어 '+p.HP+'HP × '+p.bpf+'대/면 = '+fmt(Qface,2)+'m³/min</div>';
+  if(tb){
+    tb.innerHTML='<tr><td>블로어→AK (면당)</td><td>'+fmt(Qface,2)+' m³/min</td>'+
+      '<td style="font-weight:700">Ø'+rec.d+'mm</td><td>'+fmt(rec.vAct,1)+'m/s</td>'+
+      '<td><span class="mr">Ø'+selD+'mm</span></td><td style="font-weight:700;color:'+(ok?'var(--ok)':'var(--ng)')+'">'+fmt(vSel,1)+'m/s</td></tr>';
+  }
+}
+
 // ─── ROW RESULT VALUES ───
 function updateRowRes(p,W,AK,D){
   // A
   setRes('r_itype',p.itype==='tray'?'트레이':'박스');
-  setRes('r_ch',p.ch+'채널');
   setRes('r_iW',p.iW+'mm');setRes('r_iL',p.iL+'mm');setRes('r_iH',p.iH+'mm');
   setRes('r_iqty',fmtN(p.iqty)+'개/h');
   var dlvn=['경미','보통','중간','심함','극심'][p.dlv];
@@ -1108,7 +1189,7 @@ function updateRowRes(p,W,AK,D){
   // B washer
   if(W){
     setRes('r_zcnt',p.zcnt+'단 세척율 '+fmt(W.cr)+'%',W.cr>=80?'ok':'ng');
-    setRes('r_fmode',p.fmode===2?'2열 격벽':'1열 단열');
+    setRes('r_fmode',p.fmode===2?'2채널·2열 격벽':'1채널·1열 단열');
     setRes('r_nP',fmt(W.pKW,2)+'kW/단');
     setRes('r_nT',fmt(W.hKW,1)+'kW/단');
     setRes('r_nH',W.nc+'×'+W.nr+'='+W.nF+'개/면');
