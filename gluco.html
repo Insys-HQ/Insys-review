@@ -3,1300 +3,1050 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>GlucoLog — 혈당관리</title>
+<title>GlucoLog v1.1 — 혈당관리</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, collection, addDoc, getDocs, query, orderBy, where, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-  const firebaseConfig = {
-    apiKey: "AIzaSyBYqd2uRr1ZvFLDCWuS15h9qFkT-Dvg5Es",
-    authDomain: "insys-work.firebaseapp.com",
-    projectId: "insys-work",
-    storageBucket: "insys-work.appspot.com",
-    messagingSenderId: "1234567890",
-    appId: "1:1234567890:web:abcdef"
+  import { getFirestore, collection, addDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  const cfg = {
+    apiKey:"AIzaSyBYqd2uRr1ZvFLDCWuS15h9qFkT-Dvg5Es",
+    authDomain:"insys-work.firebaseapp.com",
+    projectId:"insys-work",
+    storageBucket:"insys-work.appspot.com",
+    messagingSenderId:"123456",appId:"1:123456:web:abc"
   };
-
-  const app = initializeApp(firebaseConfig);
+  const app = initializeApp(cfg);
   const db = getFirestore(app);
-  window._db = db;
-  window._col = collection;
-  window._addDoc = addDoc;
-  window._getDocs = getDocs;
-  window._query = query;
-  window._orderBy = orderBy;
-  window._where = where;
-  window._Timestamp = Timestamp;
-
+  window._db=db; window._col=collection; window._addDoc=addDoc;
+  window._getDocs=getDocs; window._q=query; window._orderBy=orderBy;
   window.dispatchEvent(new Event('firebaseReady'));
 </script>
 <style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-:root {
-  --bg: #F0F4F8;
-  --surface: #FFFFFF;
-  --primary: #1A56A0;
-  --primary-light: #EBF2FF;
-  --accent: #00897B;
-  --accent-light: #E0F2F1;
-  --warn: #E53935;
-  --warn-light: #FFEBEE;
-  --yellow: #F9A825;
-  --yellow-light: #FFFDE7;
-  --text: #1A2332;
-  --text2: #4A5568;
-  --text3: #718096;
-  --border: #E2E8F0;
-  --radius: 14px;
-  --shadow: 0 2px 12px rgba(0,0,0,0.08);
-  --nav-h: 60px;
-  --header-h: 56px;
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F0F4F8;--surface:#FFFFFF;--primary:#1A56A0;--pl:#EBF2FF;
+  --accent:#00897B;--al:#E0F2F1;--warn:#E53935;--wl:#FFEBEE;
+  --yellow:#F9A825;--yl:#FFFDE7;
+  --text:#1A2332;--text2:#4A5568;--text3:#718096;--border:#E2E8F0;
+  --r:14px;--sh:0 2px 12px rgba(0,0,0,0.08);
+  --nav:60px;--hdr:56px;
 }
-
-body {
-  font-family: 'Noto Sans KR', sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
-  max-width: 430px;
-  margin: 0 auto;
-  position: relative;
-  font-size: 14px;
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);
+  min-height:100vh;max-width:430px;margin:0 auto;font-size:14px;}
+.app-header{position:fixed;top:0;left:50%;transform:translateX(-50%);
+  width:100%;max-width:430px;height:var(--hdr);background:var(--primary);
+  display:flex;align-items:center;justify-content:space-between;padding:0 18px;
+  z-index:100;box-shadow:0 2px 8px rgba(26,86,160,0.3);}
+.logo{color:#fff;font-size:18px;font-weight:700;letter-spacing:-0.5px;}
+.logo span{color:#7EC8E3}
+.date-badge{background:rgba(255,255,255,0.18);color:#fff;font-size:11px;font-weight:500;
+  padding:4px 10px;border-radius:20px;}
+.fb-dot{width:8px;height:8px;border-radius:50%;background:#aaa;box-shadow:0 0 5px #aaa;}
+.main{padding-top:calc(var(--hdr)+10px);padding-bottom:calc(var(--nav)+16px);min-height:100vh;}
+.tab-panel{display:none;padding:0 14px;}
+.tab-panel.active{display:block;}
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+  width:100%;max-width:430px;height:var(--nav);background:var(--surface);
+  display:flex;border-top:1px solid var(--border);z-index:100;
+  box-shadow:0 -2px 12px rgba(0,0,0,0.08);}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;border:none;background:none;cursor:pointer;color:var(--text3);
+  font-family:'Noto Sans KR',sans-serif;font-size:10px;font-weight:500;
+  transition:color 0.15s;padding:6px 0;-webkit-tap-highlight-color:transparent;}
+.nav-btn .icon{font-size:20px;}
+.nav-btn.active{color:var(--primary);}
+.nav-btn.active .icon{transform:scale(1.1);}
+.card{background:var(--surface);border-radius:var(--r);padding:14px 16px;
+  margin-bottom:10px;box-shadow:var(--sh);}
+.card-title{font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;
+  letter-spacing:0.5px;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.dot{width:6px;height:6px;border-radius:50%;display:inline-block;}
+.today-summary{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;}
+.summary-item{background:var(--surface);border-radius:12px;padding:12px 10px;
+  text-align:center;box-shadow:var(--sh);}
+.summary-item .val{font-size:22px;font-weight:700;line-height:1;margin-bottom:2px;}
+.summary-item .lbl{font-size:10px;color:var(--text3);font-weight:500;}
+.summary-item .unit{font-size:10px;color:var(--text3);}
+.form-group{margin-bottom:10px;}
+.form-label{display:block;font-size:11px;font-weight:700;color:var(--text2);margin-bottom:4px;}
+.form-input{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;
+  font-family:'Noto Sans KR',sans-serif;font-size:14px;color:var(--text);
+  background:#FAFBFC;outline:none;transition:border-color 0.15s;}
+.form-input:focus{border-color:var(--primary);background:#fff;}
+.input-row{display:flex;gap:8px;}
+.input-row .form-group{flex:1;}
+select.form-input{appearance:none;}
+textarea.form-input{resize:none;height:70px;}
+.btn{width:100%;padding:13px;border:none;border-radius:12px;
+  font-family:'Noto Sans KR',sans-serif;font-size:14px;font-weight:700;
+  cursor:pointer;transition:all 0.15s;-webkit-tap-highlight-color:transparent;}
+.btn-primary{background:var(--primary);color:#fff;}
+.btn-primary:active{background:#1347a0;transform:scale(0.98);}
+.btn-accent{background:var(--accent);color:#fff;margin-bottom:8px;}
+.btn-warn{background:var(--warn);color:#fff;}
+.btn-outline{background:transparent;color:var(--primary);border:1.5px solid var(--primary);}
+.btn-pdf{background:linear-gradient(135deg,#6B46C1,#9F7AEA);color:#fff;margin-top:8px;}
+.btn-sm{width:auto;padding:7px 14px;font-size:12px;border-radius:8px;}
+.meal-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;
+  border-bottom:1px solid var(--border);}
+.meal-item:last-child{border-bottom:none;padding-bottom:0;}
+.meal-time-badge{background:var(--pl);color:var(--primary);font-size:10px;font-weight:700;
+  padding:3px 8px;border-radius:20px;white-space:nowrap;min-width:36px;text-align:center;}
+.meal-info{flex:1;}
+.meal-name{font-size:13px;font-weight:500;color:var(--text);}
+.meal-meta{font-size:11px;color:var(--text3);margin-top:2px;}
+.photo-zone{border:2px dashed var(--border);border-radius:12px;padding:20px;
+  text-align:center;cursor:pointer;transition:border-color 0.15s,background 0.15s;
+  position:relative;overflow:hidden;}
+.photo-zone:hover{border-color:var(--primary);background:var(--pl);}
+.photo-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;}
+.photo-zone .ph-icon{font-size:32px;margin-bottom:6px;}
+.photo-zone .ph-txt{font-size:12px;color:var(--text3);}
+.photo-preview{width:100%;max-height:200px;object-fit:contain;border-radius:10px;
+  margin-top:10px;display:none;}
+.ai-result{background:linear-gradient(135deg,#EBF2FF 0%,#E0F2F1 100%);border-radius:12px;
+  padding:14px;border-left:4px solid var(--primary);margin-top:10px;display:none;}
+.ai-result.show{display:block;}
+.ai-header{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;
+  color:var(--primary);margin-bottom:8px;}
+.ai-body{font-size:13px;line-height:1.7;color:var(--text);white-space:pre-wrap;}
+.chart-container{position:relative;width:100%;height:200px;margin-top:8px;}
+.chart-tabs{display:flex;gap:4px;margin-bottom:10px;overflow-x:auto;scrollbar-width:none;}
+.chart-tabs::-webkit-scrollbar{display:none;}
+.chart-tab{flex-shrink:0;padding:5px 12px;border:1.5px solid var(--border);border-radius:20px;
+  font-size:11px;font-weight:600;cursor:pointer;background:#fff;color:var(--text2);
+  transition:all 0.15s;font-family:'Noto Sans KR',sans-serif;}
+.chart-tab.active{background:var(--primary);color:#fff;border-color:var(--primary);}
+.risk-bar{height:8px;border-radius:4px;background:var(--border);overflow:hidden;margin-top:4px;}
+.risk-fill{height:100%;border-radius:4px;transition:width 0.6s ease;}
+.history-item{display:flex;align-items:center;padding:10px 0;
+  border-bottom:1px solid var(--border);gap:10px;}
+.history-item:last-child{border-bottom:none;}
+.history-date{font-size:11px;color:var(--text3);min-width:52px;}
+.hv-chip{background:var(--pl);color:var(--primary);padding:2px 7px;border-radius:10px;
+  font-size:11px;font-weight:600;}
+.hv-chip.bp{background:var(--al);color:var(--accent);}
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
+  background:#1A2332;color:#fff;padding:10px 20px;border-radius:24px;
+  font-size:13px;font-weight:500;opacity:0;transition:opacity 0.3s;
+  z-index:999;white-space:nowrap;pointer-events:none;}
+.toast.show{opacity:1;}
+.spinner{width:18px;height:18px;border:2px solid rgba(255,255,255,0.3);
+  border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;
+  display:none;vertical-align:middle;margin-left:6px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty-state{text-align:center;padding:28px 20px;color:var(--text3);}
+.empty-state .e-icon{font-size:36px;margin-bottom:8px;}
+.empty-state .e-txt{font-size:13px;}
+.status-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;
+  padding:2px 8px;border-radius:20px;margin-top:2px;}
+.s-normal{background:#E8F5E9;color:#2E7D32;}
+.s-high{background:var(--wl);color:var(--warn);}
+.s-low{background:var(--yl);color:#E65100;}
+/* ── 당화혈색소 계산기 ── */
+.hba1c-result-box{background:linear-gradient(135deg,#FFF8E1,#FFF3E0);border-radius:12px;
+  padding:16px;border-left:4px solid var(--yellow);margin-top:12px;display:none;}
+.hba1c-big{font-size:36px;font-weight:900;color:var(--yellow);line-height:1;}
+.hba1c-interp{font-size:12px;color:var(--text2);margin-top:6px;line-height:1.6;}
+.hba1c-grade{font-size:13px;font-weight:700;margin-top:4px;}
+.ref-table{width:100%;border-collapse:collapse;font-size:11px;margin-top:10px;}
+.ref-table th{background:#F7FAFC;color:var(--text2);font-weight:700;padding:6px 8px;
+  border:1px solid var(--border);text-align:center;}
+.ref-table td{padding:5px 8px;border:1px solid var(--border);text-align:center;color:var(--text);}
+.ref-table tr.highlight{background:#FFF8E1;}
+/* ── PDF 프린트 ── */
+@media print{
+  .bottom-nav,.app-header,.btn,.photo-zone,.chart-tabs,.nav-btn,
+  #printBtn,#reportBtn,#reportBtnRow{display:none!important;}
+  body{max-width:100%;background:#fff;}
+  .main{padding:0!important;}
+  .card{box-shadow:none;border:1px solid #ddd;page-break-inside:avoid;}
+  .tab-panel{display:block!important;}
+  .tab-panel:not(#tab-report){display:none!important;}
+  #tab-report{padding:0!important;}
+  .ai-result{display:block!important;}
+  @page{margin:15mm 12mm;}
 }
-
-/* HEADER */
-.app-header {
-  position: fixed; top: 0; left: 50%; transform: translateX(-50%);
-  width: 100%; max-width: 430px;
-  height: var(--header-h);
-  background: var(--primary);
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0 18px;
-  z-index: 100;
-  box-shadow: 0 2px 8px rgba(26,86,160,0.3);
+.print-header{display:none;}
+@media print{
+  .print-header{display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid var(--primary);}
 }
-.app-header .logo { color: #fff; font-size: 18px; font-weight: 700; letter-spacing: -0.5px; }
-.app-header .logo span { color: #7EC8E3; }
-.app-header .date-badge {
-  background: rgba(255,255,255,0.18);
-  color: #fff;
-  font-size: 11px; font-weight: 500;
-  padding: 4px 10px; border-radius: 20px;
-}
-.header-status {
-  width: 8px; height: 8px; border-radius: 50%;
-  background: #4CAF50;
-  box-shadow: 0 0 6px #4CAF50;
-}
-
-/* MAIN SCROLL */
-.main {
-  padding-top: calc(var(--header-h) + 10px);
-  padding-bottom: calc(var(--nav-h) + 16px);
-  min-height: 100vh;
-}
-
-/* TABS */
-.tab-panel { display: none; padding: 0 14px; }
-.tab-panel.active { display: block; }
-
-/* BOTTOM NAV */
-.bottom-nav {
-  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
-  width: 100%; max-width: 430px;
-  height: var(--nav-h);
-  background: var(--surface);
-  display: flex;
-  border-top: 1px solid var(--border);
-  z-index: 100;
-  box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
-}
-.nav-btn {
-  flex: 1; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 3px;
-  border: none; background: none; cursor: pointer;
-  color: var(--text3); font-family: 'Noto Sans KR', sans-serif;
-  font-size: 10px; font-weight: 500;
-  transition: color 0.15s;
-  padding: 6px 0;
-  -webkit-tap-highlight-color: transparent;
-}
-.nav-btn .icon { font-size: 20px; }
-.nav-btn.active { color: var(--primary); }
-.nav-btn.active .icon { transform: scale(1.1); }
-
-/* CARDS */
-.card {
-  background: var(--surface);
-  border-radius: var(--radius);
-  padding: 14px 16px;
-  margin-bottom: 10px;
-  box-shadow: var(--shadow);
-}
-.card-title {
-  font-size: 12px; font-weight: 700; color: var(--text3);
-  text-transform: uppercase; letter-spacing: 0.5px;
-  margin-bottom: 10px;
-  display: flex; align-items: center; gap: 6px;
-}
-.card-title .dot {
-  width: 6px; height: 6px; border-radius: 50%;
-}
-
-/* TODAY SUMMARY RING */
-.today-summary {
-  display: grid; grid-template-columns: 1fr 1fr 1fr;
-  gap: 8px; margin-bottom: 10px;
-}
-.summary-item {
-  background: var(--surface);
-  border-radius: 12px;
-  padding: 12px 10px;
-  text-align: center;
-  box-shadow: var(--shadow);
-}
-.summary-item .val {
-  font-size: 22px; font-weight: 700; line-height: 1;
-  margin-bottom: 2px;
-}
-.summary-item .lbl { font-size: 10px; color: var(--text3); font-weight: 500; }
-.summary-item .unit { font-size: 10px; color: var(--text3); }
-
-/* FORM */
-.form-group { margin-bottom: 10px; }
-.form-label {
-  display: block; font-size: 11px; font-weight: 700;
-  color: var(--text2); margin-bottom: 4px;
-}
-.form-input {
-  width: 100%; padding: 10px 12px;
-  border: 1.5px solid var(--border);
-  border-radius: 10px;
-  font-family: 'Noto Sans KR', sans-serif;
-  font-size: 14px; color: var(--text);
-  background: #FAFBFC;
-  outline: none;
-  transition: border-color 0.15s;
-}
-.form-input:focus { border-color: var(--primary); background: #fff; }
-.input-row { display: flex; gap: 8px; }
-.input-row .form-group { flex: 1; }
-
-.btn {
-  width: 100%; padding: 13px;
-  border: none; border-radius: 12px;
-  font-family: 'Noto Sans KR', sans-serif;
-  font-size: 14px; font-weight: 700;
-  cursor: pointer; transition: all 0.15s;
-  -webkit-tap-highlight-color: transparent;
-}
-.btn-primary { background: var(--primary); color: #fff; }
-.btn-primary:active { background: #1347a0; transform: scale(0.98); }
-.btn-accent { background: var(--accent); color: #fff; margin-bottom: 8px; }
-.btn-warn { background: var(--warn); color: #fff; }
-.btn-outline {
-  background: transparent; color: var(--primary);
-  border: 1.5px solid var(--primary);
-}
-.btn-sm {
-  width: auto; padding: 7px 14px;
-  font-size: 12px; border-radius: 8px;
-}
-
-/* MEAL LOG LIST */
-.meal-item {
-  display: flex; align-items: flex-start; gap: 10px;
-  padding: 10px 0; border-bottom: 1px solid var(--border);
-}
-.meal-item:last-child { border-bottom: none; padding-bottom: 0; }
-.meal-time-badge {
-  background: var(--primary-light); color: var(--primary);
-  font-size: 10px; font-weight: 700;
-  padding: 3px 8px; border-radius: 20px;
-  white-space: nowrap; min-width: 36px; text-align: center;
-}
-.meal-info { flex: 1; }
-.meal-name { font-size: 13px; font-weight: 500; color: var(--text); }
-.meal-meta { font-size: 11px; color: var(--text3); margin-top: 2px; }
-.meal-thumb {
-  width: 44px; height: 44px; border-radius: 8px;
-  object-fit: cover; border: 1px solid var(--border);
-}
-
-/* BLOOD VALUES */
-.vitals-row { display: flex; gap: 8px; }
-.vital-box {
-  flex: 1; border-radius: 12px; padding: 12px 10px; text-align: center;
-}
-.vital-box.glucose { background: var(--yellow-light); }
-.vital-box.bp { background: var(--primary-light); }
-.vital-box .v-val {
-  font-size: 24px; font-weight: 700; line-height: 1;
-}
-.vital-box.glucose .v-val { color: var(--yellow); }
-.vital-box.bp .v-val { color: var(--primary); font-size: 18px; }
-.vital-box .v-lbl { font-size: 10px; color: var(--text3); margin-top: 3px; }
-.status-badge {
-  display: inline-flex; align-items: center; gap: 4px;
-  font-size: 10px; font-weight: 700; padding: 2px 8px;
-  border-radius: 20px; margin-top: 4px;
-}
-.status-normal { background: #E8F5E9; color: #2E7D32; }
-.status-high { background: var(--warn-light); color: var(--warn); }
-.status-low { background: var(--yellow-light); color: #E65100; }
-
-/* PHOTO UPLOAD */
-.photo-zone {
-  border: 2px dashed var(--border);
-  border-radius: 12px; padding: 20px;
-  text-align: center; cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
-  position: relative; overflow: hidden;
-}
-.photo-zone:hover, .photo-zone.drag-over {
-  border-color: var(--primary); background: var(--primary-light);
-}
-.photo-zone input[type=file] {
-  position: absolute; inset: 0; opacity: 0; cursor: pointer;
-}
-.photo-zone .ph-icon { font-size: 32px; margin-bottom: 6px; }
-.photo-zone .ph-txt { font-size: 12px; color: var(--text3); }
-.photo-preview {
-  width: 100%; max-height: 200px; object-fit: contain;
-  border-radius: 10px; margin-top: 10px; display: none;
-}
-
-/* AI RESULT */
-.ai-result {
-  background: linear-gradient(135deg, #EBF2FF 0%, #E0F2F1 100%);
-  border-radius: 12px; padding: 14px;
-  border-left: 4px solid var(--primary);
-  margin-top: 10px; display: none;
-}
-.ai-result .ai-header {
-  display: flex; align-items: center; gap: 6px;
-  font-size: 11px; font-weight: 700; color: var(--primary);
-  margin-bottom: 8px;
-}
-.ai-result .ai-body {
-  font-size: 13px; line-height: 1.7; color: var(--text);
-  white-space: pre-wrap;
-}
-
-/* CHART */
-.chart-container {
-  position: relative; width: 100%; height: 200px;
-  margin-top: 8px;
-}
-.chart-tabs {
-  display: flex; gap: 4px; margin-bottom: 10px; overflow-x: auto;
-  scrollbar-width: none;
-}
-.chart-tabs::-webkit-scrollbar { display: none; }
-.chart-tab {
-  flex-shrink: 0; padding: 5px 12px;
-  border: 1.5px solid var(--border);
-  border-radius: 20px; font-size: 11px; font-weight: 600;
-  cursor: pointer; background: #fff; color: var(--text2);
-  transition: all 0.15s;
-  font-family: 'Noto Sans KR', sans-serif;
-}
-.chart-tab.active {
-  background: var(--primary); color: #fff; border-color: var(--primary);
-}
-
-/* REPORT */
-.report-section { margin-bottom: 12px; }
-.report-title {
-  font-size: 13px; font-weight: 700; color: var(--text);
-  margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
-}
-.risk-bar {
-  height: 8px; border-radius: 4px;
-  background: var(--border); overflow: hidden; margin-top: 4px;
-}
-.risk-fill {
-  height: 100%; border-radius: 4px;
-  transition: width 0.6s ease;
-}
-
-/* HISTORY LIST */
-.history-item {
-  display: flex; align-items: center;
-  padding: 10px 0; border-bottom: 1px solid var(--border);
-  gap: 10px;
-}
-.history-item:last-child { border-bottom: none; }
-.history-date {
-  font-size: 11px; color: var(--text3); min-width: 52px;
-}
-.history-vals { flex: 1; }
-.history-val-row {
-  display: flex; gap: 8px; font-size: 12px;
-}
-.hv-chip {
-  background: var(--primary-light); color: var(--primary);
-  padding: 2px 7px; border-radius: 10px;
-  font-size: 11px; font-weight: 600;
-}
-.hv-chip.bp { background: var(--accent-light); color: var(--accent); }
-
-/* TOAST */
-.toast {
-  position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
-  background: #1A2332; color: #fff;
-  padding: 10px 20px; border-radius: 24px;
-  font-size: 13px; font-weight: 500;
-  opacity: 0; transition: opacity 0.3s;
-  z-index: 999; white-space: nowrap;
-  pointer-events: none;
-}
-.toast.show { opacity: 1; }
-
-/* LOADING SPINNER */
-.spinner {
-  width: 20px; height: 20px;
-  border: 2px solid rgba(255,255,255,0.3);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-  display: none;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* SECTION LABEL */
-.section-date {
-  font-size: 13px; font-weight: 700; color: var(--text2);
-  padding: 6px 0 4px; margin-bottom: 6px;
-}
-
-/* TAG CHIPS */
-.tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.tag {
-  padding: 4px 10px; border-radius: 20px;
-  font-size: 11px; font-weight: 600;
-}
-.tag-red { background: var(--warn-light); color: var(--warn); }
-.tag-green { background: #E8F5E9; color: #2E7D32; }
-.tag-yellow { background: var(--yellow-light); color: #E65100; }
-.tag-blue { background: var(--primary-light); color: var(--primary); }
-
-/* EMPTY STATE */
-.empty-state {
-  text-align: center; padding: 32px 20px; color: var(--text3);
-}
-.empty-state .e-icon { font-size: 40px; margin-bottom: 10px; }
-.empty-state .e-txt { font-size: 13px; }
-
-select.form-input { appearance: none; }
-textarea.form-input { resize: none; height: 70px; }
-
-.divider { height: 1px; background: var(--border); margin: 10px 0; }
-
-.flex-row { display: flex; align-items: center; gap: 8px; }
-.flex-end { justify-content: flex-end; }
-
 </style>
 </head>
 <body>
 
-<!-- HEADER -->
 <header class="app-header">
-  <div class="logo">Gluco<span>Log</span></div>
+  <div class="logo">Gluco<span>Log</span> <span style="font-size:10px;opacity:0.7">v1.1</span></div>
   <div id="headerDate" class="date-badge">로딩중...</div>
-  <div class="header-status" id="fbStatus" title="Firebase 연결중"></div>
+  <div class="fb-dot" id="fbDot"></div>
 </header>
 
-<!-- MAIN -->
 <main class="main">
 
-  <!-- TAB: 오늘 -->
-  <div class="tab-panel active" id="tab-today">
-    <div style="height:8px"></div>
-
-    <!-- 오늘 요약 -->
-    <div class="today-summary">
-      <div class="summary-item">
-        <div class="val" id="sumGlucose" style="color:var(--yellow)">—</div>
-        <div class="unit">mg/dL</div>
-        <div class="lbl">혈당</div>
-      </div>
-      <div class="summary-item">
-        <div class="val" id="sumBP" style="color:var(--primary);font-size:16px">—</div>
-        <div class="unit">mmHg</div>
-        <div class="lbl">혈압</div>
-      </div>
-      <div class="summary-item">
-        <div class="val" id="sumMeals" style="color:var(--accent)">0</div>
-        <div class="unit">끼</div>
-        <div class="lbl">식사</div>
-      </div>
+<!-- ═══ TAB: 오늘 ═══ -->
+<div class="tab-panel active" id="tab-today">
+  <div style="height:8px"></div>
+  <div class="today-summary">
+    <div class="summary-item">
+      <div class="val" id="sumGlucose" style="color:var(--yellow)">—</div>
+      <div class="unit">mg/dL</div><div class="lbl">혈당</div>
     </div>
+    <div class="summary-item">
+      <div class="val" id="sumBP" style="color:var(--primary);font-size:15px">—</div>
+      <div class="unit">mmHg</div><div class="lbl">혈압</div>
+    </div>
+    <div class="summary-item">
+      <div class="val" id="sumMeals" style="color:var(--accent)">0</div>
+      <div class="unit">끼</div><div class="lbl">식사</div>
+    </div>
+  </div>
 
-    <!-- 혈당 입력 -->
-    <div class="card">
-      <div class="card-title"><span class="dot" style="background:var(--yellow)"></span>자가 혈당 측정</div>
-      <div class="input-row">
-        <div class="form-group">
-          <label class="form-label">혈당 (mg/dL)</label>
-          <input class="form-input" type="number" id="glucoseVal" placeholder="예: 105" min="40" max="600">
-        </div>
-        <div class="form-group">
-          <label class="form-label">측정 시각</label>
-          <input class="form-input" type="time" id="glucoseTime">
-        </div>
+  <!-- 혈당 입력 -->
+  <div class="card">
+    <div class="card-title"><span class="dot" style="background:var(--yellow)"></span>자가 혈당 측정</div>
+    <div class="input-row">
+      <div class="form-group">
+        <label class="form-label">혈당 (mg/dL)</label>
+        <input class="form-input" type="number" id="glucoseVal" placeholder="예: 105" min="40" max="600">
       </div>
       <div class="form-group">
-        <label class="form-label">측정 시점</label>
-        <select class="form-input" id="glucoseWhen">
-          <option value="공복">공복 (기상 후)</option>
-          <option value="식전">식전</option>
-          <option value="식후1시간">식후 1시간</option>
-          <option value="식후2시간">식후 2시간</option>
-          <option value="취침전">취침 전</option>
-          <option value="기타">기타</option>
+        <label class="form-label">측정 시각</label>
+        <input class="form-input" type="time" id="glucoseTime">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">측정 시점</label>
+      <select class="form-input" id="glucoseWhen">
+        <option value="공복">공복 (기상 후)</option>
+        <option value="식전">식전</option>
+        <option value="식후1시간">식후 1시간</option>
+        <option value="식후2시간">식후 2시간</option>
+        <option value="취침전">취침 전</option>
+        <option value="기타">기타</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">메모 (선택)</label>
+      <input class="form-input" type="text" id="glucoseMemo" placeholder="특이사항">
+    </div>
+    <button class="btn btn-primary" onclick="saveGlucose()">💉 혈당 저장</button>
+  </div>
+
+  <!-- 혈압 입력 -->
+  <div class="card">
+    <div class="card-title"><span class="dot" style="background:var(--primary)"></span>혈압 측정</div>
+    <div class="input-row">
+      <div class="form-group">
+        <label class="form-label">수축기 (높은값)</label>
+        <input class="form-input" type="number" id="bpSys" placeholder="예: 110">
+      </div>
+      <div class="form-group">
+        <label class="form-label">이완기 (낮은값)</label>
+        <input class="form-input" type="number" id="bpDia" placeholder="예: 70">
+      </div>
+    </div>
+    <div class="input-row">
+      <div class="form-group">
+        <label class="form-label">맥박 (선택)</label>
+        <input class="form-input" type="number" id="bpPulse" placeholder="예: 72">
+      </div>
+      <div class="form-group">
+        <label class="form-label">측정 시각</label>
+        <input class="form-input" type="time" id="bpTime">
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="saveBP()">💊 혈압 저장</button>
+  </div>
+
+  <!-- 식사 입력 -->
+  <div class="card">
+    <div class="card-title"><span class="dot" style="background:var(--accent)"></span>식사 기록</div>
+    <div class="input-row">
+      <div class="form-group">
+        <label class="form-label">식사 구분</label>
+        <select class="form-input" id="mealType">
+          <option>아침</option><option>아침간식</option><option>점심</option>
+          <option>점심간식</option><option>저녁</option><option>야식</option>
         </select>
       </div>
       <div class="form-group">
-        <label class="form-label">메모</label>
-        <input class="form-input" type="text" id="glucoseMemo" placeholder="특이사항 (선택)">
-      </div>
-      <button class="btn btn-primary" onclick="saveGlucose()">💉 혈당 저장</button>
-    </div>
-
-    <!-- 혈압 입력 -->
-    <div class="card">
-      <div class="card-title"><span class="dot" style="background:var(--primary)"></span>혈압 측정</div>
-      <div class="input-row">
-        <div class="form-group">
-          <label class="form-label">수축기 (높은값)</label>
-          <input class="form-input" type="number" id="bpSystolic" placeholder="예: 110" min="60" max="250">
-        </div>
-        <div class="form-group">
-          <label class="form-label">이완기 (낮은값)</label>
-          <input class="form-input" type="number" id="bpDiastolic" placeholder="예: 70" min="40" max="150">
-        </div>
-      </div>
-      <div class="input-row">
-        <div class="form-group">
-          <label class="form-label">맥박 (선택)</label>
-          <input class="form-input" type="number" id="bpPulse" placeholder="예: 72">
-        </div>
-        <div class="form-group">
-          <label class="form-label">측정 시각</label>
-          <input class="form-input" type="time" id="bpTime">
-        </div>
-      </div>
-      <button class="btn btn-primary" style="background:var(--primary)" onclick="saveBP()">💊 혈압 저장</button>
-    </div>
-
-    <!-- 식사 입력 -->
-    <div class="card">
-      <div class="card-title"><span class="dot" style="background:var(--accent)"></span>식사 기록</div>
-      <div class="input-row">
-        <div class="form-group">
-          <label class="form-label">식사 구분</label>
-          <select class="form-input" id="mealType">
-            <option value="아침">아침</option>
-            <option value="아침간식">아침 간식</option>
-            <option value="점심">점심</option>
-            <option value="점심간식">점심 간식</option>
-            <option value="저녁">저녁</option>
-            <option value="야식">야식</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">식사 시각</label>
-          <input class="form-input" type="time" id="mealTime">
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">메뉴 (쉼표로 구분)</label>
-        <input class="form-input" type="text" id="mealMenu" placeholder="예: 현미밥, 된장국, 생선구이">
-      </div>
-      <div class="form-group">
-        <label class="form-label">식단 사진 (AI 분석)</label>
-        <div class="photo-zone" id="mealPhotoZone">
-          <input type="file" accept="image/*" capture="environment" id="mealPhotoInput" onchange="previewMealPhoto(this)">
-          <div class="ph-icon">📷</div>
-          <div class="ph-txt">사진 촬영 또는 선택<br><span style="font-size:10px;color:var(--primary)">AI가 칼로리·혈당지수 분석</span></div>
-          <img class="photo-preview" id="mealPhotoPreview">
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">특이사항</label>
-        <input class="form-input" type="text" id="mealMemo" placeholder="선택">
-      </div>
-      <button class="btn btn-accent" onclick="analyzeMealAndSave()">
-        <span id="mealBtnTxt">🍽️ 저장 + AI 식단 분석</span>
-        <span class="spinner" id="mealSpinner" style="display:inline-block;vertical-align:middle;margin-left:6px"></span>
-      </button>
-      <div class="ai-result" id="mealAiResult">
-        <div class="ai-header">🤖 AI 식단 분석 결과</div>
-        <div class="ai-body" id="mealAiBody"></div>
+        <label class="form-label">식사 시각</label>
+        <input class="form-input" type="time" id="mealTime">
       </div>
     </div>
-
-    <!-- 오늘 기록 목록 -->
-    <div class="card">
-      <div class="card-title"><span class="dot" style="background:var(--text3)"></span>오늘 기록</div>
-      <div id="todayList">
-        <div class="empty-state"><div class="e-icon">📋</div><div class="e-txt">아직 오늘 기록이 없어요</div></div>
+    <div class="form-group">
+      <label class="form-label">메뉴 (쉼표 구분)</label>
+      <input class="form-input" type="text" id="mealMenu" placeholder="예: 현미밥, 된장국, 생선구이">
+    </div>
+    <div class="form-group">
+      <label class="form-label">식단 사진 (AI 분석)</label>
+      <div class="photo-zone">
+        <input type="file" accept="image/*" capture="environment" id="mealPhotoInput" onchange="prevPhoto(this,'mealPrev','mealB64')">
+        <div class="ph-icon">📷</div>
+        <div class="ph-txt">사진 촬영 또는 선택<br><span style="font-size:10px;color:var(--primary)">AI가 칼로리·혈당지수 분석</span></div>
+        <img class="photo-preview" id="mealPrev">
       </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">특이사항 (선택)</label>
+      <input class="form-input" type="text" id="mealMemo" placeholder="">
+    </div>
+    <button class="btn btn-accent" onclick="saveMeal()">
+      <span id="mealBtnTxt">🍽️ 저장 + AI 식단 분석</span><span class="spinner" id="mealSp"></span>
+    </button>
+    <div class="ai-result" id="mealAiResult">
+      <div class="ai-header">🤖 AI 식단 분석 결과</div>
+      <div class="ai-body" id="mealAiBody"></div>
     </div>
   </div>
 
-  <!-- TAB: 분석 -->
-  <div class="tab-panel" id="tab-analysis">
-    <div style="height:8px"></div>
+  <!-- 오늘 기록 -->
+  <div class="card">
+    <div class="card-title"><span class="dot" style="background:var(--text3)"></span>오늘 기록</div>
+    <div id="todayList"><div class="empty-state"><div class="e-icon">📋</div><div class="e-txt">아직 오늘 기록이 없어요</div></div></div>
+  </div>
+</div>
 
-    <!-- 병원 검사결과 업로드 -->
-    <div class="card">
-      <div class="card-title"><span class="dot" style="background:var(--warn)"></span>병원 혈액검사 결과 분석</div>
-      <p style="font-size:12px;color:var(--text3);margin-bottom:10px;line-height:1.6">
-        병원 피검사 결과지를 촬영하여 올리세요.<br>HbA1c, 공복혈당, 콜레스테롤, 간수치 등을 AI가 종합 분석합니다.
-      </p>
-      <div class="photo-zone" id="labPhotoZone">
-        <input type="file" accept="image/*" capture="environment" id="labPhotoInput" onchange="previewLabPhoto(this)">
-        <div class="ph-icon">🔬</div>
-        <div class="ph-txt">검사결과지 사진 업로드<br><span style="font-size:10px;color:var(--warn)">개인정보는 AI 분석 후 즉시 삭제</span></div>
-        <img class="photo-preview" id="labPhotoPreview">
+<!-- ═══ TAB: 분석 ═══ -->
+<div class="tab-panel" id="tab-analysis">
+  <div style="height:8px"></div>
+
+  <!-- 당화혈색소 계산기 -->
+  <div class="card">
+    <div class="card-title"><span class="dot" style="background:var(--yellow)"></span>당화혈색소(HbA1c) 계산기</div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:12px;line-height:1.6">
+      최근 2~3개월 평균 혈당으로 HbA1c를 추정하거나,<br>HbA1c 수치로 평균 혈당을 역산합니다.
+    </p>
+    <div style="display:flex;gap:6px;margin-bottom:12px;">
+      <button class="chart-tab active" id="calcModeBtn1" onclick="setCalcMode(1)">혈당→HbA1c 계산</button>
+      <button class="chart-tab" id="calcModeBtn2" onclick="setCalcMode(2)">HbA1c→평균혈당</button>
+      <button class="chart-tab" id="calcModeBtn3" onclick="setCalcMode(3)">데이터 자동계산</button>
+    </div>
+
+    <div id="calcMode1">
+      <div class="form-group">
+        <label class="form-label">평균 혈당 (mg/dL)</label>
+        <input class="form-input" type="number" id="avgGlucoseInput" placeholder="예: 130" min="40" max="600">
       </div>
-      <div class="form-group" style="margin-top:10px">
-        <label class="form-label">검사일 (선택)</label>
+      <button class="btn btn-primary" onclick="calcHbA1cFromGlucose()">계산하기</button>
+    </div>
+    <div id="calcMode2" style="display:none">
+      <div class="form-group">
+        <label class="form-label">HbA1c (%)</label>
+        <input class="form-input" type="number" id="hba1cInput" placeholder="예: 6.5" step="0.1" min="4" max="20">
+      </div>
+      <button class="btn btn-primary" onclick="calcGlucoseFromHbA1c()">계산하기</button>
+    </div>
+    <div id="calcMode3" style="display:none">
+      <p style="font-size:12px;color:var(--text3);margin-bottom:8px">저장된 혈당 데이터로 자동 계산합니다.</p>
+      <div class="form-group">
+        <label class="form-label">기간</label>
+        <select class="form-input" id="calcPeriod">
+          <option value="30">최근 30일</option>
+          <option value="60">최근 60일</option>
+          <option value="90" selected>최근 90일 (권장)</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" onclick="calcAutoHbA1c()">데이터로 계산하기</button>
+    </div>
+
+    <div class="hba1c-result-box" id="hba1cResultBox">
+      <div style="display:flex;align-items:baseline;gap:6px">
+        <div class="hba1c-big" id="hba1cBig">—</div>
+        <div style="font-size:14px;color:var(--text3);font-weight:600" id="hba1cUnit">%</div>
+      </div>
+      <div class="hba1c-grade" id="hba1cGrade"></div>
+      <div class="hba1c-interp" id="hba1cInterp"></div>
+    </div>
+
+    <!-- 참고 기준표 -->
+    <div style="margin-top:14px">
+      <div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:6px">📊 HbA1c 기준표 (ADA 기준)</div>
+      <table class="ref-table" id="refTable">
+        <tr><th>HbA1c</th><th>평균혈당</th><th>판정</th></tr>
+        <tr><td>&lt; 5.7%</td><td>&lt; 117 mg/dL</td><td style="color:#2E7D32;font-weight:700">정상</td></tr>
+        <tr><td>5.7 – 6.4%</td><td>117–137 mg/dL</td><td style="color:#E65100;font-weight:700">당뇨 전단계</td></tr>
+        <tr><td>6.5 – 7.9%</td><td>137–183 mg/dL</td><td style="color:#F9A825;font-weight:700">당뇨 (조절 목표)</td></tr>
+        <tr><td>8.0 – 9.9%</td><td>183–240 mg/dL</td><td style="color:#E53935;font-weight:700">혈당 조절 불량</td></tr>
+        <tr><td>≥ 10%</td><td>≥ 240 mg/dL</td><td style="color:#B71C1C;font-weight:700">매우 위험</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- 병원 검사결과 -->
+  <div class="card">
+    <div class="card-title"><span class="dot" style="background:var(--warn)"></span>병원 혈액검사 결과 분석</div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:10px;line-height:1.6">
+      검사결과지를 촬영하여 올리세요.<br>HbA1c, 공복혈당, 콜레스테롤 등을 AI가 종합 분석합니다.
+    </p>
+    <div class="photo-zone">
+      <input type="file" accept="image/*" capture="environment" id="labPhotoInput" onchange="prevPhoto(this,'labPrev','labB64')">
+      <div class="ph-icon">🔬</div>
+      <div class="ph-txt">검사결과지 사진 업로드</div>
+      <img class="photo-preview" id="labPrev">
+    </div>
+    <div class="input-row" style="margin-top:10px">
+      <div class="form-group">
+        <label class="form-label">검사일</label>
         <input class="form-input" type="date" id="labDate">
       </div>
-      <div class="form-group">
-        <label class="form-label">추가 증상·특이사항</label>
-        <textarea class="form-input" id="labMemo" placeholder="예: 최근 피로감, 다음증, 야간 소변 빈도 증가 등"></textarea>
-      </div>
-      <button class="btn btn-warn" onclick="analyzeLabResult()" style="margin-top:4px">
-        <span id="labBtnTxt">🩺 AI 종합 진단 시작</span>
-        <span class="spinner" id="labSpinner" style="display:inline-block;vertical-align:middle;margin-left:6px"></span>
-      </button>
-      <div class="ai-result" id="labAiResult">
-        <div class="ai-header">🩺 AI 종합 진단 결과 <span style="font-size:10px;font-weight:400;color:var(--text3)">(참고용 — 최종 판단은 담당의에게)</span></div>
-        <div class="ai-body" id="labAiBody"></div>
-      </div>
     </div>
-
-    <!-- 식단 재분석 -->
-    <div class="card">
-      <div class="card-title"><span class="dot" style="background:var(--accent)"></span>식단 사진 별도 분석</div>
-      <p style="font-size:12px;color:var(--text3);margin-bottom:10px">식사 기록 없이 사진만으로 분석할 때 사용</p>
-      <div class="photo-zone" id="quickFoodZone">
-        <input type="file" accept="image/*" capture="environment" id="quickFoodInput" onchange="previewQuickFood(this)">
-        <div class="ph-icon">🥗</div>
-        <div class="ph-txt">식단 사진 선택</div>
-        <img class="photo-preview" id="quickFoodPreview">
-      </div>
-      <button class="btn btn-accent" style="margin-top:10px" onclick="analyzeQuickFood()">
-        <span id="quickFoodBtnTxt">🔍 칼로리·혈당지수 분석</span>
-        <span class="spinner" id="quickFoodSpinner" style="display:inline-block;vertical-align:middle;margin-left:6px"></span>
-      </button>
-      <div class="ai-result" id="quickFoodResult">
-        <div class="ai-header">🤖 식단 분석 결과</div>
-        <div class="ai-body" id="quickFoodBody"></div>
-      </div>
+    <div class="form-group">
+      <label class="form-label">증상·특이사항</label>
+      <textarea class="form-input" id="labMemo" placeholder="예: 피로감, 다음증, 야간뇨 등"></textarea>
     </div>
-
-    <!-- 최근 진단 기록 -->
-    <div class="card">
-      <div class="card-title"><span class="dot" style="background:var(--text3)"></span>최근 진단 기록</div>
-      <div id="diagHistoryList">
-        <div class="empty-state"><div class="e-icon">🔬</div><div class="e-txt">저장된 진단 기록 없음</div></div>
-      </div>
+    <button class="btn btn-warn" onclick="analyzeLabResult()">
+      <span id="labBtnTxt">🩺 AI 종합 진단 시작</span><span class="spinner" id="labSp"></span>
+    </button>
+    <div class="ai-result" id="labAiResult">
+      <div class="ai-header">🩺 AI 종합 진단 <span style="font-size:10px;font-weight:400;color:var(--text3)">(참고용 — 최종 판단은 담당의에게)</span></div>
+      <div class="ai-body" id="labAiBody"></div>
     </div>
   </div>
 
-  <!-- TAB: 그래프 -->
-  <div class="tab-panel" id="tab-graph">
-    <div style="height:8px"></div>
-
-    <!-- 혈당 그래프 -->
-    <div class="card">
-      <div class="card-title"><span class="dot" style="background:var(--yellow)"></span>혈당 추이</div>
-      <div class="chart-tabs" id="glucoseChartTabs">
-        <button class="chart-tab active" onclick="loadGlucoseChart('day',this)">일</button>
-        <button class="chart-tab" onclick="loadGlucoseChart('week',this)">주</button>
-        <button class="chart-tab" onclick="loadGlucoseChart('month',this)">월</button>
-        <button class="chart-tab" onclick="loadGlucoseChart('quarter',this)">분기</button>
-        <button class="chart-tab" onclick="loadGlucoseChart('year',this)">년</button>
-      </div>
-      <div class="chart-container"><canvas id="glucoseChart"></canvas></div>
-      <div id="glucoseChartStat" style="display:flex;gap:16px;margin-top:8px;font-size:11px;color:var(--text3)"></div>
+  <!-- 식단 빠른 분석 -->
+  <div class="card">
+    <div class="card-title"><span class="dot" style="background:var(--accent)"></span>식단 사진 분석</div>
+    <div class="photo-zone">
+      <input type="file" accept="image/*" capture="environment" id="quickFoodInput" onchange="prevPhoto(this,'quickPrev','quickB64')">
+      <div class="ph-icon">🥗</div>
+      <div class="ph-txt">식단 사진 선택</div>
+      <img class="photo-preview" id="quickPrev">
     </div>
-
-    <!-- 혈압 그래프 -->
-    <div class="card">
-      <div class="card-title"><span class="dot" style="background:var(--primary)"></span>혈압 추이</div>
-      <div class="chart-tabs" id="bpChartTabs">
-        <button class="chart-tab active" onclick="loadBPChart('day',this)">일</button>
-        <button class="chart-tab" onclick="loadBPChart('week',this)">주</button>
-        <button class="chart-tab" onclick="loadBPChart('month',this)">월</button>
-        <button class="chart-tab" onclick="loadBPChart('quarter',this)">분기</button>
-        <button class="chart-tab" onclick="loadBPChart('year',this)">년</button>
-      </div>
-      <div class="chart-container"><canvas id="bpChart"></canvas></div>
+    <button class="btn btn-accent" style="margin-top:10px" onclick="analyzeQuickFood()">
+      <span id="quickBtnTxt">🔍 칼로리·혈당지수 분석</span><span class="spinner" id="quickSp"></span>
+    </button>
+    <div class="ai-result" id="quickFoodResult">
+      <div class="ai-header">🤖 식단 분석 결과</div>
+      <div class="ai-body" id="quickFoodBody"></div>
     </div>
+  </div>
+</div>
 
-    <!-- 식사 횟수 -->
+<!-- ═══ TAB: 그래프 ═══ -->
+<div class="tab-panel" id="tab-graph">
+  <div style="height:8px"></div>
+  <div class="card">
+    <div class="card-title"><span class="dot" style="background:var(--yellow)"></span>혈당 추이</div>
+    <div class="chart-tabs" id="gcTabs">
+      <button class="chart-tab active" onclick="loadGC('day',this)">일</button>
+      <button class="chart-tab" onclick="loadGC('week',this)">주</button>
+      <button class="chart-tab" onclick="loadGC('month',this)">월</button>
+      <button class="chart-tab" onclick="loadGC('quarter',this)">분기</button>
+      <button class="chart-tab" onclick="loadGC('year',this)">년</button>
+    </div>
+    <div class="chart-container"><canvas id="glucoseChart"></canvas></div>
+    <div id="gcStat" style="display:flex;gap:16px;margin-top:8px;font-size:11px;color:var(--text3)"></div>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="dot" style="background:var(--primary)"></span>혈압 추이</div>
+    <div class="chart-tabs" id="bcTabs">
+      <button class="chart-tab active" onclick="loadBC('day',this)">일</button>
+      <button class="chart-tab" onclick="loadBC('week',this)">주</button>
+      <button class="chart-tab" onclick="loadBC('month',this)">월</button>
+      <button class="chart-tab" onclick="loadBC('quarter',this)">분기</button>
+      <button class="chart-tab" onclick="loadBC('year',this)">년</button>
+    </div>
+    <div class="chart-container"><canvas id="bpChart"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="dot" style="background:var(--accent)"></span>식사 패턴</div>
+    <div class="chart-tabs" id="mcTabs">
+      <button class="chart-tab active" onclick="loadMC('week',this)">주</button>
+      <button class="chart-tab" onclick="loadMC('month',this)">월</button>
+    </div>
+    <div class="chart-container"><canvas id="mealChart"></canvas></div>
+  </div>
+</div>
+
+<!-- ═══ TAB: 리포트 ═══ -->
+<div class="tab-panel" id="tab-report">
+  <div style="height:8px"></div>
+
+  <!-- 프린트 헤더 (인쇄시만 표시) -->
+  <div class="print-header">
+    <div>
+      <div style="font-size:18px;font-weight:700;color:var(--primary)">GlucoLog 건강 리포트</div>
+      <div style="font-size:11px;color:var(--text3)" id="printDate"></div>
+    </div>
+    <div style="font-size:11px;color:var(--text3)">v1.1 · 참고용 (최종 판단은 담당의에게)</div>
+  </div>
+
+  <div class="card" id="reportBtnRow">
+    <div class="card-title"><span class="dot" style="background:var(--warn)"></span>AI 건강 리포트</div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:12px;line-height:1.6">
+      저장된 모든 혈당·혈압·식사 데이터를 분석하여 종합 소견을 생성합니다.
+    </p>
+    <button class="btn btn-primary" id="reportBtn" onclick="generateReport()">
+      <span id="reportBtnTxt">📊 리포트 생성</span><span class="spinner" id="reportSp"></span>
+    </button>
+    <button class="btn btn-pdf" id="printBtn" style="display:none" onclick="printReport()">
+      🖨️ PDF로 저장 / 인쇄
+    </button>
+  </div>
+
+  <div id="reportOutput" style="display:none">
+    <!-- 위험도 -->
+    <div class="card" id="riskCard">
+      <div class="card-title"><span class="dot" style="background:var(--warn)"></span>위험도 평가</div>
+      <div id="riskContent"></div>
+    </div>
+    <!-- 당화혈색소 추정 -->
+    <div class="card" id="hba1cReportCard" style="display:none">
+      <div class="card-title"><span class="dot" style="background:var(--yellow)"></span>당화혈색소 추정 (데이터 기반)</div>
+      <div id="hba1cReportContent"></div>
+    </div>
+    <!-- AI 소견 -->
     <div class="card">
-      <div class="card-title"><span class="dot" style="background:var(--accent)"></span>식사 패턴</div>
-      <div class="chart-tabs" id="mealChartTabs">
-        <button class="chart-tab active" onclick="loadMealChart('week',this)">주</button>
-        <button class="chart-tab" onclick="loadMealChart('month',this)">월</button>
+      <div class="card-title"><span class="dot" style="background:var(--primary)"></span>AI 종합 진단 소견</div>
+      <div class="ai-result show">
+        <div class="ai-header">🩺 분석 결과 <span style="font-size:10px;font-weight:400;color:var(--text3)">(참고용)</span></div>
+        <div class="ai-body" id="reportAiBody"></div>
       </div>
-      <div class="chart-container"><canvas id="mealChart"></canvas></div>
+    </div>
+    <!-- 혈당 분포 -->
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:var(--yellow)"></span>혈당 분포 분석</div>
+      <div id="glucoseDistrib"></div>
     </div>
   </div>
 
-  <!-- TAB: 리포트 -->
-  <div class="tab-panel" id="tab-report">
-    <div style="height:8px"></div>
-
-    <div class="card">
-      <div class="card-title"><span class="dot" style="background:var(--warn)"></span>AI 건강 리포트</div>
-      <p style="font-size:12px;color:var(--text3);margin-bottom:12px;line-height:1.6">
-        저장된 모든 데이터를 분석하여 종합 건강 리포트를 생성합니다.
-      </p>
-      <button class="btn btn-primary" onclick="generateReport()">
-        <span id="reportBtnTxt">📊 리포트 생성</span>
-        <span class="spinner" id="reportSpinner" style="display:inline-block;vertical-align:middle;margin-left:6px"></span>
-      </button>
-    </div>
-
-    <div id="reportOutput" style="display:none">
-      <!-- 위험도 -->
-      <div class="card" id="riskCard">
-        <div class="card-title"><span class="dot" style="background:var(--warn)"></span>위험도 평가</div>
-        <div id="riskContent"></div>
-      </div>
-
-      <!-- AI 상세 리포트 -->
-      <div class="card">
-        <div class="card-title"><span class="dot" style="background:var(--primary)"></span>종합 진단 의견</div>
-        <div class="ai-result" style="display:block;margin-top:0">
-          <div class="ai-header">🩺 AI 분석 결과 <span style="font-size:10px;font-weight:400;color:var(--text3)">(참고용)</span></div>
-          <div class="ai-body" id="reportAiBody"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 전체 기록 -->
-    <div class="card">
-      <div class="card-title"><span class="dot" style="background:var(--text3)"></span>전체 데이터 기록</div>
-      <div id="allHistoryList">
-        <div class="empty-state"><div class="e-icon">📁</div><div class="e-txt">저장된 기록 없음</div></div>
-      </div>
-    </div>
+  <!-- 전체 기록 -->
+  <div class="card">
+    <div class="card-title"><span class="dot" style="background:var(--text3)"></span>전체 기록 요약</div>
+    <div id="allHistoryList"><div class="empty-state"><div class="e-icon">📁</div><div class="e-txt">저장된 기록 없음</div></div></div>
   </div>
+</div>
 
 </main>
 
-<!-- BOTTOM NAV -->
 <nav class="bottom-nav">
-  <button class="nav-btn active" id="navToday" onclick="switchTab('today')">
-    <span class="icon">📋</span>오늘
-  </button>
-  <button class="nav-btn" id="navAnalysis" onclick="switchTab('analysis')">
-    <span class="icon">🔬</span>분석
-  </button>
-  <button class="nav-btn" id="navGraph" onclick="switchTab('graph')">
-    <span class="icon">📈</span>그래프
-  </button>
-  <button class="nav-btn" id="navReport" onclick="switchTab('report')">
-    <span class="icon">🩺</span>리포트
-  </button>
+  <button class="nav-btn active" id="navToday" onclick="switchTab('today')"><span class="icon">📋</span>오늘</button>
+  <button class="nav-btn" id="navAnalysis" onclick="switchTab('analysis')"><span class="icon">🔬</span>분석</button>
+  <button class="nav-btn" id="navGraph" onclick="switchTab('graph')"><span class="icon">📈</span>그래프</button>
+  <button class="nav-btn" id="navReport" onclick="switchTab('report')"><span class="icon">🩺</span>리포트</button>
 </nav>
 
-<!-- TOAST -->
 <div class="toast" id="toast"></div>
 
 <script>
-// ─── 앱 버전 ───────────────────────────
-const APP_VER = 'v1.0';
+// ─ 전역 상태 ─
+let db,col,addDoc,getDocs,q,orderBy;
+let gChart,bChart,mChart;
+let mealB64=null,labB64=null,quickB64=null;
+let calcMode=1;
+const VER='v1.1';
 
-// ─── 상태 ───────────────────────────────
-let db, col, addDoc, getDocs, q, orderBy, where, Timestamp;
-let glucoseChartInst, bpChartInst, mealChartInst;
-let mealPhotoB64 = null, labPhotoB64 = null, quickFoodB64 = null;
-let todayRecords = [];
+// ─ 날짜 유틸 ─
+const todayStr=()=>new Date().toISOString().slice(0,10);
+const nowTime=()=>new Date().toTimeString().slice(0,5);
 
-// ─── 날짜 유틸 ──────────────────────────
-const todayStr = () => new Date().toISOString().slice(0,10);
-const nowTime = () => new Date().toTimeString().slice(0,5);
-const fmt = d => {
-  if(!d) return '';
-  const dt = d.toDate ? d.toDate() : new Date(d);
-  return `${dt.getMonth()+1}/${dt.getDate()} ${dt.getHours()}:${String(dt.getMinutes()).padStart(2,'0')}`;
-};
-const fmtDate = d => {
-  if(!d) return '';
-  const dt = d.toDate ? d.toDate() : new Date(d);
-  return `${dt.getMonth()+1}/${dt.getDate()}`;
-};
-
-// ─── 헤더 날짜 ──────────────────────────
 function updateHeaderDate(){
-  const now = new Date();
-  const days = ['일','월','화','수','목','금','토'];
-  document.getElementById('headerDate').textContent =
-    `${now.getMonth()+1}월 ${now.getDate()}일(${days[now.getDay()]})`;
+  const n=new Date(),days=['일','월','화','수','목','금','토'];
+  document.getElementById('headerDate').textContent=
+    `${n.getMonth()+1}월 ${n.getDate()}일(${days[n.getDay()]})`;
+  document.getElementById('printDate').textContent=
+    `출력일: ${n.getFullYear()}.${n.getMonth()+1}.${n.getDate()}`;
 }
 updateHeaderDate();
 
-// ─── 기본 시간 자동입력 ─────────────────
-window.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('glucoseTime').value = nowTime();
-  document.getElementById('bpTime').value = nowTime();
-  document.getElementById('mealTime').value = nowTime();
-  document.getElementById('labDate').value = todayStr();
-  document.getElementById('version-label') && (document.getElementById('version-label').textContent = APP_VER);
+window.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('glucoseTime').value=nowTime();
+  document.getElementById('bpTime').value=nowTime();
+  document.getElementById('mealTime').value=nowTime();
+  document.getElementById('labDate').value=todayStr();
 });
 
-// ─── Firebase 초기화 대기 ───────────────
-window.addEventListener('firebaseReady', async () => {
-  db = window._db;
-  col = window._col; addDoc = window._addDoc;
-  getDocs = window._getDocs; q = window._query;
-  orderBy = window._orderBy; where = window._where;
-  Timestamp = window._Timestamp;
-  document.getElementById('fbStatus').style.background = '#4CAF50';
+// ─ Firebase 대기 ─
+window.addEventListener('firebaseReady',async()=>{
+  db=window._db; col=window._col; addDoc=window._addDoc;
+  getDocs=window._getDocs; q=window._q; orderBy=window._orderBy;
+  const dot=document.getElementById('fbDot');
+  dot.style.background='#4CAF50'; dot.style.boxShadow='0 0 6px #4CAF50';
   await loadTodayRecords();
-  loadGlucoseChart('day', document.querySelector('#glucoseChartTabs .chart-tab'));
-  loadBPChart('day', document.querySelector('#bpChartTabs .chart-tab'));
-  loadMealChart('week', document.querySelector('#mealChartTabs .chart-tab'));
   loadAllHistory();
+  loadGC('day',document.querySelector('#gcTabs .chart-tab'));
+  loadBC('day',document.querySelector('#bcTabs .chart-tab'));
+  loadMC('week',document.querySelector('#mcTabs .chart-tab'));
 });
 
-// ─── 탭 전환 ────────────────────────────
+// ─ 탭 ─
 function switchTab(name){
-  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('tab-'+name).classList.add('active');
-  document.getElementById('nav-'+name.charAt(0).toUpperCase()+name.slice(1)).classList.add('active');
-  if(name==='graph'){
-    setTimeout(()=>{
-      loadGlucoseChart('day', document.querySelector('#glucoseChartTabs .chart-tab.active'));
-      loadBPChart('day', document.querySelector('#bpChartTabs .chart-tab.active'));
-      loadMealChart('week', document.querySelector('#mealChartTabs .chart-tab.active'));
-    }, 50);
-  }
+  const nb=document.getElementById('nav'+name.charAt(0).toUpperCase()+name.slice(1));
+  if(nb) nb.classList.add('active');
+  if(name==='graph') setTimeout(()=>{ loadGC(null,null); loadBC(null,null); loadMC(null,null); },60);
   if(name==='report') loadAllHistory();
 }
 
-// ─── TOAST ──────────────────────────────
-function showToast(msg, dur=2500){
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'), dur);
+// ─ 토스트 ─
+function showToast(msg,dur=2500){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),dur);
 }
 
-// ─── 혈당 저장 ──────────────────────────
-async function saveGlucose(){
-  const val = parseFloat(document.getElementById('glucoseVal').value);
-  if(!val || val<40 || val>600){ showToast('⚠️ 혈당값을 확인하세요 (40~600)'); return; }
-  if(!db){ showToast('⚠️ Firebase 연결 중...'); return; }
-  const data = {
-    type: 'glucose', date: todayStr(),
-    time: document.getElementById('glucoseTime').value,
-    value: val, when: document.getElementById('glucoseWhen').value,
-    memo: document.getElementById('glucoseMemo').value,
-    createdAt: new Date()
+// ─ 사진 미리보기 ─
+function prevPhoto(input,previewId,b64Key){
+  if(!input.files[0]) return;
+  const r=new FileReader();
+  r.onload=e=>{
+    const img=document.getElementById(previewId);
+    img.src=e.target.result; img.style.display='block';
+    window[b64Key]=e.target.result.split(',')[1];
   };
-  await addDoc(col(db,'glucolog'), data);
-  showToast('✅ 혈당 저장 완료');
-  document.getElementById('glucoseVal').value='';
-  document.getElementById('glucoseMemo').value='';
-  document.getElementById('glucoseTime').value = nowTime();
-  await loadTodayRecords();
+  r.readAsDataURL(input.files[0]);
 }
 
-// ─── 혈압 저장 ──────────────────────────
-async function saveBP(){
-  const sys = parseFloat(document.getElementById('bpSystolic').value);
-  const dia = parseFloat(document.getElementById('bpDiastolic').value);
-  if(!sys || !dia){ showToast('⚠️ 수축기/이완기 혈압을 입력하세요'); return; }
-  if(!db){ showToast('⚠️ Firebase 연결 중...'); return; }
-  const data = {
-    type: 'bp', date: todayStr(),
-    time: document.getElementById('bpTime').value,
-    systolic: sys, diastolic: dia,
-    pulse: parseFloat(document.getElementById('bpPulse').value)||null,
-    createdAt: new Date()
-  };
-  await addDoc(col(db,'glucolog'), data);
-  showToast('✅ 혈압 저장 완료');
-  document.getElementById('bpSystolic').value='';
-  document.getElementById('bpDiastolic').value='';
-  document.getElementById('bpPulse').value='';
-  document.getElementById('bpTime').value = nowTime();
-  await loadTodayRecords();
-}
-
-// ─── 식사 저장 + AI 분석 ─────────────────
-async function analyzeMealAndSave(){
-  const menu = document.getElementById('mealMenu').value.trim();
-  if(!menu){ showToast('⚠️ 메뉴를 입력하세요'); return; }
-  if(!db){ showToast('⚠️ Firebase 연결 중...'); return; }
-  const btn = document.getElementById('mealBtnTxt');
-  const sp = document.getElementById('mealSpinner');
-  btn.textContent='분석 중...'; sp.style.display='inline-block';
-
-  const data = {
-    type: 'meal', date: todayStr(),
-    time: document.getElementById('mealTime').value,
-    mealType: document.getElementById('mealType').value,
-    menu: menu, memo: document.getElementById('mealMemo').value,
-    hasPhoto: !!mealPhotoB64,
-    createdAt: new Date()
-  };
-
-  let aiText = '';
-  try {
-    // AI 식단 분석
-    const messages = [];
-    if(mealPhotoB64){
-      messages.push({ role:'user', content:[
-        { type:'image', source:{ type:'base64', media_type:'image/jpeg', data:mealPhotoB64 }},
-        { type:'text', text:`식사 구분: ${data.mealType}, 메뉴: ${menu}\n위 식단 사진과 메뉴 정보를 바탕으로 아래 항목을 분석해주세요:\n1. 예상 총 칼로리 (kcal)\n2. 주요 영양소 (탄수화물/단백질/지방 g)\n3. 혈당지수(GI) 추정 및 혈당 상승 위험 요인\n4. 혈당 관리에 유리한 점 / 불리한 점\n5. 개선 추천 (짧게)\n숫자와 근거를 포함하여 실용적으로 분석해주세요.`}
-      ]});
-    } else {
-      messages.push({ role:'user', content:`식사 구분: ${data.mealType}, 메뉴: ${menu}\n위 식단 정보를 바탕으로 아래 항목을 분석해주세요:\n1. 예상 총 칼로리 (kcal)\n2. 주요 영양소 (탄수화물/단백질/지방 g)\n3. 혈당지수(GI) 추정 및 혈당 상승 위험 요인\n4. 혈당 관리에 유리한 점 / 불리한 점\n5. 개선 추천 (짧게)\n숫자와 근거를 포함하여 실용적으로 분석해주세요.`});
-    }
-    const res = await callClaude(messages);
-    aiText = res;
-    data.aiAnalysis = aiText;
-    document.getElementById('mealAiBody').textContent = aiText;
-    document.getElementById('mealAiResult').style.display='block';
-  } catch(e){ console.error(e); }
-
-  await addDoc(col(db,'glucolog'), data);
-  showToast('✅ 식사 저장 완료');
-  btn.textContent='🍽️ 저장 + AI 식단 분석'; sp.style.display='none';
-  document.getElementById('mealMenu').value='';
-  document.getElementById('mealMemo').value='';
-  document.getElementById('mealTime').value=nowTime();
-  mealPhotoB64=null;
-  document.getElementById('mealPhotoPreview').style.display='none';
-  await loadTodayRecords();
-}
-
-// ─── 검사결과 분석 ──────────────────────
-async function analyzeLabResult(){
-  if(!labPhotoB64){ showToast('⚠️ 검사결과지 사진을 먼저 업로드하세요'); return; }
-  const btn = document.getElementById('labBtnTxt');
-  const sp = document.getElementById('labSpinner');
-  btn.textContent='분석 중...'; sp.style.display='inline-block';
-  const memo = document.getElementById('labMemo').value;
-  const labDate = document.getElementById('labDate').value;
-  try {
-    const res = await callClaude([{ role:'user', content:[
-      { type:'image', source:{ type:'base64', media_type:'image/jpeg', data:labPhotoB64 }},
-      { type:'text', text:`검사일: ${labDate}\n증상/특이사항: ${memo||'없음'}\n\n위 혈액검사 결과지를 분석하여 아래 항목으로 상세히 진단해주세요:\n1. 각 항목 정상/이상 여부 (수치 포함)\n2. 당뇨 관련 지표 분석 (공복혈당, HbA1c, 인슐린저항성 등)\n3. 심혈관 위험 인자 (콜레스테롤, 중성지방, LDL/HDL)\n4. 간·신장 기능 이상 여부\n5. 종합 위험도 평가 (낮음/보통/높음/매우높음)\n6. 즉시 병원 방문이 필요한 수치가 있는지\n7. 생활 습관 개선 권고사항\n8. 추가 검사 권고사항\n실제 의사의 소견 수준으로 상세하고 구체적으로 작성해주세요.`}
-    ]}]);
-    document.getElementById('labAiBody').textContent = res;
-    document.getElementById('labAiResult').style.display='block';
-    if(db){
-      await addDoc(col(db,'glucolog'),{
-        type:'labResult', date: labDate||todayStr(),
-        memo, aiDiagnosis: res, createdAt: new Date()
-      });
-    }
-    loadDiagHistory();
-  } catch(e){ showToast('❌ 분석 중 오류 발생'); console.error(e); }
-  btn.textContent='🩺 AI 종합 진단 시작'; sp.style.display='none';
-}
-
-// ─── 식단 빠른 분석 ────────────────────
-async function analyzeQuickFood(){
-  if(!quickFoodB64){ showToast('⚠️ 식단 사진을 먼저 선택하세요'); return; }
-  const btn = document.getElementById('quickFoodBtnTxt');
-  const sp = document.getElementById('quickFoodSpinner');
-  btn.textContent='분석 중...'; sp.style.display='inline-block';
-  try {
-    const res = await callClaude([{ role:'user', content:[
-      { type:'image', source:{ type:'base64', media_type:'image/jpeg', data:quickFoodB64 }},
-      { type:'text', text:`위 식단 사진을 분석하여:\n1. 식별된 음식 목록\n2. 예상 총 칼로리 (kcal)\n3. 탄수화물/단백질/지방 (g)\n4. 혈당지수(GI) 및 혈당 상승 위험 요인\n5. 혈당 친화적 음식 vs 주의해야 할 음식\n6. 개선 제안\n구체적인 수치와 함께 분석해주세요.`}
-    ]}]);
-    document.getElementById('quickFoodBody').textContent = res;
-    document.getElementById('quickFoodResult').style.display='block';
-  } catch(e){ showToast('❌ 분석 중 오류 발생'); console.error(e); }
-  btn.textContent='🔍 칼로리·혈당지수 분석'; sp.style.display='none';
-}
-
-// ─── 종합 리포트 ────────────────────────
-async function generateReport(){
-  if(!db){ showToast('⚠️ Firebase 연결 중...'); return; }
-  const btn = document.getElementById('reportBtnTxt');
-  const sp = document.getElementById('reportSpinner');
-  btn.textContent='분석 중...'; sp.style.display='inline-block';
-  try {
-    const snap = await getDocs(q(col(db,'glucolog'), orderBy('createdAt','desc')));
-    const records = snap.docs.map(d=>d.data());
-    const glucoseRecs = records.filter(r=>r.type==='glucose');
-    const bpRecs = records.filter(r=>r.type==='bp');
-    const mealRecs = records.filter(r=>r.type==='meal');
-    const labRecs = records.filter(r=>r.type==='labResult');
-
-    const avgGlucose = glucoseRecs.length ? (glucoseRecs.reduce((a,b)=>a+b.value,0)/glucoseRecs.length).toFixed(1) : null;
-    const avgSys = bpRecs.length ? (bpRecs.reduce((a,b)=>a+b.systolic,0)/bpRecs.length).toFixed(1) : null;
-    const avgDia = bpRecs.length ? (bpRecs.reduce((a,b)=>a+b.diastolic,0)/bpRecs.length).toFixed(1) : null;
-    const maxG = glucoseRecs.length ? Math.max(...glucoseRecs.map(r=>r.value)) : null;
-    const minG = glucoseRecs.length ? Math.min(...glucoseRecs.map(r=>r.value)) : null;
-
-    // 위험도 표시
-    let riskHTML = '';
-    if(avgGlucose){
-      const gRisk = avgGlucose>180?'매우높음':avgGlucose>140?'높음':avgGlucose>110?'주의':'정상';
-      const gColor = avgGlucose>180?'#E53935':avgGlucose>140?'#FF7043':avgGlucose>110?'#F9A825':'#2E7D32';
-      const gPct = Math.min(100, ((avgGlucose-70)/200*100));
-      riskHTML += `<div class="report-section">
-        <div class="report-title">🩸 혈당 위험도 <span style="color:${gColor};margin-left:auto;font-size:12px">${gRisk}</span></div>
-        <div style="font-size:12px;color:var(--text3)">평균 ${avgGlucose} mg/dL · 최고 ${maxG} · 최저 ${minG}</div>
-        <div class="risk-bar"><div class="risk-fill" style="width:${gPct}%;background:${gColor}"></div></div>
-      </div>`;
-    }
-    if(avgSys){
-      const bRisk = avgSys>160?'매우높음':avgSys>140?'높음':avgSys>130?'주의':'정상';
-      const bColor = avgSys>160?'#E53935':avgSys>140?'#FF7043':avgSys>130?'#F9A825':'#2E7D32';
-      const bPct = Math.min(100, ((avgSys-80)/120*100));
-      riskHTML += `<div class="report-section">
-        <div class="report-title">💊 혈압 위험도 <span style="color:${bColor};margin-left:auto;font-size:12px">${bRisk}</span></div>
-        <div style="font-size:12px;color:var(--text3)">평균 ${avgSys}/${avgDia} mmHg</div>
-        <div class="risk-bar"><div class="risk-fill" style="width:${bPct}%;background:${bColor}"></div></div>
-      </div>`;
-    }
-    document.getElementById('riskContent').innerHTML = riskHTML || '<div style="font-size:12px;color:var(--text3)">아직 데이터가 충분하지 않습니다.</div>';
-
-    // AI 종합 리포트
-    const summary = `
-혈당 기록 ${glucoseRecs.length}건: 평균 ${avgGlucose||'없음'} mg/dL, 최고 ${maxG||'-'}, 최저 ${minG||'-'}
-혈압 기록 ${bpRecs.length}건: 평균 ${avgSys||'없음'}/${avgDia||'없음'} mmHg
-식사 기록 ${mealRecs.length}건
-최근 혈액검사: ${labRecs.length>0 ? labRecs[0].date + '일자 결과 있음' : '없음'}
-${labRecs.length>0 ? '최근 검사 AI 소견: '+labRecs[0].aiDiagnosis?.slice(0,300)+'...' : ''}
-    `.trim();
-
-    const res = await callClaude([{ role:'user', content:
-      `아래는 환자의 혈당·혈압·식사 데이터 요약입니다:\n${summary}\n\n이를 바탕으로 아래 항목의 종합 건강 리포트를 작성해주세요:\n1. 전체적인 혈당 조절 상태 평가\n2. 혈압 상태 및 심혈관 위험도\n3. 식습관 패턴 분석 (데이터 기반)\n4. 주요 위험 요인 및 경고 사항\n5. 즉시 실천해야 할 생활 습관 개선 사항 (3~5가지)\n6. 병원 방문 권고 여부 및 검사 추천\n7. 목표 혈당 범위 제안\n실제 내과·내분비내과 전문의 수준의 상세하고 근거 있는 소견을 작성해주세요.`
-    }]);
-    document.getElementById('reportAiBody').textContent = res;
-    document.getElementById('reportOutput').style.display='block';
-  } catch(e){ showToast('❌ 리포트 생성 오류'); console.error(e); }
-  btn.textContent='📊 리포트 생성'; sp.style.display='none';
-}
-
-// ─── Claude API 호출 ────────────────────
+// ─ Claude API ─
 async function callClaude(messages){
-  const res = await fetch('https://api.anthropic.com/v1/messages',{
+  const res=await fetch('https://api.anthropic.com/v1/messages',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({
-      model:'claude-sonnet-4-6',
-      max_tokens:1000,
-      messages
-    })
+    body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,messages})
   });
-  const data = await res.json();
+  const data=await res.json();
   if(data.error) throw new Error(data.error.message);
   return data.content.map(c=>c.text||'').join('');
 }
 
-// ─── 오늘 기록 로드 ─────────────────────
+function setBtnLoading(txtId,spId,loading,defaultTxt){
+  document.getElementById(txtId).textContent=loading?'분석 중...':defaultTxt;
+  document.getElementById(spId).style.display=loading?'inline-block':'none';
+}
+
+// ─ 혈당 저장 ─
+async function saveGlucose(){
+  const val=parseFloat(document.getElementById('glucoseVal').value);
+  if(!val||val<40||val>600){showToast('⚠️ 혈당값 확인 (40~600)');return;}
+  if(!db){showToast('⚠️ Firebase 연결 중');return;}
+  await addDoc(col(db,'glucolog'),{
+    type:'glucose',date:todayStr(),
+    time:document.getElementById('glucoseTime').value,
+    value:val,when:document.getElementById('glucoseWhen').value,
+    memo:document.getElementById('glucoseMemo').value,
+    createdAt:new Date()
+  });
+  showToast('✅ 혈당 저장 완료');
+  document.getElementById('glucoseVal').value='';
+  document.getElementById('glucoseMemo').value='';
+  document.getElementById('glucoseTime').value=nowTime();
+  await loadTodayRecords();
+}
+
+// ─ 혈압 저장 ─
+async function saveBP(){
+  const sys=parseFloat(document.getElementById('bpSys').value);
+  const dia=parseFloat(document.getElementById('bpDia').value);
+  if(!sys||!dia){showToast('⚠️ 수축기/이완기 입력 필요');return;}
+  if(!db){showToast('⚠️ Firebase 연결 중');return;}
+  await addDoc(col(db,'glucolog'),{
+    type:'bp',date:todayStr(),
+    time:document.getElementById('bpTime').value,
+    systolic:sys,diastolic:dia,
+    pulse:parseFloat(document.getElementById('bpPulse').value)||null,
+    createdAt:new Date()
+  });
+  showToast('✅ 혈압 저장 완료');
+  document.getElementById('bpSys').value='';
+  document.getElementById('bpDia').value='';
+  document.getElementById('bpPulse').value='';
+  document.getElementById('bpTime').value=nowTime();
+  await loadTodayRecords();
+}
+
+// ─ 식사 저장 + AI ─
+async function saveMeal(){
+  const menu=document.getElementById('mealMenu').value.trim();
+  if(!menu){showToast('⚠️ 메뉴를 입력하세요');return;}
+  if(!db){showToast('⚠️ Firebase 연결 중');return;}
+  setBtnLoading('mealBtnTxt','mealSp',true,'');
+  const mType=document.getElementById('mealType').value;
+  const data={
+    type:'meal',date:todayStr(),
+    time:document.getElementById('mealTime').value,
+    mealType:mType,menu,
+    memo:document.getElementById('mealMemo').value,
+    hasPhoto:!!mealB64,createdAt:new Date()
+  };
+  let aiText='';
+  try{
+    const prompt=`식사구분:${mType}, 메뉴:${menu}\n\n아래 항목을 분석해주세요:\n1. 예상 총 칼로리 (kcal)\n2. 탄수화물/단백질/지방 (g)\n3. 혈당지수(GI) 추정 및 혈당 상승 위험 요인\n4. 혈당 관리 유리/불리 요소\n5. 개선 추천 (간략히)\n구체적 수치와 근거 포함.`;
+    const msgs=mealB64?
+      [{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:mealB64}},{type:'text',text:prompt}]}]:
+      [{role:'user',content:prompt}];
+    aiText=await callClaude(msgs);
+    data.aiAnalysis=aiText;
+    document.getElementById('mealAiBody').textContent=aiText;
+    document.getElementById('mealAiResult').classList.add('show');
+  }catch(e){console.error(e);}
+  await addDoc(col(db,'glucolog'),data);
+  showToast('✅ 식사 저장 완료');
+  setBtnLoading('mealBtnTxt','mealSp',false,'🍽️ 저장 + AI 식단 분석');
+  document.getElementById('mealMenu').value='';
+  document.getElementById('mealMemo').value='';
+  document.getElementById('mealTime').value=nowTime();
+  mealB64=null;
+  document.getElementById('mealPrev').style.display='none';
+  await loadTodayRecords();
+}
+
+// ─ 검사결과 분석 ─
+async function analyzeLabResult(){
+  if(!labB64){showToast('⚠️ 검사결과지 사진 먼저 업로드');return;}
+  setBtnLoading('labBtnTxt','labSp',true,'');
+  const memo=document.getElementById('labMemo').value;
+  const labDate=document.getElementById('labDate').value;
+  try{
+    const res=await callClaude([{role:'user',content:[
+      {type:'image',source:{type:'base64',media_type:'image/jpeg',data:labB64}},
+      {type:'text',text:`검사일:${labDate}, 증상:${memo||'없음'}\n\n위 혈액검사 결과를 아래 항목으로 진단:\n1. 각 항목 정상/이상 여부 (수치 포함)\n2. 당뇨 관련 지표 분석 (공복혈당,HbA1c,인슐린저항성)\n3. 심혈관 위험 인자 (콜레스테롤,중성지방,LDL/HDL)\n4. 간·신장 기능 이상 여부\n5. 종합 위험도 (낮음/보통/높음/매우높음)\n6. 즉시 병원 방문 필요 여부\n7. 생활습관 개선 권고\n8. 추가 검사 권고\n내과·내분비내과 전문의 수준으로 작성.`}
+    ]}]);
+    document.getElementById('labAiBody').textContent=res;
+    document.getElementById('labAiResult').classList.add('show');
+    if(db) await addDoc(col(db,'glucolog'),{type:'labResult',date:labDate||todayStr(),memo,aiDiagnosis:res,createdAt:new Date()});
+  }catch(e){showToast('❌ 분석 오류');console.error(e);}
+  setBtnLoading('labBtnTxt','labSp',false,'🩺 AI 종합 진단 시작');
+}
+
+// ─ 식단 빠른 분석 ─
+async function analyzeQuickFood(){
+  if(!quickB64){showToast('⚠️ 식단 사진 먼저 선택');return;}
+  setBtnLoading('quickBtnTxt','quickSp',true,'');
+  try{
+    const res=await callClaude([{role:'user',content:[
+      {type:'image',source:{type:'base64',media_type:'image/jpeg',data:quickB64}},
+      {type:'text',text:`위 식단 사진 분석:\n1. 식별된 음식 목록\n2. 예상 총 칼로리 (kcal)\n3. 탄수화물/단백질/지방 (g)\n4. 혈당지수(GI) 및 혈당 상승 위험 요인\n5. 혈당 친화적 음식 vs 주의 음식\n6. 개선 제안\n구체적 수치 포함.`}
+    ]}]);
+    document.getElementById('quickFoodBody').textContent=res;
+    document.getElementById('quickFoodResult').classList.add('show');
+  }catch(e){showToast('❌ 분석 오류');console.error(e);}
+  setBtnLoading('quickBtnTxt','quickSp',false,'🔍 칼로리·혈당지수 분석');
+}
+
+// ─ 당화혈색소 계산기 ─
+function setCalcMode(m){
+  calcMode=m;
+  [1,2,3].forEach(i=>{
+    document.getElementById('calcMode'+i).style.display=i===m?'block':'none';
+    document.getElementById('calcModeBtn'+i).classList.toggle('active',i===m);
+  });
+}
+
+// ADA 공식: HbA1c=(평균혈당+46.7)/28.7
+// 역산: 평균혈당=HbA1c*28.7-46.7
+function glucoseToHbA1c(g){ return ((g+46.7)/28.7).toFixed(1); }
+function hba1cToGlucose(h){ return Math.round(h*28.7-46.7); }
+
+function getHbA1cGrade(h){
+  const hv=parseFloat(h);
+  if(hv<5.7) return {grade:'정상',color:'#2E7D32',interp:'정상 범위입니다. 건강한 생활습관을 유지하세요.'};
+  if(hv<6.5) return {grade:'당뇨 전단계 ⚠️',color:'#E65100',interp:'당뇨 전단계입니다. 식이 조절과 운동을 강화하고 6개월마다 재검사를 권장합니다.'};
+  if(hv<7.0) return {grade:'당뇨 (치료 목표 달성)',color:'#F9A825',interp:'당뇨 진단 범위이나 치료 목표(7% 미만)를 달성했습니다. 현재 관리 방법을 유지하세요.'};
+  if(hv<8.0) return {grade:'당뇨 (조절 목표 미달) ⚠️',color:'#E53935',interp:'혈당 조절이 목표에 미치지 못합니다. 식이요법, 운동, 약물 치료 조정이 필요합니다.'};
+  if(hv<10) return {grade:'혈당 조절 불량 🚨',color:'#C62828',interp:'혈당 조절이 매우 불량합니다. 합병증 위험이 높으므로 즉시 담당의와 상담하세요.'};
+  return {grade:'매우 위험 🚨🚨',color:'#B71C1C',interp:'즉각적인 의료 개입이 필요합니다. 지금 바로 병원을 방문하세요.'};
+}
+
+function showHbA1cResult(hba1c,avgG,unit1,unit2){
+  const box=document.getElementById('hba1cResultBox');
+  const {grade,color,interp}=getHbA1cGrade(hba1c);
+  document.getElementById('hba1cBig').textContent=hba1c;
+  document.getElementById('hba1cBig').style.color=color;
+  document.getElementById('hba1cUnit').textContent=unit1;
+  document.getElementById('hba1cGrade').textContent=grade;
+  document.getElementById('hba1cGrade').style.color=color;
+  document.getElementById('hba1cInterp').innerHTML=
+    `${interp}<br><br><span style="color:var(--text3)">추정 평균 혈당: <b>${avgG} ${unit2}</b></span>`;
+  box.style.display='block';
+}
+
+function calcHbA1cFromGlucose(){
+  const g=parseFloat(document.getElementById('avgGlucoseInput').value);
+  if(!g||g<40||g>600){showToast('⚠️ 혈당값 확인 (40~600)');return;}
+  const h=glucoseToHbA1c(g);
+  showHbA1cResult(h,g,'%','mg/dL');
+}
+
+function calcGlucoseFromHbA1c(){
+  const h=parseFloat(document.getElementById('hba1cInput').value);
+  if(!h||h<4||h>20){showToast('⚠️ HbA1c 값 확인 (4~20%)');return;}
+  const g=hba1cToGlucose(h);
+  showHbA1cResult(h,g,'%','mg/dL (추정 평균혈당)');
+}
+
+async function calcAutoHbA1c(){
+  if(!db){showToast('⚠️ Firebase 연결 중');return;}
+  const days=parseInt(document.getElementById('calcPeriod').value);
+  const cutoff=new Date(); cutoff.setDate(cutoff.getDate()-days);
+  const snap=await getDocs(q(col(db,'glucolog'),orderBy('createdAt','asc')));
+  const glRecs=snap.docs.map(d=>d.data())
+    .filter(r=>r.type==='glucose'&&new Date(r.date)>=cutoff);
+  if(!glRecs.length){showToast('⚠️ 해당 기간 혈당 데이터 없음');return;}
+  const avg=Math.round(glRecs.reduce((a,b)=>a+b.value,0)/glRecs.length);
+  const h=glucoseToHbA1c(avg);
+  showToast(`📊 ${glRecs.length}건 데이터로 계산`);
+  showHbA1cResult(h,avg,'%','mg/dL');
+  document.getElementById('hba1cInterp').innerHTML+=
+    `<br><span style="color:var(--text3);font-size:11px">기준: 최근 ${days}일, ${glRecs.length}건 측정값</span>`;
+}
+
+// ─ 종합 리포트 ─
+async function generateReport(){
+  if(!db){showToast('⚠️ Firebase 연결 중');return;}
+  setBtnLoading('reportBtnTxt','reportSp',true,'');
+  try{
+    const snap=await getDocs(q(col(db,'glucolog'),orderBy('createdAt','desc')));
+    const all=snap.docs.map(d=>d.data());
+    const glR=all.filter(r=>r.type==='glucose');
+    const bpR=all.filter(r=>r.type==='bp');
+    const mlR=all.filter(r=>r.type==='meal');
+    const lbR=all.filter(r=>r.type==='labResult');
+
+    const avgG=glR.length?(glR.reduce((a,b)=>a+b.value,0)/glR.length).toFixed(1):null;
+    const avgS=bpR.length?(bpR.reduce((a,b)=>a+b.systolic,0)/bpR.length).toFixed(1):null;
+    const avgD=bpR.length?(bpR.reduce((a,b)=>a+b.diastolic,0)/bpR.length).toFixed(1):null;
+    const maxG=glR.length?Math.max(...glR.map(r=>r.value)):null;
+    const minG=glR.length?Math.min(...glR.map(r=>r.value)):null;
+
+    // HbA1c 추정
+    if(avgG){
+      const hba1c=glucoseToHbA1c(parseFloat(avgG));
+      const {grade,color}=getHbA1cGrade(hba1c);
+      document.getElementById('hba1cReportContent').innerHTML=`
+        <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:6px">
+          <span style="font-size:32px;font-weight:900;color:${color}">${hba1c}%</span>
+          <span style="font-size:13px;font-weight:700;color:${color}">${grade}</span>
+        </div>
+        <div style="font-size:12px;color:var(--text3)">
+          평균혈당 ${avgG} mg/dL 기준 ADA 공식 추정 (실제 검사치와 차이 있을 수 있음)
+        </div>`;
+      document.getElementById('hba1cReportCard').style.display='block';
+    }
+
+    // 위험도
+    let riskHTML='';
+    if(avgG){
+      const gR=parseFloat(avgG)>180?'매우높음':parseFloat(avgG)>140?'높음':parseFloat(avgG)>110?'주의':'정상';
+      const gC=parseFloat(avgG)>180?'#E53935':parseFloat(avgG)>140?'#FF7043':parseFloat(avgG)>110?'#F9A825':'#2E7D32';
+      const gP=Math.min(100,((parseFloat(avgG)-70)/200*100));
+      riskHTML+=`<div style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+          <span style="font-weight:700">🩸 혈당 위험도</span>
+          <span style="color:${gC};font-weight:700">${gR}</span>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">평균 ${avgG} mg/dL · 최고 ${maxG} · 최저 ${minG}</div>
+        <div class="risk-bar"><div class="risk-fill" style="width:${gP}%;background:${gC}"></div></div>
+      </div>`;
+    }
+    if(avgS){
+      const bR=parseFloat(avgS)>160?'매우높음':parseFloat(avgS)>140?'높음':parseFloat(avgS)>130?'주의':'정상';
+      const bC=parseFloat(avgS)>160?'#E53935':parseFloat(avgS)>140?'#FF7043':parseFloat(avgS)>130?'#F9A825':'#2E7D32';
+      const bP=Math.min(100,((parseFloat(avgS)-80)/120*100));
+      riskHTML+=`<div style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+          <span style="font-weight:700">💊 혈압 위험도</span>
+          <span style="color:${bC};font-weight:700">${bR}</span>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">평균 ${avgS}/${avgD} mmHg</div>
+        <div class="risk-bar"><div class="risk-fill" style="width:${bP}%;background:${bC}"></div></div>
+      </div>`;
+    }
+    document.getElementById('riskContent').innerHTML=riskHTML||'<div style="font-size:12px;color:var(--text3)">데이터가 부족합니다.</div>';
+
+    // 혈당 분포
+    if(glR.length){
+      const low=glR.filter(r=>r.value<70).length;
+      const norm=glR.filter(r=>r.value>=70&&r.value<=140).length;
+      const high=glR.filter(r=>r.value>140&&r.value<=180).length;
+      const vhigh=glR.filter(r=>r.value>180).length;
+      const total=glR.length;
+      const pct=n=>Math.round(n/total*100);
+      document.getElementById('glucoseDistrib').innerHTML=`
+        <div style="font-size:12px;margin-bottom:8px">전체 ${total}건 측정</div>
+        ${[
+          ['저혈당 (<70)','#1565C0',low],
+          ['정상 (70~140)','#2E7D32',norm],
+          ['주의 (140~180)','#E65100',high],
+          ['고혈당 (>180)','#E53935',vhigh]
+        ].map(([lbl,c,n])=>`
+          <div style="margin-bottom:8px">
+            <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
+              <span>${lbl}</span><span style="font-weight:700;color:${c}">${n}건 (${pct(n)}%)</span>
+            </div>
+            <div class="risk-bar"><div class="risk-fill" style="width:${pct(n)}%;background:${c}"></div></div>
+          </div>`).join('')}`;
+    }
+
+    // AI 종합 소견
+    const summary=`혈당:${glR.length}건,평균${avgG||'-'}mg/dL,최고${maxG||'-'},최저${minG||'-'}|혈압:${bpR.length}건,평균${avgS||'-'}/${avgD||'-'}|식사:${mlR.length}건|검사:${lbR.length}건${lbR.length?'|최근검사소견:'+lbR[0].aiDiagnosis?.slice(0,200):''}`;
+    const res=await callClaude([{role:'user',content:`환자 데이터:${summary}\n\n종합 건강 리포트 작성:\n1. 혈당 조절 상태 평가\n2. 혈압 상태 및 심혈관 위험도\n3. 주요 위험 요인 및 경고\n4. 즉시 실천 생활습관 개선 3~5가지\n5. 병원 방문 권고 및 검사 추천\n6. 목표 혈당 범위 제안\n내과·내분비내과 전문의 수준으로 작성.`}]);
+    document.getElementById('reportAiBody').textContent=res;
+    document.getElementById('reportOutput').style.display='block';
+    document.getElementById('printBtn').style.display='block';
+  }catch(e){showToast('❌ 리포트 생성 오류');console.error(e);}
+  setBtnLoading('reportBtnTxt','reportSp',false,'📊 리포트 생성');
+}
+
+// ─ PDF 인쇄 ─
+function printReport(){
+  window.print();
+}
+
+// ─ 오늘 기록 ─
 async function loadTodayRecords(){
   if(!db) return;
-  const today = todayStr();
-  const snap = await getDocs(q(col(db,'glucolog'), orderBy('createdAt','asc')));
-  const all = snap.docs.map(d=>d.data()).filter(r=>r.date===today);
-  todayRecords = all;
-
-  const glRecs = all.filter(r=>r.type==='glucose');
-  const bpRecs = all.filter(r=>r.type==='bp');
-  const mlRecs = all.filter(r=>r.type==='meal');
-
-  if(glRecs.length){
-    const last = glRecs[glRecs.length-1];
-    document.getElementById('sumGlucose').textContent = last.value;
-  }
-  if(bpRecs.length){
-    const last = bpRecs[bpRecs.length-1];
-    document.getElementById('sumBP').textContent = `${last.systolic}/${last.diastolic}`;
-  }
-  document.getElementById('sumMeals').textContent = mlRecs.length;
-
-  // 오늘 기록 리스트
-  const el = document.getElementById('todayList');
-  if(!all.length){
-    el.innerHTML='<div class="empty-state"><div class="e-icon">📋</div><div class="e-txt">아직 오늘 기록이 없어요</div></div>';
-    return;
-  }
-  el.innerHTML = all.reverse().map(r=>{
+  const snap=await getDocs(q(col(db,'glucolog'),orderBy('createdAt','asc')));
+  const all=snap.docs.map(d=>d.data()).filter(r=>r.date===todayStr());
+  const glR=all.filter(r=>r.type==='glucose');
+  const bpR=all.filter(r=>r.type==='bp');
+  const mlR=all.filter(r=>r.type==='meal');
+  if(glR.length) document.getElementById('sumGlucose').textContent=glR[glR.length-1].value;
+  if(bpR.length){ const l=bpR[bpR.length-1]; document.getElementById('sumBP').textContent=`${l.systolic}/${l.diastolic}`; }
+  document.getElementById('sumMeals').textContent=mlR.length;
+  const el=document.getElementById('todayList');
+  if(!all.length){el.innerHTML='<div class="empty-state"><div class="e-icon">📋</div><div class="e-txt">아직 오늘 기록이 없어요</div></div>';return;}
+  el.innerHTML=[...all].reverse().map(r=>{
     if(r.type==='glucose'){
-      const statusClass = r.value>180?'status-high':r.value<70?'status-low':'status-normal';
-      const statusTxt = r.value>180?'고혈당':r.value<70?'저혈당':'정상';
+      const sc=r.value>180?'s-high':r.value<70?'s-low':'s-normal';
+      const st=r.value>180?'고혈당':r.value<70?'저혈당':'정상';
       return `<div class="meal-item">
         <span class="meal-time-badge">${r.time||''}</span>
         <div class="meal-info">
-          <div class="meal-name">🩸 혈당 <strong>${r.value}</strong> mg/dL</div>
-          <div class="meal-meta">${r.when} · <span class="status-badge ${statusClass}">${statusTxt}</span></div>
+          <div class="meal-name">🩸 혈당 <b>${r.value}</b> mg/dL</div>
+          <div class="meal-meta">${r.when} · <span class="status-badge ${sc}">${st}</span></div>
           ${r.memo?`<div class="meal-meta">${r.memo}</div>`:''}
-        </div>
-      </div>`;
-    } else if(r.type==='bp'){
-      const statusClass = r.systolic>=140||r.diastolic>=90?'status-high':r.systolic>=130?'status-low':'status-normal';
-      const statusTxt = r.systolic>=140?'고혈압':r.systolic>=130?'주의':'정상';
+        </div></div>`;
+    }else if(r.type==='bp'){
+      const sc=r.systolic>=140||r.diastolic>=90?'s-high':r.systolic>=130?'s-low':'s-normal';
+      const st=r.systolic>=140?'고혈압':r.systolic>=130?'주의':'정상';
       return `<div class="meal-item">
-        <span class="meal-time-badge" style="background:var(--primary-light);color:var(--primary)">${r.time||''}</span>
+        <span class="meal-time-badge" style="background:var(--pl);color:var(--primary)">${r.time||''}</span>
         <div class="meal-info">
-          <div class="meal-name">💊 혈압 <strong>${r.systolic}/${r.diastolic}</strong> mmHg ${r.pulse?`· 맥박 ${r.pulse}`:''}</div>
-          <div class="meal-meta"><span class="status-badge ${statusClass}">${statusTxt}</span></div>
-        </div>
-      </div>`;
-    } else if(r.type==='meal'){
+          <div class="meal-name">💊 혈압 <b>${r.systolic}/${r.diastolic}</b> mmHg${r.pulse?` · 맥박 ${r.pulse}`:''}</div>
+          <div class="meal-meta"><span class="status-badge ${sc}">${st}</span></div>
+        </div></div>`;
+    }else if(r.type==='meal'){
       return `<div class="meal-item">
-        <span class="meal-time-badge" style="background:var(--accent-light);color:var(--accent)">${r.time||''}</span>
+        <span class="meal-time-badge" style="background:var(--al);color:var(--accent)">${r.time||''}</span>
         <div class="meal-info">
           <div class="meal-name">🍽️ ${r.mealType} — ${r.menu}</div>
           ${r.memo?`<div class="meal-meta">${r.memo}</div>`:''}
-          ${r.hasPhoto?'<div class="meal-meta" style="color:var(--accent)">📷 사진 첨부됨</div>':''}
-        </div>
-      </div>`;
+          ${r.hasPhoto?'<div class="meal-meta" style="color:var(--accent)">📷 사진 첨부</div>':''}
+        </div></div>`;
     }
     return '';
   }).join('');
 }
 
-// ─── 전체 기록 ──────────────────────────
+// ─ 전체 기록 ─
 async function loadAllHistory(){
   if(!db) return;
-  const snap = await getDocs(q(col(db,'glucolog'), orderBy('createdAt','desc')));
-  const all = snap.docs.map(d=>d.data());
-  const el = document.getElementById('allHistoryList');
-  if(!all.length){
-    el.innerHTML='<div class="empty-state"><div class="e-icon">📁</div><div class="e-txt">저장된 기록 없음</div></div>';
-    return;
-  }
-  // 날짜별 그룹
-  const byDate = {};
-  all.forEach(r=>{
-    if(!byDate[r.date]) byDate[r.date]=[];
-    byDate[r.date].push(r);
-  });
-  el.innerHTML = Object.entries(byDate).slice(0,30).map(([date,recs])=>{
-    const gl = recs.filter(r=>r.type==='glucose');
-    const bp = recs.filter(r=>r.type==='bp');
-    const ml = recs.filter(r=>r.type==='meal');
+  const snap=await getDocs(q(col(db,'glucolog'),orderBy('createdAt','desc')));
+  const all=snap.docs.map(d=>d.data());
+  const el=document.getElementById('allHistoryList');
+  if(!all.length){el.innerHTML='<div class="empty-state"><div class="e-icon">📁</div><div class="e-txt">저장된 기록 없음</div></div>';return;}
+  const byDate={};
+  all.forEach(r=>{if(!byDate[r.date])byDate[r.date]=[];byDate[r.date].push(r);});
+  el.innerHTML=Object.entries(byDate).slice(0,30).map(([date,recs])=>{
+    const gl=recs.filter(r=>r.type==='glucose');
+    const bp=recs.filter(r=>r.type==='bp');
+    const ml=recs.filter(r=>r.type==='meal');
     return `<div class="history-item">
       <div class="history-date">${date.slice(5)}</div>
-      <div class="history-vals">
-        <div class="history-val-row">
-          ${gl.length?`<span class="hv-chip">혈당 ${gl.map(r=>r.value).join('/')} mg/dL</span>`:''}
-          ${bp.length?`<span class="hv-chip bp">혈압 ${bp[0].systolic}/${bp[0].diastolic}</span>`:''}
-          ${ml.length?`<span class="hv-chip" style="background:var(--accent-light);color:var(--accent)">식사 ${ml.length}회</span>`:''}
-        </div>
+      <div style="flex:1;display:flex;flex-wrap:wrap;gap:4px">
+        ${gl.length?`<span class="hv-chip">혈당 ${gl.map(r=>r.value).join('/')} mg/dL</span>`:''}
+        ${bp.length?`<span class="hv-chip bp">혈압 ${bp[0].systolic}/${bp[0].diastolic}</span>`:''}
+        ${ml.length?`<span class="hv-chip" style="background:var(--al);color:var(--accent)">식사 ${ml.length}회</span>`:''}
       </div>
     </div>`;
   }).join('');
 }
 
-// ─── 진단기록 ───────────────────────────
-async function loadDiagHistory(){
-  if(!db) return;
-  const snap = await getDocs(q(col(db,'glucolog'), orderBy('createdAt','desc')));
-  const all = snap.docs.map(d=>d.data()).filter(r=>r.type==='labResult');
-  const el = document.getElementById('diagHistoryList');
-  if(!all.length){
-    el.innerHTML='<div class="empty-state"><div class="e-icon">🔬</div><div class="e-txt">저장된 진단 기록 없음</div></div>';
-    return;
-  }
-  el.innerHTML = all.map(r=>`
-    <div class="meal-item">
-      <span class="meal-time-badge" style="background:var(--warn-light);color:var(--warn)">${r.date}</span>
-      <div class="meal-info">
-        <div class="meal-name" style="font-size:12px;line-height:1.5">${r.aiDiagnosis?.slice(0,100)}...</div>
-      </div>
-    </div>
-  `).join('');
-}
-
-// ─── 차트: 혈당 ─────────────────────────
-async function loadGlucoseChart(period, tabEl){
-  document.querySelectorAll('#glucoseChartTabs .chart-tab').forEach(t=>t.classList.remove('active'));
-  if(tabEl) tabEl.classList.add('active');
-  if(!db){ renderGlucoseChart([],[],[]); return; }
-  const snap = await getDocs(q(col(db,'glucolog'), orderBy('createdAt','asc')));
-  const all = snap.docs.map(d=>d.data()).filter(r=>r.type==='glucose');
-  const {labels,vals} = filterByPeriod(all, period, r=>r.value, r=>r.date);
-  renderGlucoseChart(labels, vals);
-  const avg = vals.length?(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1):'-';
-  const max = vals.length?Math.max(...vals):'-';
-  const min = vals.length?Math.min(...vals):'-';
-  document.getElementById('glucoseChartStat').innerHTML=
-    `<span>평균 <b>${avg}</b> mg/dL</span><span>최고 <b>${max}</b></span><span>최저 <b>${min}</b></span>`;
-}
-
-function renderGlucoseChart(labels, vals){
-  if(glucoseChartInst) glucoseChartInst.destroy();
-  const ctx = document.getElementById('glucoseChart').getContext('2d');
-  glucoseChartInst = new Chart(ctx, {
-    type:'line',
-    data:{
-      labels, datasets:[
-        { label:'혈당', data:vals, borderColor:'#F9A825', backgroundColor:'rgba(249,168,37,0.1)',
-          borderWidth:2, tension:0.4, pointRadius:4, pointBackgroundColor:'#F9A825', fill:true },
-        { label:'정상상한(140)', data:labels.map(()=>140), borderColor:'rgba(229,57,53,0.4)',
-          borderWidth:1, borderDash:[4,4], pointRadius:0 },
-        { label:'공복정상(100)', data:labels.map(()=>100), borderColor:'rgba(46,125,50,0.4)',
-          borderWidth:1, borderDash:[4,4], pointRadius:0 }
-      ]
-    },
-    options: chartOpts('mg/dL')
-  });
-}
-
-// ─── 차트: 혈압 ─────────────────────────
-async function loadBPChart(period, tabEl){
-  document.querySelectorAll('#bpChartTabs .chart-tab').forEach(t=>t.classList.remove('active'));
-  if(tabEl) tabEl.classList.add('active');
-  if(!db){ return; }
-  const snap = await getDocs(q(col(db,'glucolog'), orderBy('createdAt','asc')));
-  const all = snap.docs.map(d=>d.data()).filter(r=>r.type==='bp');
-  const {labels, vals:sysVals} = filterByPeriod(all, period, r=>r.systolic, r=>r.date);
-  const {vals:diaVals} = filterByPeriod(all, period, r=>r.diastolic, r=>r.date);
-  if(bpChartInst) bpChartInst.destroy();
-  const ctx = document.getElementById('bpChart').getContext('2d');
-  bpChartInst = new Chart(ctx, {
-    type:'line',
-    data:{
-      labels, datasets:[
-        { label:'수축기', data:sysVals, borderColor:'#1A56A0', backgroundColor:'rgba(26,86,160,0.1)',
-          borderWidth:2, tension:0.4, pointRadius:4, fill:true },
-        { label:'이완기', data:diaVals, borderColor:'#00897B', backgroundColor:'rgba(0,137,123,0.08)',
-          borderWidth:2, tension:0.4, pointRadius:4, fill:true }
-      ]
-    },
-    options: chartOpts('mmHg')
-  });
-}
-
-// ─── 차트: 식사 ─────────────────────────
-async function loadMealChart(period, tabEl){
-  document.querySelectorAll('#mealChartTabs .chart-tab').forEach(t=>t.classList.remove('active'));
-  if(tabEl) tabEl.classList.add('active');
-  if(!db) return;
-  const snap = await getDocs(q(col(db,'glucolog'), orderBy('createdAt','asc')));
-  const all = snap.docs.map(d=>d.data()).filter(r=>r.type==='meal');
-  const {labels, vals} = filterByPeriod(all, period, ()=>1, r=>r.date, true);
-  if(mealChartInst) mealChartInst.destroy();
-  const ctx = document.getElementById('mealChart').getContext('2d');
-  mealChartInst = new Chart(ctx, {
-    type:'bar',
-    data:{
-      labels, datasets:[{ label:'식사 횟수', data:vals, backgroundColor:'rgba(0,137,123,0.7)',
-        borderRadius:6, borderColor:'#00897B', borderWidth:1 }]
-    },
-    options: chartOpts('회')
-  });
-}
-
-// ─── 기간 필터 유틸 ────────────────────
-function filterByPeriod(records, period, valFn, dateFn, count=false){
-  const now = new Date();
-  let days = 7;
-  if(period==='day') days=1;
-  else if(period==='week') days=7;
-  else if(period==='month') days=30;
-  else if(period==='quarter') days=90;
-  else if(period==='year') days=365;
-
-  const cutoff = new Date(now); cutoff.setDate(cutoff.getDate()-days);
-  const filtered = records.filter(r=>{
-    const d = new Date(dateFn(r));
-    return d>=cutoff && d<=now;
-  });
-
-  if(period==='day'){
-    // 시간별
-    const byH={};
-    filtered.forEach(r=>{
-      const h=r.time?r.time.slice(0,2):'00';
-      if(!byH[h]) byH[h]=[];
-      byH[h].push(valFn(r));
-    });
-    const labels=Object.keys(byH).sort();
-    const vals=labels.map(h=>count?byH[h].length:avg(byH[h]));
-    return {labels:labels.map(h=>h+'시'),vals};
-  } else {
-    const byD={};
-    filtered.forEach(r=>{
-      const d=dateFn(r);
-      if(!byD[d]) byD[d]=[];
-      byD[d].push(valFn(r));
-    });
-    const labels=Object.keys(byD).sort();
-    const vals=labels.map(d=>count?byD[d].length:avg(byD[d]));
-    return {labels:labels.map(d=>d.slice(5)),vals};
-  }
-}
-const avg = arr => arr.length ? +(arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(1) : 0;
-
-// ─── 차트 공통 옵션 ─────────────────────
-function chartOpts(unit){
-  return {
-    responsive:true, maintainAspectRatio:false,
-    plugins:{ legend:{ labels:{ font:{family:'Noto Sans KR',size:11}, color:'#4A5568', boxWidth:12 }},
-      tooltip:{ callbacks:{ label:ctx=>`${ctx.dataset.label}: ${ctx.parsed.y} ${unit}` }}},
+// ─ 차트 공통 ─
+function cOpts(unit){
+  return{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{labels:{font:{family:'Noto Sans KR',size:11},color:'#4A5568',boxWidth:12}},
+      tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.parsed.y} ${unit}`}}},
     scales:{
-      x:{ ticks:{ font:{family:'Noto Sans KR',size:10}, color:'#718096', maxRotation:45 },
-          grid:{ color:'rgba(0,0,0,0.04)' }},
-      y:{ ticks:{ font:{family:'Noto Sans KR',size:10}, color:'#718096' },
-          grid:{ color:'rgba(0,0,0,0.06)' }}
-    }
-  };
+      x:{ticks:{font:{family:'Noto Sans KR',size:10},color:'#718096',maxRotation:45},grid:{color:'rgba(0,0,0,0.04)'}},
+      y:{ticks:{font:{family:'Noto Sans KR',size:10},color:'#718096'},grid:{color:'rgba(0,0,0,0.06)'}}
+    }};
 }
 
-// ─── 사진 미리보기 ─────────────────────
-function previewMealPhoto(input){
-  if(!input.files[0]) return;
-  const r = new FileReader();
-  r.onload = e=>{
-    const img = document.getElementById('mealPhotoPreview');
-    img.src = e.target.result; img.style.display='block';
-    mealPhotoB64 = e.target.result.split(',')[1];
-  };
-  r.readAsDataURL(input.files[0]);
-}
-function previewLabPhoto(input){
-  if(!input.files[0]) return;
-  const r = new FileReader();
-  r.onload = e=>{
-    const img = document.getElementById('labPhotoPreview');
-    img.src = e.target.result; img.style.display='block';
-    labPhotoB64 = e.target.result.split(',')[1];
-  };
-  r.readAsDataURL(input.files[0]);
-}
-function previewQuickFood(input){
-  if(!input.files[0]) return;
-  const r = new FileReader();
-  r.onload = e=>{
-    const img = document.getElementById('quickFoodPreview');
-    img.src = e.target.result; img.style.display='block';
-    quickFoodB64 = e.target.result.split(',')[1];
-  };
-  r.readAsDataURL(input.files[0]);
+function filterP(records,period,valFn,dateFn,count=false){
+  const now=new Date();
+  const days={'day':1,'week':7,'month':30,'quarter':90,'year':365}[period]||7;
+  const cut=new Date(now); cut.setDate(cut.getDate()-days);
+  const filt=records.filter(r=>new Date(dateFn(r))>=cut);
+  if(period==='day'){
+    const byH={};
+    filt.forEach(r=>{const h=r.time?r.time.slice(0,2):'00';if(!byH[h])byH[h]=[];byH[h].push(valFn(r));});
+    const labels=Object.keys(byH).sort();
+    return{labels:labels.map(h=>h+'시'),vals:labels.map(h=>count?byH[h].length:+(byH[h].reduce((a,b)=>a+b,0)/byH[h].length).toFixed(1))};
+  }else{
+    const byD={};
+    filt.forEach(r=>{const d=dateFn(r);if(!byD[d])byD[d]=[];byD[d].push(valFn(r));});
+    const labels=Object.keys(byD).sort();
+    return{labels:labels.map(d=>d.slice(5)),vals:labels.map(d=>count?byD[d].length:+(byD[d].reduce((a,b)=>a+b,0)/byD[d].length).toFixed(1))};
+  }
 }
 
-// ─── 탭 전환 nav id 매핑 ────────────────
-document.getElementById('navToday').id='navToday';
-document.getElementById('navAnalysis').id='navAnalysis';
-document.getElementById('navGraph').id='navGraph';
-document.getElementById('navReport').id='navReport';
+let lastGCPeriod='day',lastBCPeriod='day',lastMCPeriod='week';
+
+async function loadGC(period,tabEl){
+  if(period) lastGCPeriod=period;
+  if(tabEl){document.querySelectorAll('#gcTabs .chart-tab').forEach(t=>t.classList.remove('active'));tabEl.classList.add('active');}
+  if(!db) return;
+  const snap=await getDocs(q(col(db,'glucolog'),orderBy('createdAt','asc')));
+  const all=snap.docs.map(d=>d.data()).filter(r=>r.type==='glucose');
+  const{labels,vals}=filterP(all,lastGCPeriod,r=>r.value,r=>r.date);
+  if(gChart) gChart.destroy();
+  const ctx=document.getElementById('glucoseChart').getContext('2d');
+  gChart=new Chart(ctx,{type:'line',data:{labels,datasets:[
+    {label:'혈당',data:vals,borderColor:'#F9A825',backgroundColor:'rgba(249,168,37,0.1)',borderWidth:2,tension:0.4,pointRadius:4,pointBackgroundColor:'#F9A825',fill:true},
+    {label:'정상상한(140)',data:labels.map(()=>140),borderColor:'rgba(229,57,53,0.4)',borderWidth:1,borderDash:[4,4],pointRadius:0},
+    {label:'공복정상(100)',data:labels.map(()=>100),borderColor:'rgba(46,125,50,0.4)',borderWidth:1,borderDash:[4,4],pointRadius:0}
+  ]},options:cOpts('mg/dL')});
+  const avg=vals.length?(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1):'-';
+  const mx=vals.length?Math.max(...vals):'-';
+  const mn=vals.length?Math.min(...vals):'-';
+  document.getElementById('gcStat').innerHTML=`<span>평균 <b>${avg}</b> mg/dL</span><span>최고 <b>${mx}</b></span><span>최저 <b>${mn}</b></span>`;
+}
+
+async function loadBC(period,tabEl){
+  if(period) lastBCPeriod=period;
+  if(tabEl){document.querySelectorAll('#bcTabs .chart-tab').forEach(t=>t.classList.remove('active'));tabEl.classList.add('active');}
+  if(!db) return;
+  const snap=await getDocs(q(col(db,'glucolog'),orderBy('createdAt','asc')));
+  const all=snap.docs.map(d=>d.data()).filter(r=>r.type==='bp');
+  const{labels,vals:sv}=filterP(all,lastBCPeriod,r=>r.systolic,r=>r.date);
+  const{vals:dv}=filterP(all,lastBCPeriod,r=>r.diastolic,r=>r.date);
+  if(bChart) bChart.destroy();
+  const ctx=document.getElementById('bpChart').getContext('2d');
+  bChart=new Chart(ctx,{type:'line',data:{labels,datasets:[
+    {label:'수축기',data:sv,borderColor:'#1A56A0',backgroundColor:'rgba(26,86,160,0.1)',borderWidth:2,tension:0.4,pointRadius:4,fill:true},
+    {label:'이완기',data:dv,borderColor:'#00897B',backgroundColor:'rgba(0,137,123,0.08)',borderWidth:2,tension:0.4,pointRadius:4,fill:true}
+  ]},options:cOpts('mmHg')});
+}
+
+async function loadMC(period,tabEl){
+  if(period) lastMCPeriod=period;
+  if(tabEl){document.querySelectorAll('#mcTabs .chart-tab').forEach(t=>t.classList.remove('active'));tabEl.classList.add('active');}
+  if(!db) return;
+  const snap=await getDocs(q(col(db,'glucolog'),orderBy('createdAt','asc')));
+  const all=snap.docs.map(d=>d.data()).filter(r=>r.type==='meal');
+  const{labels,vals}=filterP(all,lastMCPeriod,()=>1,r=>r.date,true);
+  if(mChart) mChart.destroy();
+  const ctx=document.getElementById('mealChart').getContext('2d');
+  mChart=new Chart(ctx,{type:'bar',data:{labels,datasets:[
+    {label:'식사 횟수',data:vals,backgroundColor:'rgba(0,137,123,0.7)',borderRadius:6,borderColor:'#00897B',borderWidth:1}
+  ]},options:cOpts('회')});
+}
 </script>
 </body>
 </html>
