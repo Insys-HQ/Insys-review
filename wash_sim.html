@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>세척건조기 통합 시뮬레이터 v4.1 | 인시스 AI혁신 R&D센터</title>
+<title>세척건조기 통합 시뮬레이터 v4.2 | 인시스 AI혁신 R&D센터</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
@@ -178,7 +178,7 @@ footer{text-align:center;font-size:10px;color:var(--t3);padding:6px 0}
 
 <div class="hdr">
   <div class="hdr-in">
-    <div class="hdr-t">🏭 세척건조기 통합 시뮬레이터 <span class="vbadge">v4.1</span></div>
+    <div class="hdr-t">🏭 세척건조기 통합 시뮬레이터 <span class="vbadge">v4.2</span></div>
     <div style="display:flex;align-items:center;gap:10px">
       <button class="opt-all-btn" onclick="applyAllOpt()">⚡ 전체 최적값 적용</button>
       <div class="hdr-r">인시스 AI혁신 R&D센터</div>
@@ -280,8 +280,8 @@ footer{text-align:center;font-size:10px;color:var(--t3);padding:6px 0}
     </div>
     <div class="row hd"><div class="row-label sub">■ 노즐 / 분사</div><div class="row-inp"></div><div class="row-res"></div></div>
     <div class="row">
-      <div class="row-label"><div class="ck-row"><input type="checkbox" class="ck" id="ck_nrow" checked onchange="sim()">분사 헤더 열수<small style="margin-left:4px">단당 헤더 파이프 반복 배열, 열수↑→세척력↑·펌프↑</small></div></div>
-      <div class="row-inp" style="display:flex;align-items:center;gap:4px"><select class="inp-s" id="nRows" onchange="sim()" style="flex:1"><option value="1">1열(단일)</option><option value="2">2열</option><option value="3">3열</option><option value="4">4열</option><option value="5">5열</option><option value="6">6열</option></select><span id="opt_nRows" class="opt-badge"></span></div>
+      <div class="row-label"><div class="ck-row"><input type="checkbox" class="ck" id="ck_nrow" checked onchange="sim()">노즐 세로 열수<small style="margin-left:4px">분사면 높이 방향 배열수(nr), 클수록 커버리지·세척력↑</small></div></div>
+      <div class="row-inp" style="display:flex;align-items:center;gap:4px"><select class="inp-s" id="nRows" onchange="sim()" style="flex:1"><option value="2">2열</option><option value="3">3열</option><option value="4">4열</option><option value="5">5열</option><option value="6" selected>6열</option><option value="7">7열</option><option value="8">8열</option><option value="10">10열</option><option value="12">12열</option></select><span id="opt_nRows" class="opt-badge"></span></div>
       <div class="row-res" id="r_nRows">-</div>
     </div>
     <div class="row">
@@ -533,7 +533,7 @@ footer{text-align:center;font-size:10px;color:var(--t3);padding:6px 0}
 
 <!-- 세척조 설계 추천 -->
 <div class="panel">
-  <div class="ph w"><h3 style="color:var(--w)">🔧 세척조 설계 추천 (목표 세척율 · 속도 · 헤더열수 기반 자동 산출)</h3></div>
+  <div class="ph w"><h3 style="color:var(--w)">🔧 세척조 설계 추천 (목표 세척율 · 속도 · 노즐열수 기반 자동 산출)</h3></div>
   <div class="pb">
     <div id="rec_summary" style="margin-bottom:8px"></div>
     <div class="cg2" style="margin-top:0;margin-bottom:8px">
@@ -657,7 +657,7 @@ footer{text-align:center;font-size:10px;color:var(--t3);padding:6px 0}
 <!-- 권장 사항 -->
 <div id="recs"></div>
 
-<footer>인시스 AI혁신 R&D센터 | wash_sim.html v4.1 | 2026-07-18</footer>
+<footer>인시스 AI혁신 R&D센터 | wash_sim.html v4.2 | 2026-07-18</footer>
 </div><!-- /right -->
 </div><!-- /wrap -->
 
@@ -787,31 +787,29 @@ function calcW(p){
   var qN=Cd*A*Math.sqrt(2*dP/1000)*1000*60;
   var tgt=[150,120,100,80,60][p.dlv];
   var F=sprayFace(p);
-  var nc=Math.max(2,Math.round(F.fw/tgt)),nr=Math.max(2,Math.round(F.fh/tgt));
+  var nc=Math.max(2,Math.round(F.fw/tgt));   // 가로 노즐수: 자동(폭/간격)
+  var nr=p.nRows||Math.max(2,Math.round(F.fh/tgt)); // 세로 노즐 열수: 사용자 선택(분사면 높이 방향)
   var fpc=(p.itype==='box')?4:2,totF=fpc*p.fmode;
-  var nRows=p.nRows||1;                       // 분사 헤더 열수 (단당 헤더 반복 배열)
-  var qFace1=qN*nc*nr;                         // 헤더 1열 기준 면당 유량
-  var qT=qFace1*totF*nRows,qm=qT/60/1000;      // 열수만큼 유량 배수
+  var qT=qN*nc*nr*totF,qm=qT/60/1000;         // 유량 = 노즐수(nc×nr) × 면수 — 이중배수 없음
   var pKW=qm*dP/(p.pEff/100)/1000;
   var zwid=p.iW+200;
   var tVol=p.zlen*zwid*p.zdep*0.75/1e6;
   var hKW=tVol*4.18*(p.nT-20)/3600*1.35;
   var totPKW=pKW*p.zcnt,totHKW=hKW*p.zcnt,totKW=totPKW+totHKW;
   var dwell=(p.zlen*p.zcnt/1000)/(p.csW/60);
-  // 커버리지 (분사면 실치수 기준)
+  // 커버리지 (분사면 실치수 기준) — nr↑ → 세로 간격 촘촘 → 커버리지↑ → 세척력↑ (단일 물리 경로)
   var gX=F.fw/(nc+1),gY=F.fh/(nr+1),sr=Math.tan(30*Math.PI/180)*100;
   var covX=Math.min(F.fw,(nc-1)*gX+2*sr),covY=Math.min(F.fh,(nr-1)*gY+2*sr);
   var cov=(covX/F.fw)*(covY/F.fh)*100,covF=0.6+0.4*(cov/100);
   // ── 세척율: 1차 반응속도 지수 모델 ──
   // 세척율 = 1-(1-r1)^n, r1 = 1-exp(-k×t1)
-  // k = k0(오염도) × f온도 × f압력 × f세척제 × 커버리지 × 헤더열수(체감)
+  // k = k0(오염도) × f온도 × f압력 × f세척제 × 커버리지(nr 반영됨)
   var k0=[0.035,0.025,0.018,0.012,0.008][p.dlv];         // 오염도별 제거상수 [1/s]
   var fT=0.6+0.4*(Math.min(90,Math.max(20,p.nT))-20)/60;  // 20°C→0.60, 80°C→1.00
   var fP=0.7+0.3*(Math.min(500,Math.max(50,p.nP))-100)/250; // 100kPa→0.70, 350kPa→1.00
   var detOn=gck('ck_det');
   var fD=1+(detOn?p.det:0)*0.03;                            // 세척제 10%→1.30배
-  var fRow=Math.sqrt(nRows);                                // 헤더열수 체감 효과 (중첩분사 물리적 한계)
-  var k=k0*fT*fP*fD*covF*fRow;
+  var k=k0*fT*fP*fD*covF;
   var t1=(p.zlen/1000)/(p.csW/60);                          // 단당 체류시간 [s]
   var r1=1-Math.exp(-k*t1);                                  // 단당 세척율
   var cr=Math.max(1,Math.min(99.9,(1-Math.pow(1-r1,p.zcnt))*100));
@@ -825,10 +823,10 @@ function calcW(p){
   var waterLph=evapLph+dragOutLph;                            // 오버플로우 구조 실제 신선수 소비
   var waterLphOld=qT*60*0.03*p.zcnt+tVol*p.zcnt/8;             // (비교용) 단별 개별 배수 방식 소비량
   var waterSavePct=waterLphOld>0?(1-waterLph/waterLphOld)*100:0;
-  return{cr,dwell,pKW,hKW,totPKW,totHKW,totKW,tVol,waterLph,waterLphOld,waterSavePct,evapLph,dragOutLph,nc,nr,nF:nc*nr,totF,cov,zwid,nRows,
+  return{cr,dwell,pKW,hKW,totPKW,totHKW,totKW,tVol,waterLph,waterLphOld,waterSavePct,evapLph,dragOutLph,nc,nr,nF:nc*nr,totF,cov,zwid,
     thru:(p.csW/(p.iL/1000))*60*p.fmode,
     r1:r1*100,t1:t1,k:k,pumpHP:pKW*1.341,
-    contrib:{k0:k0,fT:fT,fP:fP,fD:fD,covF:covF,fRow:fRow,r1:r1*100,t1:t1}};
+    contrib:{k0:k0,fT:fT,fP:fP,fD:fD,covF:covF,r1:r1*100,t1:t1}};
 }
 function calcWcr(p,csW){return calcW(Object.assign({},p,{csW:csW})).cr;}
 function akP(HP,bpf,sg,sw,sa,dist,iW,iH,iL,csA,stages,pos,iw,ch){
@@ -906,15 +904,21 @@ function pickSUS(lpm,vmax){
   return{nm:pipe.nm,id:pipe.id,dReq:dReq,vAct:vAct};
 }
 
+function tgtSpacingDisp(p){
+  return [150,120,100,80,60][p.dlv];
+}
+
 // ─── 표준 펌프 마력(HP) 리스트 ───
 var STD_HP=[0.25,0.5,0.75,1,1.5,2,3,5,7.5,10,15,20,25,30];
 
-// ─── 세척조 설계 추천: 목표 세척율·속도·헤더열수 기반 ───
+// ─── 세척조 설계 추천: 목표 세척율·속도·노즐열수(nr) 기반 ───
 function calcWasherRec(p){
   // 1) 현재 조건의 단당 세척율 r1 계산 (calcW와 동일 모델)
   var tgt=[150,120,100,80,60][p.dlv];
   var F=sprayFace(p);
-  var nc=Math.max(2,Math.round(F.fw/tgt)),nr=Math.max(2,Math.round(F.fh/tgt));
+  var nc=Math.max(2,Math.round(F.fw/tgt));
+  var nr=p.nRows||Math.max(2,Math.round(F.fh/tgt));  // 세로 노즐 열수(사용자 선택)
+  var idealNr=Math.max(2,Math.round(F.fh/tgt));       // 목표간격 기준 이상적 열수(참고치)
   var gX=F.fw/(nc+1),gY=F.fh/(nr+1),sr=Math.tan(30*Math.PI/180)*100;
   var covX=Math.min(F.fw,(nc-1)*gX+2*sr),covY=Math.min(F.fh,(nr-1)*gY+2*sr);
   var cov=(covX/F.fw)*(covY/F.fh)*100,covF=0.6+0.4*(cov/100);
@@ -922,9 +926,7 @@ function calcWasherRec(p){
   var fT=0.6+0.4*(Math.min(90,Math.max(20,p.nT))-20)/60;
   var fP=0.7+0.3*(Math.min(500,Math.max(50,p.nP))-100)/250;
   var fD=1+(gck('ck_det')?p.det:0)*0.03;
-  var nRows=p.nRows||1;
-  var fRow=Math.sqrt(nRows);
-  var k=k0*fT*fP*fD*covF*fRow;
+  var k=k0*fT*fP*fD*covF;
   var t1=(p.zlen/1000)/(p.csW/60);
   var r1=1-Math.exp(-k*t1);
   // 2) 필요 단수: 1-(1-r1)^n ≥ 목표 → n = ceil(ln(1-목표)/ln(1-r1))
@@ -933,22 +935,16 @@ function calcWasherRec(p){
   needN=clamp(needN,1,8);
   var achievable=needN<=8;
   var crAtNeed=(1-Math.pow(1-r1,needN))*100;
-  // 2-1) 최적 헤더 열수 추천: 현재 단수(zcnt)로 목표 달성하는 최소 열수 탐색
-  var optRows=null;
-  for(var rr=1;rr<=6;rr++){
-    var kk=k0*fT*fP*fD*covF*Math.sqrt(rr);
-    var rr1=1-Math.exp(-kk*t1);
-    var crZ=(1-Math.pow(1-rr1,p.zcnt))*100;
-    if(crZ>=p.tgtCr){optRows=rr;break;}
-  }
-  if(optRows===null)optRows=6; // 6열로도 부족하면 단수 증가 필요(권장 최대치 표시)
+  // 2-1) 최적 노즐 세로 열수 추천: 분사면 높이(F.fh)를 오염도별 목표간격으로 균등 커버하는 열수
+  //      → 항상 물리적으로 "분사면이 클수록 열수도 커지는" 상식적인 결과 (idealNr과 동일 로직)
+  var optRows=clamp(idealNr,2,12);
   // 3) 노즐 유량 (오리피스)
   var Cd=0.62,r2=p.nH/1000/2,A=Math.PI*r2*r2,dP=p.nP*1000;
   var qN=Cd*A*Math.sqrt(2*dP/1000)*1000*60; // L/min/노즐
-  // 4) 면 구성 (헤더 열수만큼 유량 배수)
+  // 4) 면 구성
   var fpc=(p.itype==='box')?4:2;    // 면수/채널
   var totF=fpc*p.fmode;             // 전체 면수
-  var qFace=qN*nc*nr*nRows;         // 면당 유량 LPM (열수 반영)
+  var qFace=qN*nc*nr;               // 면당 유량 LPM (nc×nr 그대로, 이중배수 없음)
   var qStage=qFace*totF;            // 단당 총 유량 LPM
   // 5) 펌프 (단당 1대) — kW·HP 동시 산출 + 표준 마력 추천
   var pumpKW=(qStage/60000)*dP/(p.pEff/100)/1000;
@@ -965,8 +961,8 @@ function calcWasherRec(p){
   var selSupplyObj=SUS.find(function(s){return s.nm===selSupplyNm;})||supplyPipe;
   var vSpraySel=(qFace/60000)/(Math.PI*Math.pow(selSprayObj.id/2000,2));
   var vSupplySel=(qStage/60000)/(Math.PI*Math.pow(selSupplyObj.id/2000,2));
-  return{r1:r1*100,needN:needN,achievable:achievable,crAtNeed:crAtNeed,optRows:optRows,nRows:nRows,
-    nc:nc,nr:nr,nozPerFace:nc*nr,totF:totF,totNoz:nc*nr*totF*nRows,
+  return{r1:r1*100,needN:needN,achievable:achievable,crAtNeed:crAtNeed,optRows:optRows,idealNr:idealNr,nRows:nr,
+    nc:nc,nr:nr,nozPerFace:nc*nr,totF:totF,totNoz:nc*nr*totF,
     qN:qN,qFace:qFace,qStage:qStage,
     pumpKW:pumpKW,pumpHP:pumpHP,pumpHPStd:pumpHPStd,pumpKWStd:pumpKWStd,
     sprayPipe:sprayPipe,supplyPipe:supplyPipe,
@@ -1146,15 +1142,16 @@ function updateOptBadges(p,OPT){
   renderOptBadge('dht',OPT.dht, 'kW',  1,   200,   0);
   renderNRowsBadge(p);
 }
-// 분사 헤더 열수 최적값 뱃지 (select 전용 — 현재 단수로 목표 세척율 달성하는 최소 열수)
+// 노즐 세로 열수(nr) 최적값 뱃지 — 분사면 높이를 오염도별 목표간격으로 균등 커버하는 열수
 function renderNRowsBadge(p){
   var wrap=g('opt_nRows'); if(!wrap||!p.apW)return;
   var R=calcWasherRec(p);
-  var cur=p.nRows||1;
+  var cur=p.nRows||2;
   var close=cur===R.optRows;
-  wrap.className='opt-badge'+(close?'':' warn');
-  wrap.title=close?'✅ 현재 최적 열수':'클릭하면 최적 열수로 적용';
-  wrap.innerHTML=(close?'✅ 최적 ':'권장 ')+'<span class="ov">'+R.optRows+'열</span>';
+  var over=R.idealNr>12;
+  wrap.className='opt-badge'+(close&&!over?'':' warn');
+  wrap.title=over?'분사면이 커서 이상적으로는 '+R.idealNr+'열 필요(목록상 최대 12열로 제한)':(close?'✅ 현재 최적 열수':'클릭하면 최적 열수로 적용');
+  wrap.innerHTML=(close&&!over?'✅ 최적 ':'권장 ')+'<span class="ov">'+R.optRows+'열</span>'+(over?' ⚠️':'');
   wrap.onclick=function(e){
     e.stopPropagation();
     g('nRows').value=R.optRows;
@@ -1177,22 +1174,23 @@ function renderWasherRec(p,W){
   populatePipeSelect('sel_supply',pickSUS(calcWasherRecQStage(p),1.8));
 
   var R=calcWasherRec(p);
+  var Fdisp=sprayFace(p);
   // 목표 세척율 결과칸
   setRes('r_tgtCr','필요 '+R.needN+'단',R.needN<=p.zcnt?'ok':'ng');
   // 요약
   var ok=p.zcnt>=R.needN;
   var rowOk=p.nRows>=R.optRows;
   sumEl.innerHTML='<div class="al '+(ok?'al-ok':'al-w')+'">'+
-    (ok?'✅ 현재 '+p.zcnt+'단·'+p.nRows+'열로 목표 세척율 '+p.tgtCr+'% 달성 가능 (달성치 '+fmt(W?W.cr:0)+'%)'
-       :'⚠️ 목표 '+p.tgtCr+'% 달성에 <b>'+R.needN+'단</b> 필요 — 현재 '+p.zcnt+'단 부족'+(R.achievable?'':' (8단 초과: 헤더열수·속도·온도 조정 필요)'))+
-    ' | 단당 세척율 r₁='+fmt(R.r1)+'% | 헤더 '+p.nRows+'열 → 현재 단수 기준 최적 열수 <b>'+R.optRows+'열</b>'+(rowOk?' ✅':' ⚠️')+'</div>'+
+    (ok?'✅ 현재 '+p.zcnt+'단·노즐 '+p.nRows+'열로 목표 세척율 '+p.tgtCr+'% 달성 가능 (달성치 '+fmt(W?W.cr:0)+'%)'
+       :'⚠️ 목표 '+p.tgtCr+'% 달성에 <b>'+R.needN+'단</b> 필요 — 현재 '+p.zcnt+'단 부족'+(R.achievable?'':' (8단 초과: 온도·압력·속도 조정 필요)'))+
+    ' | 단당 세척율 r₁='+fmt(R.r1)+'% | 분사면 높이 '+Fdisp.fh+'mm → 권장 노즐 열수 <b>'+R.optRows+'열</b>'+(rowOk?' ✅':' ⚠️')+'</div>'+
     (W?'<div class="al al-i" style="margin-top:4px">🔄 <b>카운터커런트 오버플로우 급수</b> — 최종헹굼조에 신선수 공급 → 오버플로우로 앞 단(예세척 방향)으로 역류 → 예세척조에서 배수. 순수 물 소비 = 증발손실('+fmt(W.evapLph,1)+'L/h) + 이월손실('+fmt(W.dragOutLph,1)+'L/h) = <b>'+fmt(W.waterLph,1)+'L/h</b> — 단별 개별배수 대비 <b>'+fmt(W.waterSavePct,0)+'% 절감</b> (비교: '+fmt(W.waterLphOld,1)+'L/h)</div>':'');
   // 설계 요약 표
   dtb.innerHTML=
     '<tr><td>권장 세척 단수</td><td class="val-hi" style="font-weight:700">'+R.needN+'단</td><td>목표 '+p.tgtCr+'% ← 단당 r₁='+fmt(R.r1)+'% 지수 누적, '+R.needN+'단 시 '+fmt(R.crAtNeed)+'%</td></tr>'+
-    '<tr><td>권장 분사 헤더 열수</td><td class="val-hi" style="font-weight:700">'+R.optRows+'열</td><td>현재 '+p.zcnt+'단 조건에서 목표 '+p.tgtCr+'% 달성 최소 열수 (√열수 체감 반영)</td></tr>'+
-    '<tr><td>노즐 배치 (면당)</td><td style="font-weight:700">'+R.nc+'×'+R.nr+'×'+p.nRows+'열</td><td>분사면 '+(p.itype==='tray'?p.iW+'×'+p.iL:p.iW+'×'+p.iH)+'mm, 간격 가로 '+fmt(R.gapX,0)+'mm / 세로 '+fmt(R.gapY,0)+'mm</td></tr>'+
-    '<tr><td>총 노즐 수 (단당)</td><td style="font-weight:700">'+R.totNoz+'개</td><td>'+R.nozPerFace+'개/면 × '+R.totF+'면 × '+p.nRows+'열 ('+(p.itype==='box'?'박스 4면':'트레이 2면')+' × '+p.fmode+'채널)</td></tr>'+
+    '<tr><td>권장 노즐 세로 열수</td><td class="val-hi" style="font-weight:700">'+R.optRows+'열</td><td>분사면 높이 '+Fdisp.fh+'mm ÷ 오염도별 목표간격('+tgtSpacingDisp(p)+'mm) — 클수록 커버리지·세척력↑</td></tr>'+
+    '<tr><td>노즐 배치 (면당)</td><td style="font-weight:700">'+R.nc+'×'+R.nr+' = '+R.nozPerFace+'개</td><td>분사면 '+(p.itype==='tray'?p.iW+'×'+p.iL:p.iW+'×'+p.iH)+'mm, 간격 가로 '+fmt(R.gapX,0)+'mm / 세로 '+fmt(R.gapY,0)+'mm</td></tr>'+
+    '<tr><td>총 노즐 수 (단당)</td><td style="font-weight:700">'+R.totNoz+'개</td><td>'+R.nozPerFace+'개/면 × '+R.totF+'면 ('+(p.itype==='box'?'박스 4면':'트레이 2면')+' × '+p.fmode+'채널)</td></tr>'+
     '<tr><td>단당 펌프 유량</td><td style="font-weight:700">'+fmt(R.qStage,0)+' LPM</td><td>노즐 '+fmt(R.qN,2)+'L/min × '+R.totNoz+'개 (Ø'+p.nH+'mm @'+p.nP+'kPa)</td></tr>'+
     '<tr><td>단당 펌프 용량·마력</td><td class="val-hi" style="font-weight:700">'+fmt(R.pumpKWStd,2)+'kW ('+R.pumpHPStd+'HP)</td><td>산출 '+fmt(R.pumpKW,2)+'kW/'+fmt(R.pumpHP,2)+'HP → 표준 마력 상향, 효율 '+p.pEff+'%</td></tr>'+
     '<tr><td>분사관 규격</td><td style="font-weight:700">SUS '+R.selSpray.nm+' (추천 '+R.sprayPipe.nm+')</td><td>면당 '+fmt(R.qFace,0)+'LPM, 선택유속 '+fmt(R.vSpraySel,2)+'m/s '+(R.vSpraySel<=2.5?'✅':'⚠️초과')+' (기준≤2.5)</td></tr>'+
@@ -1208,7 +1206,7 @@ function renderWasherRec(p,W){
     var flowNote=i===R.needN?'💧신선수 IN':(i===1?'⬅ 배수 OUT':'⬅ 오버플로우');
     rows+='<tr style="background:'+(isCur?'#fff':'#fff8e6')+'">'+
       '<td><b>'+i+'단</b> <span style="font-size:10px;color:var(--t3)">'+role+'</span>'+(isCur?'':' <span style="font-size:10px;color:#e65100">추가필요</span>')+'<br><span style="font-size:9px;color:var(--w)">'+flowNote+'</span></td>'+
-      '<td style="text-align:center;font-weight:600">'+R.nc+'×'+R.nr+'×'+p.nRows+'</td>'+
+      '<td style="text-align:center;font-weight:600">'+R.nc+'×'+R.nr+'</td>'+
       '<td style="text-align:center">'+R.nozPerFace+'</td>'+
       '<td style="text-align:center">'+R.totNoz+'</td>'+
       '<td style="text-align:center;font-weight:600">'+fmt(R.qStage,0)+'</td>'+
@@ -1221,10 +1219,10 @@ function renderWasherRec(p,W){
 // calcWasherRec 내부 qFace/qStage를 select populate 시점에 미리 알기 위한 경량 헬퍼
 function calcWasherRecQFace(p){
   var tgt=[150,120,100,80,60][p.dlv];var F=sprayFace(p);
-  var nc=Math.max(2,Math.round(F.fw/tgt)),nr=Math.max(2,Math.round(F.fh/tgt));
+  var nc=Math.max(2,Math.round(F.fw/tgt)),nr=p.nRows||Math.max(2,Math.round(F.fh/tgt));
   var Cd=0.62,r2=p.nH/1000/2,A=Math.PI*r2*r2,dP=p.nP*1000;
   var qN=Cd*A*Math.sqrt(2*dP/1000)*1000*60;
-  return qN*nc*nr*(p.nRows||1);
+  return qN*nc*nr;
 }
 function calcWasherRecQStage(p){
   var fpc=(p.itype==='box')?4:2,totF=fpc*p.fmode;
@@ -1311,7 +1309,7 @@ function updateRowRes(p,W,AK,D){
   if(W){
     setRes('r_zcnt',p.zcnt+'단 세척율 '+fmt(W.cr)+'%',W.cr>=80?'ok':'ng');
     setRes('r_fmode',p.fmode===2?'2채널·2열 격벽':'1채널·1열 단열');
-    setRes('r_nRows',p.nRows+'열 → r1×'+fmt(W.contrib.fRow,2));
+    setRes('r_nRows',W.nc+'×'+p.nRows+'='+W.nF+'개/면, 커버리지 '+fmt(W.cov,0)+'%');
     setRes('r_nP',fmt(W.pKW,2)+'kW/단');
     setRes('r_nT',fmt(W.hKW,1)+'kW/단');
     setRes('r_nH',W.nc+'×'+W.nr+'='+W.nF+'개/면');
@@ -1424,10 +1422,9 @@ function drawWasher(p,W,OPT){
     var qN=Cd*A*Math.sqrt(2*dP/1000)*1000*60;
     var tgt=[150,120,100,80,60][p.dlv];
     var F=sprayFace(p);
-    var nc=Math.max(2,Math.round(F.fw/tgt)),nr=Math.max(2,Math.round(F.fh/tgt));
+    var nc=Math.max(2,Math.round(F.fw/tgt)),nr=p.nRows||Math.max(2,Math.round(F.fh/tgt));
     var fpc=(p.itype==='box')?4:2,totF=fpc*p.fmode;
-    var nRows=p.nRows||1;
-    return qN*nc*nr*totF*nRows/60/1000*dP/(p.pEff/100)/1000*p.zcnt;
+    return qN*nc*nr*totF/60/1000*dP/(p.pEff/100)/1000*p.zcnt;
   });
   var pbg=pa.map(function(pr){return Math.abs(pr-p.nP)<30?CO:CW+'88';});
   // 최적 분사압 위치 마커
@@ -1593,7 +1590,7 @@ function updateParts(p,W,AK,D){
   var rows=[];
   if(W){
     rows.push(['세척기','워터 펌프',fmt(W.pKW,2)+'kW/'+fmt(W.pumpHP,2)+'HP',p.zcnt+'대','단당 1대']);
-    rows.push(['세척기','분사 노즐','Ø'+p.nH+'mm',W.nF+'개/면×'+W.totF+'면×'+p.nRows+'열','오리피스형']);
+    rows.push(['세척기','분사 노즐','Ø'+p.nH+'mm',W.nF+'개/면×'+W.totF+'면','오리피스형 ('+W.nc+'×'+p.nRows+')']);
     rows.push(['세척기','전기 히터',fmt(W.hKW,1)+'kW/단',p.zcnt+'단',fmt(W.tVol,0)+'L 탱크']);
     rows.push(['세척기','SUS 디버리스 필터','60~80mesh SUS304',p.zcnt+'개','탱크 하부, 단당 1개']);
     rows.push(['세척기','표면 스키머 필터','오버플로우 웨어형',p.zcnt+'개','유분·거품 제거']);
