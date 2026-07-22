@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>건조실 사양 시뮬레이터 v3.3</title>
+<title>건조실 사양 시뮬레이터 v3.4</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
@@ -183,6 +183,38 @@ hr.dv{border:none;border-top:1px solid var(--bd);margin:12px 0;}
 .rt-bar{height:10px;border-radius:5px;background:var(--bd);overflow:hidden;margin-bottom:8px;}
 .rt-bar-fill{height:100%;border-radius:5px;transition:width .4s ease,background .4s ease;}
 
+
+/* ── 상호연관 패널 ─────────────────────────────── */
+.iact-panel{background:#fff;border:1.5px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:14px;}
+.iact-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.iact-header h3{font-size:13px;font-weight:700;color:var(--pr);display:flex;align-items:center;gap:6px;}
+.iact-sliders{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px;}
+.iact-sl-group{display:flex;flex-direction:column;gap:6px;}
+.iact-sl-label{font-size:11px;font-weight:700;color:var(--t2);}
+.iact-sl-val{font-size:22px;font-weight:900;color:var(--pr);line-height:1;}
+.iact-sl-sub{font-size:10px;color:var(--t3);margin-top:1px;}
+.iact-range{-webkit-appearance:none;appearance:none;width:100%;height:7px;border-radius:4px;outline:none;cursor:pointer;}
+.iact-range::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:#fff;border:3px solid var(--pr);box-shadow:0 2px 8px rgba(26,79,138,.2);cursor:pointer;transition:transform .15s;}
+.iact-range::-webkit-slider-thumb:hover{transform:scale(1.25);}
+.iact-range::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:#fff;border:3px solid var(--pr);cursor:pointer;}
+.iact-charts{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.iact-chart-box{background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:10px 12px;}
+.iact-chart-box h4{font-size:11px;font-weight:700;color:var(--pr);margin-bottom:8px;}
+.iact-cw{position:relative;height:180px;}
+
+/* ── 최적화 패널 ────────────────────────────────── */
+.opt-panel{background:linear-gradient(135deg,#0d3366,#1a4f8a);border-radius:12px;padding:18px;margin-bottom:14px;color:#fff;}
+.opt-panel h3{font-size:14px;font-weight:700;color:#fff;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.opt-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;}
+.opt-c{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:12px 8px;text-align:center;}
+.opt-c .ocv{font-size:18px;font-weight:700;color:#fff;line-height:1.1;}
+.opt-c .ocl{font-size:10px;color:#a8c4e0;margin-top:3px;}
+.opt-c.best{background:rgba(12,122,105,.4);border-color:rgba(12,122,105,.7);}
+.opt-c.warn{background:rgba(217,119,6,.35);border-color:rgba(217,119,6,.6);}
+.opt-reasons{background:rgba(255,255,255,.08);border-radius:8px;padding:12px 14px;}
+.opt-reasons p{font-size:12px;color:#dceeff;line-height:1.8;}
+.opt-reasons .tag{display:inline-block;background:rgba(255,255,255,.15);border-radius:4px;padding:1px 6px;font-size:10px;font-weight:600;margin-right:4px;}
+
 /* RESPONSIVE */
 @media(max-width:700px){.g2,.g3,.rg,.og,.chklist{grid-template-columns:1fr 1fr;} .fr3{grid-template-columns:1fr 1fr;}}
 </style>
@@ -195,7 +227,7 @@ hr.dv{border:none;border-top:1px solid var(--bd);margin:12px 0;}
       <h1>🏭 건조실 사양 시뮬레이터</h1>
       <p>인시스 AI혁신 R&amp;D센터 · 에어나이프 후단 건조기 설계 최적화</p>
     </div>
-    <span class="vbadge">v3.3</span>
+    <span class="vbadge">v3.4</span>
   </div>
 </div>
 
@@ -358,6 +390,77 @@ hr.dv{border:none;border-top:1px solid var(--bd);margin:12px 0;}
         <div id="f_odesc" style="margin-top:10px;font-size:12px;color:var(--t2);line-height:1.8;"></div>
       </div>
     </div>
+  </div>
+
+  <!-- ── 상호연관 조정 패널 ── -->
+  <div class="card" style="margin-bottom:14px;">
+    <div class="ch"><div class="ch-ico">🔗</div><h2>핵심 3요소 상호연관 조정</h2><span class="sub">슬라이더 조작 → 그래프 실시간 반영</span></div>
+    <div class="cb">
+      <div class="iact-panel" style="background:var(--s2);border:none;padding:0;">
+        <!-- 슬라이더 3개 -->
+        <div class="iact-sliders">
+          <!-- 건조 온도 -->
+          <div class="iact-sl-group">
+            <div class="iact-sl-label">🌡️ 건조 온도</div>
+            <div class="iact-sl-val" id="ia_temp_val">50°C</div>
+            <div class="iact-sl-sub" id="ia_temp_sub">표준 건조</div>
+            <input type="range" class="iact-range" id="ia_temp"
+              min="30" max="60" step="1" value="50" oninput="onIA()">
+            <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--t3);">
+              <span>30°C</span><span>45°C</span><span>60°C</span>
+            </div>
+          </div>
+          <!-- 팬 용량 (대수) -->
+          <div class="iact-sl-group">
+            <div class="iact-sl-label">🌀 순환팬 대수</div>
+            <div class="iact-sl-val" id="ia_fan_val">3대</div>
+            <div class="iact-sl-sub" id="ia_fan_sub">—</div>
+            <input type="range" class="iact-range" id="ia_fan"
+              min="1" max="6" step="1" value="3" oninput="onIA()">
+            <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--t3);">
+              <span>1대</span><span>3대</span><span>6대</span>
+            </div>
+          </div>
+          <!-- 제습기 제습량 -->
+          <div class="iact-sl-group">
+            <div class="iact-sl-label">💧 제습기 제습량</div>
+            <div class="iact-sl-val" id="ia_dh_val">10 L/h</div>
+            <div class="iact-sl-sub" id="ia_dh_sub">—</div>
+            <input type="range" class="iact-range" id="ia_dh"
+              min="0" max="50" step="1" value="10" oninput="onIA()">
+            <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--t3);">
+              <span>0 (미설치)</span><span>25L/h</span><span>50L/h</span>
+            </div>
+          </div>
+        </div>
+        <!-- 상호연관 차트 4종 -->
+        <div class="iact-charts">
+          <div class="iact-chart-box">
+            <h4>📈 온도 × 팬대수 → 총 풍량 (m³/h)</h4>
+            <div class="iact-cw"><canvas id="ia_c1"></canvas></div>
+          </div>
+          <div class="iact-chart-box">
+            <h4>⚡ 온도 × 팬대수 → 소비 전력 (W)</h4>
+            <div class="iact-cw"><canvas id="ia_c2"></canvas></div>
+          </div>
+          <div class="iact-chart-box">
+            <h4>💧 제습량 × 온도 → 건조 효율 지수</h4>
+            <div class="iact-cw"><canvas id="ia_c3"></canvas></div>
+          </div>
+          <div class="iact-chart-box">
+            <h4>💰 3요소 조합 → 월간 운영비 (원)</h4>
+            <div class="iact-cw"><canvas id="ia_c4"></canvas></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 최적화 추천 패널 ── -->
+  <div class="opt-panel" id="opt_panel">
+    <h3>⚡ 최적화 추천 — 현재 건조실 조건 기반</h3>
+    <div class="opt-cards" id="opt_cards"></div>
+    <div class="opt-reasons" id="opt_reasons"><p>슬라이더를 조작하면 최적 추천값이 표시됩니다.</p></div>
   </div>
 
   <!-- 차트 -->
@@ -634,7 +737,7 @@ hr.dv{border:none;border-top:1px solid var(--bd);margin:12px 0;}
 </div>
 </div>
 
-<div class="footer">인시스 AI혁신 R&amp;D센터 · 건조실 사양 시뮬레이터 v3.3 · 2026</div>
+<div class="footer">인시스 AI혁신 R&amp;D센터 · 건조실 사양 시뮬레이터 v3.4 · 2026</div>
 
 <script>
 // ─── Firebase REST ───────────────────────────────
@@ -803,6 +906,223 @@ function setBar(id, pct, color) {
   el.style.width = Math.min(pct, 100) + '%';
   el.style.background = color;
 }
+
+// ══════════════════════════════════════════════════════
+// 상호연관 슬라이더 (onIA) + 최적화 추천
+// ══════════════════════════════════════════════════════
+function onIA() {
+  var temp  = parseInt(gel('ia_temp').value);
+  var fanN  = parseInt(gel('ia_fan').value);
+  var dhLh  = parseInt(gel('ia_dh').value);
+
+  // ── 슬라이더 색상 배경 갱신 ──
+  updateRangeTrack('ia_temp',  temp,  30, 60,  '#3b82f6', '#ef4444');
+  updateRangeTrack('ia_fan',   fanN,  1,  6,   '#6366f1', '#1a4f8a');
+  updateRangeTrack('ia_dh',    dhLh,  0,  50,  '#d1dae6', '#0c7a69');
+
+  // ── 레이블 업데이트 ──
+  var tempLabel = temp<=35?'저온건조':temp<=45?'표준건조':temp<=52?'고효율':' 고온(내열)';
+  var tempCol   = temp<=35?'#3b82f6':temp<=45?'#1a4f8a':temp<=52?'#d97706':'#c0392b';
+  setTxt('ia_temp_val', temp+'°C');
+  gel('ia_temp_val').style.color = tempCol;
+  setTxt('ia_temp_sub', tempLabel);
+
+  // 팬 1대 풍량 계산
+  var vol = gn('s_L',4)*gn('s_W',1.2)*gn('s_H',1.6);
+  var rho = 1.293*273/(273+temp);
+  var ach = temp<=40?30:temp<=50?35:40;
+  var tf  = vol*ach*gn('s_lf',1.3)*gn('s_sf',1.2);
+  var ff1 = Math.round(tf/fanN); // 팬 1대 풍량
+  var sp  = Math.round(100*(rho/1.185)*gn('s_dc',1.2));
+  var mwEach = Math.round(ff1/3600*sp/0.15);
+  var mwTotal= mwEach*fanN;
+  var hpEach = mwEach<=40?'40W':mwEach<=75?'0.1HP':mwEach<=110?'0.15HP':'0.2HP';
+  setTxt('ia_fan_val', fanN+'대');
+  setTxt('ia_fan_sub', '1대 '+ff1+'m³/h · '+hpEach);
+
+  // 제습 효과 라벨
+  var dhLabel = dhLh===0?'미설치':dhLh<=5?'소형':dhLh<=15?'표준':dhLh<=30?'중형':'대형';
+  setTxt('ia_dh_val', dhLh===0?'미설치':dhLh+' L/h');
+  setTxt('ia_dh_sub', dhLabel+(dhLh>0?' ('+Math.round(dhLh*60)+'W)':''));
+
+  // ── 히터 용량 ──
+  var hw    = gn('d_hw',3000)||gn('s_hw',3000);
+  var rc    = gi('s_rc',1);
+  var rrVal = gn('s_rr',0.5);
+  var svp   = rc ? Math.min(rrVal*0.85*100,65) : 0;
+  var htrEff= Math.round(hw*(1-svp/100)); // 실효 히터 전력
+
+  // ── 건조 효율 지수 계산 ──
+  // 온도 기여 (40%), 팬 기여 (35%), 제습 기여 (25%)
+  var tempScore = Math.round((temp-30)/30*40);
+  var fanScore  = Math.round((fanN-1)/5*35);
+  var dhScore   = Math.round(Math.min(dhLh/20,1)*25);
+  var effIdx    = Math.min(tempScore+fanScore+dhScore, 100);
+
+  // ── 소비전력 합산 ──
+  var dhW = dhLh*60; // 제습기 W
+  var totW= mwTotal + htrEff + dhW;
+
+  // ── 월간 운영비 ──
+  var oh=gn('s_oh',8), od=gn('s_od',22), ec=gn('s_ec',120);
+  var monthly = Math.round(totW/1000*oh*od*ec);
+
+  // ── 차트 1: 온도 × 팬대수 → 총 풍량 (현재 팬대수 고정, 온도 30~60 스캔) ──
+  var temps30to60=[30,35,40,45,50,55,60];
+  var flowData=temps30to60.map(function(t){
+    var a=t<=40?30:t<=50?35:40;
+    return Math.round(vol*a*gn('s_lf',1.3)*gn('s_sf',1.2));
+  });
+  // 팬 대수별 (현재 온도 고정)
+  var fanNums=[1,2,3,4,5,6];
+  var flowByFan=fanNums.map(function(n){
+    return Math.round(vol*ach*gn('s_lf',1.3)*gn('s_sf',1.2)/n);
+  });
+
+  mkC('ia_c1',{type:'line',data:{
+    labels:temps30to60.map(function(t){return t+'°C';}),
+    datasets:[
+      {label:'총 풍량 (m³/h)',data:flowData,borderColor:'#2563a8',backgroundColor:'#2563a820',tension:.4,fill:true,borderWidth:2.5,pointRadius:4,
+       pointBackgroundColor:temps30to60.map(function(t){return t===temp?'#e74c3c':'#2563a8';})},
+    ]
+  },options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{labels:{font:{size:10}}},
+      annotation:{annotations:{line1:{type:'line',x:temp+'°C',borderColor:'#e74c3c',borderWidth:2,borderDash:[4,3]}}}},
+    scales:{y:{title:{display:true,text:'m³/h',font:{size:10}}}}}});
+
+  // ── 차트 2: 팬 대수별 소비전력 누적 ──
+  mkC('ia_c2',{type:'bar',data:{
+    labels:fanNums.map(function(n){return n+'대';}),
+    datasets:[
+      {label:'팬 전력 (W)',data:fanNums.map(function(n){return Math.round(ff1*Math.ceil(n/fanN>1?1:n/fanN)*sp/0.15*n);}),
+        backgroundColor:'#2563a888',borderColor:'#2563a8',borderWidth:2,borderRadius:4},
+      {label:'히터 전력 (W)',data:fanNums.map(function(){return htrEff;}),
+        backgroundColor:'#d9770688',borderColor:'#d97706',borderWidth:2,borderRadius:4},
+      {label:'제습기 전력 (W)',data:fanNums.map(function(){return dhW;}),
+        backgroundColor:'#0c7a6988',borderColor:'#0c7a69',borderWidth:2,borderRadius:4},
+    ]
+  },options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{labels:{font:{size:10}}}},
+    scales:{x:{stacked:true},y:{stacked:true,title:{display:true,text:'W',font:{size:10}}}}}});
+
+  // ── 차트 3: 제습량 × 온도 → 건조효율 ──
+  var dhRange=[0,5,10,15,20,25,30];
+  mkC('ia_c3',{type:'line',data:{
+    labels:dhRange.map(function(d){return d===0?'미설치':d+'L'}),
+    datasets:temps30to60.filter(function(t){return t%10===0;}).map(function(t,i){
+      var tScore=Math.round((t-30)/30*40);
+      var fScore=Math.round((fanN-1)/5*35);
+      var cols=['#3b82f6','#2563a8','#d97706','#ef4444'];
+      return {label:t+'°C',data:dhRange.map(function(d){
+        return Math.min(tScore+fScore+Math.round(Math.min(d/20,1)*25),100);
+      }),borderColor:cols[i],backgroundColor:'transparent',tension:.4,borderWidth:2,
+        pointRadius:dhRange.map(function(d){return d===dhLh?6:2;}),
+        pointBackgroundColor:cols[i]};
+    })
+  },options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{labels:{font:{size:10}}}},
+    scales:{y:{min:0,max:100,title:{display:true,text:'효율지수',font:{size:10}}}}}});
+
+  // ── 차트 4: 3요소 조합 월간 운영비 ──
+  var combos=['현재 설정','온도만 최적','팬만 최적','제습 추가','전체 최적'];
+  // 현재
+  var m0=monthly;
+  // 온도만 최적 (45°C)
+  var tOpt=45; var rhOpt=1.293*273/(273+tOpt);
+  var achOpt=35; var ffOpt=Math.round(vol*achOpt*gn('s_lf',1.3)*gn('s_sf',1.2)/fanN);
+  var spOpt=Math.round(100*(rhOpt/1.185)*gn('s_dc',1.2));
+  var mwOptT=Math.round(ffOpt/3600*spOpt/0.15)*fanN;
+  var htrOpt45=Math.round(hw*(1-svp/100));
+  var m1=Math.round((mwOptT+htrOpt45+dhW)/1000*oh*od*ec);
+  // 팬만 최적 (3대 고정)
+  var fanOpt=3;
+  var ffFanOpt=Math.round(vol*ach*gn('s_lf',1.3)*gn('s_sf',1.2)/fanOpt);
+  var mwFanOpt=Math.round(ffFanOpt/3600*sp/0.15)*fanOpt;
+  var m2=Math.round((mwFanOpt+htrEff+dhW)/1000*oh*od*ec);
+  // 제습 추가 (필요량만)
+  var dhOpt=Math.ceil((vol*ach*0.005)*1.3); // 최소 제습량
+  var m3=Math.round((mwTotal+htrEff+dhOpt*60)/1000*oh*od*ec);
+  // 전체 최적
+  var m4=Math.round((mwFanOpt+htrOpt45+dhOpt*60)/1000*oh*od*ec);
+  mkC('ia_c4',{type:'bar',data:{
+    labels:combos,
+    datasets:[{label:'월간 운영비 (원)',
+      data:[m0,m1,m2,m3,m4],
+      backgroundColor:['#c0392b88','#d9770688','#2563a888','#0c7a6988','#1a4f8a'],
+      borderColor:['#c0392b','#d97706','#2563a8','#0c7a69','#1a4f8a'],
+      borderWidth:2,borderRadius:6}]
+  },options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false}},
+    scales:{y:{title:{display:true,text:'원/월',font:{size:10}}}}}});
+
+  // ── 최적화 추천값 산출 ──
+  // 최적 온도: 건조 효율 대비 에너지 균형점 → 45~50°C
+  var optTemp  = gn('s_lf',1.3)>=1.3 ? 50 : 45;
+  // 최적 팬 대수: 건조실 체적 기준 (체적당 0.5대, 최소 2)
+  var optFan   = Math.max(2, Math.min(6, Math.round(vol*0.5)));
+  // 최적 제습량 (필요 제습 부하)
+  var rh=gn('d_rh',70)||70, trh=gn('d_trh',30)||30;
+  var svpT=optTemp<=40?51:optTemp<=50?83:130;
+  var rhLoad=(svpT*rh/100-svpT*trh/100)*tf/1000;
+  if(rhLoad<0)rhLoad=0;
+  var moistItem=gn('d_qty',200)*(gn('d_ww',50)||50)*(gn('d_rem',0.1)||0.1)/1000;
+  var optDH=Math.ceil((moistItem+rhLoad)*1.3*10)/10;
+  var optDHModel=optDH<=5?'5L/h급':optDH<=10?'10L/h급':optDH<=20?'20L/h급':'30L/h급';
+  // 최적 팬 1대 풍량
+  var optRho=1.293*273/(273+optTemp);
+  var optAch=optTemp<=40?30:optTemp<=50?35:40;
+  var optTF=Math.round(vol*optAch*gn('s_lf',1.3)*gn('s_sf',1.2));
+  var optFF=Math.round(optTF/optFan);
+  var optSP=Math.round(100*(optRho/1.185)*gn('s_dc',1.2));
+  var optMW=Math.round(optFF/3600*optSP/0.15);
+  var optHP=optMW<=40?'40W':optMW<=75?'0.1HP(75W)':optMW<=110?'0.15HP(110W)':'0.2HP(150W)';
+  var optDia=optFF<=130?'φ150mm':optFF<=220?'φ180mm':'φ200mm';
+  // 최적 월간비용
+  var optHtr=Math.round(hw*(1-svp/100));
+  var optMonthly=Math.round((optMW*optFan+optHtr+optDH*60)/1000*oh*od*ec);
+  var saving=Math.max(0,monthly-optMonthly);
+
+  // 추천 카드 8개
+  var cards=[
+    {l:'건조 온도',v:optTemp+'°C',cls:optTemp===temp?'best':''},
+    {l:'팬 대수',v:optFan+'대',cls:optFan===fanN?'best':''},
+    {l:'팬 1대 풍량',v:optFF+'m³/h',cls:''},
+    {l:'팬 모터 선정',v:optHP,cls:''},
+    {l:'임펠러',v:optDia,cls:''},
+    {l:'제습기 용량',v:optDHModel,cls:Math.round(optDH)===dhLh?'best':''},
+    {l:'월간 운영비',v:optMonthly.toLocaleString()+'원',cls:'best'},
+    {l:'현재 대비 절감',v:saving>0?'-'+saving.toLocaleString()+'원':'최적',cls:saving>0?'warn':'best'},
+  ];
+  var el=gel('opt_cards');
+  if(el) el.innerHTML=cards.map(function(c){
+    return '<div class="opt-c '+c.cls+'"><div class="ocv">'+c.v+'</div><div class="ocl">'+c.l+'</div></div>';
+  }).join('');
+
+  // 추천 이유
+  var reasons=[];
+  if(optTemp!==temp) reasons.push('<span class="tag">온도</span>현재 '+temp+'°C → <b>'+optTemp+'°C</b> 권장 (효율·에너지 균형점)');
+  if(optFan!==fanN)  reasons.push('<span class="tag">팬</span>현재 '+fanN+'대 → <b>'+optFan+'대</b> 권장 (체적 '+vol.toFixed(1)+'m³ 기준)');
+  if(Math.abs(optDH-dhLh)>2) reasons.push('<span class="tag">제습</span>필요 제습량 <b>'+optDH.toFixed(1)+'L/h</b> → '+optDHModel+' 선정');
+  reasons.push('<span class="tag">절감</span>최적 조합 시 월 <b>'+saving.toLocaleString()+'원</b> 절감 가능 ('+optMonthly.toLocaleString()+'원/월)');
+  var rel=gel('opt_reasons');
+  if(rel) rel.innerHTML=reasons.map(function(r){return '<p>'+r+'</p>';}).join('');
+
+  // 슬라이더 값이 바뀌면 메인 입력 동기화
+  sv('s_tt', temp);
+  sv('s_fc', fanN);
+  // 온도 슬라이더도 동기화
+  var ms=gel('temp_slider'); if(ms) ms.value=temp;
+  updateSliderUI(temp);
+}
+
+function updateRangeTrack(id, val, min, max, colA, colB) {
+  var el=gel(id); if(!el) return;
+  var pct=(val-min)/(max-min)*100;
+  var col=lerpColor(colA,colB,pct/100);
+  el.style.background='linear-gradient(to right,'+col+' 0%,'+col+' '+pct+'%,#d1dae6 '+pct+'%,#d1dae6 100%)';
+}
+
+function setTxt(id,v){var e=gel(id);if(e)e.textContent=v;}
 
 function lerpColor(a, b, t) {
   var ah = parseInt(a.replace('#',''), 16);
@@ -1285,8 +1605,12 @@ function clrLocal(){if(!confirm('로컬 저장 데이터를 삭제하시겠습�
 document.addEventListener('DOMContentLoaded', function() {
   simFan();
   simDry();
-  // 슬라이더 초기화
   updateSliderUI(50);
+  // 상호연관 슬라이더 초기화
+  updateRangeTrack('ia_temp', 50, 30, 60, '#3b82f6','#ef4444');
+  updateRangeTrack('ia_fan',  3,  1,  6,  '#6366f1','#1a4f8a');
+  updateRangeTrack('ia_dh',   10, 0,  50, '#d1dae6','#0c7a69');
+  onIA();
 });
 </script>
 </body>
