@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>건조실 사양 시뮬레이터 v3.2</title>
+<title>건조실 사양 시뮬레이터 v3.3</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
@@ -157,6 +157,32 @@ hr.dv{border:none;border-top:1px solid var(--bd);margin:12px 0;}
 /* FOOTER */
 .footer{text-align:center;color:var(--t3);font-size:11px;padding:14px;border-top:1px solid var(--bd);}
 
+
+/* ── 온도 슬라이더 ─────────────────────────────── */
+.temp-slider-wrap{background:linear-gradient(135deg,#1a4f8a08,#0c7a6908);border:1.5px solid var(--bd);border-radius:12px;padding:18px 20px;margin-bottom:14px;}
+.temp-slider-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.temp-slider-header h3{font-size:13px;font-weight:700;color:var(--pr);display:flex;align-items:center;gap:6px;}
+.temp-display{display:flex;align-items:baseline;gap:4px;}
+.temp-val{font-size:36px;font-weight:900;color:var(--pr);line-height:1;transition:color .3s;}
+.temp-unit{font-size:14px;font-weight:600;color:var(--t3);}
+.temp-effect-label{font-size:11px;font-weight:600;border-radius:20px;padding:3px 10px;transition:all .3s;}
+.slider-track-wrap{position:relative;padding:6px 0;}
+.temp-slider{-webkit-appearance:none;appearance:none;width:100%;height:8px;border-radius:4px;outline:none;cursor:pointer;transition:all .1s;}
+.temp-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:26px;height:26px;border-radius:50%;background:#fff;border:3px solid var(--pr);box-shadow:0 2px 8px rgba(26,79,138,.25);cursor:pointer;transition:all .2s;}
+.temp-slider::-webkit-slider-thumb:hover{transform:scale(1.2);box-shadow:0 3px 14px rgba(26,79,138,.4);}
+.temp-slider::-moz-range-thumb{width:26px;height:26px;border-radius:50%;background:#fff;border:3px solid var(--pr);box-shadow:0 2px 8px rgba(26,79,138,.25);cursor:pointer;}
+.slider-marks{display:flex;justify-content:space-between;margin-top:6px;}
+.slider-mark{font-size:11px;color:var(--t3);font-weight:500;}
+.slider-mark.active{color:var(--pr);font-weight:700;}
+.realtime-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px;}
+.rt-card{background:#fff;border:1px solid var(--bd);border-radius:8px;padding:10px 8px;text-align:center;transition:all .25s;}
+.rt-card .rtv{font-size:18px;font-weight:700;line-height:1.1;transition:all .3s;}
+.rt-card .rtl{font-size:10px;color:var(--t3);margin-top:2px;}
+.rt-bar-wrap{margin-top:12px;}
+.rt-bar-label{display:flex;justify-content:space-between;font-size:11px;color:var(--t2);margin-bottom:4px;font-weight:500;}
+.rt-bar{height:10px;border-radius:5px;background:var(--bd);overflow:hidden;margin-bottom:8px;}
+.rt-bar-fill{height:100%;border-radius:5px;transition:width .4s ease,background .4s ease;}
+
 /* RESPONSIVE */
 @media(max-width:700px){.g2,.g3,.rg,.og,.chklist{grid-template-columns:1fr 1fr;} .fr3{grid-template-columns:1fr 1fr;}}
 </style>
@@ -169,7 +195,7 @@ hr.dv{border:none;border-top:1px solid var(--bd);margin:12px 0;}
       <h1>🏭 건조실 사양 시뮬레이터</h1>
       <p>인시스 AI혁신 R&amp;D센터 · 에어나이프 후단 건조기 설계 최적화</p>
     </div>
-    <span class="vbadge">v3.2</span>
+    <span class="vbadge">v3.3</span>
   </div>
 </div>
 
@@ -231,6 +257,49 @@ hr.dv{border:none;border-top:1px solid var(--bd);margin:12px 0;}
     <div class="card">
       <div class="ch"><div class="ch-ico">🌡️</div><h2>온도 · 운전 조건</h2></div>
       <div class="cb">
+        <!-- 실시간 온도 슬라이더 -->
+        <div class="temp-slider-wrap">
+          <div class="temp-slider-header">
+            <h3>🌡️ 건조 온도 설정</h3>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div class="temp-display">
+                <span class="temp-val" id="tv_num">50</span>
+                <span class="temp-unit">°C</span>
+              </div>
+              <span class="temp-effect-label" id="tv_effect">표준 건조</span>
+            </div>
+          </div>
+          <div class="slider-track-wrap">
+            <input type="range" class="temp-slider" id="temp_slider"
+              min="30" max="60" step="1" value="50"
+              oninput="onSlider(this.value)">
+          </div>
+          <div class="slider-marks">
+            <span class="slider-mark">30°C</span>
+            <span class="slider-mark">35°C</span>
+            <span class="slider-mark">40°C</span>
+            <span class="slider-mark">45°C</span>
+            <span class="slider-mark">50°C</span>
+            <span class="slider-mark">55°C</span>
+            <span class="slider-mark">60°C</span>
+          </div>
+          <!-- 실시간 결과 카드 -->
+          <div class="realtime-grid">
+            <div class="rt-card"><div class="rtv" id="rt_flow" style="color:var(--pr)">—</div><div class="rtl">팬1대 풍량 (m³/h)</div></div>
+            <div class="rt-card"><div class="rtv" id="rt_sp" style="color:var(--pr)">—</div><div class="rtl">정압 (Pa/mmAq)</div></div>
+            <div class="rt-card"><div class="rtv" id="rt_mw" style="color:var(--wn)">—</div><div class="rtl">모터 선정</div></div>
+            <div class="rt-card"><div class="rtv" id="rt_save" style="color:var(--ac)">—</div><div class="rtl">히터 절감률</div></div>
+          </div>
+          <!-- 건조 효과 바 -->
+          <div class="rt-bar-wrap">
+            <div class="rt-bar-label"><span>건조 속도</span><span id="rb_dry_pct">—</span></div>
+            <div class="rt-bar"><div class="rt-bar-fill" id="rb_dry" style="background:#2563a8;width:0%"></div></div>
+            <div class="rt-bar-label"><span>히터 절감</span><span id="rb_save_pct">—</span></div>
+            <div class="rt-bar"><div class="rt-bar-fill" id="rb_save" style="background:#0c7a69;width:0%"></div></div>
+            <div class="rt-bar-label"><span>소비 전력</span><span id="rb_power_pct">—</span></div>
+            <div class="rt-bar"><div class="rt-bar-fill" id="rb_power" style="background:#d97706;width:0%"></div></div>
+          </div>
+        </div>
         <div class="slbl">비교 온도 선택</div>
         <div class="tg">
           <button id="tab40" onclick="setT('40')">40°C</button>
@@ -565,7 +634,7 @@ hr.dv{border:none;border-top:1px solid var(--bd);margin:12px 0;}
 </div>
 </div>
 
-<div class="footer">인시스 AI혁신 R&amp;D센터 · 건조실 사양 시뮬레이터 v3.2 · 2026</div>
+<div class="footer">인시스 AI혁신 R&amp;D센터 · 건조실 사양 시뮬레이터 v3.3 · 2026</div>
 
 <script>
 // ─── Firebase REST ───────────────────────────────
@@ -651,8 +720,99 @@ function setT(m) {
   ['40','50','60','All'].forEach(function(k){
     var e = gel('tab'+k); if(e) e.classList.toggle('on', k.toLowerCase()===m.toLowerCase());
   });
-  if (m !== 'all') sv('s_tt', m);
+  if (m !== 'all') {
+    sv('s_tt', m);
+    var sl = gel('temp_slider');
+    if (sl && m !== 'all') sl.value = m;
+    updateSliderUI(parseInt(m));
+  }
   simFan();
+}
+
+// ── 슬라이더 실시간 업데이트 ──────────────────────
+function onSlider(val) {
+  val = parseInt(val);
+  // 목표 온도 입력 동기화
+  sv('s_tt', val);
+  // 탭 버튼 동기화
+  var tabKeys = ['40','50','60'];
+  tabKeys.forEach(function(k){
+    var e = gel('tab'+k);
+    if (e) e.classList.toggle('on', parseInt(k) === val);
+  });
+  if (![40,50,60].includes(val)) {
+    gel('tabAll') && gel('tabAll').classList.remove('on');
+  }
+  updateSliderUI(val);
+  // 시뮬레이션 실시간 실행
+  simFan();
+}
+
+function updateSliderUI(temp) {
+  // 슬라이더 배경 그라디언트 (30°C=파랑 → 60°C=빨강)
+  var pct = (temp - 30) / (60 - 30) * 100;
+  var sl = gel('temp_slider');
+  if (sl) {
+    var c1 = lerpColor('#3b82f6','#f97316', pct/100); // 파→주황
+    var c2 = lerpColor('#f97316','#ef4444', pct/100); // 주황→빨강
+    sl.style.background = 'linear-gradient(to right, '+c1+' 0%, '+c2+' '+pct+'%, #d1dae6 '+pct+'%, #d1dae6 100%)';
+    // 썸 색상
+    sl.style.setProperty('--thumb-color', c2);
+  }
+  // 온도 숫자
+  var tvNum = gel('tv_num');
+  if (tvNum) {
+    tvNum.textContent = temp;
+    var col = temp <= 35 ? '#3b82f6' : temp <= 45 ? '#2563a8' : temp <= 52 ? '#d97706' : '#ef4444';
+    tvNum.style.color = col;
+  }
+  // 효과 라벨
+  var ef = gel('tv_effect');
+  if (ef) {
+    var label, bg, fc;
+    if (temp <= 35) { label='저온 건조'; bg='#dbeafe'; fc='#1d4ed8'; }
+    else if (temp <= 45) { label='표준 건조'; bg='#dce8f5'; fc='#1a4f8a'; }
+    else if (temp <= 52) { label='고효율 건조'; bg='#fef3cd'; fc='#856404'; }
+    else { label='고온 건조 (내열 필수)'; bg='#fde8e8'; fc='#c0392b'; }
+    ef.textContent = label; ef.style.background = bg; ef.style.color = fc;
+  }
+  // 실시간 결과 계산
+  var fi = fInp();
+  fi.tt = temp;
+  var r = cFan(fi, temp);
+  if (gel('rt_flow')) gel('rt_flow').textContent = r.ff;
+  if (gel('rt_sp'))   gel('rt_sp').textContent   = r.sp + ' / ' + r.spMmAq + '㎜';
+  if (gel('rt_mw'))   gel('rt_mw').textContent   = r.hpLabel;
+  if (gel('rt_save')) gel('rt_save').textContent  = fi.rc ? r.svp + '%' : '미적용';
+  // 건조 속도 바 (30°C 기준 상대값)
+  var drySpeedPct = Math.min(Math.round((temp - 30) / 30 * 100), 100);
+  var savePct     = fi.rc ? r.svp : 0;
+  var powerPct    = Math.round(40 + (temp-30)/30*60); // 상대 전력 40~100%
+  setBar('rb_dry',  drySpeedPct, '#2563a8');
+  setBar('rb_save', savePct,     '#0c7a69');
+  setBar('rb_power',powerPct,    temp<=40?'#0c7a69':temp<=52?'#d97706':'#c0392b');
+  var ps = function(id,v){ var e=gel(id); if(e) e.textContent=v+'%'; };
+  ps('rb_dry_pct',   drySpeedPct);
+  ps('rb_save_pct',  savePct);
+  ps('rb_power_pct', powerPct);
+}
+
+function setBar(id, pct, color) {
+  var el = gel(id);
+  if (!el) return;
+  el.style.width = Math.min(pct, 100) + '%';
+  el.style.background = color;
+}
+
+function lerpColor(a, b, t) {
+  var ah = parseInt(a.replace('#',''), 16);
+  var bh = parseInt(b.replace('#',''), 16);
+  var ar = (ah>>16)&0xff, ag=(ah>>8)&0xff, ab=ah&0xff;
+  var br = (bh>>16)&0xff, bg2=(bh>>8)&0xff, bb=bh&0xff;
+  var rr = Math.round(ar+(br-ar)*t);
+  var rg = Math.round(ag+(bg2-ag)*t);
+  var rb = Math.round(ab+(bb-ab)*t);
+  return '#'+((1<<24)+(rr<<16)+(rg<<8)+rb).toString(16).slice(1);
 }
 function fInp() {
   return {L:gn('s_L',4),W:gn('s_W',1.2),H:gn('s_H',1.6),
@@ -1125,6 +1285,8 @@ function clrLocal(){if(!confirm('로컬 저장 데이터를 삭제하시겠습�
 document.addEventListener('DOMContentLoaded', function() {
   simFan();
   simDry();
+  // 슬라이더 초기화
+  updateSliderUI(50);
 });
 </script>
 </body>
