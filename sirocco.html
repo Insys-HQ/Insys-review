@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>건조실 사양 시뮬레이터 v3.1</title>
+<title>건조실 사양 시뮬레이터 v3.2</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
@@ -169,7 +169,7 @@ hr.dv{border:none;border-top:1px solid var(--bd);margin:12px 0;}
       <h1>🏭 건조실 사양 시뮬레이터</h1>
       <p>인시스 AI혁신 R&amp;D센터 · 에어나이프 후단 건조기 설계 최적화</p>
     </div>
-    <span class="vbadge">v3.1</span>
+    <span class="vbadge">v3.2</span>
   </div>
 </div>
 
@@ -565,7 +565,7 @@ hr.dv{border:none;border-top:1px solid var(--bd);margin:12px 0;}
 </div>
 </div>
 
-<div class="footer">인시스 AI혁신 R&amp;D센터 · 건조실 사양 시뮬레이터 v3.1 · 2026</div>
+<div class="footer">인시스 AI혁신 R&amp;D센터 · 건조실 사양 시뮬레이터 v3.2 · 2026</div>
 
 <script>
 // ─── Firebase REST ───────────────────────────────
@@ -662,64 +662,74 @@ function fInp() {
     oh:gn('s_oh',8),od:gn('s_od',22),ec:gn('s_ec',120),sf:gn('s_sf',1.2)};
 }
 function cFan(i,temp) {
-  // ── 물리 상수 ──
-  var rho25 = 1.185;  // 25°C 공기 밀도 kg/m³
-  // 온도별 공기 밀도 (이상기체 근사: rho = 1.293×273/(273+T))
-  var rho = 1.293 * 273 / (273 + temp);
+  // ─── 물리 상수 ───────────────────────────────────────────
+  var rho25 = 1.185;                          // 25°C 공기 밀도 kg/m³
+  var rho   = 1.293 * 273 / (273 + temp);    // 온도별 공기 밀도
 
-  // ── 체적 ──
+  // ─── 체적 ────────────────────────────────────────────────
   var vol = i.L * i.W * i.H;
 
-  // ── ACH 순환횟수: 건조기 열풍 순환 표준값 ──
-  // 고함수 세탁물 → 30~40회/h (일반 산업 건조기 기준)
+  // ─── ACH (순환횟수): 산업용 건조기 열풍 순환 표준 ────────
+  // 고함수 세탁물(에어나이프 후단): 30~40 회/h
   var to = temp <= 40 ? 30 : temp <= 50 ? 35 : 40;
 
-  // ── 총 필요 풍량 ──
+  // ─── 필요 풍량 ────────────────────────────────────────────
   var tf = Math.round(vol * to * i.lf * i.sf);
   var ff = Math.round(tf / i.fc);
 
-  // ── 시스템 정압: 건조기 내부 순환 기준 ──
-  // 히터코일 20~40Pa + 내부덕트 15~25Pa + 그릴 20~40Pa + 곡관 15~25Pa = 기준 100Pa(25°C)
-  // 고온 시 공기밀도 감소 → 정압 감소 (정압 ∝ 밀도)
-  var P_base = 100;  // Pa (25°C 기준)
-  var P_sys  = Math.round(P_base * (rho / rho25));  // 온도 보정
-  var sp     = Math.round(P_sys * i.dc);  // 덕트 구성 계수
+  // ─── 시스템 정압 ─────────────────────────────────────────
+  // 건조기 내부 순환 저항 합산 (25°C 기준 100 Pa):
+  //   히터코일 25~40 Pa + 덕트/챔버 20~30 Pa + 흡토출그릴 20~30 Pa = 65~100 Pa
+  // 고온 시 공기밀도 감소 → 정압 비례 감소 (정압 ∝ ρ)
+  var sp = Math.round(100 * (rho / rho25) * i.dc);  // 밀도보정 + 덕트계수
 
-  // ── 모터 출력 계산 ──
-  // P_fluid = Q(m³/s) × ΔP(Pa)
-  // P_shaft = P_fluid / η_fan   (팬 효율: 실운전 30%)
-  // P_motor = P_shaft / η_motor (모터 효율: 85%)
-  // P_select = P_motor × 기동여유(1.3)
-  var Q_m3s = ff / 3600;
-  var P_fluid  = Q_m3s * sp;
-  var P_shaft  = P_fluid / 0.30;   // 팬 실운전 효율 30%
-  var P_motor  = P_shaft / 0.85;   // 모터 효율 85%
-  var mw = Math.round(P_motor * 1.3);  // 기동토크 여유 30%
+  // ─── 소비전력 계산 (제품 실측값 역산 기준) ───────────────
+  // 유체동력 P_f = Q(m³/s) × ΔP(Pa)
+  // 소비전력 P_in = P_f / η_total
+  // η_total: 저정압 소형 시로코팬 운전점 실효율 = 15%
+  //   (TFB-F19DS 역산: BEP 효율 16.3% 검증)
+  var Qm3s   = ff / 3600;
+  var P_fluid = Qm3s * sp;
+  var mw     = Math.round(P_fluid / 0.15);  // 실효율 15% (저정압 운전점)
 
-  // ── 내열 등급 ──
+  // ─── 표준 모터 정격 선정 (소비전력 × 1.2 여유) ──────────
+  var mwSelect = mw * 1.2;
+  var mwStd = mwSelect <= 40  ? 40  :
+              mwSelect <= 60  ? 60  :
+              mwSelect <= 75  ? 75  :
+              mwSelect <= 110 ? 110 :
+              mwSelect <= 150 ? 150 : 220;
+  // 마력 표기
+  var hpLabel = mwStd <= 40  ? '40W' :
+                mwStd <= 75  ? '0.1HP(75W)' :
+                mwStd <= 110 ? '0.15HP(110W)' :
+                mwStd <= 150 ? '0.2HP(150W)' : '0.3HP(220W)';
+
+  // ─── 임펠러 직경 (필요 풍량 기준) ────────────────────────
+  var dia = ff <= 130 ? 'φ150mm' : ff <= 220 ? 'φ180mm' : 'φ200mm';
+
+  // ─── 내열 등급 ────────────────────────────────────────────
   var hc = temp >= 60 ? 'F종 필수' : 'B종 이상';
   var br = temp >= 60 ? '내열 그리스' : '표준';
 
-  // ── 임펠러 직경 선정 (풍량 기준) ──
-  var dia = ff <= 130 ? 'φ150mm' : ff <= 220 ? 'φ180mm' : 'φ200mm';
+  // ─── 정압 mmAq 변환 ──────────────────────────────────────
+  var spMmAq = Math.round(sp / 9.807 * 10) / 10;  // Pa → mmAq
 
-  // ── 표준 모터 선정 ──
-  var mwStd = mw <= 25 ? 25 : mw <= 40 ? 40 : mw <= 60 ? 60 : mw <= 90 ? 90 : 120;
-
-  // ── 재순환 히터 절감 ──
+  // ─── 재순환 히터 절감 ─────────────────────────────────────
   var svp = 0;
   if (i.rc) { svp = Math.min(i.rr * 0.85 * 100, 65); svp = Math.round(svp * 10) / 10; }
   var svw = Math.round(i.hw * svp / 100);
   var mc  = Math.round(svw / 1000 * i.oh * i.od * i.ec);
 
-  return {vol:vol, to:to, tf:tf, ff:ff, sp:sp, mw:mw, mwStd:mwStd, dia:dia,
+  return {vol:vol, to:to, tf:tf, ff:ff, sp:sp, spMmAq:spMmAq,
+          mw:mw, mwStd:mwStd, hpLabel:hpLabel, dia:dia,
           hc:hc, br:br, svp:svp, svw:svw, mc:mc, rho:rho};
 }
 function simFan() {
   var inp=fInp(), t=tMode==='all'?50:inp.tt;
   var r=cFan(inp,t),r4=cFan(inp,40),r5=cFan(inp,50),r6=cFan(inp,60);
   st('f_vol',r.vol.toFixed(2)); st('f_tf',r.tf); st('f_ff',r.ff); st('f_sp',r.sp);
-  st('f_mw',r.mwStd+'W (이론'+r.mw+'W)'); st('f_sv',inp.rc?r.svp+'%':'미적용');
+  st('f_mw',r.hpLabel+' ('+r.mw+'W)'); st('f_sv',inp.rc?r.svp+'%':'미적용');
   st('f_sw',inp.rc?r.svw+'W':'—'); st('f_mc',inp.rc?r.mc.toLocaleString()+'원':'—');
   st('f_lbl',t+'°C 기준');
   gel('f_chips').innerHTML=
@@ -730,9 +740,9 @@ function simFan() {
     '<span class="chip">'+r.hc+'</span>';
   var rows=[
     ['풍량 (m³/h)',r4.ff,r5.ff,r6.ff,'팬 1대'],
-    ['정압 (Pa)',r4.sp,r5.sp,r6.sp,'밀도보정+덕트'],
-    ['모터 선정 (W)',r4.mwStd+'W',r5.mwStd+'W',r6.mwStd+'W','기동여유 포함'],
-    ['이론 출력 (W)',r4.mw+'W',r5.mw+'W',r6.mw+'W','계산값'],
+    ['정압 Pa (mmAq)',r4.sp+'('+r4.spMmAq+')',r5.sp+'('+r5.spMmAq+')',r6.sp+'('+r6.spMmAq+')','밀도보정+덕트'],
+    ['모터 선정',r4.hpLabel,r5.hpLabel,r6.hpLabel,'소비전력 기준'],
+    ['운전 소비전력',r4.mw+'W',r5.mw+'W',r6.mw+'W','유체동력/η15%'],
     ['임펠러',r4.dia,r5.dia,r6.dia,'풍량 기준'],
     ['순환 ACH (회/h)',r4.to,r5.to,r6.to,'산업 건조기 표준'],
     ['내열',r4.hc,r5.hc,'<span class="bR">'+r6.hc+'</span>','모터'],
@@ -770,7 +780,7 @@ function optFan() {
   var inp=fInp(),t=tMode==='all'?50:inp.tt,r=cFan(inp,t);
   var sp=(inp.L/inp.fc).toFixed(1);
   gel('f_opt').style.display='block';
-  gel('f_og').innerHTML=[['풍량',r.ff+'m³/h'],['정압',r.sp+'Pa'],['모터',r.mwStd+'W'],
+  gel('f_og').innerHTML=[['풍량',r.ff+'m³/h'],['정압',r.sp+'Pa('+r.spMmAq+'㎜Aq)'],['모터선정',r.hpLabel],
     ['임펠러',r.dia],['내열',r.hc],['배치간격',sp+'m']]
     .map(function(x){return '<div class="oi"><div class="ov">'+x[1]+'</div><div class="ol">'+x[0]+'</div></div>';}).join('');
   gel('f_odesc').innerHTML='✅ '+t+'°C 기준 최적 사양. 팬 '+inp.fc+'대 '+sp+'m 균등 배치.<br>'+
@@ -808,10 +818,9 @@ function cDry(inp) {
   var rho=1.293*273/(273+inp.temp);           // 온도별 공기밀도
   var tf=Math.round(vol*to*1.3*1.2);
   var ff=Math.round(tf/inp.fc);
-  var P_base=100; // Pa 기준정압(25°C)
-  var sp=Math.round(P_base*(rho/1.185)*1.2); // 밀도보정+덕트계수
+  var sp=Math.round(100*(rho/1.185)*1.2);    // 밀도보정+덕트계수 (Pa)
   var Qm3s=ff/3600;
-  var mw=Math.round(Qm3s*sp/0.30/0.85*1.3); // 팬효율30%,모터85%,기동1.3
+  var mw=Math.round(Qm3s*sp/0.15);           // 실효율 15% (저정압 운전점)
   var heatNeed=Math.round(vol*1.2*1005*(inp.temp-20)/3600);
   var heatOk=inp.hw>=heatNeed*0.7;
   var circSave=inp.circ===1?45:inp.circ===2?22:0;
