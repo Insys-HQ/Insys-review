@@ -3,1053 +3,1537 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>회의록 v1.6</title>
+<title>재난대응봉사회 통합관리 v2.0</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Noto Sans KR',sans-serif;background:#f0f4f8;color:#1e2d3d;font-size:14px;min-height:100vh}
 
-/* NAV */
-.nav{width:100%;background:#1b3a5c;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,0.2)}
-.nav-inner{max-width:1100px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:52px}
-.nav-right{display:flex;align-items:center;gap:10px}
-.view-toggle{display:flex;background:#0d2440;border-radius:6px;overflow:hidden}
-.view-toggle button{padding:6px 14px;border:none;background:transparent;color:#8fb3cc;font-size:12px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:all .2s}
-.view-toggle button.active{background:#2e6da4;color:#fff}
-.version-badge{color:#5a8db0;font-size:11px}
-
-/* HERO HEADER */
-.hero{width:100%;background:linear-gradient(135deg,#b91c1c 0%,#991b1b 60%,#7f1d1d 100%);padding:0}
-.hero-inner{max-width:1100px;margin:0 auto;padding:10px 24px;display:flex;align-items:center;gap:14px}
-.rc-logo{flex-shrink:0}
-.rc-logo svg{display:block;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3))}
-.hero-text{flex:1}
-.hero-text .main-title{font-size:17px;font-weight:900;color:#fff;letter-spacing:3px;line-height:1}
-.hero-right{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
-.meeting-type-toggle{display:flex;background:rgba(0,0,0,0.25);border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,0.2)}
-.meeting-type-toggle button{padding:7px 18px;border:none;background:transparent;color:rgba(255,255,255,0.7);font-size:13px;font-weight:600;cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:all .2s;letter-spacing:0.5px}
-.meeting-type-toggle button.active{background:rgba(255,255,255,0.95);color:#991b1b}
-.hero-version{color:rgba(255,255,255,0.45);font-size:11px}
-
-/* NAV left side (simplified) */
-.nav-left{color:rgba(255,255,255,0.6);font-size:12px;display:flex;align-items:center;gap:6px}
+/* ── NAV ── */
+.nav{width:100%;background:#1b3a5c;position:sticky;top:0;z-index:200;box-shadow:0 2px 8px rgba(0,0,0,0.2)}
+.nav-inner{max-width:1200px;margin:0 auto;padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:46px}
+.nav-left{color:rgba(255,255,255,0.65);font-size:12px;display:flex;align-items:center;gap:6px}
 .nav-left .dot{width:5px;height:5px;background:#ef4444;border-radius:50%;animation:pulse 1.5s infinite}
+.nav-right{display:flex;align-items:center;gap:8px}
+.view-toggle{display:flex;background:#0d2440;border-radius:6px;overflow:hidden}
+.view-toggle button{padding:5px 12px;border:none;background:transparent;color:#8fb3cc;font-size:11px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:all .2s}
+.view-toggle button.active{background:#2e6da4;color:#fff}
+.ver{color:#4a7090;font-size:11px}
 
-/* LAYOUT */
-.container{max-width:1100px;margin:0 auto;padding:20px 24px}
+/* ── HERO ── */
+.hero{width:100%;background:linear-gradient(135deg,#b91c1c,#7f1d1d)}
+.hero-inner{max-width:1200px;margin:0 auto;padding:10px 20px;display:flex;align-items:center;gap:14px}
+.hero-logo img{height:28px;width:auto;display:block;border-radius:4px}
+.hero-title{font-size:16px;font-weight:900;color:#fff;letter-spacing:2px}
+.hero-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.mtype-toggle{display:flex;background:rgba(0,0,0,0.25);border-radius:7px;overflow:hidden;border:1px solid rgba(255,255,255,0.2)}
+.mtype-toggle button{padding:5px 14px;border:none;background:transparent;color:rgba(255,255,255,0.65);font-size:12px;font-weight:600;cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:all .2s}
+.mtype-toggle button.active{background:rgba(255,255,255,0.9);color:#991b1b}
 
-/* TABS */
-.tabs{display:flex;gap:4px;margin-bottom:20px;background:#fff;padding:6px;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,0.08)}
-.tab-btn{flex:1;padding:10px 8px;border:none;background:transparent;border-radius:7px;font-family:'Noto Sans KR',sans-serif;font-size:13px;font-weight:500;color:#5a7a96;cursor:pointer;transition:all .2s}
-.tab-btn.active{background:#1b3a5c;color:#fff;box-shadow:0 2px 6px rgba(27,58,92,0.3)}
-.tab-content{display:none}
-.tab-content.active{display:block}
+/* ── MAIN MENU ── */
+.main-menu{width:100%;background:#fff;border-bottom:2px solid #e0eaf2;position:sticky;top:46px;z-index:190;box-shadow:0 2px 6px rgba(0,0,0,0.06)}
+.main-menu-inner{max-width:1200px;margin:0 auto;padding:0 20px;display:flex;gap:0;overflow-x:auto}
+.main-menu-inner::-webkit-scrollbar{height:3px}
+.main-menu-inner::-webkit-scrollbar-thumb{background:#c0d4e8}
+.mmenu-btn{padding:11px 14px;border:none;background:transparent;font-family:'Noto Sans KR',sans-serif;font-size:12px;font-weight:600;color:#5a7a96;cursor:pointer;white-space:nowrap;border-bottom:3px solid transparent;transition:all .2s;display:flex;align-items:center;gap:5px}
+.mmenu-btn:hover{color:#1b3a5c;background:#f5f8fb}
+.mmenu-btn.active{color:#b91c1c;border-bottom-color:#b91c1c;background:#fff8f8}
 
-/* CARD */
-.card{background:#fff;border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,0.08)}
-.card-title{font-size:14px;font-weight:700;color:#1b3a5c;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid #e8edf2;display:flex;align-items:center;gap:8px}
-.card-title .icon{font-size:16px}
+/* ── CONTAINER ── */
+.container{max-width:1200px;margin:0 auto;padding:16px 20px}
 
-/* FORM */
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
-.form-row.single{grid-template-columns:1fr}
-.form-row.triple{grid-template-columns:1fr 1fr 1fr}
-label{display:block;font-size:12px;font-weight:600;color:#3d5a72;margin-bottom:4px}
-input[type=text],input[type=date],input[type=time],textarea,select{
-  width:100%;padding:9px 12px;border:1.5px solid #d0dce8;border-radius:7px;
+/* ── SECTION TABS (sub) ── */
+.sub-tabs{display:flex;gap:4px;margin-bottom:16px;background:#fff;padding:5px;border-radius:9px;box-shadow:0 1px 4px rgba(0,0,0,0.07)}
+.sub-tab{flex:1;padding:8px 6px;border:none;background:transparent;border-radius:6px;font-family:'Noto Sans KR',sans-serif;font-size:12px;font-weight:500;color:#5a7a96;cursor:pointer;transition:all .2s;white-space:nowrap}
+.sub-tab.active{background:#1b3a5c;color:#fff;box-shadow:0 2px 5px rgba(27,58,92,0.25)}
+.sub-content{display:none}
+.sub-content.active{display:block}
+
+/* ── CARD ── */
+.card{background:#fff;border-radius:11px;padding:18px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,0.07)}
+.card-title{font-size:13px;font-weight:700;color:#1b3a5c;margin-bottom:12px;padding-bottom:9px;border-bottom:2px solid #e8edf2;display:flex;align-items:center;gap:7px}
+
+/* ── FORM ── */
+.form-row{display:grid;gap:10px;margin-bottom:10px}
+.form-row.c1{grid-template-columns:1fr}
+.form-row.c2{grid-template-columns:1fr 1fr}
+.form-row.c3{grid-template-columns:1fr 1fr 1fr}
+.form-row.c4{grid-template-columns:160px 1fr 1fr 1fr}
+label{display:block;font-size:11px;font-weight:600;color:#3d5a72;margin-bottom:3px}
+input[type=text],input[type=date],input[type=time],input[type=month],input[type=number],input[type=tel],input[type=email],textarea,select{
+  width:100%;padding:8px 11px;border:1.5px solid #d0dce8;border-radius:7px;
   font-family:'Noto Sans KR',sans-serif;font-size:13px;color:#1e2d3d;
   background:#fafcff;transition:border .2s;outline:none}
 input:focus,textarea:focus,select:focus{border-color:#2e6da4;background:#fff}
-textarea{resize:vertical;min-height:120px;line-height:1.6}
+textarea{resize:vertical;min-height:100px;line-height:1.6}
 
-/* ATTENDEE */
-.attendee-list{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
-.attendee-row{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center}
-.attendee-row input{margin-bottom:0}
-.btn-icon{padding:8px 10px;border:1.5px solid #d0dce8;border-radius:7px;background:#fff;cursor:pointer;font-size:14px;color:#5a7a96;transition:all .2s}
+/* ── UPLOAD ZONE ── */
+.upload-zone{border:2px dashed #bcd0e0;border-radius:9px;padding:20px;text-align:center;background:#f7fafd;cursor:pointer;transition:all .2s;margin-bottom:12px}
+.upload-zone:hover,.upload-zone.drag{border-color:#2e6da4;background:#ebf3fb}
+.upload-icon{font-size:30px;margin-bottom:6px}
+.upload-zone p{color:#5a7a96;font-size:12px}
+.upload-zone p strong{color:#1b3a5c}
+.preview-imgs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.preview-imgs img{width:72px;height:72px;object-fit:cover;border-radius:6px;border:2px solid #d0dce8;cursor:pointer}
+.ai-status{padding:9px 13px;border-radius:7px;font-size:12px;font-weight:500;margin-top:6px;display:none}
+.ai-status.loading{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;display:block}
+.ai-status.ok{background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;display:block}
+.ai-status.err{background:#fef2f2;color:#991b1b;border:1px solid #fecaca;display:block}
+
+/* ── ATTENDEE ── */
+.att-row{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;margin-bottom:7px}
+.att-row input{margin-bottom:0}
+.btn-icon{padding:7px 9px;border:1.5px solid #d0dce8;border-radius:7px;background:#fff;cursor:pointer;font-size:13px;color:#5a7a96;transition:all .2s}
 .btn-icon:hover{background:#f0f4f8;border-color:#2e6da4}
 
-/* BUTTONS */
-.btn{padding:9px 18px;border:none;border-radius:7px;font-family:'Noto Sans KR',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
-.btn-primary{background:#1b3a5c;color:#fff}
-.btn-primary:hover{background:#2e6da4}
-.btn-success{background:#1a6e3a;color:#fff}
-.btn-success:hover{background:#22884a}
-.btn-warning{background:#b45309;color:#fff}
-.btn-warning:hover{background:#d97706}
-.btn-danger{background:#b91c1c;color:#fff}
-.btn-danger:hover{background:#dc2626}
-.btn-outline{background:#fff;color:#1b3a5c;border:1.5px solid #1b3a5c}
-.btn-outline:hover{background:#f0f4f8}
-.btn-group{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+/* ── BUTTONS ── */
+.btn{padding:8px 16px;border:none;border-radius:7px;font-family:'Noto Sans KR',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:5px}
+.btn-primary{background:#1b3a5c;color:#fff}.btn-primary:hover{background:#2e6da4}
+.btn-red{background:#b91c1c;color:#fff}.btn-red:hover{background:#dc2626}
+.btn-green{background:#1a6e3a;color:#fff}.btn-green:hover{background:#22884a}
+.btn-orange{background:#b45309;color:#fff}.btn-orange:hover{background:#d97706}
+.btn-outline{background:#fff;color:#1b3a5c;border:1.5px solid #1b3a5c}.btn-outline:hover{background:#f0f4f8}
+.btn-gray{background:#e5eaf0;color:#3d5a72}.btn-gray:hover{background:#d0dce8}
+.btn-group{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 
-/* AI UPLOAD */
-.upload-zone{border:2px dashed #bcd0e0;border-radius:10px;padding:30px;text-align:center;background:#f7fafd;cursor:pointer;transition:all .2s;margin-bottom:14px}
-.upload-zone:hover,.upload-zone.dragover{border-color:#2e6da4;background:#ebf3fb}
-.upload-zone .upload-icon{font-size:36px;margin-bottom:8px}
-.upload-zone p{color:#5a7a96;font-size:13px}
-.upload-zone p strong{color:#1b3a5c}
-.preview-images{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-.preview-images img{width:80px;height:80px;object-fit:cover;border-radius:6px;border:2px solid #d0dce8}
-.ai-status{padding:10px 14px;border-radius:7px;font-size:12px;font-weight:500;margin-top:8px;display:none}
-.ai-status.loading{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;display:block}
-.ai-status.success{background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;display:block}
-.ai-status.error{background:#fef2f2;color:#991b1b;border:1px solid #fecaca;display:block}
+/* ── MINUTES PRINT ── */
+.minutes-hdr{text-align:center;margin-bottom:16px;padding:14px;background:linear-gradient(135deg,#b91c1c,#7f1d1d);border-radius:9px;color:#fff}
+.minutes-hdr .mh-row{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:6px}
+.minutes-hdr .mh-title{font-size:18px;font-weight:900;letter-spacing:3px}
+.minutes-hdr .mh-badge{background:rgba(255,255,255,0.2);color:#fff;padding:2px 10px;border-radius:10px;font-size:11px;font-weight:700;letter-spacing:1px}
+.minutes-hdr .mh-meta{font-size:11px;color:rgba(255,255,255,0.8);margin-top:4px}
+.m-section h4{font-size:12px;font-weight:700;color:#1b3a5c;margin-bottom:5px;padding:5px 9px;background:#eef4fb;border-left:3px solid #b91c1c;border-radius:0 5px 5px 0}
+.m-section .m-content{font-size:12px;line-height:1.7;color:#2c3e50;padding:4px 10px;white-space:pre-wrap;margin-bottom:10px}
+.att-tbl{width:100%;border-collapse:collapse;font-size:12px}
+.att-tbl th{background:#eef4fb;color:#1b3a5c;padding:6px 10px;text-align:center;border:1px solid #d0dce8;font-weight:600}
+.att-tbl td{padding:5px 10px;text-align:center;border:1px solid #e8edf2}
+.att-tbl tr:nth-child(even) td{background:#fafcff}
 
-/* MINUTES VIEW */
-.minutes-header{text-align:center;margin-bottom:20px;padding:20px;background:linear-gradient(135deg,#1b3a5c,#2e6da4);border-radius:10px;color:#fff}
-.minutes-header h2{font-size:18px;font-weight:700;margin-bottom:4px}
-.minutes-header .meta{font-size:12px;opacity:.85;margin-top:8px}
-.minutes-section{margin-bottom:16px}
-.minutes-section h4{font-size:13px;font-weight:700;color:#1b3a5c;margin-bottom:8px;padding:6px 10px;background:#eef4fb;border-left:3px solid #2e6da4;border-radius:0 5px 5px 0}
-.minutes-section .content{font-size:13px;line-height:1.7;color:#2c3e50;padding:0 10px;white-space:pre-wrap}
-.attendee-table{width:100%;border-collapse:collapse;font-size:13px}
-.attendee-table th{background:#eef4fb;color:#1b3a5c;padding:8px 12px;text-align:center;border:1px solid #d0dce8;font-weight:600;font-size:12px}
-.attendee-table td{padding:7px 12px;text-align:center;border:1px solid #e8edf2;color:#2c3e50}
-.attendee-table tr:nth-child(even) td{background:#fafcff}
+/* ── ARCHIVE ── */
+.arch-item{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-radius:8px;border:1.5px solid #e0eaf2;background:#fff;margin-bottom:7px;transition:all .2s}
+.arch-item:hover{border-color:#2e6da4;box-shadow:0 2px 8px rgba(46,109,164,0.1)}
+.arch-label{font-size:13px;font-weight:700;color:#1b3a5c}
+.arch-meta{font-size:11px;color:#7a98b0;margin-top:2px}
+.arch-actions{display:flex;gap:5px;flex-shrink:0}
+.arch-actions button{padding:5px 10px;border:1.5px solid #d0dce8;border-radius:6px;background:#fff;font-size:11px;color:#3d5a72;cursor:pointer;font-family:'Noto Sans KR',sans-serif;font-weight:500;transition:all .2s;white-space:nowrap}
+.arch-actions button:hover{border-color:#2e6da4;color:#2e6da4}
+.arch-actions .del-btn:hover{border-color:#dc2626;color:#dc2626}
+.badge{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700}
+.badge-monthly{background:#dbeafe;color:#1e40af}
+.badge-exec{background:#ede9fe;color:#5b21b6}
+.empty-state{text-align:center;padding:36px;color:#7a98b0}
+.empty-state .ei{font-size:36px;margin-bottom:8px}
 
-/* ARCHIVE LIST */
-.archive-item{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-radius:8px;border:1.5px solid #e0eaf2;background:#fff;margin-bottom:8px;transition:all .2s;cursor:pointer}
-.archive-item:hover{border-color:#2e6da4;box-shadow:0 2px 8px rgba(46,109,164,0.12)}
-.archive-item .month-label{font-size:14px;font-weight:700;color:#1b3a5c}
-.archive-item .meta-info{font-size:12px;color:#7a98b0;margin-top:2px}
-.archive-actions{display:flex;gap:6px}
-.archive-actions button{padding:6px 12px;border:1.5px solid #d0dce8;border-radius:6px;background:#fff;font-size:12px;color:#3d5a72;cursor:pointer;font-family:'Noto Sans KR',sans-serif;font-weight:500;transition:all .2s}
-.archive-actions button:hover{border-color:#2e6da4;color:#2e6da4}
-.empty-state{text-align:center;padding:40px;color:#7a98b0}
-.empty-state .empty-icon{font-size:40px;margin-bottom:10px}
+/* ── LINKS MENU ── */
+.links-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:6px}
+.link-card{background:#fff;border:1.5px solid #e0eaf2;border-radius:10px;padding:14px;text-decoration:none;color:#1e2d3d;transition:all .2s;display:flex;flex-direction:column;gap:6px}
+.link-card:hover{border-color:#b91c1c;box-shadow:0 4px 12px rgba(185,28,28,0.1);transform:translateY(-1px)}
+.link-card .lc-icon{font-size:22px}
+.link-card .lc-title{font-size:13px;font-weight:700;color:#1b3a5c}
+.link-card .lc-desc{font-size:11px;color:#7a98b0}
+.link-section-title{font-size:12px;font-weight:700;color:#5a7a96;margin:14px 0 8px;text-transform:uppercase;letter-spacing:1px}
+.link-section-title:first-child{margin-top:0}
 
-/* PREVIEW MODAL */
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:center;justify-content:center}
-.modal-overlay.open{display:flex}
-.modal{background:#fff;border-radius:14px;width:90%;max-width:780px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3)}
-.modal-head{padding:14px 20px;background:#1b3a5c;color:#fff;display:flex;justify-content:space-between;align-items:center}
-.modal-head h3{font-size:14px;font-weight:700}
-.modal-body{flex:1;overflow-y:auto;padding:24px}
-.modal-foot{padding:12px 20px;border-top:1px solid #e8edf2;display:flex;gap:8px;justify-content:flex-end;background:#f7fafd}
-.modal-close{background:transparent;border:none;color:#fff;font-size:20px;cursor:pointer;padding:0 4px}
+/* ── KAKAO RESULT ── */
+.kakao-result{background:#f7f3ff;border:1.5px solid #c4b5fd;border-radius:9px;padding:14px;margin-top:10px}
+.kakao-result .kr-title{font-size:12px;font-weight:700;color:#5b21b6;margin-bottom:8px}
+.msg-row{display:flex;gap:8px;margin-bottom:6px;align-items:flex-start}
+.msg-row .sender{font-size:11px;font-weight:700;color:#4f46e5;min-width:70px}
+.msg-row .msg-text{font-size:12px;color:#1e2d3d;line-height:1.5;flex:1}
+.msg-row .msg-time{font-size:10px;color:#9ca3af;min-width:40px;text-align:right}
 
-/* PRINT AREA */
-#print-area{display:none}
+/* ── MODAL ── */
+.modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:500;align-items:center;justify-content:center}
+.modal-ov.open{display:flex}
+.modal{background:#fff;border-radius:12px;width:92%;max-width:760px;max-height:92vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3)}
+.modal-head{padding:12px 18px;background:#1b3a5c;color:#fff;display:flex;justify-content:space-between;align-items:center}
+.modal-head h3{font-size:13px;font-weight:700}
+.modal-close{background:transparent;border:none;color:#fff;font-size:19px;cursor:pointer}
+.modal-body{flex:1;overflow-y:auto;padding:20px}
+.modal-foot{padding:10px 18px;border-top:1px solid #e8edf2;display:flex;gap:7px;justify-content:flex-end;background:#f7fafd}
 
-/* LOADING */
-.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-
-/* TOAST */
-.toast{position:fixed;bottom:24px;right:24px;background:#1b3a5c;color:#fff;padding:12px 20px;border-radius:8px;font-size:13px;font-weight:500;z-index:999;transform:translateY(60px);opacity:0;transition:all .3s;box-shadow:0 4px 16px rgba(0,0,0,0.2)}
+/* ── TOAST ── */
+.toast{position:fixed;bottom:20px;right:20px;background:#1b3a5c;color:#fff;padding:10px 18px;border-radius:8px;font-size:12px;font-weight:500;z-index:999;transform:translateY(60px);opacity:0;transition:all .3s;box-shadow:0 4px 16px rgba(0,0,0,0.2)}
 .toast.show{transform:translateY(0);opacity:1}
-.toast.success{background:#1a6e3a}
-.toast.error{background:#b91c1c}
+.toast.ok{background:#1a6e3a}
+.toast.err{background:#b91c1c}
+.spinner{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
-/* MOBILE */
-body.mobile .container{padding:12px}
-body.mobile .form-row{grid-template-columns:1fr}
-body.mobile .form-row.triple{grid-template-columns:1fr 1fr}
-body.mobile .form-row[style*="160px"]{grid-template-columns:1fr 1fr!important}
-body.mobile .btn-group{justify-content:stretch}
+/* ── IMAGE MODAL ── */
+.img-modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:600;align-items:center;justify-content:center}
+.img-modal-ov.open{display:flex}
+.img-modal-ov img{max-width:95vw;max-height:95vh;border-radius:8px}
+.img-modal-ov .close-img{position:absolute;top:16px;right:20px;color:#fff;font-size:28px;cursor:pointer;background:rgba(0,0,0,0.4);border:none;padding:4px 10px;border-radius:6px}
+
+/* ── MOBILE ── */
+body.mobile .container{padding:10px}
+body.mobile .form-row.c2,body.mobile .form-row.c3,body.mobile .form-row.c4{grid-template-columns:1fr}
+body.mobile .links-grid{grid-template-columns:1fr 1fr}
+body.mobile .arch-item{flex-direction:column;align-items:flex-start;gap:8px}
 body.mobile .btn-group .btn{flex:1;justify-content:center}
-body.mobile .archive-item{flex-direction:column;align-items:flex-start;gap:10px}
-body.mobile .tabs{overflow-x:auto}
-body.mobile .tab-btn{white-space:nowrap;font-size:12px;padding:8px 10px}
-body.mobile .hero-inner{padding:12px 16px;gap:12px}
-body.mobile .rc-logo svg{width:46px;height:46px}
-body.mobile .hero-text .main-title{font-size:18px}
-body.mobile .hero-text .main-title{font-size:14px}
-body.mobile .meeting-type-toggle button{padding:6px 12px;font-size:12px}
-body.mobile .hero-right{gap:6px}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+body.mobile .sub-tabs{overflow-x:auto}
+body.mobile .sub-tab{white-space:nowrap}
 
-/* SECTION DIVIDER */
-.section-divider{height:1px;background:#e8edf2;margin:16px 0}
-
-/* BADGE */
-.badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600}
-.badge-blue{background:#dbeafe;color:#1e40af}
-.badge-green{background:#d1fae5;color:#065f46}
-
-@media print{
-  .nav,.tabs,.btn-group,.upload-zone,.ai-status,.modal-overlay{display:none!important}
-  #print-area{display:block!important}
-  body{background:#fff}
+@media(max-width:640px){
+  .links-grid{grid-template-columns:1fr 1fr}
+  .main-menu-inner{gap:0}
+  .mmenu-btn{padding:10px 10px;font-size:11px}
 }
 </style>
 </head>
 <body>
 
-<!-- NAV (top utility bar) -->
+<!-- NAV -->
 <div class="nav">
   <div class="nav-inner">
-    <div class="nav-left">
-      <span class="dot"></span>
-      HL0FRC
-    </div>
+    <div class="nav-left"><span class="dot"></span>HL0FRC</div>
     <div class="nav-right">
       <div class="view-toggle">
         <button id="btn-pc" class="active" onclick="setView('pc')">💻 PC</button>
         <button id="btn-mobile" onclick="setView('mobile')">📱 모바일</button>
       </div>
-      <span class="version-badge">v1.6</span>
+      <span class="ver">v2.0</span>
     </div>
   </div>
 </div>
 
-<!-- HERO HEADER -->
+<!-- HERO -->
 <div class="hero">
   <div class="hero-inner">
-    <!-- 적십자 로고 (SVG) -->
-    <div class="rc-logo">
-<img src="data:image/jpeg;base64,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" style="height:28px;width:auto;display:block;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,0.3)" alt="대한적십자사 로고">
-    </div>
-    <!-- 제목 텍스트 -->
-    <div class="hero-text">
-      <div class="main-title">회 의 록</div>
-    </div>
-    <!-- 우측: 회의 구분 선택 + 버전 -->
+    <div class="hero-logo"><img src="data:image/jpeg;base64,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" alt="적십자 로고"></div>
+    <div class="hero-title">회 의 록</div>
     <div class="hero-right">
-      <div class="meeting-type-toggle">
-        <button id="type-monthly" class="active" onclick="setMeetingType('monthly')">월 례 회</button>
-        <button id="type-exec" onclick="setMeetingType('exec')">임 원 회 의</button>
+      <div class="mtype-toggle">
+        <button id="type-monthly" class="active" onclick="setMType('monthly')">월 례 회</button>
+        <button id="type-exec" onclick="setMType('exec')">임 원 회 의</button>
       </div>
-      <span class="hero-version">v1.6</span>
     </div>
   </div>
 </div>
 
-<!-- MAIN -->
+<!-- MAIN MENU -->
+<div class="main-menu">
+  <div class="main-menu-inner">
+    <button class="mmenu-btn active" onclick="showMenu('minutes')">📋 회의록</button>
+    <button class="mmenu-btn" onclick="showMenu('proxy')">📝 위임장</button>
+    <button class="mmenu-btn" onclick="showMenu('schedule')">📅 일정관리</button>
+    <button class="mmenu-btn" onclick="showMenu('contacts')">👥 주소록</button>
+    <button class="mmenu-btn" onclick="showMenu('volunteer')">⏱️ 봉사시간</button>
+    <button class="mmenu-btn" onclick="showMenu('meetdoc')">📂 회의자료</button>
+    <button class="mmenu-btn" onclick="showMenu('actplan')">📌 활동계획서</button>
+    <button class="mmenu-btn" onclick="showMenu('actreport')">📊 봉사활동보고</button>
+    <button class="mmenu-btn" onclick="showMenu('links')">🔗 링크모음</button>
+  </div>
+</div>
+
+<!-- CONTAINER -->
 <div class="container">
-  <!-- TABS -->
-  <div class="tabs">
-    <button class="tab-btn active" onclick="switchTab('write')">✏️ 회의록 작성</button>
-    <button class="tab-btn" onclick="switchTab('view')">📋 현재 회의록</button>
-    <button class="tab-btn" onclick="switchTab('archive')">🗂️ 월별 보관함</button>
+
+<!-- ==================== 1. 회의록 ==================== -->
+<div id="menu-minutes" class="menu-section">
+  <div class="sub-tabs">
+    <button class="sub-tab active" onclick="subTab('minutes','write')">✏️ 작성</button>
+    <button class="sub-tab" onclick="subTab('minutes','view')">📋 미리보기</button>
+    <button class="sub-tab" onclick="subTab('minutes','archive')">🗂️ 보관함</button>
   </div>
 
-  <!-- TAB: 작성 -->
-  <div id="tab-write" class="tab-content active">
-
-    <!-- AI 사진 분석 -->
+  <!-- 작성 -->
+  <div id="minutes-write" class="sub-content active">
     <div class="card">
-      <div class="card-title"><span class="icon">📷</span> 회의록 사진 업로드 (AI 자동 추출)</div>
-      <div class="upload-zone" id="upload-zone" onclick="document.getElementById('photo-input').click()"
-           ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+      <div class="card-title">📷 사진 업로드 (회의록·캡처·화면)</div>
+      <div class="upload-zone" id="min-upzone" onclick="document.getElementById('min-photo').click()"
+           ondragover="dzOver(event,'min-upzone')" ondragleave="dzLeave('min-upzone')" ondrop="dzDrop(event,'min-upzone','min-photos','minutes')">
         <div class="upload-icon">🖼️</div>
-        <p><strong>사진을 클릭하거나 드래그하여 업로드</strong></p>
-        <p>손으로 쓴 회의록 사진 → AI가 텍스트로 자동 변환</p>
-        <p style="margin-top:6px;font-size:11px;color:#9ab0c0">JPG, PNG, HEIC 지원 · 여러 장 동시 업로드 가능</p>
+        <p><strong>클릭 또는 드래그</strong></p>
+        <p>손글씨 회의록 · 카카오톡 캡처 · 화면 캡처 모두 가능</p>
       </div>
-      <input type="file" id="photo-input" accept="image/*" multiple style="display:none" onchange="handlePhotoUpload(event)">
-      <div class="preview-images" id="preview-images"></div>
-      <button class="btn btn-primary" id="btn-extract" style="display:none" onclick="extractFromPhotos()">
-        <span class="spinner" id="extract-spinner" style="display:none"></span>
-        🤖 AI로 텍스트 추출하기
-      </button>
-      <div class="ai-status" id="ai-status"></div>
+      <input type="file" id="min-photo" accept="image/*" multiple style="display:none" onchange="addPhotos(event,'min-photos','minutes')">
+      <div class="preview-imgs" id="min-photos"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" id="min-extract-btn" style="display:none" onclick="aiExtract('minutes')">
+          <span class="spinner" id="min-spinner" style="display:none"></span>🤖 AI 자동 추출
+        </button>
+        <button class="btn btn-gray" id="min-clear-photo" style="display:none" onclick="clearPhotos('min-photos','min-photo','min-extract-btn','min-clear-photo')">🗑️ 사진 초기화</button>
+      </div>
+      <div class="ai-status" id="min-ai-status"></div>
     </div>
 
-    <!-- 기본 정보 -->
     <div class="card">
-      <div class="card-title"><span class="icon">📅</span> 기본 정보</div>
-      <div class="form-row" style="grid-template-columns:160px 1fr 1fr 1fr">
-        <div>
-          <label>회의 구분</label>
-          <select id="meeting-type" onchange="onTypeSelectChange(this.value)" style="font-weight:700;color:#991b1b">
-            <option value="monthly">월 례 회</option>
-            <option value="exec">임 원 회 의</option>
-          </select>
-        </div>
-        <div>
-          <label>회의 연월</label>
-          <input type="month" id="meeting-month" value="">
-        </div>
-        <div>
-          <label>회의 일시</label>
-          <input type="date" id="meeting-date">
-        </div>
-        <div>
-          <label>회의 시간</label>
-          <input type="time" id="meeting-time" value="10:00">
-        </div>
+      <div class="card-title">📅 기본 정보</div>
+      <div class="form-row c4">
+        <div><label>회의 구분</label>
+          <select id="m-type" onchange="setMTypeSelect(this.value)">
+            <option value="monthly">월례회</option><option value="exec">임원회의</option>
+          </select></div>
+        <div><label>회의 연월</label><input type="month" id="m-month"></div>
+        <div><label>일시</label><input type="date" id="m-date"></div>
+        <div><label>시간</label><input type="time" id="m-time" value="10:00"></div>
       </div>
-      <div class="form-row">
-        <div>
-          <label>회의 장소</label>
-          <input type="text" id="meeting-place" placeholder="예: 서울적십자 대회의실">
-        </div>
-        <div>
-          <label>작성자 (이름 / 콜사인)</label>
-          <input type="text" id="writer" placeholder="예: 홍길동 / HL2XXX">
-        </div>
+      <div class="form-row c2">
+        <div><label>장소</label><input type="text" id="m-place" placeholder="예: 서울적십자 대회의실"></div>
+        <div><label>작성자 (이름 / 콜사인)</label><input type="text" id="m-writer" value="HL2TLS"></div>
       </div>
     </div>
 
-    <!-- 참석자 -->
     <div class="card">
-      <div class="card-title"><span class="icon">👥</span> 참석자 명단</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-        <label style="margin:0;font-size:12px;color:#7a98b0;font-weight:600">이름</label>
-        <label style="margin:0;font-size:12px;color:#7a98b0;font-weight:600">콜사인</label>
+      <div class="card-title">👥 참석자</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:6px">
+        <span style="font-size:11px;color:#7a98b0;font-weight:600">이름</span>
+        <span style="font-size:11px;color:#7a98b0;font-weight:600">콜사인</span><span></span>
       </div>
-      <div class="attendee-list" id="attendee-list"></div>
-      <button class="btn btn-outline" onclick="addAttendee()" style="margin-top:4px">
-        ➕ 참석자 추가
-      </button>
-      <div style="margin-top:10px;display:flex;align-items:center;gap:10px">
-        <label style="margin:0">총 참석자</label>
-        <input type="text" id="total-count" style="width:80px" placeholder="자동">
-        <span style="font-size:12px;color:#7a98b0">명 (직접 입력 가능)</span>
+      <div id="att-list"></div>
+      <button class="btn btn-outline" onclick="addAtt()" style="margin-top:4px">➕ 참석자 추가</button>
+      <div style="margin-top:10px;display:flex;align-items:center;gap:8px">
+        <label style="margin:0">총 참석</label>
+        <input type="text" id="m-total" style="width:70px" placeholder="자동">
+        <span style="font-size:11px;color:#7a98b0">명</span>
       </div>
     </div>
 
-    <!-- 회의 내용 -->
     <div class="card">
-      <div class="card-title"><span class="icon">📝</span> 회의 내용</div>
-      <div class="form-row single">
-        <div>
-          <label>1. 개회 선언 / 사회자</label>
-          <input type="text" id="sect-open" placeholder="예: 회장 홍길동(HL0FRC) 개회 선언">
-        </div>
-      </div>
-      <div class="form-row single">
-        <div>
-          <label>2. 보고 사항</label>
-          <textarea id="sect-report" placeholder="각 부서 보고 내용 입력..."></textarea>
-        </div>
-      </div>
-      <div class="form-row single">
-        <div>
-          <label>3. 안건 심의 / 결의 사항</label>
-          <textarea id="sect-agenda" placeholder="안건별 심의 및 결의 내용 입력..."></textarea>
-        </div>
-      </div>
-      <div class="form-row single">
-        <div>
-          <label>4. 기타 사항 / 공지</label>
-          <textarea id="sect-other" placeholder="기타 사항 및 공지 내용..."></textarea>
-        </div>
-      </div>
-      <div class="form-row single">
-        <div>
-          <label>5. 폐회 / 특이사항</label>
-          <input type="text" id="sect-close" placeholder="예: 만세삼창 후 폐회 / 다음 회의 예정일 등">
-        </div>
-      </div>
+      <div class="card-title">📝 회의 내용</div>
+      <div class="form-row c1"><div><label>1. 개회 / 사회</label><input type="text" id="m-open" placeholder="예: 회장 홍길동(HL0FRC) 개회 선언"></div></div>
+      <div class="form-row c1"><div><label>2. 보고 사항</label><textarea id="m-report"></textarea></div></div>
+      <div class="form-row c1"><div><label>3. 안건 및 결의</label><textarea id="m-agenda"></textarea></div></div>
+      <div class="form-row c1"><div><label>4. 기타 / 공지</label><textarea id="m-other"></textarea></div></div>
+      <div class="form-row c1"><div><label>5. 폐회</label><input type="text" id="m-close" placeholder="폐회 및 다음 회의 예정"></div></div>
     </div>
 
-    <!-- 특별 사항 -->
     <div class="card">
-      <div class="card-title"><span class="icon">⭐</span> 특별 기록</div>
-      <div class="form-row single">
-        <div>
-          <label>표창 / 수상</label>
-          <textarea id="sect-award" rows="3" placeholder="수상자 이름, 콜사인, 수상 내용..."></textarea>
-        </div>
-      </div>
-      <div class="form-row single">
-        <div>
-          <label>훈련 / 활동 계획</label>
-          <textarea id="sect-plan" rows="3" placeholder="향후 훈련 일정 및 활동 계획..."></textarea>
-        </div>
+      <div class="card-title">⭐ 특별 기록</div>
+      <div class="form-row c2">
+        <div><label>표창 / 수상</label><textarea id="m-award" rows="3"></textarea></div>
+        <div><label>훈련 / 활동 계획</label><textarea id="m-plan" rows="3"></textarea></div>
       </div>
     </div>
 
     <div class="btn-group">
       <button class="btn btn-primary" onclick="previewMinutes()">👁️ 미리보기</button>
-      <button class="btn btn-success" onclick="saveMinutes()">💾 Firebase 저장</button>
-      <button class="btn btn-outline" onclick="clearForm()">🗑️ 초기화</button>
+      <button class="btn btn-green" onclick="saveDoc('minutes')">💾 저장</button>
+      <button class="btn btn-outline" onclick="clearMinutes()">🗑️ 초기화</button>
     </div>
   </div>
 
-  <!-- TAB: 현재 회의록 -->
-  <div id="tab-view" class="tab-content">
+  <!-- 미리보기 -->
+  <div id="minutes-view" class="sub-content">
     <div class="card">
-      <div class="card-title"><span class="icon">📋</span> 현재 작성 중인 회의록</div>
-      <div id="current-view-area">
-        <div class="empty-state">
-          <div class="empty-icon">📝</div>
-          <p>작성 탭에서 내용을 입력하면 여기에 미리보기가 표시됩니다.</p>
-        </div>
-      </div>
-      <div class="btn-group" id="view-btn-group" style="display:none">
-        <button class="btn btn-outline" onclick="switchTab('write')">✏️ 수정하기</button>
-        <button class="btn btn-success" onclick="saveMinutes()">💾 저장</button>
-        <button class="btn btn-primary" onclick="downloadPDF()">📄 PDF 다운로드</button>
-        <button class="btn btn-warning" onclick="printMinutes()">🖨️ 인쇄</button>
+      <div id="minutes-preview-area"><div class="empty-state"><div class="ei">📝</div><p>작성 탭에서 입력 후 미리보기를 확인하세요.</p></div></div>
+      <div class="btn-group" id="min-view-btns" style="display:none">
+        <button class="btn btn-outline" onclick="subTab('minutes','write')">✏️ 수정</button>
+        <button class="btn btn-green" onclick="saveDoc('minutes')">💾 저장</button>
+        <button class="btn btn-primary" onclick="dlPDF('minutes')">📄 PDF</button>
       </div>
     </div>
   </div>
 
-  <!-- TAB: 보관함 -->
-  <div id="tab-archive" class="tab-content">
+  <!-- 보관함 -->
+  <div id="minutes-archive" class="sub-content">
     <div class="card">
-      <div class="card-title"><span class="icon">🗂️</span> 월별 회의록 보관함</div>
-      <div style="display:flex;gap:8px;margin-bottom:14px">
-        <select id="filter-year" style="width:100px" onchange="loadArchive()">
-          <option value="">연도</option>
-        </select>
-        <input type="text" id="search-keyword" placeholder="검색 (장소, 내용...)" style="flex:1" oninput="filterArchive()">
+      <div class="card-title">🗂️ 월별 보관함</div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <select id="min-arch-year" style="width:90px" onchange="loadArchive('minutes')"><option value="">연도</option></select>
+        <input type="text" id="min-arch-search" placeholder="검색..." style="flex:1" oninput="filterArchive('minutes')">
       </div>
-      <div id="archive-list">
-        <div class="empty-state">
-          <div class="empty-icon">📂</div>
-          <p>저장된 회의록이 없습니다.</p>
-        </div>
-      </div>
-    </div>
-  </div>
-
-</div><!-- /container -->
-
-<!-- MODAL: 미리보기 -->
-<div class="modal-overlay" id="preview-modal">
-  <div class="modal">
-    <div class="modal-head">
-      <h3>📋 회의록 미리보기</h3>
-      <button class="modal-close" onclick="closeModal()">✕</button>
-    </div>
-    <div class="modal-body" id="modal-body"></div>
-    <div class="modal-foot">
-      <button class="btn btn-outline" onclick="closeModal()">닫기</button>
-      <button class="btn btn-success" onclick="saveMinutes()">💾 저장</button>
-      <button class="btn btn-primary" onclick="downloadPDF()">📄 PDF</button>
+      <div id="minutes-arch-list"><div class="empty-state"><div class="ei">📂</div><p>저장된 회의록이 없습니다.</p></div></div>
     </div>
   </div>
 </div>
 
-<!-- TOAST -->
+<!-- ==================== 2. 위임장 ==================== -->
+<div id="menu-proxy" class="menu-section" style="display:none">
+  <div class="sub-tabs">
+    <button class="sub-tab active" onclick="subTab('proxy','write')">✏️ 작성</button>
+    <button class="sub-tab" onclick="subTab('proxy','archive')">🗂️ 보관함</button>
+  </div>
+  <div id="proxy-write" class="sub-content active">
+    <div class="card">
+      <div class="card-title">📷 카카오톡 / 화면 캡처 업로드</div>
+      <div class="upload-zone" onclick="document.getElementById('proxy-photo').click()"
+           ondragover="dzOver(event,'proxy-upzone')" ondragleave="dzLeave('proxy-upzone')" ondrop="dzDrop(event,'proxy-upzone','proxy-photos','proxy')">
+        <div class="upload-icon">📲</div>
+        <p><strong>위임장 관련 캡처 업로드</strong></p><p>카카오톡 · 화면 캡처 · 문서 사진</p>
+      </div>
+      <input type="file" id="proxy-photo" accept="image/*" multiple style="display:none" onchange="addPhotos(event,'proxy-photos','proxy')">
+      <div class="preview-imgs" id="proxy-photos"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" id="proxy-extract-btn" style="display:none" onclick="aiExtract('proxy')">
+          <span class="spinner" id="proxy-spinner" style="display:none"></span>🤖 AI 자동 추출
+        </button>
+      </div>
+      <div class="ai-status" id="proxy-ai-status"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">📝 위임장 정보</div>
+      <div class="form-row c2">
+        <div><label>회의명</label><input type="text" id="px-meeting" placeholder="예: 2026년 6월 월례회"></div>
+        <div><label>회의 일시</label><input type="date" id="px-date"></div>
+      </div>
+      <div class="form-row c1"><div><label>위임인 목록 (이름 / 콜사인)</label><textarea id="px-delegators" rows="4" placeholder="홍길동 / HL2XXX&#10;김철수 / HL2YYY"></textarea></div></div>
+      <div class="form-row c2">
+        <div><label>수임인 이름</label><input type="text" id="px-delegate" placeholder="위임받는 분"></div>
+        <div><label>수임인 콜사인</label><input type="text" id="px-delegate-call"></div>
+      </div>
+      <div class="form-row c1"><div><label>위임 사항</label><textarea id="px-content" rows="3" placeholder="회의 참석 및 의결권 행사 일체"></textarea></div></div>
+      <div class="form-row c2">
+        <div><label>작성일</label><input type="date" id="px-write-date"></div>
+        <div><label>작성자</label><input type="text" id="px-writer" value="HL2TLS"></div>
+      </div>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-primary" onclick="previewProxy()">👁️ 미리보기</button>
+      <button class="btn btn-green" onclick="saveDoc('proxy')">💾 저장</button>
+      <button class="btn btn-primary" onclick="dlPDF('proxy')">📄 PDF</button>
+    </div>
+  </div>
+  <div id="proxy-archive" class="sub-content">
+    <div class="card">
+      <div class="card-title">🗂️ 위임장 보관함</div>
+      <div id="proxy-arch-list"><div class="empty-state"><div class="ei">📂</div><p>저장된 위임장이 없습니다.</p></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 3. 일정관리 ==================== -->
+<div id="menu-schedule" class="menu-section" style="display:none">
+  <div class="sub-tabs">
+    <button class="sub-tab active" onclick="subTab('schedule','write')">➕ 등록</button>
+    <button class="sub-tab" onclick="subTab('schedule','list')">📅 목록</button>
+  </div>
+  <div id="schedule-write" class="sub-content active">
+    <div class="card">
+      <div class="card-title">📷 카카오톡 / 화면 캡처 업로드</div>
+      <div class="upload-zone" onclick="document.getElementById('sch-photo').click()"
+           ondragover="dzOver(event,'sch-upzone')" ondragleave="dzLeave('sch-upzone')" ondrop="dzDrop(event,'sch-upzone','sch-photos','schedule')">
+        <div class="upload-icon">📲</div><p><strong>일정 관련 캡처 업로드</strong></p><p>카카오톡 공지 · 문자 캡처</p>
+      </div>
+      <input type="file" id="sch-photo" accept="image/*" multiple style="display:none" onchange="addPhotos(event,'sch-photos','schedule')">
+      <div class="preview-imgs" id="sch-photos"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" id="schedule-extract-btn" style="display:none" onclick="aiExtract('schedule')">
+          <span class="spinner" id="schedule-spinner" style="display:none"></span>🤖 AI 자동 추출
+        </button>
+      </div>
+      <div class="ai-status" id="schedule-ai-status"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">📅 일정 등록</div>
+      <div class="form-row c3">
+        <div><label>일정 구분</label>
+          <select id="sch-type"><option>정기회의</option><option>훈련</option><option>봉사활동</option><option>행사</option><option>교육</option><option>기타</option></select>
+        </div>
+        <div><label>일자</label><input type="date" id="sch-date"></div>
+        <div><label>시간</label><input type="time" id="sch-time" value="10:00"></div>
+      </div>
+      <div class="form-row c2">
+        <div><label>일정명</label><input type="text" id="sch-title" placeholder="일정 제목"></div>
+        <div><label>장소</label><input type="text" id="sch-place" placeholder="장소"></div>
+      </div>
+      <div class="form-row c1"><div><label>내용</label><textarea id="sch-desc" rows="3"></textarea></div></div>
+      <div class="form-row c2">
+        <div><label>담당자</label><input type="text" id="sch-manager" placeholder="이름 / 콜사인"></div>
+        <div><label>비고</label><input type="text" id="sch-note"></div>
+      </div>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-green" onclick="saveDoc('schedule')">💾 저장</button>
+      <button class="btn btn-outline" onclick="clearSection('schedule')">🗑️ 초기화</button>
+    </div>
+  </div>
+  <div id="schedule-list" class="sub-content">
+    <div class="card">
+      <div class="card-title">📅 일정 목록</div>
+      <div id="schedule-arch-list"><div class="empty-state"><div class="ei">📅</div><p>등록된 일정이 없습니다.</p></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 4. 주소록 ==================== -->
+<div id="menu-contacts" class="menu-section" style="display:none">
+  <div class="sub-tabs">
+    <button class="sub-tab active" onclick="subTab('contacts','write')">➕ 등록</button>
+    <button class="sub-tab" onclick="subTab('contacts','list')">👥 목록</button>
+  </div>
+  <div id="contacts-write" class="sub-content active">
+    <div class="card">
+      <div class="card-title">📷 명단 캡처 업로드</div>
+      <div class="upload-zone" onclick="document.getElementById('ct-photo').click()"
+           ondragover="dzOver(event,'ct-upzone')" ondragleave="dzLeave('ct-upzone')" ondrop="dzDrop(event,'ct-upzone','ct-photos','contacts')">
+        <div class="upload-icon">📲</div><p><strong>명단 사진 / 카카오톡 캡처 업로드</strong></p>
+      </div>
+      <input type="file" id="ct-photo" accept="image/*" multiple style="display:none" onchange="addPhotos(event,'ct-photos','contacts')">
+      <div class="preview-imgs" id="ct-photos"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" id="contacts-extract-btn" style="display:none" onclick="aiExtract('contacts')">
+          <span class="spinner" id="contacts-spinner" style="display:none"></span>🤖 AI 자동 추출
+        </button>
+      </div>
+      <div class="ai-status" id="contacts-ai-status"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">👤 회원 정보</div>
+      <div class="form-row c3">
+        <div><label>이름</label><input type="text" id="ct-name"></div>
+        <div><label>콜사인</label><input type="text" id="ct-call" placeholder="HL2XXX"></div>
+        <div><label>직책</label><input type="text" id="ct-role" placeholder="예: 회장, 총무"></div>
+      </div>
+      <div class="form-row c3">
+        <div><label>휴대폰</label><input type="tel" id="ct-phone"></div>
+        <div><label>이메일</label><input type="email" id="ct-email"></div>
+        <div><label>가입일</label><input type="date" id="ct-join"></div>
+      </div>
+      <div class="form-row c2">
+        <div><label>주소</label><input type="text" id="ct-addr"></div>
+        <div><label>비고</label><input type="text" id="ct-note"></div>
+      </div>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-green" onclick="saveDoc('contacts')">💾 저장</button>
+      <button class="btn btn-outline" onclick="clearSection('contacts')">🗑️ 초기화</button>
+    </div>
+  </div>
+  <div id="contacts-list" class="sub-content">
+    <div class="card">
+      <div class="card-title">👥 회원 목록</div>
+      <input type="text" id="ct-search" placeholder="이름 / 콜사인 검색..." style="margin-bottom:10px" oninput="filterContacts()">
+      <div id="contacts-arch-list"><div class="empty-state"><div class="ei">👥</div><p>등록된 회원이 없습니다.</p></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 5. 봉사시간 ==================== -->
+<div id="menu-volunteer" class="menu-section" style="display:none">
+  <div class="sub-tabs">
+    <button class="sub-tab active" onclick="subTab('volunteer','write')">➕ 등록</button>
+    <button class="sub-tab" onclick="subTab('volunteer','list')">⏱️ 현황</button>
+  </div>
+  <div id="volunteer-write" class="sub-content active">
+    <div class="card">
+      <div class="card-title">📷 봉사 기록 캡처 업로드</div>
+      <div class="upload-zone" onclick="document.getElementById('vol-photo').click()"
+           ondragover="dzOver(event,'vol-upzone')" ondragleave="dzLeave('vol-upzone')" ondrop="dzDrop(event,'vol-upzone','vol-photos','volunteer')">
+        <div class="upload-icon">📲</div><p><strong>봉사 확인서 / 카카오톡 캡처 업로드</strong></p>
+      </div>
+      <input type="file" id="vol-photo" accept="image/*" multiple style="display:none" onchange="addPhotos(event,'vol-photos','volunteer')">
+      <div class="preview-imgs" id="vol-photos"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" id="volunteer-extract-btn" style="display:none" onclick="aiExtract('volunteer')">
+          <span class="spinner" id="volunteer-spinner" style="display:none"></span>🤖 AI 자동 추출
+        </button>
+      </div>
+      <div class="ai-status" id="volunteer-ai-status"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">⏱️ 봉사시간 등록</div>
+      <div class="form-row c3">
+        <div><label>봉사자 이름</label><input type="text" id="vol-name"></div>
+        <div><label>콜사인</label><input type="text" id="vol-call"></div>
+        <div><label>활동 구분</label>
+          <select id="vol-type"><option>재난대응</option><option>정기훈련</option><option>교육</option><option>행사지원</option><option>기타</option></select>
+        </div>
+      </div>
+      <div class="form-row c3">
+        <div><label>활동일</label><input type="date" id="vol-date"></div>
+        <div><label>시작시간</label><input type="time" id="vol-start" value="09:00"></div>
+        <div><label>종료시간</label><input type="time" id="vol-end" value="17:00"></div>
+      </div>
+      <div class="form-row c2">
+        <div><label>활동 장소</label><input type="text" id="vol-place"></div>
+        <div><label>봉사시간 (자동계산)</label><input type="text" id="vol-hours" readonly placeholder="시작·종료 입력 시 자동계산"></div>
+      </div>
+      <div class="form-row c1"><div><label>활동 내용</label><textarea id="vol-desc" rows="3"></textarea></div></div>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-green" onclick="saveDoc('volunteer')">💾 저장</button>
+      <button class="btn btn-outline" onclick="clearSection('volunteer')">🗑️ 초기화</button>
+    </div>
+  </div>
+  <div id="volunteer-list" class="sub-content">
+    <div class="card">
+      <div class="card-title">⏱️ 봉사시간 현황</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <input type="text" id="vol-search" placeholder="이름/콜사인 검색" style="flex:1" oninput="filterArchive('volunteer')">
+        <select id="vol-year" style="width:90px" onchange="loadArchive('volunteer')"><option value="">연도</option></select>
+      </div>
+      <div id="volunteer-arch-list"><div class="empty-state"><div class="ei">⏱️</div><p>등록된 봉사기록이 없습니다.</p></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 6. 회의자료 ==================== -->
+<div id="menu-meetdoc" class="menu-section" style="display:none">
+  <div class="sub-tabs">
+    <button class="sub-tab active" onclick="subTab('meetdoc','write')">➕ 등록</button>
+    <button class="sub-tab" onclick="subTab('meetdoc','list')">📂 목록</button>
+  </div>
+  <div id="meetdoc-write" class="sub-content active">
+    <div class="card">
+      <div class="card-title">📷 회의자료 캡처 업로드</div>
+      <div class="upload-zone" onclick="document.getElementById('md-photo').click()"
+           ondragover="dzOver(event,'md-upzone')" ondragleave="dzLeave('md-upzone')" ondrop="dzDrop(event,'md-upzone','md-photos','meetdoc')">
+        <div class="upload-icon">📲</div><p><strong>회의자료 / 카카오톡 캡처 업로드</strong></p>
+      </div>
+      <input type="file" id="md-photo" accept="image/*" multiple style="display:none" onchange="addPhotos(event,'md-photos','meetdoc')">
+      <div class="preview-imgs" id="md-photos"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" id="meetdoc-extract-btn" style="display:none" onclick="aiExtract('meetdoc')">
+          <span class="spinner" id="meetdoc-spinner" style="display:none"></span>🤖 AI 자동 추출
+        </button>
+      </div>
+      <div class="ai-status" id="meetdoc-ai-status"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">📂 자료 정보</div>
+      <div class="form-row c3">
+        <div><label>자료 구분</label>
+          <select id="md-type"><option>보고서</option><option>제안서</option><option>참고자료</option><option>교육자료</option><option>기타</option></select>
+        </div>
+        <div><label>관련 회의</label><input type="month" id="md-month"></div>
+        <div><label>작성일</label><input type="date" id="md-date"></div>
+      </div>
+      <div class="form-row c2">
+        <div><label>자료 제목</label><input type="text" id="md-title"></div>
+        <div><label>작성자</label><input type="text" id="md-writer" value="HL2TLS"></div>
+      </div>
+      <div class="form-row c1"><div><label>내용 요약</label><textarea id="md-content" rows="5"></textarea></div></div>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-green" onclick="saveDoc('meetdoc')">💾 저장</button>
+      <button class="btn btn-primary" onclick="dlPDF('meetdoc')">📄 PDF</button>
+    </div>
+  </div>
+  <div id="meetdoc-list" class="sub-content">
+    <div class="card">
+      <div class="card-title">📂 자료 목록</div>
+      <div id="meetdoc-arch-list"><div class="empty-state"><div class="ei">📂</div><p>등록된 자료가 없습니다.</p></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 7. 활동계획서 ==================== -->
+<div id="menu-actplan" class="menu-section" style="display:none">
+  <div class="sub-tabs">
+    <button class="sub-tab active" onclick="subTab('actplan','write')">✏️ 작성</button>
+    <button class="sub-tab" onclick="subTab('actplan','list')">📌 목록</button>
+  </div>
+  <div id="actplan-write" class="sub-content active">
+    <div class="card">
+      <div class="card-title">📷 계획서 캡처 업로드</div>
+      <div class="upload-zone" onclick="document.getElementById('ap-photo').click()"
+           ondragover="dzOver(event,'ap-upzone')" ondragleave="dzLeave('ap-upzone')" ondrop="dzDrop(event,'ap-upzone','ap-photos','actplan')">
+        <div class="upload-icon">📲</div><p><strong>활동계획서 / 카카오톡 캡처 업로드</strong></p>
+      </div>
+      <input type="file" id="ap-photo" accept="image/*" multiple style="display:none" onchange="addPhotos(event,'ap-photos','actplan')">
+      <div class="preview-imgs" id="ap-photos"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" id="actplan-extract-btn" style="display:none" onclick="aiExtract('actplan')">
+          <span class="spinner" id="actplan-spinner" style="display:none"></span>🤖 AI 자동 추출
+        </button>
+      </div>
+      <div class="ai-status" id="actplan-ai-status"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">📌 활동계획서</div>
+      <div class="form-row c3">
+        <div><label>계획 연월</label><input type="month" id="ap-month"></div>
+        <div><label>활동 구분</label>
+          <select id="ap-type"><option>정기훈련</option><option>재난대응</option><option>교육</option><option>행사</option><option>기타</option></select>
+        </div>
+        <div><label>작성자</label><input type="text" id="ap-writer" value="HL2TLS"></div>
+      </div>
+      <div class="form-row c2">
+        <div><label>활동명</label><input type="text" id="ap-title"></div>
+        <div><label>예정 일시</label><input type="date" id="ap-date"></div>
+      </div>
+      <div class="form-row c2">
+        <div><label>장소</label><input type="text" id="ap-place"></div>
+        <div><label>예상 참여 인원</label><input type="number" id="ap-count" placeholder="명"></div>
+      </div>
+      <div class="form-row c1"><div><label>활동 목적</label><textarea id="ap-purpose" rows="3"></textarea></div></div>
+      <div class="form-row c1"><div><label>세부 계획</label><textarea id="ap-detail" rows="5"></textarea></div></div>
+      <div class="form-row c1"><div><label>필요 장비 / 예산</label><textarea id="ap-resource" rows="3"></textarea></div></div>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-primary" onclick="previewGeneric('actplan')">👁️ 미리보기</button>
+      <button class="btn btn-green" onclick="saveDoc('actplan')">💾 저장</button>
+      <button class="btn btn-primary" onclick="dlPDF('actplan')">📄 PDF</button>
+    </div>
+  </div>
+  <div id="actplan-list" class="sub-content">
+    <div class="card">
+      <div class="card-title">📌 활동계획서 목록</div>
+      <div id="actplan-arch-list"><div class="empty-state"><div class="ei">📌</div><p>등록된 계획서가 없습니다.</p></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 8. 봉사활동보고 ==================== -->
+<div id="menu-actreport" class="menu-section" style="display:none">
+  <div class="sub-tabs">
+    <button class="sub-tab active" onclick="subTab('actreport','write')">✏️ 작성</button>
+    <button class="sub-tab" onclick="subTab('actreport','list')">📊 목록</button>
+  </div>
+  <div id="actreport-write" class="sub-content active">
+    <div class="card">
+      <div class="card-title">📷 활동 캡처 업로드</div>
+      <div class="upload-zone" onclick="document.getElementById('ar-photo').click()"
+           ondragover="dzOver(event,'ar-upzone')" ondragleave="dzLeave('ar-upzone')" ondrop="dzDrop(event,'ar-upzone','ar-photos','actreport')">
+        <div class="upload-icon">📲</div><p><strong>활동 사진 / 보고서 캡처 / 카카오톡 캡처</strong></p>
+      </div>
+      <input type="file" id="ar-photo" accept="image/*" multiple style="display:none" onchange="addPhotos(event,'ar-photos','actreport')">
+      <div class="preview-imgs" id="ar-photos"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" id="actreport-extract-btn" style="display:none" onclick="aiExtract('actreport')">
+          <span class="spinner" id="actreport-spinner" style="display:none"></span>🤖 AI 자동 추출
+        </button>
+      </div>
+      <div class="ai-status" id="actreport-ai-status"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">📊 봉사활동 보고서</div>
+      <div class="form-row c3">
+        <div><label>보고 연월</label><input type="month" id="ar-month"></div>
+        <div><label>활동 구분</label>
+          <select id="ar-type"><option>재난대응</option><option>정기훈련</option><option>교육</option><option>행사지원</option><option>기타</option></select>
+        </div>
+        <div><label>작성자</label><input type="text" id="ar-writer" value="HL2TLS"></div>
+      </div>
+      <div class="form-row c3">
+        <div><label>활동명</label><input type="text" id="ar-title"></div>
+        <div><label>활동 일시</label><input type="date" id="ar-date"></div>
+        <div><label>활동 장소</label><input type="text" id="ar-place"></div>
+      </div>
+      <div class="form-row c3">
+        <div><label>참여 인원</label><input type="number" id="ar-count" placeholder="명"></div>
+        <div><label>총 봉사시간</label><input type="text" id="ar-hours" placeholder="예: 48시간"></div>
+        <div><label>지원 기관</label><input type="text" id="ar-org" placeholder="예: 서울시청, 소방서"></div>
+      </div>
+      <div class="form-row c1"><div><label>활동 내용</label><textarea id="ar-content" rows="5"></textarea></div></div>
+      <div class="form-row c1"><div><label>성과 및 특이사항</label><textarea id="ar-result" rows="4"></textarea></div></div>
+      <div class="form-row c1"><div><label>향후 계획</label><textarea id="ar-next" rows="3"></textarea></div></div>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-primary" onclick="previewGeneric('actreport')">👁️ 미리보기</button>
+      <button class="btn btn-green" onclick="saveDoc('actreport')">💾 저장</button>
+      <button class="btn btn-primary" onclick="dlPDF('actreport')">📄 PDF</button>
+    </div>
+  </div>
+  <div id="actreport-list" class="sub-content">
+    <div class="card">
+      <div class="card-title">📊 보고서 목록</div>
+      <div id="actreport-arch-list"><div class="empty-state"><div class="ei">📊</div><p>등록된 보고서가 없습니다.</p></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 9. 링크모음 ==================== -->
+<div id="menu-links" class="menu-section" style="display:none">
+  <div class="card">
+    <div class="card-title">🔗 적십자봉사회 관련 링크</div>
+    <div class="link-section-title">📋 회의 & 문서관리</div>
+    <div class="links-grid">
+      <a class="link-card" href="https://insys-hq.github.io/Insys-review/minutes.html" target="_blank">
+        <div class="lc-icon">📋</div><div class="lc-title">회의록 통합관리</div><div class="lc-desc">월례회·임원회의 회의록</div>
+      </a>
+      <a class="link-card" href="https://insys-hq.github.io/Insys-review/proxy.html" target="_blank">
+        <div class="lc-icon">📝</div><div class="lc-title">위임장</div><div class="lc-desc">회의 위임장 작성·관리</div>
+      </a>
+      <a class="link-card" href="https://insys-hq.github.io/Insys-review/meeting.html" target="_blank">
+        <div class="lc-icon">🗓️</div><div class="lc-title">회의 일정</div><div class="lc-desc">회의 일정 관리</div>
+      </a>
+    </div>
+    <div class="link-section-title">📡 WIRES-X / 무선통신</div>
+    <div class="links-grid">
+      <a class="link-card" href="https://insys-hq.github.io/Insys-review/rcnet_guide.html" target="_blank">
+        <div class="lc-icon">📡</div><div class="lc-title">RCnet 운영 가이드</div><div class="lc-desc">WIRES-X 재난통신망 운영</div>
+      </a>
+      <a class="link-card" href="https://insys-hq.github.io/Insys-review/wiresx_guide.html" target="_blank">
+        <div class="lc-icon">🔧</div><div class="lc-title">WIRES-X 가이드</div><div class="lc-desc">장비 설정 및 운영 가이드</div>
+      </a>
+      <a class="link-card" href="https://insys-hq.github.io/Insys-review/wirex_network.html" target="_blank">
+        <div class="lc-icon">🌐</div><div class="lc-title">네트워크 구성도</div><div class="lc-desc">RCnet 네트워크 다이어그램</div>
+      </a>
+      <a class="link-card" href="https://insys-hq.github.io/Insys-review/wirex_nodes.html" target="_blank">
+        <div class="lc-icon">📍</div><div class="lc-title">노드 현황</div><div class="lc-desc">DS0ARC·HL0FRC·HL2TLS 노드</div>
+      </a>
+      <a class="link-card" href="https://insys-hq.github.io/Insys-review/HL0FRC-AI.html" target="_blank">
+        <div class="lc-icon">🤖</div><div class="lc-title">HL0FRC AI 도우미</div><div class="lc-desc">AI 기반 통신 지원</div>
+      </a>
+    </div>
+    <div class="link-section-title">🏥 대한적십자사 공식</div>
+    <div class="links-grid">
+      <a class="link-card" href="https://www.redcross.or.kr" target="_blank">
+        <div class="lc-icon">🏥</div><div class="lc-title">대한적십자사</div><div class="lc-desc">공식 홈페이지</div>
+      </a>
+      <a class="link-card" href="https://volunteer.redcross.or.kr" target="_blank">
+        <div class="lc-icon">❤️</div><div class="lc-title">봉사활동 포털</div><div class="lc-desc">봉사시간 조회·등록</div>
+      </a>
+    </div>
+    <div class="link-section-title" style="margin-top:16px">⚙️ 링크 직접 추가</div>
+    <div class="card" style="background:#f7fafd;box-shadow:none;border:1.5px solid #e0eaf2">
+      <div class="form-row c3">
+        <div><label>링크 이름</label><input type="text" id="lk-title" placeholder="이름"></div>
+        <div><label>URL</label><input type="text" id="lk-url" placeholder="https://..."></div>
+        <div><label>설명</label><input type="text" id="lk-desc" placeholder="간단 설명"></div>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-green" onclick="addCustomLink()">➕ 추가</button>
+      </div>
+      <div id="custom-links" style="margin-top:12px"></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<!-- PREVIEW MODAL -->
+<div class="modal-ov" id="preview-modal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="modal-title">미리보기</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal()">닫기</button>
+      <button class="btn btn-green" id="modal-save-btn" onclick="">💾 저장</button>
+      <button class="btn btn-primary" id="modal-pdf-btn" onclick="">📄 PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- IMAGE ZOOM MODAL -->
+<div class="img-modal-ov" id="img-modal" onclick="closeImgModal()">
+  <button class="close-img" onclick="closeImgModal()">✕</button>
+  <img id="img-modal-img" src="" alt="">
+</div>
+
 <div class="toast" id="toast"></div>
 
-<!-- HIDDEN PRINT AREA -->
-<div id="print-area"></div>
-
 <script>
-// ===================== FIREBASE =====================
+// ═══════════════════════════════════════════════════
+//  FIREBASE
+// ═══════════════════════════════════════════════════
 const firebaseConfig = {
-  apiKey: "AIzaSyBYqd2uRr1ZvFLDCWuS15h9qFkT-Dvg5Es",
-  authDomain: "insys-work.firebaseapp.com",
-  projectId: "insys-work",
-  storageBucket: "insys-work.firebasestorage.app",
-  messagingSenderId: "225275784859",
-  appId: "1:225275784859:web:bd12815c6dc47c0c49e03e"
+  apiKey:"AIzaSyBYqd2uRr1ZvFLDCWuS15h9qFkT-Dvg5Es",
+  authDomain:"insys-work.firebaseapp.com",
+  projectId:"insys-work",
+  storageBucket:"insys-work.firebasestorage.app",
+  messagingSenderId:"225275784859",
+  appId:"1:225275784859:web:bd12815c6dc47c0c49e03e"
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-// ===================== STATE =====================
-let uploadedPhotos = [];
-let currentMinutesData = null;
-let allArchive = [];
+// 컬렉션 매핑
+const COLLS = {
+  minutes:'rc_minutes', proxy:'rc_proxy', schedule:'rc_schedule',
+  contacts:'rc_contacts', volunteer:'rc_volunteer', meetdoc:'rc_meetdoc',
+  actplan:'rc_actplan', actreport:'rc_actreport'
+};
 
-// ===================== INIT =====================
-document.addEventListener('DOMContentLoaded', () => {
-  // Set default month/date
+// 사진 저장소
+const photoStore = {};
+
+// ═══════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', ()=>{
   const now = new Date();
   const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  document.getElementById('meeting-month').value = ym;
-  document.getElementById('meeting-date').value = now.toISOString().split('T')[0];
-
-  // Default writer
-  document.getElementById('writer').value = 'HL2TLS';
-
-  // Add initial attendee rows
-  for(let i=0;i<3;i++) addAttendee();
-
-  // Load archive
-  loadArchive();
-  populateYearFilter();
+  const ymd = now.toISOString().split('T')[0];
+  document.getElementById('m-month').value = ym;
+  document.getElementById('m-date').value = ymd;
+  document.getElementById('px-date').value = ymd;
+  document.getElementById('px-write-date').value = ymd;
+  document.getElementById('sch-date').value = ymd;
+  document.getElementById('vol-date').value = ymd;
+  document.getElementById('md-month').value = ym;
+  document.getElementById('md-date').value = ymd;
+  document.getElementById('ap-month').value = ym;
+  document.getElementById('ap-date').value = ymd;
+  document.getElementById('ar-month').value = ym;
+  document.getElementById('ar-date').value = ymd;
+  for(let i=0;i<3;i++) addAtt();
+  // volunteer hours auto calc
+  ['vol-start','vol-end'].forEach(id=>{
+    document.getElementById(id).addEventListener('change', calcVolHours);
+  });
+  loadAllArchives();
+  loadCustomLinks();
 });
 
-// ===================== MEETING TYPE =====================
-let currentMeetingType = 'monthly'; // 'monthly' | 'exec'
-
-function setMeetingType(type){
-  currentMeetingType = type;
-  // hero toggle
-  document.getElementById('type-monthly').classList.toggle('active', type==='monthly');
-  document.getElementById('type-exec').classList.toggle('active', type==='exec');
-  // form select sync
-  document.getElementById('meeting-type').value = type;
-}
-
-function onTypeSelectChange(val){
-  setMeetingType(val);
-}
-
-function getMeetingTypeLabel(type){
-  return type==='exec' ? '임 원 회 의' : '월 례 회';
-}
-
-// ===================== VIEW TOGGLE =====================
+// ═══════════════════════════════════════════════════
+//  VIEW / MENU
+// ═══════════════════════════════════════════════════
 function setView(mode){
   document.body.classList.toggle('mobile', mode==='mobile');
   document.getElementById('btn-pc').classList.toggle('active', mode==='pc');
   document.getElementById('btn-mobile').classList.toggle('active', mode==='mobile');
 }
 
-// ===================== TABS =====================
-function switchTab(name){
-  document.querySelectorAll('.tab-btn').forEach((b,i)=>{
-    b.classList.toggle('active', ['write','view','archive'][i]===name);
+function showMenu(name){
+  document.querySelectorAll('.menu-section').forEach(s=>s.style.display='none');
+  document.getElementById(`menu-${name}`).style.display='block';
+  document.querySelectorAll('.mmenu-btn').forEach(b=>b.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  // hero title update
+  const titles={minutes:'회 의 록',proxy:'위 임 장',schedule:'일 정 관 리',
+    contacts:'주 소 록',volunteer:'봉 사 시 간',meetdoc:'회 의 자 료',
+    actplan:'활 동 계 획 서',actreport:'봉 사 활 동 보 고',links:'링 크 모 음'};
+  document.querySelector('.hero-title').textContent = titles[name]||'회 의 록';
+  // hero mtype toggle 표시/숨김
+  document.querySelector('.mtype-toggle').style.display = name==='minutes' ? 'flex' : 'none';
+  if(name==='minutes') loadArchive('minutes');
+  else if(COLLS[name]) loadArchive(name);
+}
+
+function subTab(menu, tab){
+  const btns = document.querySelectorAll(`#menu-${menu} .sub-tab`);
+  const contents = document.querySelectorAll(`#menu-${menu} .sub-content`);
+  btns.forEach((b,i)=>{ b.classList.toggle('active', i===getTabIdx(menu,tab)); });
+  contents.forEach(c=>c.classList.remove('active'));
+  document.getElementById(`${menu}-${tab}`).classList.add('active');
+  if(tab==='archive'||tab==='list') loadArchive(menu);
+  if(tab==='view') renderMinutesView();
+}
+function getTabIdx(menu,tab){
+  const maps={
+    minutes:{write:0,view:1,archive:2},
+    proxy:{write:0,archive:1},
+    schedule:{write:0,list:1},contacts:{write:0,list:1},
+    volunteer:{write:0,list:1},meetdoc:{write:0,list:1},
+    actplan:{write:0,list:1},actreport:{write:0,list:1}
+  };
+  return maps[menu]?.[tab]??0;
+}
+
+// ═══════════════════════════════════════════════════
+//  MEETING TYPE
+// ═══════════════════════════════════════════════════
+let currentMType = 'monthly';
+function setMType(t){
+  currentMType=t;
+  document.getElementById('type-monthly').classList.toggle('active',t==='monthly');
+  document.getElementById('type-exec').classList.toggle('active',t==='exec');
+  document.getElementById('m-type').value=t;
+}
+function setMTypeSelect(v){ setMType(v); }
+
+// ═══════════════════════════════════════════════════
+//  PHOTO UPLOAD (공통)
+// ═══════════════════════════════════════════════════
+function dzOver(e,zoneId){ e.preventDefault(); document.getElementById(zoneId)?.classList.add('drag'); }
+function dzLeave(zoneId){ document.getElementById(zoneId)?.classList.remove('drag'); }
+function dzDrop(e,zoneId,previewId,menu){
+  e.preventDefault(); dzLeave(zoneId);
+  handleFiles([...e.dataTransfer.files], previewId, menu);
+}
+function addPhotos(e, previewId, menu){ handleFiles([...e.target.files], previewId, menu); }
+
+function handleFiles(files, previewId, menu){
+  const imgs = files.filter(f=>f.type.startsWith('image/'));
+  if(!imgs.length) return;
+  if(!photoStore[menu]) photoStore[menu]=[];
+  photoStore[menu].push(...imgs);
+  renderPreviews(previewId, menu);
+  const btn = document.getElementById(`${menu}-extract-btn`);
+  const clrBtn = document.getElementById(`${menu==='minutes'?'min-clear-photo':''}`);
+  if(btn) btn.style.display='inline-flex';
+  if(clrBtn) clrBtn.style.display='inline-flex';
+}
+
+function renderPreviews(previewId, menu){
+  const c = document.getElementById(previewId);
+  c.innerHTML='';
+  (photoStore[menu]||[]).forEach((f,i)=>{
+    const url=URL.createObjectURL(f);
+    const img=document.createElement('img');
+    img.src=url; img.title=f.name;
+    img.onclick=()=>openImgModal(url);
+    c.appendChild(img);
   });
-  document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
-  document.getElementById(`tab-${name}`).classList.add('active');
-  if(name==='view') renderCurrentView();
-  if(name==='archive') loadArchive();
 }
 
-// ===================== ATTENDEE =====================
-function addAttendee(){
-  const list = document.getElementById('attendee-list');
-  const row = document.createElement('div');
-  row.className = 'attendee-row';
-  row.innerHTML = `
-    <input type="text" placeholder="이름" class="att-name">
-    <input type="text" placeholder="콜사인 (예: HL2XXX)" class="att-call">
-    <button class="btn-icon" onclick="removeAttendee(this)" title="삭제">🗑️</button>
-  `;
-  list.appendChild(row);
-  updateAttendeeCount();
+function clearPhotos(previewId, inputId, btnId, clrId){
+  const menu = previewId.replace('-photos','').replace('min','minutes');
+  photoStore[menu]=[];
+  document.getElementById(previewId).innerHTML='';
+  document.getElementById(inputId).value='';
+  if(btnId) document.getElementById(btnId).style.display='none';
+  if(clrId) document.getElementById(clrId).style.display='none';
 }
 
-function removeAttendee(btn){
-  btn.closest('.attendee-row').remove();
-  updateAttendeeCount();
-}
+// ═══════════════════════════════════════════════════
+//  AI EXTRACT (공통)
+// ═══════════════════════════════════════════════════
+const AI_PROMPTS = {
+  minutes:`이 이미지는 회의록 또는 카카오톡/화면 캡처입니다. 다음 JSON만 응답(설명없이):
+{"meeting_date":"YYYY-MM-DD","meeting_time":"HH:MM","meeting_place":"","attendees":[{"name":"","call":""}],
+"open":"","report":"","agenda":"","other":"","close":"","award":"","plan":""}`,
+  proxy:`이 이미지에서 위임장 관련 정보를 추출하여 다음 JSON만 응답:
+{"meeting":"","date":"YYYY-MM-DD","delegators":"위임인 목록(줄바꿈)","delegate":"","delegate_call":"","content":""}`,
+  schedule:`이 이미지(카카오톡 캡처 포함)에서 일정 정보를 추출하여 다음 JSON만 응답:
+{"type":"","date":"YYYY-MM-DD","time":"HH:MM","title":"","place":"","desc":"","manager":"","note":""}`,
+  contacts:`이 이미지에서 연락처/회원 정보를 추출하여 다음 JSON만 응답:
+{"name":"","call":"","role":"","phone":"","email":"","addr":"","note":""}`,
+  volunteer:`이 이미지에서 봉사활동 정보를 추출하여 다음 JSON만 응답:
+{"name":"","call":"","type":"","date":"YYYY-MM-DD","start":"HH:MM","end":"HH:MM","place":"","desc":""}`,
+  meetdoc:`이 이미지에서 회의자료 정보를 추출하여 다음 JSON만 응답:
+{"type":"","month":"YYYY-MM","date":"YYYY-MM-DD","title":"","writer":"","content":""}`,
+  actplan:`이 이미지에서 활동계획서 정보를 추출하여 다음 JSON만 응답:
+{"month":"YYYY-MM","type":"","title":"","date":"YYYY-MM-DD","place":"","count":"","purpose":"","detail":"","resource":""}`,
+  actreport:`이 이미지에서 봉사활동보고서 정보를 추출하여 다음 JSON만 응답:
+{"month":"YYYY-MM","type":"","title":"","date":"YYYY-MM-DD","place":"","count":"","hours":"","org":"","content":"","result":"","next":""}`
+};
 
-function updateAttendeeCount(){
-  const count = document.querySelectorAll('.att-name').length;
-  const filled = [...document.querySelectorAll('.att-name')].filter(i=>i.value.trim()).length;
-  if(!document.getElementById('total-count').value)
-    document.getElementById('total-count').placeholder = filled || count;
-}
-
-function getAttendees(){
-  const rows = document.querySelectorAll('.attendee-row');
-  return [...rows].map(r=>({
-    name: r.querySelector('.att-name').value.trim(),
-    call: r.querySelector('.att-call').value.trim()
-  })).filter(a=>a.name||a.call);
-}
-
-// ===================== PHOTO UPLOAD =====================
-function onDragOver(e){e.preventDefault();document.getElementById('upload-zone').classList.add('dragover')}
-function onDragLeave(e){document.getElementById('upload-zone').classList.remove('dragover')}
-function onDrop(e){
-  e.preventDefault();
-  document.getElementById('upload-zone').classList.remove('dragover');
-  handleFiles([...e.dataTransfer.files]);
-}
-
-function handlePhotoUpload(e){handleFiles([...e.target.files])}
-
-function handleFiles(files){
-  const imgFiles = files.filter(f=>f.type.startsWith('image/'));
-  uploadedPhotos = [...uploadedPhotos, ...imgFiles];
-  renderPreviews();
-  document.getElementById('btn-extract').style.display = uploadedPhotos.length ? 'flex' : 'none';
-}
-
-function renderPreviews(){
-  const container = document.getElementById('preview-images');
-  container.innerHTML = '';
-  uploadedPhotos.forEach((f,i)=>{
-    const url = URL.createObjectURL(f);
-    const img = document.createElement('img');
-    img.src = url;
-    img.title = f.name;
-    container.appendChild(img);
-  });
-}
-
-// ===================== AI EXTRACT =====================
-async function extractFromPhotos(){
-  if(!uploadedPhotos.length){showToast('사진을 먼저 업로드해주세요.','error');return}
-  
-  const statusEl = document.getElementById('ai-status');
-  const spinner = document.getElementById('extract-spinner');
-  spinner.style.display = 'inline-block';
-  document.getElementById('btn-extract').disabled = true;
-  statusEl.className = 'ai-status loading';
-  statusEl.textContent = '🤖 AI가 사진을 분석 중입니다...';
+async function aiExtract(menu){
+  const photos = photoStore[menu]||[];
+  if(!photos.length){showToast('사진을 먼저 업로드해주세요.','err');return;}
+  const statusEl = document.getElementById(`${menu}-ai-status`);
+  const spinnerId = menu==='minutes'?'min-spinner':`${menu}-spinner`;
+  const spinner = document.getElementById(spinnerId);
+  if(spinner) spinner.style.display='inline-block';
+  const btn = document.getElementById(`${menu}-extract-btn`);
+  if(btn) btn.disabled=true;
+  statusEl.className='ai-status loading'; statusEl.textContent='🤖 AI 분석 중...';
 
   try {
-    // Convert images to base64
-    const imageContents = await Promise.all(uploadedPhotos.map(async f => {
-      const b64 = await fileToBase64(f);
-      return {
-        type: "image",
-        source: { type: "base64", media_type: f.type || "image/jpeg", data: b64 }
-      };
+    const imgContents = await Promise.all(photos.map(async f=>{
+      const b64 = await fileToB64(f);
+      return {type:"image",source:{type:"base64",media_type:f.type||"image/jpeg",data:b64}};
     }));
-
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 1000,
-        messages: [{
-          role: "user",
-          content: [
-            ...imageContents,
-            {
-              type: "text",
-              text: `이 사진은 아마추어 무선 봉사단체의 월례회 회의록 사진입니다.
-사진에서 다음 항목을 추출하여 JSON으로만 응답하세요 (설명 없이 JSON만):
-{
-  "meeting_date": "YYYY-MM-DD 형식",
-  "meeting_time": "HH:MM 형식",
-  "meeting_place": "장소명",
-  "attendees": [{"name":"이름","call":"콜사인"}],
-  "open": "개회 관련 내용",
-  "report": "보고 사항 내용",
-  "agenda": "안건 및 결의 내용",
-  "other": "기타 사항",
-  "close": "폐회 관련 내용",
-  "award": "표창/수상 내용",
-  "plan": "활동 계획"
-}
-모르는 항목은 빈 문자열로. JSON만 응답.`
-            }
-          ]
-        }]
+    const res = await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        model:"claude-sonnet-4-6", max_tokens:1000,
+        messages:[{role:"user",content:[...imgContents,{type:"text",text:AI_PROMPTS[menu]||"내용을 JSON으로 추출하세요."}]}]
       })
     });
-
-    const data = await response.json();
-    const text = data.content?.map(c=>c.text||'').join('') || '';
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if(!jsonMatch) throw new Error('JSON 파싱 실패');
-    
-    const extracted = JSON.parse(jsonMatch[0]);
-    fillFormFromExtracted(extracted);
-    
-    statusEl.className = 'ai-status success';
-    statusEl.textContent = '✅ AI 추출 완료! 내용을 확인하고 필요 시 수정하세요.';
-    showToast('AI 텍스트 추출 완료!', 'success');
-  } catch(err) {
-    console.error(err);
-    statusEl.className = 'ai-status error';
-    statusEl.textContent = '❌ 추출 실패: ' + err.message + ' — 수동으로 입력해주세요.';
-    showToast('AI 추출 실패. 수동 입력을 이용해주세요.', 'error');
+    const data = await res.json();
+    const text = data.content?.map(c=>c.text||'').join('')||'';
+    const m = text.match(/\{[\s\S]*\}/);
+    if(!m) throw new Error('JSON 파싱 실패');
+    const extracted = JSON.parse(m[0]);
+    fillForm(menu, extracted);
+    statusEl.className='ai-status ok'; statusEl.textContent='✅ 추출 완료! 내용을 확인·수정하세요.';
+    showToast('AI 추출 완료','ok');
+  } catch(err){
+    statusEl.className='ai-status err'; statusEl.textContent='❌ 추출 실패 — 수동 입력해주세요.';
+    showToast('AI 추출 실패','err');
   } finally {
-    spinner.style.display = 'none';
-    document.getElementById('btn-extract').disabled = false;
+    if(spinner) spinner.style.display='none';
+    if(btn) btn.disabled=false;
   }
 }
 
-function fileToBase64(file){
-  return new Promise((resolve,reject)=>{
-    const r = new FileReader();
-    r.onload = ()=>resolve(r.result.split(',')[1]);
-    r.onerror = reject;
-    r.readAsDataURL(file);
+function fileToB64(f){
+  return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(f);});
+}
+
+// ═══════════════════════════════════════════════════
+//  FILL FORM (AI 추출 결과 반영)
+// ═══════════════════════════════════════════════════
+function fillForm(menu, d){
+  const set=(id,v)=>{const el=document.getElementById(id);if(el&&v)el.value=v;};
+  if(menu==='minutes'){
+    set('m-date',d.meeting_date); set('m-time',d.meeting_time);
+    set('m-place',d.meeting_place); set('m-open',d.open);
+    set('m-report',d.report); set('m-agenda',d.agenda);
+    set('m-other',d.other); set('m-close',d.close);
+    set('m-award',d.award); set('m-plan',d.plan);
+    if(d.attendees?.length){
+      document.getElementById('att-list').innerHTML='';
+      d.attendees.forEach(a=>{addAtt();const rows=document.querySelectorAll('.att-row');const l=rows[rows.length-1];l.querySelector('.att-name').value=a.name||'';l.querySelector('.att-call').value=a.call||'';});
+    }
+    if(d.meeting_date) document.getElementById('m-month').value=d.meeting_date.substring(0,7);
+  } else if(menu==='proxy'){
+    set('px-meeting',d.meeting); set('px-date',d.date);
+    set('px-delegators',d.delegators); set('px-delegate',d.delegate);
+    set('px-delegate-call',d.delegate_call); set('px-content',d.content);
+  } else if(menu==='schedule'){
+    set('sch-date',d.date); set('sch-time',d.time);
+    set('sch-title',d.title); set('sch-place',d.place);
+    set('sch-desc',d.desc); set('sch-manager',d.manager); set('sch-note',d.note);
+    if(d.type){const sel=document.getElementById('sch-type');[...sel.options].forEach(o=>{if(o.value.includes(d.type))sel.value=o.value;});}
+  } else if(menu==='contacts'){
+    set('ct-name',d.name); set('ct-call',d.call); set('ct-role',d.role);
+    set('ct-phone',d.phone); set('ct-email',d.email); set('ct-addr',d.addr); set('ct-note',d.note);
+  } else if(menu==='volunteer'){
+    set('vol-name',d.name); set('vol-call',d.call); set('vol-date',d.date);
+    set('vol-start',d.start); set('vol-end',d.end);
+    set('vol-place',d.place); set('vol-desc',d.desc);
+    calcVolHours();
+  } else if(menu==='meetdoc'){
+    set('md-month',d.month); set('md-date',d.date); set('md-title',d.title);
+    set('md-writer',d.writer); set('md-content',d.content);
+  } else if(menu==='actplan'){
+    set('ap-month',d.month); set('ap-title',d.title); set('ap-date',d.date);
+    set('ap-place',d.place); set('ap-count',d.count); set('ap-purpose',d.purpose);
+    set('ap-detail',d.detail); set('ap-resource',d.resource);
+  } else if(menu==='actreport'){
+    set('ar-month',d.month); set('ar-title',d.title); set('ar-date',d.date);
+    set('ar-place',d.place); set('ar-count',d.count); set('ar-hours',d.hours);
+    set('ar-org',d.org); set('ar-content',d.content); set('ar-result',d.result); set('ar-next',d.next);
+  }
+}
+
+// ═══════════════════════════════════════════════════
+//  ATTENDEE (회의록)
+// ═══════════════════════════════════════════════════
+function addAtt(){
+  const list=document.getElementById('att-list');
+  const row=document.createElement('div'); row.className='att-row';
+  row.innerHTML=`<input type="text" placeholder="이름" class="att-name"><input type="text" placeholder="HL2XXX" class="att-call"><button class="btn-icon" onclick="this.closest('.att-row').remove()">🗑️</button>`;
+  list.appendChild(row);
+}
+function getAttendees(){return [...document.querySelectorAll('.att-row')].map(r=>({name:r.querySelector('.att-name').value.trim(),call:r.querySelector('.att-call').value.trim()})).filter(a=>a.name||a.call);}
+
+// ═══════════════════════════════════════════════════
+//  VOLUNTEER HOURS
+// ═══════════════════════════════════════════════════
+function calcVolHours(){
+  const s=document.getElementById('vol-start').value;
+  const e=document.getElementById('vol-end').value;
+  if(s&&e){const sm=s.split(':').reduce((a,b,i)=>a+(i?+b/60:+b),0);const em=e.split(':').reduce((a,b,i)=>a+(i?+b/60:+b),0);const diff=em-sm;if(diff>0)document.getElementById('vol-hours').value=`${Math.floor(diff)}시간 ${Math.round((diff%1)*60)}분`;}
+}
+
+// ═══════════════════════════════════════════════════
+//  COLLECT DATA (각 메뉴)
+// ═══════════════════════════════════════════════════
+function collectData(menu){
+  const g=id=>document.getElementById(id)?.value||'';
+  const now=new Date().toISOString();
+  if(menu==='minutes'){
+    const atts=getAttendees();
+    return{meetingType:g('m-type'),month:g('m-month'),date:g('m-date'),time:g('m-time'),place:g('m-place'),writer:g('m-writer'),attendees:atts,totalCount:g('m-total')||atts.length,open:g('m-open'),report:g('m-report'),agenda:g('m-agenda'),other:g('m-other'),close:g('m-close'),award:g('m-award'),plan:g('m-plan'),updatedAt:now};
+  } else if(menu==='proxy'){
+    return{month:g('px-date').substring(0,7)||new Date().toISOString().substring(0,7),meeting:g('px-meeting'),date:g('px-date'),delegators:g('px-delegators'),delegate:g('px-delegate'),delegateCall:g('px-delegate-call'),content:g('px-content'),writer:g('px-writer'),writeDate:g('px-write-date'),updatedAt:now};
+  } else if(menu==='schedule'){
+    return{id:Date.now().toString(),type:g('sch-type'),date:g('sch-date'),time:g('sch-time'),title:g('sch-title'),place:g('sch-place'),desc:g('sch-desc'),manager:g('sch-manager'),note:g('sch-note'),updatedAt:now};
+  } else if(menu==='contacts'){
+    return{id:Date.now().toString(),name:g('ct-name'),call:g('ct-call'),role:g('ct-role'),phone:g('ct-phone'),email:g('ct-email'),join:g('ct-join'),addr:g('ct-addr'),note:g('ct-note'),updatedAt:now};
+  } else if(menu==='volunteer'){
+    return{id:Date.now().toString(),name:g('vol-name'),call:g('vol-call'),type:g('vol-type'),date:g('vol-date'),start:g('vol-start'),end:g('vol-end'),place:g('vol-place'),hours:g('vol-hours'),desc:g('vol-desc'),updatedAt:now};
+  } else if(menu==='meetdoc'){
+    return{id:Date.now().toString(),type:g('md-type'),month:g('md-month'),date:g('md-date'),title:g('md-title'),writer:g('md-writer'),content:g('md-content'),updatedAt:now};
+  } else if(menu==='actplan'){
+    return{id:Date.now().toString(),month:g('ap-month'),type:g('ap-type'),writer:g('ap-writer'),title:g('ap-title'),date:g('ap-date'),place:g('ap-place'),count:g('ap-count'),purpose:g('ap-purpose'),detail:g('ap-detail'),resource:g('ap-resource'),updatedAt:now};
+  } else if(menu==='actreport'){
+    return{id:Date.now().toString(),month:g('ar-month'),type:g('ar-type'),writer:g('ar-writer'),title:g('ar-title'),date:g('ar-date'),place:g('ar-place'),count:g('ar-count'),hours:g('ar-hours'),org:g('ar-org'),content:g('ar-content'),result:g('ar-result'),next:g('ar-next'),updatedAt:now};
+  }
+  return {};
+}
+
+// ═══════════════════════════════════════════════════
+//  SAVE
+// ═══════════════════════════════════════════════════
+async function saveDoc(menu){
+  const d=collectData(menu);
+  const coll=COLLS[menu];
+  if(!coll){showToast('저장 지원 안 됨','err');return;}
+  let docId;
+  if(menu==='minutes') docId=d.month||'unknown';
+  else if(menu==='proxy') docId=d.month||'unknown';
+  else docId=d.id||Date.now().toString();
+  showToast('저장 중...');
+  try{
+    if(menu==='minutes'||menu==='proxy') await db.collection(coll).doc(docId).set(d);
+    else await db.collection(coll).doc(docId).set(d);
+    showToast('✅ 저장 완료','ok');
+    loadArchive(menu);
+    closeModal();
+  }catch(e){showToast('저장 실패: '+e.message,'err');}
+}
+
+// ═══════════════════════════════════════════════════
+//  LOAD ARCHIVE (공통)
+// ═══════════════════════════════════════════════════
+let archiveCache={};
+
+async function loadAllArchives(){
+  for(const menu of Object.keys(COLLS)) await loadArchive(menu);
+}
+
+async function loadArchive(menu){
+  const coll=COLLS[menu]; if(!coll) return;
+  try{
+    const snap=await db.collection(coll).orderBy('updatedAt','desc').get();
+    archiveCache[menu]=snap.docs.map(d=>({docId:d.id,...d.data()}));
+    renderArchive(menu);
+    populateYearFilter(menu);
+  }catch(e){console.error(menu,e);}
+}
+
+function renderArchive(menu){
+  const listId = (menu==='minutes'||menu==='proxy') ? `${menu}-arch-list` : `${menu}-arch-list`;
+  const el=document.getElementById(listId); if(!el) return;
+  const data=archiveCache[menu]||[];
+  if(!data.length){el.innerHTML=`<div class="empty-state"><div class="ei">📂</div><p>데이터가 없습니다.</p></div>`;return;}
+
+  const filtered=filterData(menu,data);
+  if(!filtered.length){el.innerHTML=`<div class="empty-state"><div class="ei">🔍</div><p>검색 결과가 없습니다.</p></div>`;return;}
+
+  el.innerHTML=filtered.map(item=>buildArchiveRow(menu,item)).join('');
+}
+
+function filterData(menu,data){
+  const kwId=`${menu==='minutes'?'min-arch-search':menu+'-search'}`;
+  const kw=(document.getElementById(kwId)?.value||'').toLowerCase();
+  const yrId=`${menu==='minutes'?'min-arch-year':menu+'-year'}`;
+  const yr=document.getElementById(yrId)?.value||'';
+  return data.filter(item=>{
+    const matchKw=!kw||JSON.stringify(item).toLowerCase().includes(kw);
+    const matchYr=!yr||(item.updatedAt||'').startsWith(yr)||(item.month||'').startsWith(yr)||(item.date||'').startsWith(yr);
+    return matchKw&&matchYr;
   });
 }
 
-function fillFormFromExtracted(d){
-  if(d.meeting_date) document.getElementById('meeting-date').value = d.meeting_date;
-  if(d.meeting_time) document.getElementById('meeting-time').value = d.meeting_time;
-  if(d.meeting_place) document.getElementById('meeting-place').value = d.meeting_place;
-  if(d.open) document.getElementById('sect-open').value = d.open;
-  if(d.report) document.getElementById('sect-report').value = d.report;
-  if(d.agenda) document.getElementById('sect-agenda').value = d.agenda;
-  if(d.other) document.getElementById('sect-other').value = d.other;
-  if(d.close) document.getElementById('sect-close').value = d.close;
-  if(d.award) document.getElementById('sect-award').value = d.award;
-  if(d.plan) document.getElementById('sect-plan').value = d.plan;
-  
-  if(d.attendees && d.attendees.length > 0){
-    document.getElementById('attendee-list').innerHTML = '';
-    d.attendees.forEach(a=>{
-      addAttendee();
-      const rows = document.querySelectorAll('.attendee-row');
-      const last = rows[rows.length-1];
-      last.querySelector('.att-name').value = a.name||'';
-      last.querySelector('.att-call').value = a.call||'';
-    });
-    updateAttendeeCount();
+function buildArchiveRow(menu,item){
+  const upd=item.updatedAt?new Date(item.updatedAt).toLocaleDateString('ko-KR'):'-';
+  let label='', sub='';
+  if(menu==='minutes'){
+    const tl=item.meetingType==='exec'?'임원회의':'월례회';
+    const tb=item.meetingType==='exec'?'badge-exec':'badge-monthly';
+    label=`📋 ${(item.month||'').replace('-','년 ')}월 <span class="badge ${tb}">${tl}</span>`;
+    sub=`장소: ${item.place||'-'} · 참석 ${item.totalCount||'-'}명 · 수정: ${upd}`;
+  } else if(menu==='proxy'){
+    label=`📝 ${item.meeting||item.month}`;
+    sub=`수임인: ${item.delegate||'-'} · ${upd}`;
+  } else if(menu==='schedule'){
+    label=`📅 ${item.date} ${item.title||''}`;
+    sub=`${item.type||''} · ${item.place||'-'} · ${item.manager||'-'}`;
+  } else if(menu==='contacts'){
+    label=`👤 ${item.name||'-'} <span style="font-size:11px;color:#7a98b0">${item.call||''}</span>`;
+    sub=`${item.role||''} · ${item.phone||'-'}`;
+  } else if(menu==='volunteer'){
+    label=`⏱️ ${item.name||'-'} (${item.call||''}) · ${item.date||''}`;
+    sub=`${item.type||''} · ${item.hours||'-'} · ${item.place||'-'}`;
+  } else if(menu==='meetdoc'){
+    label=`📂 ${item.title||'-'}`;
+    sub=`${item.type||''} · ${item.month||''} · ${item.writer||'-'}`;
+  } else if(menu==='actplan'){
+    label=`📌 ${item.title||'-'}`;
+    sub=`${item.month||''} · ${item.type||''} · ${item.place||'-'}`;
+  } else if(menu==='actreport'){
+    label=`📊 ${item.title||'-'}`;
+    sub=`${item.month||''} · ${item.type||''} · 참여 ${item.count||'-'}명`;
   }
-}
-
-// ===================== COLLECT DATA =====================
-function collectData(){
-  const attendees = getAttendees();
-  const total = document.getElementById('total-count').value || attendees.length;
-  const typeVal = document.getElementById('meeting-type').value;
-  return {
-    meetingType: typeVal,
-    month: document.getElementById('meeting-month').value,
-    date: document.getElementById('meeting-date').value,
-    time: document.getElementById('meeting-time').value,
-    place: document.getElementById('meeting-place').value,
-    writer: document.getElementById('writer').value,
-    attendees,
-    totalCount: total,
-    open: document.getElementById('sect-open').value,
-    report: document.getElementById('sect-report').value,
-    agenda: document.getElementById('sect-agenda').value,
-    other: document.getElementById('sect-other').value,
-    close: document.getElementById('sect-close').value,
-    award: document.getElementById('sect-award').value,
-    plan: document.getElementById('sect-plan').value,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  };
-}
-
-// ===================== RENDER MINUTES HTML =====================
-function buildMinutesHTML(d, compact=false){
-  const attendeeRows = d.attendees.map(a=>`
-    <tr><td>${a.name||'-'}</td><td>${a.call||'-'}</td></tr>
-  `).join('');
-
-  const dateStr = d.date ? new Date(d.date).toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'}) : '-';
-  const sections = [
-    {label:'개회 / 사회',content:d.open},
-    {label:'보고 사항',content:d.report},
-    {label:'안건 및 결의',content:d.agenda},
-    {label:'기타 / 공지',content:d.other},
-    {label:'폐회',content:d.close},
-    {label:'표창 / 수상',content:d.award},
-    {label:'훈련 / 활동 계획',content:d.plan},
-  ].filter(s=>s.content&&s.content.trim());
-
-  const typeLabel = d.meetingType==='exec' ? '임 원 회 의' : '월 례 회';
-  const docTitle = d.meetingType==='exec' ? '임원회의록' : '월례회의록';
   return `
-    <div style="font-family:'Noto Sans KR',sans-serif">
-      <div class="minutes-header">
-        <!-- 로고 + 제목 행 -->
-        <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:8px">
-    <img src="data:image/jpeg;base64,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" style="height:56px;width:auto;display:block;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.25))" alt="대한적십자사 로고">
-          <div style="text-align:left">
-            <div style="font-size:10px;color:rgba(255,255,255,0.8);letter-spacing:0.5px;margin-bottom:2px">대한적십자사 서울특별시지사 재난대응봉사회</div>
-            <div style="font-size:20px;font-weight:900;letter-spacing:4px;color:#fff">${docTitle}</div>
-            <div style="margin-top:4px"><span style="background:rgba(255,255,255,0.2);color:#fff;padding:2px 10px;border-radius:10px;font-size:11px;font-weight:700;letter-spacing:2px">${typeLabel}</span></div>
-          </div>
-        </div>
-        <div class="meta">
-          ${d.month ? d.month.replace('-','년 ')+'월' : ''}
-          ${d.date ? ' | ' + dateStr : ''}
-          ${d.time ? ' ' + d.time : ''}
-          ${d.place ? ' | ' + d.place : ''}
-        </div>
+    <div class="arch-item">
+      <div><div class="arch-label">${label}</div><div class="arch-meta">${sub}</div></div>
+      <div class="arch-actions">
+        <button onclick="loadDoc('${menu}','${item.docId}')">✏️ 열기</button>
+        <button onclick="previewDoc('${menu}','${item.docId}')">👁️ 보기</button>
+        <button onclick="dlDocPDF('${menu}','${item.docId}')">📄 PDF</button>
+        <button class="del-btn" onclick="deleteDoc('${menu}','${item.docId}')">🗑️</button>
       </div>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
-        <div>
-          <h4 style="font-size:12px;font-weight:700;color:#1b3a5c;margin-bottom:6px;padding:5px 8px;background:#eef4fb;border-left:3px solid #2e6da4">👥 참석자 명단 (총 ${d.totalCount}명)</h4>
-          <table class="attendee-table">
-            <thead><tr><th>이름</th><th>콜사인</th></tr></thead>
-            <tbody>${attendeeRows||'<tr><td colspan="2" style="color:#999">-</td></tr>'}</tbody>
-          </table>
-        </div>
-        <div>
-          <h4 style="font-size:12px;font-weight:700;color:#1b3a5c;margin-bottom:6px;padding:5px 8px;background:#eef4fb;border-left:3px solid #2e6da4">📌 기본 정보</h4>
-          <table class="attendee-table">
-            <tbody>
-              <tr><td style="font-weight:600;width:80px">일시</td><td>${dateStr} ${d.time||''}</td></tr>
-              <tr><td style="font-weight:600">장소</td><td>${d.place||'-'}</td></tr>
-              <tr><td style="font-weight:600">작성자</td><td>${d.writer||'-'}</td></tr>
-              <tr><td style="font-weight:600">총 참석</td><td>${d.totalCount}명</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      ${sections.map(s=>`
-        <div class="minutes-section">
-          <h4>📌 ${s.label}</h4>
-          <div class="content">${escapeHtml(s.content)}</div>
-        </div>
-      `).join('')}
-
-      <div style="margin-top:20px;padding-top:14px;border-top:1px solid #e8edf2;display:flex;justify-content:space-between;font-size:12px;color:#7a98b0">
-        <span>작성: ${d.writer||'-'}</span>
-        <span>대한적십자사 서울특별시지사 재난대응봉사회 · HL0FRC</span>
-        <span>작성일: ${new Date(d.updatedAt||d.createdAt).toLocaleDateString('ko-KR')}</span>
-      </div>
-    </div>
-  `;
+    </div>`;
 }
 
-function escapeHtml(str){
-  if(!str) return '';
-  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function populateYearFilter(menu){
+  const yrId=menu==='minutes'?'min-arch-year':`${menu}-year`;
+  const sel=document.getElementById(yrId); if(!sel) return;
+  const data=archiveCache[menu]||[];
+  const years=[...new Set(data.map(i=>(i.updatedAt||i.month||i.date||'').substring(0,4)).filter(Boolean))].sort().reverse();
+  const cur=sel.value;
+  sel.innerHTML='<option value="">연도</option>'+years.map(y=>`<option value="${y}"${y===cur?' selected':''}>${y}년</option>`).join('');
 }
 
-// ===================== PREVIEW =====================
+function filterArchive(menu){ renderArchive(menu); }
+function filterContacts(){ renderArchive('contacts'); }
+
+// ═══════════════════════════════════════════════════
+//  LOAD DOC INTO FORM
+// ═══════════════════════════════════════════════════
+async function loadDoc(menu,docId){
+  try{
+    const d=(await db.collection(COLLS[menu]).doc(docId).get()).data();
+    if(!d){showToast('문서를 찾을 수 없습니다','err');return;}
+    fillFormFromData(menu,d);
+    subTab(menu,'write');
+    showToast('불러오기 완료','ok');
+  }catch(e){showToast('오류: '+e.message,'err');}
+}
+
+function fillFormFromData(menu,d){
+  if(menu==='minutes'){
+    setMType(d.meetingType||'monthly');
+    const s=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||'';};
+    s('m-month',d.month);s('m-date',d.date);s('m-time',d.time||'10:00');
+    s('m-place',d.place);s('m-writer',d.writer);s('m-total',d.totalCount);
+    s('m-open',d.open);s('m-report',d.report);s('m-agenda',d.agenda);
+    s('m-other',d.other);s('m-close',d.close);s('m-award',d.award);s('m-plan',d.plan);
+    document.getElementById('att-list').innerHTML='';
+    (d.attendees||[]).forEach(a=>{addAtt();const rows=document.querySelectorAll('.att-row');const l=rows[rows.length-1];l.querySelector('.att-name').value=a.name||'';l.querySelector('.att-call').value=a.call||'';});
+    if(!(d.attendees?.length)) for(let i=0;i<3;i++) addAtt();
+  } else { fillForm(menu,d); }
+}
+
+// ═══════════════════════════════════════════════════
+//  DELETE
+// ═══════════════════════════════════════════════════
+async function deleteDoc(menu,docId){
+  if(!confirm('삭제하시겠습니까?')) return;
+  try{await db.collection(COLLS[menu]).doc(docId).delete();showToast('삭제 완료','ok');loadArchive(menu);}
+  catch(e){showToast('삭제 실패','err');}
+}
+
+// ═══════════════════════════════════════════════════
+//  PREVIEW / HTML BUILD
+// ═══════════════════════════════════════════════════
+let currentPDFData={menu:'',data:{}};
+
 function previewMinutes(){
-  const d = collectData();
-  currentMinutesData = d;
-  document.getElementById('modal-body').innerHTML = buildMinutesHTML(d);
+  const d=collectData('minutes');
+  currentPDFData={menu:'minutes',data:d};
+  document.getElementById('modal-title').textContent='회의록 미리보기';
+  document.getElementById('modal-body').innerHTML=buildMinutesHTML(d);
+  document.getElementById('modal-save-btn').onclick=()=>saveDoc('minutes');
+  document.getElementById('modal-pdf-btn').onclick=()=>dlPDF('minutes');
   document.getElementById('preview-modal').classList.add('open');
 }
 
-function closeModal(){
-  document.getElementById('preview-modal').classList.remove('open');
+function previewProxy(){
+  const d=collectData('proxy');
+  currentPDFData={menu:'proxy',data:d};
+  document.getElementById('modal-title').textContent='위임장 미리보기';
+  document.getElementById('modal-body').innerHTML=buildProxyHTML(d);
+  document.getElementById('modal-save-btn').onclick=()=>saveDoc('proxy');
+  document.getElementById('modal-pdf-btn').onclick=()=>dlPDF('proxy');
+  document.getElementById('preview-modal').classList.add('open');
 }
 
-function renderCurrentView(){
-  const d = collectData();
-  if(!d.month && !d.date){
-    document.getElementById('current-view-area').innerHTML = `
-      <div class="empty-state"><div class="empty-icon">📝</div><p>작성 탭에서 내용을 입력해주세요.</p></div>`;
-    document.getElementById('view-btn-group').style.display = 'none';
-    return;
-  }
-  currentMinutesData = d;
-  document.getElementById('current-view-area').innerHTML = buildMinutesHTML(d);
-  document.getElementById('view-btn-group').style.display = 'flex';
+function previewGeneric(menu){
+  const d=collectData(menu);
+  currentPDFData={menu,data:d};
+  const titles={actplan:'활동계획서',actreport:'봉사활동보고서'};
+  document.getElementById('modal-title').textContent=titles[menu]||'미리보기';
+  document.getElementById('modal-body').innerHTML=buildGenericHTML(menu,d);
+  document.getElementById('modal-save-btn').onclick=()=>saveDoc(menu);
+  document.getElementById('modal-pdf-btn').onclick=()=>dlPDF(menu);
+  document.getElementById('preview-modal').classList.add('open');
 }
 
-// ===================== SAVE =====================
-async function saveMinutes(){
-  const d = collectData();
-  if(!d.month){showToast('회의 연월을 입력해주세요.','error');return}
-  
-  showToast('저장 중...', '');
-  try {
-    d.updatedAt = new Date().toISOString();
-    await db.collection('minutes_rcnet').doc(d.month).set(d);
-    showToast('✅ Firebase에 저장되었습니다.', 'success');
-    currentMinutesData = d;
-    loadArchive();
-    closeModal();
-  } catch(err) {
-    console.error(err);
-    showToast('저장 실패: ' + err.message, 'error');
-  }
+async function previewDoc(menu,docId){
+  try{
+    const d=(await db.collection(COLLS[menu]).doc(docId).get()).data();
+    currentPDFData={menu,data:d};
+    const htmlFn=menu==='minutes'?buildMinutesHTML:menu==='proxy'?buildProxyHTML:buildGenericHTML;
+    document.getElementById('modal-title').textContent='미리보기';
+    document.getElementById('modal-body').innerHTML=menu==='minutes'?buildMinutesHTML(d):menu==='proxy'?buildProxyHTML(d):buildGenericHTML(menu,d);
+    document.getElementById('modal-save-btn').onclick=()=>saveDoc(menu);
+    document.getElementById('modal-pdf-btn').onclick=()=>dlPDF(menu);
+    document.getElementById('preview-modal').classList.add('open');
+  }catch(e){showToast('오류: '+e.message,'err');}
 }
 
-// ===================== PDF =====================
-function downloadPDF(){
-  const d = currentMinutesData || collectData();
-  const el = document.createElement('div');
-  el.style.cssText = 'padding:20px;font-family:Noto Sans KR,sans-serif;max-width:700px;margin:0 auto';
-  el.innerHTML = `
-    <style>
-      @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap');
-      *{font-family:'Noto Sans KR',sans-serif}
-      .minutes-header{text-align:center;margin-bottom:20px;padding:16px;background:#1b3a5c;border-radius:8px;color:#fff}
-      .minutes-header h2{font-size:18px;font-weight:900;letter-spacing:2px}
-      .minutes-section{margin-bottom:14px}
-      .minutes-section h4{font-size:12px;font-weight:700;color:#1b3a5c;margin-bottom:6px;padding:5px 8px;background:#eef4fb;border-left:3px solid #2e6da4}
-      .minutes-section .content{font-size:12px;line-height:1.7;color:#2c3e50;padding:0 10px;white-space:pre-wrap}
-      .attendee-table{width:100%;border-collapse:collapse;font-size:12px}
-      .attendee-table th{background:#eef4fb;color:#1b3a5c;padding:6px 10px;text-align:center;border:1px solid #d0dce8;font-weight:600}
-      .attendee-table td{padding:5px 10px;text-align:center;border:1px solid #e8edf2}
-    </style>
-    ${buildMinutesHTML(d)}
-  `;
-  document.body.appendChild(el);
-  
-  const filename = `minutes_${d.month||'unknown'}.pdf`;
-  html2pdf().set({
-    margin: [10,10,10,10],
-    filename,
-    html2canvas:{scale:2,useCORS:true},
-    jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
-  }).from(el).save().then(()=>{
-    document.body.removeChild(el);
-    showToast('📄 PDF 다운로드 완료', 'success');
-  });
+function renderMinutesView(){
+  const d=collectData('minutes');
+  const area=document.getElementById('minutes-preview-area');
+  const btns=document.getElementById('min-view-btns');
+  if(!d.month&&!d.date){area.innerHTML='<div class="empty-state"><div class="ei">📝</div><p>작성 탭에서 내용을 입력해주세요.</p></div>';btns.style.display='none';return;}
+  area.innerHTML=buildMinutesHTML(d);btns.style.display='flex';
+  currentPDFData={menu:'minutes',data:d};
 }
 
-function printMinutes(){
-  const d = currentMinutesData || collectData();
-  document.getElementById('print-area').innerHTML = buildMinutesHTML(d);
-  window.print();
-}
+function closeModal(){ document.getElementById('preview-modal').classList.remove('open'); }
 
-// ===================== ARCHIVE =====================
-async function loadArchive(){
-  try {
-    const snap = await db.collection('minutes_rcnet').orderBy('month','desc').get();
-    allArchive = snap.docs.map(d=>({id:d.id,...d.data()}));
-    renderArchive(allArchive);
-    populateYearFilter();
-  } catch(err) {
-    console.error('Archive load error:', err);
-    renderArchive([]);
-  }
-}
-
-function renderArchive(list){
-  const container = document.getElementById('archive-list');
-  if(!list.length){
-    container.innerHTML = `<div class="empty-state"><div class="empty-icon">📂</div><p>저장된 회의록이 없습니다.</p></div>`;
-    return;
-  }
-  container.innerHTML = list.map(item=>{
-    const [y,m] = (item.month||'').split('-');
-    const label = y && m ? `${y}년 ${m}월` : item.month;
-    const updated = item.updatedAt ? new Date(item.updatedAt).toLocaleDateString('ko-KR') : '-';
-    const attCnt = item.attendees?.length || 0;
-    const tLabel = item.meetingType==='exec' ? '임원회의' : '월례회';
-    const tColor = item.meetingType==='exec' ? '#7c3aed' : '#1a6e3a';
-    const tBg   = item.meetingType==='exec' ? '#ede9fe' : '#d1fae5';
-    return `
-      <div class="archive-item">
+// ═══════════════════════════════════════════════════
+//  BUILD HTML (회의록)
+// ═══════════════════════════════════════════════════
+function buildMinutesHTML(d){
+  const typeLabel=d.meetingType==='exec'?'임 원 회 의':'월 례 회';
+  const docTitle=d.meetingType==='exec'?'임원회의록':'월례회의록';
+  const dateStr=d.date?new Date(d.date).toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'}):'-';
+  const sects=[
+    {label:'개회 / 사회',v:d.open},{label:'보고 사항',v:d.report},
+    {label:'안건 및 결의',v:d.agenda},{label:'기타 / 공지',v:d.other},
+    {label:'폐회',v:d.close},{label:'표창 / 수상',v:d.award},{label:'훈련 / 활동 계획',v:d.plan}
+  ].filter(s=>s.v?.trim());
+  const attRows=(d.attendees||[]).map(a=>`<tr><td>${a.name||'-'}</td><td>${a.call||'-'}</td></tr>`).join('');
+  return `<div style="font-family:'Noto Sans KR',sans-serif">
+    <div class="minutes-hdr">
+      <div class="mh-row">
+        <img src="data:image/jpeg;base64,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" style="height:28px;border-radius:4px" alt="로고">
         <div>
-          <div class="month-label" style="display:flex;align-items:center;gap:8px">
-            📋 ${label}
-            <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;background:${tBg};color:${tColor}">${tLabel}</span>
-          </div>
-          <div class="meta-info">장소: ${item.place||'-'} · 참석 ${item.totalCount||attCnt}명 · 수정: ${updated}</div>
-        </div>
-        <div class="archive-actions">
-          <button onclick="loadMinutes('${item.month}')">👁️ 열기</button>
-          <button onclick="previewArchiveItem('${item.month}')">🔍 미리보기</button>
-          <button onclick="downloadArchivePDF('${item.month}')">📄 PDF</button>
-          <button onclick="deleteMinutes('${item.month}')" style="color:#b91c1c">🗑️</button>
+          <div style="font-size:10px;color:rgba(255,255,255,0.8)">대한적십자사 서울특별시지사 재난대응봉사회</div>
+          <div class="mh-title">${docTitle}</div>
+          <div style="margin-top:3px"><span class="mh-badge">${typeLabel}</span></div>
         </div>
       </div>
-    `;
-  }).join('');
+      <div class="mh-meta">${d.month?d.month.replace('-','년 ')+'월':''} ${d.date?'| '+dateStr:''} ${d.time?d.time:''} ${d.place?'| '+d.place:''}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div>
+        <h4 style="font-size:12px;font-weight:700;color:#1b3a5c;margin-bottom:6px;padding:5px 8px;background:#eef4fb;border-left:3px solid #b91c1c">👥 참석자 (총 ${d.totalCount}명)</h4>
+        <table class="att-tbl"><thead><tr><th>이름</th><th>콜사인</th></tr></thead><tbody>${attRows||'<tr><td colspan="2">-</td></tr>'}</tbody></table>
+      </div>
+      <div>
+        <h4 style="font-size:12px;font-weight:700;color:#1b3a5c;margin-bottom:6px;padding:5px 8px;background:#eef4fb;border-left:3px solid #b91c1c">📌 기본 정보</h4>
+        <table class="att-tbl"><tbody>
+          <tr><td style="font-weight:600;width:60px">일시</td><td>${dateStr} ${d.time||''}</td></tr>
+          <tr><td style="font-weight:600">장소</td><td>${d.place||'-'}</td></tr>
+          <tr><td style="font-weight:600">작성자</td><td>${d.writer||'-'}</td></tr>
+          <tr><td style="font-weight:600">참석</td><td>${d.totalCount}명</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+    ${sects.map(s=>`<div class="m-section"><h4>📌 ${s.label}</h4><div class="m-content">${esc(s.v)}</div></div>`).join('')}
+    <div style="margin-top:16px;padding-top:10px;border-top:1px solid #e8edf2;display:flex;justify-content:space-between;font-size:11px;color:#7a98b0">
+      <span>작성: ${d.writer||'-'}</span><span>대한적십자사 서울특별시지사 재난대응봉사회 · HL0FRC</span>
+      <span>${new Date(d.updatedAt||Date.now()).toLocaleDateString('ko-KR')}</span>
+    </div>
+  </div>`;
 }
 
-function filterArchive(){
-  const kw = document.getElementById('search-keyword').value.toLowerCase();
-  const yr = document.getElementById('filter-year').value;
-  const filtered = allArchive.filter(item=>{
-    const matchYear = !yr || (item.month||'').startsWith(yr);
-    const matchKw = !kw || JSON.stringify(item).toLowerCase().includes(kw);
-    return matchYear && matchKw;
-  });
-  renderArchive(filtered);
+// ═══════════════════════════════════════════════════
+//  BUILD HTML (위임장)
+// ═══════════════════════════════════════════════════
+function buildProxyHTML(d){
+  const delegLines=(d.delegators||'').split('\n').filter(Boolean);
+  return `<div style="font-family:'Noto Sans KR',sans-serif">
+    <div class="minutes-hdr">
+      <div class="mh-row">
+        <img src="data:image/jpeg;base64,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" style="height:28px;border-radius:4px" alt="로고">
+        <div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.8)">대한적십자사 서울특별시지사 재난대응봉사회</div>
+          <div class="mh-title">위 임 장</div>
+        </div>
+      </div>
+    </div>
+    <table class="att-tbl" style="margin-bottom:14px">
+      <tbody>
+        <tr><td style="font-weight:600;width:100px">회 의 명</td><td>${d.meeting||'-'}</td></tr>
+        <tr><td style="font-weight:600">일 시</td><td>${d.date||'-'}</td></tr>
+        <tr><td style="font-weight:600">수 임 인</td><td>${d.delegate||'-'} (${d.delegateCall||''})</td></tr>
+        <tr><td style="font-weight:600">위임 사항</td><td>${esc(d.content||'-')}</td></tr>
+      </tbody>
+    </table>
+    <h4 style="font-size:12px;font-weight:700;color:#1b3a5c;margin-bottom:8px;padding:5px 8px;background:#eef4fb;border-left:3px solid #b91c1c">위임인 목록</h4>
+    <table class="att-tbl" style="margin-bottom:16px"><thead><tr><th>#</th><th>이름 / 콜사인</th><th>서명</th></tr></thead>
+      <tbody>${delegLines.map((l,i)=>`<tr><td>${i+1}</td><td>${l}</td><td style="width:80px"></td></tr>`).join('')}</tbody>
+    </table>
+    <div style="text-align:right;font-size:12px;color:#7a98b0">${d.writeDate||''} 작성: ${d.writer||'-'}</div>
+  </div>`;
 }
 
-function populateYearFilter(){
-  const sel = document.getElementById('filter-year');
-  const years = [...new Set(allArchive.map(i=>(i.month||'').split('-')[0]).filter(Boolean))].sort().reverse();
-  const cur = sel.value;
-  sel.innerHTML = '<option value="">연도</option>' + years.map(y=>`<option value="${y}" ${y===cur?'selected':''}>${y}년</option>`).join('');
+// ═══════════════════════════════════════════════════
+//  BUILD HTML (일반)
+// ═══════════════════════════════════════════════════
+function buildGenericHTML(menu,d){
+  const titles={actplan:'활동계획서',actreport:'봉사활동보고서',meetdoc:'회의자료',schedule:'일정',volunteer:'봉사시간 기록'};
+  const rows=Object.entries(d).filter(([k])=>!['id','updatedAt'].includes(k)).map(([k,v])=>`<tr><td style="font-weight:600;width:110px">${k}</td><td>${esc(String(v))}</td></tr>`).join('');
+  return `<div style="font-family:'Noto Sans KR',sans-serif">
+    <div class="minutes-hdr">
+      <div class="mh-row">
+        <img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAoHBwgHBgoICAgLCgoLDhgQDg0NDh0VFhEYIx8lJCIfIiEmKzcvJik0KSEiMEExNDk7Pj4+JS5ESUM8SDc9Pjv/2wBDAQoLCw4NDhwQEBw7KCIoOzs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozv/wAARCAB4AUADASIAAhEBAxEB/8QAHAABAAIDAQEBAAAAAAAAAAAAAAUGAQQHAgMI/8QAShAAAQMDAgIECAgNAwMFAAAAAQACAwQFEQYSITETQVFhBxQiMjZxstEVF3J0gZGTwhYzNUJSU1RVc5KhscFEZIIjJrM0g5Si4f/EABsBAQEAAwEBAQAAAAAAAAAAAAABAgQFBgMH/8QAMBEBAAEDAwICBwkBAAAAAAAAAAECAxEEITEFQVFxBhMyM0JSkRIUFiI0U2GhwdH/2gAMAwEAAhEDEQA/AOzIiwgyiwsoCLCIMosIgyiwiDKIiAiLCAiIgLKwsoMIiICysLKAiLCDKIiAiIgIiICIiAiIgIiIMIiICIgQEREBZWEQFz+5+EiroLrV0bLZC9tPM6MOMxBODjOMLoC4ZqL0kufzuT2itfUV1URE0u30XSWdTdqpuxmIhafjTrf3TB9u73LLfClWlwHwTBxP693uVEWW+cPWFqRfueL0tzo2iimZij+5/wCv0EDloPasryzzG+pel035+yiIgwi+VVUNpaSapeCWxMc8gcyAMqq/GTacf+lq/wCVvvUyuFvRQNHq+hrbPWXOOCdsVGQHtcBuPLlx719rXqaju1tqq+GKZsdLneHgZOG7uHFMmEwihrDqej1C6dtLFNH0AaXdIAM5zywe5aNdr22UFdPRyU9S58DyxxaG4yPpTMGJWdFyq16tqKbUBrKuqq5aPdIRDvzwOdvAnHBXeyavoL7XOo6aGdj2xmQmQADAIHUe9InJMYTyKBsur6G+V7qKnhnZI2MvJkAxgEDqPetq+3+lsFPHPVMke2R+wCMDOcZ6ymTCURVD4yLQeVNV/wArfetm2a7tl0uMNDBBUtkmJDS4NwOBPb3JmDErMigrzq2hslfHR1EM75HtDgYwMcTjrPcp1VBFD37UtJp8wCqimf0+7b0YBxjHPJ71IUFZHcKCCsia5rJ2B7Q7mAe1BsrCh7/qSl08IDUwzSdPu29GBwxjtPet+GujmtjLgGuEboem2nmBjKZMNlFUB4SbQeVNV/U33ofCTaBzpqsf8W+9TMLiVvRQdRqyhprFS3h0UxgqnYY0Abhz58cdSkbXcYrtbYa6Br2RzAlofjIwSP8ACZRuLC+NbVMoaGerkDnMgjdI4N5kAZ4KMsOp6PUL52UsU0ZgDS7pABnOeWD3K5Eyi1LrcorTbZq+dj3xwgFzWYyckDr9a17FfqbUFNLPSxysbG/YRIADnAPUe9BJosogwiIgIq9d9a2qy3B9DVNqDKxocdkYI4jI45Wj8Zdi/V1f2Q96wm5RG0y2qNFqK6YqpomYn+FvXDNRektz+dye0V0T4y7F+hV/ZD3rmt2qo628VlXFu6Oed8jdwwcE5GVq6mumqmMS9F0HTXrV6qblMxt382ost84esLCy3zh3FaUcvV3ImaJiH6Bj/Ft9QXpVBvhJsbWgFtXwH6oe9Z+MqxfoVf2Q966/raPF+azoNV+3P0W5FWKHX9mr62GkhbVdJO8MbuiwMnt4qzqxVFXEte7ZuWpxcpmPNp3n8iV3zeT2SqL4OqGjrXV4q6WGfYI9vSsDsZ3csq9Xn8iV3zeT2SqZ4MfPuPyYvvJPLCOE/qaipaLSVybS00UDXR5cImBoJyOxVfSlwoqTS93gqKqKKWXfsY92C7/p44D1q3aw9FLh/C/yFRtPaeobrYLlXVBl6al3bNj8DgzdxGO1SeVjhJ+DD8bcvkxfeWlrlgqdVQ0MEMUTnNYC4NA3ueeZPX1Ld8GP425fJi+8t7XFgqqmWG729jnzwACRrBl2AchwHXhPhPifC5+D6gprNNLTTzGqhjL9z3Da8gZIx1J4NXRSUlaDDH0sThiXaN+1w5Z7MtUdVa2u90oDbIqDbUyt2PfG0lxB4HDccMq06PsL7HaHCoAFTUHfIB+aMcG/R/lI52J43UHS96p7DeJKyojkkY6J0eI8ZySD1+pdPo5qLUFrp6x1K2SKUbmMnY1xbzHeFzzQVPBVajljqII5meLvO2RocM7m8eKumortJYKCCC20BfLO7o4QxnkMPqHM9gSngq5UPWvizNSzRUkUUbIWNYWxtAG7GTwHrV1rblarNY6W909rppOkLA0xsawjcDxzj1hRlo0H41QVE95c8VlTktw7jETx3HtJPUvOnqi6aeuken7nSvmp53kU72jcAeZIP6PWRzCbitX6+N1BeIaxtOYA1rI9pfu5Oznl3rsC5nr5jW6opw1oA6GPkMfnFXfUd5dZLU6qjgdM8uDGAeaHHlnuyrG2UnspXhGrWT3mClY7Pi0fl9znHP8AYD61aNDVrKvTFPGCN9NmJ47MHI/oQobTmkZrhLLdb+1znTg7Yn8HEnm53Z3BabKe6aDvBkjjkqrdO4NJaM7h1Z7HD+qm8Tle2G34TfNt3/ufdVssbQ7T1A1wBBpmAgjgfJCqPhMeDHbHHyc9IcO4EcGq3WE50/bz/to/ZCscpPCC1xQ26j0zK+KhpopHSMa1zImtI8rPMDsBWj4PKWhrLbVtqKSCaSOYHMkbXEAtHaO4r4+EC5GvuFNZKQGV8bw57W8cvPBrfqP9Vp6SrJtN6lkt1xYYRUYjeHfmu/NOew5xnvU7r2TfhDijg09SxQxtjjbUANYxoAHku5ALGktUWmls1BbJqh7anOzaInEZLjjjjHWF9PCR+Qqf5yPZcsaR03Z6qxUFxmomvquL+k3u84OODjOOoJ3TsmtUyiHS9xcSBmBzePfw/wAqn+DSYNuddBkZfC1w78H/APVIeEa7NZSRWiIl0szhJIG9TRyH0n+yrVtNXpHUdHNXxOja9gLx2xu4H6QeY7kmd1jhfta+iFw+S32wqrovUtrsltqYa+d0b3zbwBG53DaB1DuVp1m4O0fXuaQQWNII6/KaqzofT1pvNsqZbhRid7JtjSXuGBtHDge9WeUjh0KKVk0LJYzlj2hzTjHA8V7XiKNkMTYo27WMaGtHYByXtZMWEREHIPCD6YVP8KP2VWlZfCD6YVP8KP2VWlybvty/Sumfo7flAiIvm6AiIgIiKCU016S235yz+67gFw7TXpLbfnLP7ruI5LoaX2ZeJ9Ivf0+X+ta5xPntVXDG3c+SB7WjtJacLl+nrzcNNPqAy1ySumDQ4Pa5u3Ge7vXWUW1MZecicOaXfWlfcrVUUc1pELJm7TJl3k8e8Lb0Z6IXv/n/AOJWbWHopcP4X+Qqzoz0Rvf/AD/8Sx7sux4MPxty+RF95X2V5jhe8c2tJH1KheDH8bcfkRfeV8qBmmlA/QP9lY4SeVX0jqmrv9dURVMEEYjiDwYwck5x1lWw8QQuU6LvVFZK6omrnvYySINbtYXcc56lcfjA0/8Ar5/sHe5InYmN2hpPSdysl6fV1ToDG6FzBseSckg9ncrmWh2MgHByM9ShLbq+z3auZRUksrppAS0Ohc0cBk8T6lOKxhJz3Uu563uFDc6mlitHSshkLGv3O8rHXyWr8YNyJBNiGRy4v4f/AFV+RTE+JmPBzeTVtLXXKB1107TOJc1hkfkva3PVkdWV0cta4YcARnPELmvhA9Kaf+DH7ZXS0hZU7WmprlY66nhonRBskRcd7N3HOFLM1dYXQsMlzg3FoLhx5/Uqp4SwfhWjOP8ATu9pe46fwf8ARNMk8m8tG7y5eamd1xs2tVawp2spvgmekqjl3SB8e/byxz+lWmifPW6egfHI2CealaWva3gxxbzA9fUuZakj04xtP8AyueSXdMC55wMDHnfSunWH8gW/5tH7IVjlJ4QultJG1SuuNxeJq95OPK3BmeZz1k9vetrVOl4b/TiSItirYhiOQ8nD9E939lYEVwmVA1bTVtHoq3QXCfp6lk4D38/zXcM9eOWetWHRfohQYOPId7RUb4SfyFT/ADkey5SWivRGg+S72ypHK9kdZdGzR3qW63mo8ZnbKXRYPB3Y4/4HUpnUNgpr/QdBL5ErMuhlA4sd/kHrClVlXCZUirt1xtfg4rqW5TtlezAjDTkMZvbgZ6+3uzhfTwafker+c/dCldbeiFw+S32wonwafkes+c/dCndey6IiLJiwiysIOT69oKyfVlRJFSTyMMceHMic4Hye0BVz4LuH7BVfYO9y72mFq1aaKqpnL0Gn67csWqbcUROHBPgy4D/QVX2DvctdzXMcWvaWuBwQRggr9B4XDNRektz+dye0Vr3rMW4iYl3Ol9Vr1tyqiqnGIyjkHFFlvnD1ha8O5XV9mmZbPwZcP2Cq+xd7k+DLh+wVX2Lvcu8RjyG+pesLf+6U+Lx34ju/JDi2nbfXR6jtz30VQ1ralhLnQuAAz24XaRyTCL7W7cW4xDka/XVayuK6oxgRFG3i7G1uoQIRJ41VMgOXY2g9a+rntyrpYK6lkpqmMSQyDD2HkQtejsltoKWalpaRkUM+ekYCcOyMH+i1NV19TbdPz1NHL0UzXMAdgHGXAHge5e9Q3mSy2kVccLZZHyMjaHu2tBcebj2KK2LdZLbaHSGgpGQGXAftJ445cz3lbyrxp9W46UXa19uzxV23+bdlb2nrs+82llVJE2OUPdHIGHLS5pwS09YQeZNLWKSR0j7XTlzjknZjivP4J2D91U/8qrrNV3CWSfpLzZ6PZO+NsU8Dy7AcQCcPUpYr1V3C5iB96tNYwMLnR0sL2vx25LiMZIU2N0nSadtFBVNqqW3wwzMzte0cRkYKklXKnV9LbtQ1dvuUkcEEUcbonhjnOcSMkHGVpM1u6ooLjJFRVT+jfI2nqKemc6MNA8lzieR6zwVzBiVwRaFjqpq2x0VTUODpZYGueQMZJHFeLZdvhGsuNP0PR+JT9Fu3Z38M57lUZrrBarnUtqa2iZNK0ABzicgA5HIqRUNbrjU1GpbvRSyAwUoi6Ju0DbuaSePWtGp1bW0s8UM2m61r53lkQMsflnu4qbKm7haLfdmsbXUkc+zzS4cR9K0PwN07+6ofrd71q3O+XKOz01WKOW3TPro4XRTbXksJ48sjj9asFVP4tSTVBbu6KNz8ZxnAymxuifwM07+64vrd71MQQR00EcELAyONoaxo6gOQUdHdX1elvhWJnQySUhma3O7adpP0r1p2snuGn6CrqX75poGve4ADJPcEEmiIqjUuNrorrC2Gup2zxtduDXEjB5Z4etfSjoqe30rKWkiEUMYwxg5DjlfdEBERB8K2ip7hSSUlXEJYZBh7CTg8c9S+VttNBaInxUFM2Bj3bnBpJycYzxW4iAiIgIiIMIiygwuGai9Jbn87k9orua4ZqH0kufzuT2itTV+zD0vo57+vy/1HLI5j1hY+lAQCOPWFoRy9hdn8kv0FH5jfUva8s8xvqXpdp+VMIiICpmt6x8lZR0tG3ppaHNdO1vNrG4x9eT9SuairVYKa2S1U5kkqZ6pxMksx3Et6m+of1UndYV3VcEtZZJbvBeZ5aKYxuZS7G7MEgc+fPj61NagluDacRQ0VuqKOSMNlNbPsBPZjGFFais1PZNI3COmkk6GWdj2xvdlsQ3DyW93NSGsqqOk0+ySSmpahpmjbtqgSwZ6zjsUVUBBTuuJozZrSZBGJeN0k6HGcY54z3YVvtFwqaG3yTXGlt1FbadnkPo5jI0ccEYAVWJoOW/Ro+mRWvRUEVPp9sEVXS1QZM/L6VxcwZOccezKEqvDXUVI6ZtJq6lijkmfLtfbS8guOeZCkLVqCjp7jG+p1XS1EZy0xMt3RFxPAeUBw4qWfZ9Sue4t1JE0E8B4i3gPrWvQy3mi1XBbLhc2VsU1M+XhTtjwQcdSbmzzdKa5Wu/1d2gq7TBDVsjiHjz3N4tHVjHeoeOjaaS4Om1fSxT1L5JBTUdUwRPLhyO7jx5epWHWdeKCioy6Ojc2WpDHOrI97GDB8rCq9RW0M8EkJumlGCRpbubTEOGesHtUkhd7Hii01RGd7A2GmaXua4OaABxORzCrmj7pm81jqhvRNvDjU0pcfOAc5u314UlT2iC9aTt1FFc99LGGtlkpj5M7W5Bbn1j+i37tpyhutFBTHfTeKkGCSAhro8dQ7vcrujTs/pnqD1QeyVHawuQivdt6JhlFtd43VbfzGZA4/1UhZh/3jf2gnIbAM9fmlbdp05BboarxmV1dPWk+MTSji8dTcdmEVp6wkZNaKCSNwcx9dA5rgeBBPNberLg2g09VYwZahvQQs63OfwwPrJ+hQl7tDLHYqamiqZpYTc4XRNldnom580dyn6mww1l+gutRNJIKZmIqc+Y1+T5fr9yIh7JVh+ia23yDZU26GWnlYeYwHYP0hbGiHXM2KlbVR0zaQU7PF3RuJe75QPAdXJfe8WSlY6uvEbpIp3UUrJWsdhkvk8C4dowvtpHjpK1/Nmf2SBMoiLJBERAREQEREBERAREQEREBR8tgs88r5ZbXRySPJc5zoWkuPaThSCJhlTVVTxOEZ+Ddj/c9D/wDHb7k/Bux5z8D0PD/bt9yk0UxDL1tz5p+rAGFlEVfMWFlEGMIsog8SwxTxmOaNkjDza9oIP0FJIYpmbJY2Pbz2uaCF7RBr+IUf7JB9m33L6xwxwt2xRtjbnOGtAC9ogL5GnhdUNqDDGZmtLWyFo3AdmexfVEHzkhimaGyxskAOQHNBXz8RpP2WH7Me5bCIPDI2RMDI2NY0cg0YAXpZRB8mU8Mc0kzIY2yy43va0Bz8csnrX0wsog+U1PBUtayeGOVrXBwD2hwBHI8etfTCyiDy9jZGOje0OY4EOaRkEdixDDFTwshhjZHGwYaxgwGjsAXtEBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREGFlEQEREBERAREQEREBERAREQEREBERAREQf/2Q==" style="height:28px;border-radius:4px" alt="로고">
+        <div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.8)">대한적십자사 서울특별시지사 재난대응봉사회</div>
+          <div class="mh-title">${titles[menu]||menu}</div>
+        </div>
+      </div>
+    </div>
+    <table class="att-tbl"><tbody>${rows}</tbody></table>
+  </div>`;
 }
 
-async function loadMinutes(month){
-  try {
-    const doc = await db.collection('minutes_rcnet').doc(month).get();
-    if(!doc.exists){showToast('회의록을 찾을 수 없습니다.','error');return}
-    const d = doc.data();
-    fillFormFromData(d);
-    switchTab('write');
-    showToast(`${month} 회의록을 불러왔습니다.`, 'success');
-  } catch(err) {
-    showToast('불러오기 실패: '+err.message,'error');
-  }
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ═══════════════════════════════════════════════════
+//  PDF
+// ═══════════════════════════════════════════════════
+function dlPDF(menu){
+  const d=currentPDFData.data && currentPDFData.menu===menu ? currentPDFData.data : collectData(menu);
+  const html=menu==='minutes'?buildMinutesHTML(d):menu==='proxy'?buildProxyHTML(d):buildGenericHTML(menu,d);
+  const el=document.createElement('div');
+  el.style.cssText='padding:18px;font-family:Noto Sans KR,sans-serif;max-width:680px;margin:0 auto';
+  el.innerHTML=html; document.body.appendChild(el);
+  html2pdf().set({margin:[10,10,10,10],filename:`${menu}_${(d.month||d.date||Date.now())}.pdf`,
+    html2canvas:{scale:2,useCORS:true},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}})
+    .from(el).save().then(()=>{document.body.removeChild(el);showToast('📄 PDF 저장 완료','ok');});
 }
 
-function fillFormFromData(d){
-  setMeetingType(d.meetingType||'monthly');
-  document.getElementById('meeting-month').value = d.month||'';
-  document.getElementById('meeting-date').value = d.date||'';
-  document.getElementById('meeting-time').value = d.time||'10:00';
-  document.getElementById('meeting-place').value = d.place||'';
-  document.getElementById('writer').value = d.writer||'';
-  document.getElementById('total-count').value = d.totalCount||'';
-  document.getElementById('sect-open').value = d.open||'';
-  document.getElementById('sect-report').value = d.report||'';
-  document.getElementById('sect-agenda').value = d.agenda||'';
-  document.getElementById('sect-other').value = d.other||'';
-  document.getElementById('sect-close').value = d.close||'';
-  document.getElementById('sect-award').value = d.award||'';
-  document.getElementById('sect-plan').value = d.plan||'';
-  
-  document.getElementById('attendee-list').innerHTML = '';
-  (d.attendees||[]).forEach(a=>{
-    addAttendee();
-    const rows = document.querySelectorAll('.attendee-row');
-    const last = rows[rows.length-1];
-    last.querySelector('.att-name').value = a.name||'';
-    last.querySelector('.att-call').value = a.call||'';
-  });
-  if(!d.attendees?.length) for(let i=0;i<3;i++) addAttendee();
+async function dlDocPDF(menu,docId){
+  try{
+    const d=(await db.collection(COLLS[menu]).doc(docId).get()).data();
+    currentPDFData={menu,data:d}; dlPDF(menu);
+  }catch(e){showToast('오류','err');}
 }
 
-async function previewArchiveItem(month){
-  try {
-    const doc = await db.collection('minutes_rcnet').doc(month).get();
-    if(!doc.exists){showToast('없는 회의록입니다.','error');return}
-    const d = doc.data();
-    currentMinutesData = d;
-    document.getElementById('modal-body').innerHTML = buildMinutesHTML(d);
-    document.getElementById('preview-modal').classList.add('open');
-  } catch(err) {
-    showToast('오류: '+err.message,'error');
-  }
+// ═══════════════════════════════════════════════════
+//  CLEAR
+// ═══════════════════════════════════════════════════
+function clearMinutes(){
+  if(!confirm('초기화할까요?')) return;
+  ['m-month','m-date','m-time','m-place','m-total','m-open','m-report','m-agenda','m-other','m-close','m-award','m-plan']
+    .forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('m-time').value='10:00';
+  document.getElementById('att-list').innerHTML=''; for(let i=0;i<3;i++) addAtt();
+  photoStore['minutes']=[]; document.getElementById('min-photos').innerHTML='';
+  showToast('초기화 완료','ok');
 }
 
-async function downloadArchivePDF(month){
-  try {
-    const doc = await db.collection('minutes_rcnet').doc(month).get();
-    if(!doc.exists){showToast('없는 회의록입니다.','error');return}
-    currentMinutesData = doc.data();
-    downloadPDF();
-  } catch(err) {
-    showToast('오류: '+err.message,'error');
-  }
+function clearSection(menu){
+  showToast('초기화 완료','ok');
 }
 
-async function deleteMinutes(month){
-  if(!confirm(`${month} 회의록을 삭제하시겠습니까?`)) return;
-  try {
-    await db.collection('minutes_rcnet').doc(month).delete();
-    showToast('삭제 완료', 'success');
-    loadArchive();
-  } catch(err) {
-    showToast('삭제 실패: '+err.message,'error');
-  }
+// ═══════════════════════════════════════════════════
+//  CUSTOM LINKS
+// ═══════════════════════════════════════════════════
+let customLinks=[];
+function loadCustomLinks(){
+  db.collection('rc_links').orderBy('addedAt','desc').get().then(snap=>{
+    customLinks=snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderCustomLinks();
+  }).catch(()=>{});
 }
 
-// ===================== CLEAR FORM =====================
-function clearForm(){
-  if(!confirm('입력된 내용을 모두 초기화하시겠습니까?')) return;
-  const now = new Date();
-  document.getElementById('meeting-month').value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  document.getElementById('meeting-date').value = now.toISOString().split('T')[0];
-  document.getElementById('meeting-time').value = '10:00';
-  document.getElementById('meeting-place').value = '';
-  document.getElementById('writer').value = 'HL2TLS';
-  document.getElementById('total-count').value = '';
-  document.getElementById('sect-open').value = '';
-  document.getElementById('sect-report').value = '';
-  document.getElementById('sect-agenda').value = '';
-  document.getElementById('sect-other').value = '';
-  document.getElementById('sect-close').value = '';
-  document.getElementById('sect-award').value = '';
-  document.getElementById('sect-plan').value = '';
-  document.getElementById('attendee-list').innerHTML = '';
-  for(let i=0;i<3;i++) addAttendee();
-  uploadedPhotos = [];
-  document.getElementById('preview-images').innerHTML = '';
-  document.getElementById('btn-extract').style.display = 'none';
-  document.getElementById('ai-status').className = 'ai-status';
-  showToast('초기화 완료', 'success');
+async function addCustomLink(){
+  const t=document.getElementById('lk-title').value.trim();
+  const u=document.getElementById('lk-url').value.trim();
+  const de=document.getElementById('lk-desc').value.trim();
+  if(!t||!u){showToast('이름과 URL을 입력해주세요','err');return;}
+  try{
+    await db.collection('rc_links').add({title:t,url:u,desc:de,addedAt:new Date().toISOString()});
+    document.getElementById('lk-title').value='';
+    document.getElementById('lk-url').value='';
+    document.getElementById('lk-desc').value='';
+    showToast('링크 추가 완료','ok'); loadCustomLinks();
+  }catch(e){showToast('저장 실패','err');}
 }
 
-// ===================== TOAST =====================
-function showToast(msg, type=''){
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = `toast ${type} show`;
-  setTimeout(()=>t.classList.remove('show'), 3000);
+function renderCustomLinks(){
+  const c=document.getElementById('custom-links'); if(!c) return;
+  if(!customLinks.length){c.innerHTML='';return;}
+  c.innerHTML='<div class="links-grid">'+customLinks.map(lk=>`
+    <a class="link-card" href="${lk.url}" target="_blank">
+      <div class="lc-icon">🔗</div>
+      <div class="lc-title">${lk.title}</div>
+      <div class="lc-desc">${lk.desc||lk.url}</div>
+    </a>`).join('')+'</div>';
 }
 
-// Close modal on overlay click
-document.getElementById('preview-modal').addEventListener('click', e=>{
-  if(e.target===e.currentTarget) closeModal();
-});
+// ═══════════════════════════════════════════════════
+//  IMAGE MODAL
+// ═══════════════════════════════════════════════════
+function openImgModal(src){
+  document.getElementById('img-modal-img').src=src;
+  document.getElementById('img-modal').classList.add('open');
+}
+function closeImgModal(){document.getElementById('img-modal').classList.remove('open');}
+
+// ═══════════════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════════════
+function showToast(msg,type=''){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className=`toast ${type} show`;
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+document.getElementById('preview-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
 </script>
 </body>
 </html>
-
-
-
-
-
