@@ -6,7 +6,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>인시스 점심주문관리 v6.3</title>
+<title>인시스 점심주문관리 v6.4</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -670,6 +670,14 @@ body.season-warm {
 .db-daily-row { display:flex; align-items:center; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--border); font-size:12px; }
 .db-daily-row:last-child { border-bottom:none; }
 .db-empty { text-align:center; color:var(--muted); font-size:13px; padding:20px 0; }
+
+.rest-link-btn {
+  display:inline-block; background:var(--tagbg); border:1.5px solid var(--border);
+  border-radius:8px; padding:7px 14px; font-size:13px; color:var(--navy);
+  text-decoration:none; font-weight:700; margin-bottom:8px;
+  transition:all .15s;
+}
+.rest-link-btn:hover { background:var(--navy); color:#fff; border-color:var(--navy); }
 </style>
 
 <script>
@@ -704,7 +712,7 @@ body.season-warm {
   <div class="hd-inner">
     <div class="hd-left" style="display:flex;align-items:center;gap:10px">
       <h1>인시스 점심주문관리</h1>
-      <span class="ver-badge">v6.3</span>
+      <span class="ver-badge">v6.4</span>
     </div>
     <div class="hd-right">
       <div id="weatherInfo">🌡️ 로딩중</div>
@@ -819,6 +827,7 @@ body.season-warm {
           <span class="step-num">3</span>
           <span class="step-title">메뉴 선택 및 주문 등록</span>
         </div>
+        <div id="restLinkArea" class="hidden"></div>
         <div id="menuTags"><span class="tag-hint">식당을 먼저 선택하세요</span></div>
         <div class="form-row">
           <label>주문자 이름 <span style="font-weight:400;color:var(--muted);font-size:11px">(본인 또는 대신 입력)</span></label>
@@ -957,7 +966,7 @@ body.season-warm {
     <div id="restaurantAdminList"></div>
   </div>
 
-  <div class="footer-info">점심주문관리 시스템 v6.3</div>
+  <div class="footer-info">점심주문관리 시스템 v6.4</div>
 
   <!-- ══ AI 추천 모달 ══ -->
   <div id="aiModal" class="modal-overlay hidden">
@@ -1085,6 +1094,13 @@ const DEFAULT_RESTAURANTS = [
   { name:'조쉐프의쌀국수', phone:'', deadline:'', menus:['소고기쌀국수','왕새우팟타이','나시고랭'] },
   { name:'시댁',           phone:'', deadline:'', menus:['돼지김치전골','제육볶음+찌개+공기밥'] },
   { name:'배부장',         phone:'', deadline:'', menus:['김치찌개','된장찌개'] },
+  { name:'서브웨이',        phone:'', deadline:'', link:'https://www.subway.co.kr/', menus:[
+    '이탈리안 비엠티(15cm세트)','에그마요(15cm세트)','스테이크&치즈(15cm세트)',
+    '풀드포크 바비큐(15cm세트)','로티세리 바비큐 치킨(15cm세트)',
+    '쉬림프 에그마요 랩 세트','치킨 베이컨 미니랩 세트','스테이크앤치즈 아보카도 랩 세트',
+    '스테이크앤치즈 아보카도 랩','쉬림프 에그마요 랩','치킨 베이컨 미니랩',
+    '웨지 포테이토','Cheesy 웨지 포테이토','Bacon Cheesy 웨지 포테이토',
+  ] },
   { name:'기타',           phone:'', deadline:'', menus:[] },
 ];
 
@@ -1284,6 +1300,18 @@ function selectRest(name) {
 
   const rest = dynRestaurants.find(r=>r.name===name);
   const el = $('menuTags');
+
+  // 식당 링크가 있으면 메뉴 위에 링크 버튼 표시
+  const linkEl = $('restLinkArea');
+  if(linkEl) {
+    if(rest && rest.link) {
+      linkEl.innerHTML = '<a href="'+rest.link+'" target="_blank" class="rest-link-btn">🔗 '+esc(rest.name)+' 홈페이지 보기</a>';
+      linkEl.classList.remove('hidden');
+    } else {
+      linkEl.classList.add('hidden');
+    }
+  }
+
   if (!rest || !rest.menus || !rest.menus.length) {
     el.innerHTML='<span class="tag-hint">직접 입력해 주세요</span>'; return;
   }
