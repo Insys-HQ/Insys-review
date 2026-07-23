@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>건조실 사양 시뮬레이터 v5.5</title>
+<title>건조실 사양 시뮬레이터 v6.0</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
@@ -159,7 +159,7 @@ input[type=range].sl::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
     <div class="hdr-right">
       <button class="btn-save" onclick="saveAll()">💾 저장</button>
       <button class="btn-save" onclick="loadLast()">📂 불러오기</button>
-      <span class="vbadge">v5.5</span>
+      <span class="vbadge">v6.0</span>
     </div>
   </div>
 </div>
@@ -190,6 +190,28 @@ input[type=range].sl::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
             <option value="1.0">1.0 — 경량 (패드·직물)</option>
             <option value="1.15">1.15 — 중량 (두꺼운 직물)</option>
             <option value="1.3" selected>1.3 — 고함수 (세탁 직후)</option>
+          </select></div>
+      </div>
+
+      <!-- 투입 제품 물성 -->
+      <div style="margin-top:8px;padding:10px;background:linear-gradient(135deg,#dce8f5,#e0f2ef);border-radius:8px;border:1px solid #b6d0ea;">
+        <div style="font-size:11px;font-weight:700;color:var(--pr);margin-bottom:6px;display:flex;align-items:center;gap:5px;">
+          <span style="font-size:14px;">📦</span> 투입 제품 물성
+        </div>
+        <div class="room-grid">
+          <div class="fg"><label>가로 L (mm)</label><input type="number" id="p_L" value="600" step="10" min="10" oninput="go()"></div>
+          <div class="fg"><label>세로 W (mm)</label><input type="number" id="p_W" value="400" step="10" min="10" oninput="go()"></div>
+        </div>
+        <div class="room-grid">
+          <div class="fg"><label>두께 H (mm)</label><input type="number" id="p_H" value="5" step="1" min="1" oninput="go()"></div>
+          <div class="fg"><label>개당 함수량 (%)</label><input type="number" id="p_mc" value="60" step="5" min="5" max="200" oninput="go()"></div>
+        </div>
+        <div class="fg"><label>제품 종류 (밀도 자동)</label>
+          <select id="p_type" oninput="go()">
+            <option value="0.15">경량 직물 (0.15 g/cm³) - 수건/거즈</option>
+            <option value="0.30" selected>표준 직물 (0.30) - 시트/의류</option>
+            <option value="0.45">두꺼운 직물 (0.45) - 담요/타월</option>
+            <option value="0.60">밀집 직물 (0.60) - 가죽/카펫</option>
           </select></div>
       </div>
     </div>
@@ -356,17 +378,31 @@ input[type=range].sl::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
   <!-- ═══════════ RIGHT: 대시보드 ═══════════ -->
   <div class="right">
 
-    <!-- 결과 요약 바 -->
-    <div class="summary-bar">
+    <!-- 결과 요약 바 - 건조 결과 중심 -->
+    <div class="summary-bar" style="background:linear-gradient(135deg,#1a4f8a08,#0c7a6908);">
       <div class="sum-grid">
-        <div class="sum-item"><div class="sum-val" id="s_vol">—</div><div class="sum-lbl">건조실 체적 (m³)</div></div>
-        <div class="sum-item"><div class="sum-val o" id="s_ach">—</div><div class="sum-lbl">순환횟수 ACH</div></div>
-        <div class="sum-item"><div class="sum-val" id="s_tf">—</div><div class="sum-lbl">총 풍량 (m³/h)</div></div>
-        <div class="sum-item"><div class="sum-val" id="s_ff">—</div><div class="sum-lbl">팬1대 풍량</div></div>
-        <div class="sum-item"><div class="sum-val o" id="s_sp">—</div><div class="sum-lbl">정압 (Pa)</div></div>
-        <div class="sum-item"><div class="sum-val o" id="s_mw">—</div><div class="sum-lbl">모터 선정</div></div>
+        <div class="sum-item"><div class="sum-val r" id="s_dtime" style="font-size:22px;">—</div><div class="sum-lbl">🎯 건조 완료 시간</div></div>
+        <div class="sum-item"><div class="sum-val g" id="s_balance" style="font-size:22px;">—</div><div class="sum-lbl">⚖️ 균형 지수</div></div>
+        <div class="sum-item"><div class="sum-val" id="s_moist">—</div><div class="sum-lbl">총 수분량 (kg)</div></div>
+        <div class="sum-item"><div class="sum-val" id="s_rate">—</div><div class="sum-lbl">실 증발 속도 (kg/h)</div></div>
+        <div class="sum-item"><div class="sum-val o" id="s_bottle">—</div><div class="sum-lbl">병목 요인</div></div>
+        <div class="sum-item"><div class="sum-val" id="s_totW">—</div><div class="sum-lbl">총 소비전력 (W)</div></div>
         <div class="sum-item"><div class="sum-val g" id="s_eff">—</div><div class="sum-lbl">건조효율지수</div></div>
         <div class="sum-item"><div class="sum-val v" id="s_cost">—</div><div class="sum-lbl">월 운영비 (원)</div></div>
+      </div>
+    </div>
+
+    <!-- 팬/장비 사양 (부가정보) -->
+    <div class="summary-bar" style="padding:8px 16px;">
+      <div class="sum-grid" style="grid-template-columns:repeat(8,1fr);gap:6px;">
+        <div class="sum-item"><div class="sum-val" style="font-size:14px;" id="s_vol">—</div><div class="sum-lbl">체적 (m³)</div></div>
+        <div class="sum-item"><div class="sum-val o" style="font-size:14px;" id="s_ach">—</div><div class="sum-lbl">ACH</div></div>
+        <div class="sum-item"><div class="sum-val" style="font-size:14px;" id="s_tf">—</div><div class="sum-lbl">총 풍량</div></div>
+        <div class="sum-item"><div class="sum-val" style="font-size:14px;" id="s_ff">—</div><div class="sum-lbl">1대 풍량</div></div>
+        <div class="sum-item"><div class="sum-val o" style="font-size:14px;" id="s_sp">—</div><div class="sum-lbl">정압</div></div>
+        <div class="sum-item"><div class="sum-val o" style="font-size:14px;" id="s_mw">—</div><div class="sum-lbl">모터</div></div>
+        <div class="sum-item"><div class="sum-val" style="font-size:14px;" id="s_qty">—</div><div class="sum-lbl">투입 수량</div></div>
+        <div class="sum-item"><div class="sum-val" style="font-size:14px;" id="s_area">—</div><div class="sum-lbl">총 표면적</div></div>
       </div>
     </div>
 
@@ -378,9 +414,45 @@ input[type=range].sl::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
       <div class="corr-item"><span style="font-size:16px;">💧</span><span class="corr-arrow">→</span><span>제습↑ : 효율↑, 전력↑ · 아이템수↑ → 완료시간↑</span></div>
       <div class="corr-item"><span style="font-size:16px;">🔥</span><span class="corr-arrow">→</span><span>히터↑ : 승온속도↑, 소비전력↑</span></div>
       <div class="corr-item"><span style="font-size:16px;">🌬️</span><span class="corr-arrow">→</span><span>외기도입↑ : 습도↓, 히터부하↑ (재순환과 상쇄)</span></div>
+      <div class="corr-item"><span style="font-size:16px;">📦</span><span class="corr-arrow">→</span><span>제품 크기·수량↑ : 표면적↑ (증발↑) · 수분량↑ (시간↑)</span></div>
+      <div class="corr-item"><span style="background:#c0392b;color:#fff;padding:2px 8px;border-radius:4px;font-weight:700;">핵심</span><span>시간과 에너지는 상충관계 → <b>균형지수</b>로 최적점 판단</span></div>
     </div>
 
-    <!-- 차트 3×2 -->
+    <!-- ═══ 건조 완료 시간 비교 그래프 (NEW) ═══ -->
+    <div class="chart-grid two" style="margin-bottom:12px;">
+      <div class="cbox">
+        <div class="cbox-hdr">
+          <h4>🎯 온도별 건조 완료 시간</h4>
+          <span class="now-dot" id="cd_dt1_now"></span>
+        </div>
+        <div class="cw tall"><canvas id="c_dt1"></canvas></div>
+      </div>
+      <div class="cbox">
+        <div class="cbox-hdr">
+          <h4>🔢 팬 대수별 건조 완료 시간</h4>
+          <span class="now-dot" id="cd_dt2_now"></span>
+        </div>
+        <div class="cw tall"><canvas id="c_dt2"></canvas></div>
+      </div>
+    </div>
+    <div class="chart-grid two" style="margin-bottom:12px;">
+      <div class="cbox">
+        <div class="cbox-hdr">
+          <h4>💧 제습량별 건조 완료 시간</h4>
+          <span class="now-dot" id="cd_dt3_now"></span>
+        </div>
+        <div class="cw tall"><canvas id="c_dt3"></canvas></div>
+      </div>
+      <div class="cbox">
+        <div class="cbox-hdr">
+          <h4>⚖️ 시간·에너지 균형 (Pareto)</h4>
+          <span class="now-dot">각 조합의 시간 vs 전력 산점도</span>
+        </div>
+        <div class="cw tall"><canvas id="c_dt4"></canvas></div>
+      </div>
+    </div>
+
+    <!-- 차트 3×2 (기존) -->
     <div class="chart-grid">
       <!-- 차트1: 온도 × 풍량 × 팬대수 — 현재 운전점 강조 -->
       <div class="cbox">
@@ -458,7 +530,7 @@ input[type=range].sl::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
 </div><!-- end layout -->
 
 <div class="footer" style="text-align:center;color:var(--t3);font-size:10px;padding:12px;">
-  인시스 AI혁신 R&amp;D센터 · 건조실 사양 시뮬레이터 v5.5 · 2026
+  인시스 AI혁신 R&amp;D센터 · 건조실 사양 시뮬레이터 v6.0 · 2026
 </div>
 
 <script>
@@ -596,6 +668,9 @@ function getS(){
     oh:gi('sl_oh',8),           // 운전시간 슬라이더
     qty:gi('sl_qty',200),        // 아이템 수량 슬라이더
     ex:gi('sl_ex',20),           // 외기 도입율 슬라이더
+    // 제품 물성 (mm 단위)
+    pL:gn('p_L',600), pW:gn('p_W',400), pH:gn('p_H',5),
+    pMC:gn('p_mc',60), pDens:gn('p_type',0.30),
     od:22, sf:1.2
   };
 }
@@ -639,8 +714,19 @@ function calc(s){
   var exDilution=Math.round((s.ex||0)*0.3);                        // 외기 도입으로 습도 완화
   var effRH=Math.min(Math.max(s.rh+recircRhAdd-exDilution,20),95); // 20~95% 범위
   var rhLoad=Math.max(0,(svpT*effRH/100-svpT*s.trh/100)*tf/1000);
-  // 아이템 수량 기반 잔류 수분 (개당 50g × 잔류율 10%)
-  var moistItem=(s.qty||200)*50*0.10/1000;
+  // ═══ 제품 물성 기반 수분량 정밀 계산 ═══
+  // 제품 부피 (mm³ → cm³)
+  var pVolCm3 = (s.pL*s.pW*s.pH)/1000;
+  // 제품 표면적 (mm² → m²): 노출 양면 = 2 × L × W (얇은 직물)
+  var pAreaM2 = 2*s.pL*s.pW/1000000;
+  // 개당 건조 물질 질량 (g): 부피 × 밀도
+  var pDryMassG = pVolCm3 * s.pDens;
+  // 개당 함수량 (g): 건조 질량 × 함수율%
+  var pMoistG = pDryMassG * s.pMC/100;
+  // 총 수분량 (kg)
+  var moistItem = pMoistG * s.qty / 1000;
+  // 총 표면적 (m²)
+  var totalAreaM2 = pAreaM2 * s.qty;
   var dhNeed=Math.ceil((moistItem+rhLoad)*1.3*10)/10;
   // dhNeed는 L/h → L/day로 환산
   var dhNeedDay = Math.ceil(dhNeed*24);
@@ -668,9 +754,52 @@ function calc(s){
   // 배치 간격
   var spacing=(s.L/s.fanN).toFixed(1);
 
-  // 건조 완료 예상 시간 (아이템 잔류 수분 ÷ 순 제습 능력)
-  var dryPower=Math.max(0.1, s.dh/24 - Math.max(0,rhLoad*0.3));  // L/h 순 제습
-  var dryTimeMin=moistItem>0?Math.round(moistItem/dryPower*60):0;
+  // ═══ 물리 기반 건조 완료 시간 계산 ═══
+  // 목표: 함수량 X% → 목표수분 (통상 5% 이하)
+  var pTargetMC = 5; // 목표 잔류 함수율 %
+  var evapMassKg = pDryMassG * (s.pMC - pTargetMC)/100 * s.qty / 1000; // 증발시켜야 할 총 수분(kg)
+  if(evapMassKg<=0) evapMassKg=0.01;
+
+  // 포화 수증기압 (Pa) - Magnus 공식 근사
+  var pSatKPa = 0.61078 * Math.exp(17.27*s.temp/(s.temp+237.3));
+  var pAirKPa = pSatKPa * s.trh/100; // 목표 습도 시 공기 압
+  var deltaP = Math.max(0.1, pSatKPa - pAirKPa); // kPa 압력차
+
+  // 물질전달계수 h_m (m/s) - 실험식 근사: 풍속과 온도 함수
+  var airVel = vel; // m/s (내부 변수)
+  var hm = 0.0035 * Math.pow(airVel, 0.8) * Math.pow((s.temp+273)/293, 0.5);
+
+  // 증발 속도 (kg/s) = h_m × 면적 × ΔP/RT
+  // R=461.5 (수증기 기체상수 J/kg·K), T=온도(K)
+  var evapRateKgS = hm * totalAreaM2 * deltaP*1000 / (461.5 * (s.temp+273));
+  // kg/h 로 환산
+  var evapRateKgH = evapRateKgS * 3600;
+
+  // 제습기 실제 성능 (온도가 낮으면 감소 - 압축식 특성)
+  var dhTempFactor = s.temp>=25?1.0 : s.temp>=15?0.7 : 0.4;
+  var dhCapKgH = s.dh/24 * dhTempFactor; // 실 제습 kg/h
+
+  // 공기 순환에 의한 습기 배출 (kg/h): ACH × 체적 × 절대습도차
+  var absHumIn = 0.622 * pSatKPa/(101.3 - pSatKPa); // kg/kg 건공기
+  var absHumOut = 0.622 * (pSatKPa*s.trh/100)/(101.3 - pSatKPa*s.trh/100);
+  var airMassPerH = vol * rho * ach; // kg/h 공기 질량 (내부 변수)
+  var airRemoveKgH = Math.max(0, airMassPerH * (absHumIn - absHumOut)) * (s.ex||0)/100;
+
+  // 순 수분 제거 속도 (kg/h): min(증발속도, 제거능력)
+  var totalRemoveKgH = dhCapKgH + airRemoveKgH;
+  var actualRateKgH = Math.min(evapRateKgH, totalRemoveKgH);
+  if(actualRateKgH<=0.001) actualRateKgH = 0.001;
+
+  // 건조 완료 시간 (분)
+  var dryTimeMin = Math.round(evapMassKg / actualRateKgH * 60);
+  var dryTimeH = Math.round(dryTimeMin/60*10)/10;
+
+  // 시간·에너지 균형 지수 (Pareto 근사)
+  var totKW = totW/1000;
+  var balanceScore = Math.round(10000 / (dryTimeMin * Math.pow(Math.max(totKW,0.1),0.5)));
+
+  // 병목 요인 판정
+  var bottleneck = evapRateKgH < totalRemoveKgH ? '증발속도' : '제습능력';
 
   return {vol:vol,rho:rho,ach:ach,tf:tf,tfActual:tfActual,ff:ff,cover:cover,
     sp:sp,spMm:spMm,mw:mw,mwS:mwS,hpL:hpL,dia:dia,hc:hc,
@@ -679,7 +808,11 @@ function calc(s){
     fanTotW:fanTotW,totW:totW,eff:eff,monthly:monthly,
     vel:vel,spacing:spacing,
     svpT:svpT,rhLoad:rhLoad,effRH:effRH,
-    moistItem:moistItem,dryTimeMin:dryTimeMin};
+    moistItem:moistItem,dryTimeMin:dryTimeMin,dryTimeH:dryTimeH,
+    pAreaM2:pAreaM2, pDryMassG:pDryMassG, pMoistG:pMoistG, totalAreaM2:totalAreaM2,
+    evapMassKg:evapMassKg, evapRateKgH:evapRateKgH,
+    dhCapKgH:dhCapKgH, airRemoveKgH:airRemoveKgH, actualRateKgH:actualRateKgH,
+    balanceScore:balanceScore, bottleneck:bottleneck};
 }
 
 // ════════════════════════════════════════════
@@ -779,13 +912,22 @@ function go(){
   trk('sl_qty',s.qty,50,500,'#dbeafe','#2563a8');
   trk('sl_ex',s.ex,0,100,'#dbeafe','#1a4f8a');
 
-  // ── 요약 바 ──
+  // ── 요약 바 (건조결과 중심) ──
+  var dtStr = c.dryTimeMin<60 ? c.dryTimeMin+'분' : c.dryTimeH+'시간';
+  st('s_dtime', dtStr);
+  st('s_balance', c.balanceScore);
+  st('s_moist', c.moistItem.toFixed(2)+'kg');
+  st('s_rate', c.actualRateKgH.toFixed(2));
+  st('s_bottle', c.bottleneck);
+  st('s_totW', c.totW+'W');
   st('s_vol',c.vol.toFixed(2));
   st('s_ach',c.ach+'회/h');
   st('s_tf',c.tf+'m³/h');
   st('s_ff',c.ff+'m³/h');
   st('s_sp',c.sp+'Pa');
   st('s_mw',c.hpL);
+  st('s_qty',s.qty+'개');
+  st('s_area',c.totalAreaM2.toFixed(1)+'m²');
   st('s_eff',c.eff+'/100');
   st('s_cost',c.monthly.toLocaleString()+'원');
 
@@ -798,7 +940,7 @@ function go(){
   // ── 상세 사양 표 ──
   drawSpec(s,c,opt);
 
-  st('spec_sub',s.temp+'°C · '+s.fanN+'대 · 히터'+(s.hw/1000).toFixed(1)+'kW · 재순환'+s.rc+'% · 제습'+s.dh+'L/day · 외기'+s.ex+'% · '+s.oh+'h/day · '+s.qty+'개');
+  st('spec_sub','완료 '+(c.dryTimeMin<60?c.dryTimeMin+'분':c.dryTimeH+'h')+' · 균형 '+c.balanceScore+'점 · '+s.temp+'°C · '+s.fanN+'대 · 제습'+s.dh+'L/day · '+s.qty+'개');
 }
 
 function _setSlbl(valId,val,tagId,lbl,bg,fc,numCol){
@@ -809,11 +951,92 @@ function _setSlbl(valId,val,tagId,lbl,bg,fc,numCol){
 // ════════════════════════════════════════════
 // 차트 6종
 // ════════════════════════════════════════════
+// 특정 조건 파라미터로 건조 시간 재계산 (조합 비교용)
+function qDryTime(baseS, overrides) {
+  var s2 = Object.assign({}, baseS, overrides);
+  var c2 = calc(s2);
+  return {t:c2.dryTimeMin, w:c2.totW, eff:c2.eff, balance:c2.balanceScore};
+}
+
 function drawCharts(s,c,opt){
   var temps=[30,33,35,38,40,43,45,48,50,53,55,58,60];
   var fanNs=[1,2,3,4,5,6,7,8];
   var rcs=[0,10,20,30,40,50,60,70,80];
   var dhs=[0,20,40,60,80,100,120,150,180,200];  // L/day
+  var tempsShort=[35,40,45,50,55,60];
+  var fanShort=[1,2,3,4,5,6,7,8];
+  var dhShort=[0,30,60,100,150,200];
+
+  // ═══ C_dt1: 온도별 건조 완료 시간 (팬대수 3가지 라인) ═══
+  mkC('c_dt1',{type:'line',data:{labels:tempsShort.map(function(t){return t+'°C';}),
+    datasets:[
+      {label:'팬 2대',data:tempsShort.map(function(t){return qDryTime(s,{temp:t,fanN:2}).t;}),
+        borderColor:'#93c5fd',backgroundColor:'transparent',tension:.4,borderWidth:2,pointRadius:3},
+      {label:'팬 '+s.fanN+'대 (현재)',data:tempsShort.map(function(t){return qDryTime(s,{temp:t,fanN:s.fanN}).t;}),
+        borderColor:'#c0392b',backgroundColor:'#c0392b15',tension:.4,fill:true,borderWidth:3,
+        pointRadius:tempsShort.map(function(t){return Math.abs(t-s.temp)<3?8:4;}),
+        pointBackgroundColor:tempsShort.map(function(t){return Math.abs(t-s.temp)<3?'#e74c3c':'#c0392b';})},
+      {label:'팬 6대',data:tempsShort.map(function(t){return qDryTime(s,{temp:t,fanN:6}).t;}),
+        borderColor:'#0c7a69',backgroundColor:'transparent',tension:.4,borderWidth:2,pointRadius:3},
+    ]},options:bO('건조 완료 시간 (분)')});
+  st('cd_dt1_now','현재 '+s.temp+'°C · '+s.fanN+'대 → '+c.dryTimeMin+'분');
+
+  // ═══ C_dt2: 팬 대수별 건조 완료 시간 (온도 3가지 라인) ═══
+  mkC('c_dt2',{type:'line',data:{labels:fanShort.map(function(n){return n+'대';}),
+    datasets:[
+      {label:'40°C',data:fanShort.map(function(n){return qDryTime(s,{temp:40,fanN:n}).t;}),
+        borderColor:'#3b82f6',backgroundColor:'transparent',tension:.4,borderWidth:2,pointRadius:3},
+      {label:s.temp+'°C (현재)',data:fanShort.map(function(n){return qDryTime(s,{temp:s.temp,fanN:n}).t;}),
+        borderColor:'#c0392b',backgroundColor:'#c0392b15',tension:.4,fill:true,borderWidth:3,
+        pointRadius:fanShort.map(function(n){return n===s.fanN?8:4;}),
+        pointBackgroundColor:fanShort.map(function(n){return n===s.fanN?'#e74c3c':'#c0392b';})},
+      {label:'60°C',data:fanShort.map(function(n){return qDryTime(s,{temp:60,fanN:n}).t;}),
+        borderColor:'#ef4444',backgroundColor:'transparent',tension:.4,borderWidth:2,pointRadius:3},
+    ]},options:bO('건조 완료 시간 (분)')});
+  st('cd_dt2_now','현재 '+s.fanN+'대 · '+s.temp+'°C → '+c.dryTimeMin+'분');
+
+  // ═══ C_dt3: 제습량별 건조 완료 시간 (온도 3라인) ═══
+  mkC('c_dt3',{type:'line',data:{labels:dhShort.map(function(d){return d+'L';}),
+    datasets:[
+      {label:'40°C',data:dhShort.map(function(d){return qDryTime(s,{temp:40,dh:d}).t;}),
+        borderColor:'#3b82f6',backgroundColor:'transparent',tension:.4,borderWidth:2,pointRadius:3},
+      {label:s.temp+'°C (현재)',data:dhShort.map(function(d){return qDryTime(s,{temp:s.temp,dh:d}).t;}),
+        borderColor:'#c0392b',backgroundColor:'#c0392b15',tension:.4,fill:true,borderWidth:3,
+        pointRadius:dhShort.map(function(d){return Math.abs(d-s.dh)<20?8:4;}),
+        pointBackgroundColor:dhShort.map(function(d){return Math.abs(d-s.dh)<20?'#e74c3c':'#c0392b';})},
+      {label:'60°C',data:dhShort.map(function(d){return qDryTime(s,{temp:60,dh:d}).t;}),
+        borderColor:'#ef4444',backgroundColor:'transparent',tension:.4,borderWidth:2,pointRadius:3},
+    ]},options:bO('건조 완료 시간 (분)')});
+  st('cd_dt3_now','현재 '+s.dh+'L/day · '+s.temp+'°C → '+c.dryTimeMin+'분');
+
+  // ═══ C_dt4: 시간-에너지 Pareto 산점도 ═══
+  var paretoPoints=[];
+  [40,45,50,55,60].forEach(function(t){
+    [2,3,4,5,6].forEach(function(n){
+      [50,100,150].forEach(function(d){
+        var q=qDryTime(s,{temp:t,fanN:n,dh:d});
+        paretoPoints.push({x:q.t, y:q.w, label:t+'°C·'+n+'대·'+d+'L', temp:t});
+      });
+    });
+  });
+  // 현재점 강조
+  paretoPoints.push({x:c.dryTimeMin, y:c.totW, label:'★ 현재', temp:'now'});
+
+  mkC('c_dt4',{type:'scatter',data:{datasets:[
+    {label:'40°C',data:paretoPoints.filter(function(p){return p.temp===40;}).map(function(p){return {x:p.x,y:p.y};}),
+      backgroundColor:'#3b82f688',borderColor:'#3b82f6',pointRadius:4},
+    {label:'50°C',data:paretoPoints.filter(function(p){return p.temp===50;}).map(function(p){return {x:p.x,y:p.y};}),
+      backgroundColor:'#d9770688',borderColor:'#d97706',pointRadius:4},
+    {label:'60°C',data:paretoPoints.filter(function(p){return p.temp===60;}).map(function(p){return {x:p.x,y:p.y};}),
+      backgroundColor:'#ef444488',borderColor:'#ef4444',pointRadius:4},
+    {label:'★ 현재',data:[{x:c.dryTimeMin,y:c.totW}],
+      backgroundColor:'#c0392b',borderColor:'#8b0000',pointRadius:12,pointStyle:'star',borderWidth:3},
+  ]},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{labels:{font:{size:10},boxWidth:12}},
+      tooltip:{callbacks:{label:function(ctx){return ctx.dataset.label+': '+ctx.parsed.x+'분 · '+ctx.parsed.y+'W';}}}},
+    scales:{x:{title:{display:true,text:'건조 시간 (분)',font:{size:10}}},
+      y:{title:{display:true,text:'소비전력 (W)',font:{size:10}}}}}});
+
 
   // ── C1: 온도 → 총풍량 & ACH ──
   var flowByTemp=temps.map(function(t){
@@ -959,6 +1182,18 @@ function drawOpt(s,c,opt){
 // ════════════════════════════════════════════
 function drawSpec(s,c,opt){
   var rows=[
+    ['🎯 건조 완료 시간',(c.dryTimeMin<60?c.dryTimeMin+' 분':(c.dryTimeH+' 시간 ('+c.dryTimeMin+'분)')),'물리 계산 (증발/제습 병목 min)','<span style="background:'+(c.dryTimeMin<=60?'#e4f4f1':c.dryTimeMin<=120?'#fef3cd':'#fde8e8')+';color:'+(c.dryTimeMin<=60?'#0c7a69':c.dryTimeMin<=120?'#856404':'#c0392b')+';border-radius:3px;padding:1px 5px;font-size:10px;font-weight:700;">'+(c.dryTimeMin<=60?'⚡ 신속':c.dryTimeMin<=120?'보통':'⚠️ 장시간')+'</span>'],
+    ['⚖️ 시간·에너지 균형',c.balanceScore+' /100','10000/(t분×√kW)','<span style="background:'+(c.balanceScore>=50?'#e4f4f1':c.balanceScore>=25?'#fef3cd':'#fde8e8')+';color:'+(c.balanceScore>=50?'#0c7a69':c.balanceScore>=25?'#856404':'#c0392b')+';border-radius:3px;padding:1px 5px;font-size:10px;">'+(c.balanceScore>=50?'우수':c.balanceScore>=25?'보통':'개선필요')+'</span>'],
+    ['📦 제품 물성',s.pL+'×'+s.pW+'×'+s.pH+'mm · '+s.qty+'개','함수량 '+s.pMC+'% · 밀도 '+s.pDens+'g/cm³',''],
+    ['개당 건조질량',c.pDryMassG.toFixed(1)+' g','부피 × 밀도',''],
+    ['개당 함수량',c.pMoistG.toFixed(1)+' g','건조질량 × '+s.pMC+'%',''],
+    ['총 수분량',c.moistItem.toFixed(2)+' kg','개당함수 × 수량',''],
+    ['총 증발 표면적',c.totalAreaM2.toFixed(2)+' m²','2×L×W×수량',''],
+    ['증발 필요량 (5%까지)',c.evapMassKg.toFixed(2)+' kg','('+s.pMC+'-5)% 수분 제거',''],
+    ['이론 증발 속도',c.evapRateKgH.toFixed(2)+' kg/h','h_m × A × ΔP/RT',''],
+    ['제습기 실제 성능',c.dhCapKgH.toFixed(2)+' kg/h','L/day÷24 × 온도보정',''],
+    ['외기 환기 배출',c.airRemoveKgH.toFixed(3)+' kg/h','ACH × ρ × Δ절대습도 × 외기율',''],
+    ['실 제거 속도',c.actualRateKgH.toFixed(2)+' kg/h','증발 vs 제거 최소값','<span style="background:#dce8f5;color:#1a4f8a;border-radius:3px;padding:1px 5px;font-size:10px;">병목: '+c.bottleneck+'</span>'],
     ['건조실 체적',c.vol.toFixed(2)+' m³','L×W×H',''],
     ['공기 밀도',c.rho.toFixed(3)+' kg/m³',s.temp+'°C 기준',''],
     ['권장 ACH',c.ach+' 회/h','온도 기반 표준값','<span style="background:#e4f4f1;color:#0c7a69;border-radius:3px;padding:1px 5px;font-size:10px;">산업 표준</span>'],
@@ -1055,9 +1290,11 @@ async function presetSave(){
     L:s.L, W:s.W, H:s.H,
     at:s.at, rh:s.rh, trh:s.trh,
     hw:s.hw, ec:s.ec, lf:s.lf,
-    // 슬라이더 값 (9개)
+    // 슬라이더 값 (9개) + 제품 물성 (5개)
     temp:s.temp, fanN:s.fanN, rc:s.rc, dh:s.dh,
     hw:s.hw, oh:s.oh, qty:s.qty, ex:s.ex,
+    pL:s.pL, pW:s.pW, pH:s.pH, pMC:s.pMC, pDens:s.pDens,
+    dryTimeMin:c.dryTimeMin, balanceScore:c.balanceScore,
     // 계산 결과 (참고용)
     vol:parseFloat(c.vol.toFixed(2)),
     ach:c.ach, tf:c.tf, ff:c.ff,
@@ -1098,6 +1335,11 @@ function presetLoad(id){
   if(p.oh!=null) sv('sl_oh',p.oh);
   if(p.qty!=null) sv('sl_qty',p.qty);
   if(p.ex!=null) sv('sl_ex',p.ex);
+  if(p.pL!=null) sv('p_L',p.pL);
+  if(p.pW!=null) sv('p_W',p.pW);
+  if(p.pH!=null) sv('p_H',p.pH);
+  if(p.pMC!=null) sv('p_mc',p.pMC);
+  if(p.pDens!=null) sv('p_type',p.pDens);
   _ffManual=false;
 
   renderPresets();
