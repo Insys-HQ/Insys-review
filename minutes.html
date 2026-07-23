@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>재난대응봉사회 통합관리시스템 v2.1</title>
+<title>재난대응봉사회 통합관리시스템 v2.2</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -195,6 +195,25 @@ textarea{resize:vertical;min-height:100px;line-height:1.6}
   .nav-sys{display:none}
   .form-row.c2{grid-template-columns:1fr}
 }
+
+/* ── SUGGEST ITEMS ── */
+.suggest-item{border:1.5px solid #e0eaf2;border-radius:10px;padding:14px;margin-bottom:10px;background:#fff;transition:box-shadow .2s}
+.suggest-item:hover{box-shadow:0 2px 10px rgba(0,0,0,0.08)}
+.si-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px;flex-wrap:wrap}
+.si-left{display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:1}
+.si-right{display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap}
+.si-cat{font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;background:#eef4fb;color:#2e6da4;white-space:nowrap}
+.si-title{font-size:13px;font-weight:700;color:#1b3a5c}
+.si-status{font-size:11px;font-weight:700;padding:3px 10px;border-radius:10px;cursor:pointer;user-select:none;transition:opacity .2s;white-space:nowrap}
+.si-status:hover{opacity:.8}
+.si-meta{font-size:11px;color:#7a98b0;white-space:nowrap}
+.si-body{font-size:13px;color:#2c3e50;line-height:1.7;white-space:pre-wrap;margin-bottom:8px;padding:10px;background:#f7fafd;border-radius:7px;border-left:3px solid #e0eaf2}
+.si-ref{font-size:11px;color:#5a7a96;margin-bottom:8px;word-break:break-all}
+.si-foot{display:flex;align-items:center;justify-content:space-between;margin-top:6px}
+@media(max-width:768px){
+  .si-head{flex-direction:column;gap:6px}
+  .si-right{width:100%;justify-content:space-between}
+}
 </style>
 </head>
 <body>
@@ -205,7 +224,7 @@ textarea{resize:vertical;min-height:100px;line-height:1.6}
     <div class="nav-left"><span class="dot"></span>HL0FRC</div>
     <div class="nav-sys">재난대응봉사회 통합관리시스템</div>
     <div class="nav-right">
-      <span class="ver">v2.1</span>
+      <span class="ver">v2.2</span>
     </div>
   </div>
 </div>
@@ -239,6 +258,7 @@ textarea{resize:vertical;min-height:100px;line-height:1.6}
     <button class="mmenu-btn" onclick="showMenu('actplan')">📌 활동계획서</button>
     <button class="mmenu-btn" onclick="showMenu('actreport')">📊 봉사활동보고</button>
     <button class="mmenu-btn" onclick="showMenu('links')">🔗 링크모음</button>
+    <button class="mmenu-btn" onclick="showMenu('suggest')">💡 개선제안</button>
   </div>
 </div>
 
@@ -799,6 +819,96 @@ textarea{resize:vertical;min-height:100px;line-height:1.6}
   </div>
 </div>
 
+<!-- ==================== 10. 개선제안 ==================== -->
+<div id="menu-suggest" class="menu-section" style="display:none">
+  <div class="sub-tabs">
+    <button class="sub-tab active" onclick="subTab('suggest','write')">💡 제안 작성</button>
+    <button class="sub-tab" onclick="subTab('suggest','list')">📋 제안 목록</button>
+  </div>
+
+  <!-- 작성 -->
+  <div id="suggest-write" class="sub-content active">
+    <div class="card">
+      <div class="card-title">💡 개선제안 작성</div>
+      <div class="form-row c3">
+        <div>
+          <label>작성자 (이름 / 콜사인)</label>
+          <input type="text" id="sg-writer" placeholder="예: 홍길동 / HL2XXX">
+        </div>
+        <div>
+          <label>작성일</label>
+          <input type="date" id="sg-date">
+        </div>
+        <div>
+          <label>구분</label>
+          <select id="sg-category">
+            <option>운영 개선</option>
+            <option>장비 / 통신</option>
+            <option>훈련 / 교육</option>
+            <option>행정 / 문서</option>
+            <option>복지 / 처우</option>
+            <option>기타</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row c1">
+        <div>
+          <label>제안 제목</label>
+          <input type="text" id="sg-title" placeholder="제안 내용을 한 줄로 요약해주세요">
+        </div>
+      </div>
+      <div class="form-row c1">
+        <div>
+          <label>제안 내용</label>
+          <textarea id="sg-content" rows="6" placeholder="현황 문제점, 개선 방안, 기대 효과 등을 자유롭게 작성해주세요."></textarea>
+        </div>
+      </div>
+      <div class="form-row c1">
+        <div>
+          <label>참고사항 / 첨부 링크</label>
+          <input type="text" id="sg-ref" placeholder="참고 URL 또는 관련 사항">
+        </div>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-green" onclick="saveSuggest()">💾 저장</button>
+        <button class="btn btn-outline" onclick="clearSuggest()">🗑️ 초기화</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 목록 -->
+  <div id="suggest-list" class="sub-content">
+    <div class="card">
+      <div class="card-title">📋 개선제안 목록</div>
+      <!-- 검색/필터 -->
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+        <input type="text" id="sg-search" placeholder="🔍 제목·작성자·내용 검색..." style="flex:1;min-width:160px" oninput="renderSuggestList()">
+        <select id="sg-filter-cat" style="width:130px" onchange="renderSuggestList()">
+          <option value="">전체 구분</option>
+          <option>운영 개선</option>
+          <option>장비 / 통신</option>
+          <option>훈련 / 교육</option>
+          <option>행정 / 문서</option>
+          <option>복지 / 처우</option>
+          <option>기타</option>
+        </select>
+        <select id="sg-filter-status" style="width:110px" onchange="renderSuggestList()">
+          <option value="">전체 상태</option>
+          <option>검토중</option>
+          <option>채택</option>
+          <option>보류</option>
+          <option>미채택</option>
+        </select>
+      </div>
+      <div id="suggest-count" style="font-size:12px;color:#7a98b0;margin-bottom:10px"></div>
+      <div id="suggest-arch-list">
+        <div class="empty-state"><div class="ei">💡</div><p>등록된 제안이 없습니다.</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
 </div><!-- /container -->
 
 <!-- PREVIEW MODAL -->
@@ -841,7 +951,7 @@ const db = firebase.firestore();
 const COLLS = {
   minutes:'rc_minutes', proxy:'rc_proxy', schedule:'rc_schedule',
   contacts:'rc_contacts', volunteer:'rc_volunteer', meetdoc:'rc_meetdoc',
-  actplan:'rc_actplan', actreport:'rc_actreport'
+  actplan:'rc_actplan', actreport:'rc_actreport', suggest:'rc_suggest'
 };
 
 // 사진 저장소
@@ -873,6 +983,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   });
   loadAllArchives();
   loadCustomLinks();
+  loadSuggest();
 });
 
 // ═══════════════════════════════════════════════════
@@ -888,11 +999,12 @@ function showMenu(name){
   // hero title update
   const titles={minutes:'회 의 록',proxy:'위 임 장',schedule:'일 정 관 리',
     contacts:'주 소 록',volunteer:'봉 사 시 간',meetdoc:'회 의 자 료',
-    actplan:'활 동 계 획 서',actreport:'봉 사 활 동 보 고',links:'링 크 모 음'};
+    actplan:'활 동 계 획 서',actreport:'봉 사 활 동 보 고',links:'링 크 모 음',suggest:'개 선 제 안'};
   document.getElementById('hero-subtitle').textContent = titles[name]||'회 의 록';
   // hero mtype toggle 표시/숨김
   document.querySelector('.mtype-toggle').style.display = name==='minutes' ? 'flex' : 'none';
   if(name==='minutes') loadArchive('minutes');
+  else if(name==='suggest') loadSuggest();
   else if(COLLS[name]) loadArchive(name);
 }
 
@@ -1509,6 +1621,168 @@ async function addCustomLink(){
     document.getElementById('lk-desc').value='';
     showToast('링크 추가 완료','ok'); loadCustomLinks();
   }catch(e){showToast('저장 실패','err');}
+}
+
+
+// ═══════════════════════════════════════════════════
+//  개선제안
+// ═══════════════════════════════════════════════════
+let suggestCache = [];
+
+async function saveSuggest(){
+  const writer = document.getElementById('sg-writer').value.trim();
+  const date   = document.getElementById('sg-date').value;
+  const cat    = document.getElementById('sg-category').value;
+  const title  = document.getElementById('sg-title').value.trim();
+  const cont   = document.getElementById('sg-content').value.trim();
+  const ref    = document.getElementById('sg-ref').value.trim();
+  if(!writer){showToast('작성자를 입력해주세요','err');return;}
+  if(!title) {showToast('제안 제목을 입력해주세요','err');return;}
+  if(!cont)  {showToast('제안 내용을 입력해주세요','err');return;}
+  const data = {
+    id: Date.now().toString(),
+    writer, date, category:cat, title, content:cont, ref,
+    status:'검토중',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  showToast('저장 중...');
+  try{
+    await db.collection('rc_suggest').doc(data.id).set(data);
+    showToast('✅ 제안이 접수되었습니다','ok');
+    clearSuggest();
+    await loadSuggest();
+    subTab('suggest','list');
+  }catch(e){showToast('저장 실패: '+e.message,'err');}
+}
+
+function clearSuggest(){
+  ['sg-writer','sg-date','sg-title','sg-content','sg-ref'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  document.getElementById('sg-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('sg-category').value='운영 개선';
+}
+
+async function loadSuggest(){
+  try{
+    const snap = await db.collection('rc_suggest').orderBy('createdAt','desc').get();
+    suggestCache = snap.docs.map(d=>({...d.data(), docId:d.id}));
+    renderSuggestList();
+  }catch(e){console.error('suggest load:',e);}
+}
+
+function renderSuggestList(){
+  const kw  = (document.getElementById('sg-search')?.value||'').toLowerCase();
+  const cat = document.getElementById('sg-filter-cat')?.value||'';
+  const sta = document.getElementById('sg-filter-status')?.value||'';
+  const filtered = suggestCache.filter(item=>{
+    const matchKw  = !kw  || JSON.stringify(item).toLowerCase().includes(kw);
+    const matchCat = !cat || item.category===cat;
+    const matchSta = !sta || item.status===sta;
+    return matchKw && matchCat && matchSta;
+  });
+  const countEl = document.getElementById('suggest-count');
+  if(countEl) countEl.textContent = `총 ${suggestCache.length}건 / 검색결과 ${filtered.length}건`;
+  const el = document.getElementById('suggest-arch-list');
+  if(!el) return;
+  if(!filtered.length){
+    el.innerHTML='<div class="empty-state"><div class="ei">💡</div><p>검색 결과가 없습니다.</p></div>';
+    return;
+  }
+  const statusColor = {
+    '검토중':['#eff6ff','#1e40af'],
+    '채택'  :['#f0fdf4','#166534'],
+    '보류'  :['#fefce8','#854d0e'],
+    '미채택':['#fef2f2','#991b1b']
+  };
+  el.innerHTML = filtered.map(item=>{
+    const [bg,fg] = statusColor[item.status]||['#f3f4f6','#374151'];
+    const dateStr = item.date ? new Date(item.date).toLocaleDateString('ko-KR') : '-';
+    const createdStr = item.createdAt ? new Date(item.createdAt).toLocaleDateString('ko-KR') : '-';
+    return `
+    <div class="suggest-item" id="si-${item.docId}">
+      <div class="si-head">
+        <div class="si-left">
+          <span class="si-cat">${item.category||''}</span>
+          <span class="si-title">${esc(item.title)}</span>
+        </div>
+        <div class="si-right">
+          <span class="si-status" style="background:${bg};color:${fg}" onclick="cycleStatus('${item.docId}','${item.status}')" title="클릭하여 상태 변경">${item.status}</span>
+          <span class="si-meta">${item.writer} · ${dateStr}</span>
+        </div>
+      </div>
+      <div class="si-body">${esc(item.content)}</div>
+      ${item.ref?`<div class="si-ref">🔗 ${esc(item.ref)}</div>`:''}
+      <div class="si-foot">
+        <span style="font-size:11px;color:#9ca3af">접수: ${createdStr}</span>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-outline" style="padding:4px 10px;font-size:11px" onclick="editSuggest('${item.docId}')">✏️ 수정</button>
+          <button class="btn btn-gray"    style="padding:4px 10px;font-size:11px;color:#b91c1c" onclick="deleteSuggest('${item.docId}')">🗑️ 삭제</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function cycleStatus(docId, current){
+  const order = ['검토중','채택','보류','미채택'];
+  const next = order[(order.indexOf(current)+1)%order.length];
+  try{
+    await db.collection('rc_suggest').doc(docId).update({status:next, updatedAt:new Date().toISOString()});
+    const item = suggestCache.find(i=>i.docId===docId);
+    if(item) item.status=next;
+    renderSuggestList();
+    showToast(`상태 변경: ${next}`,'ok');
+  }catch(e){showToast('변경 실패','err');}
+}
+
+function editSuggest(docId){
+  const item = suggestCache.find(i=>i.docId===docId);
+  if(!item) return;
+  document.getElementById('sg-writer').value   = item.writer||'';
+  document.getElementById('sg-date').value     = item.date||'';
+  document.getElementById('sg-category').value = item.category||'운영 개선';
+  document.getElementById('sg-title').value    = item.title||'';
+  document.getElementById('sg-content').value  = item.content||'';
+  document.getElementById('sg-ref').value      = item.ref||'';
+  // 저장 버튼을 update로 임시 교체
+  const saveBtn = document.querySelector('#menu-suggest .btn-green');
+  if(saveBtn){
+    saveBtn.textContent='💾 수정 저장';
+    saveBtn.onclick = async ()=>{
+      const d={
+        writer:document.getElementById('sg-writer').value.trim(),
+        date:document.getElementById('sg-date').value,
+        category:document.getElementById('sg-category').value,
+        title:document.getElementById('sg-title').value.trim(),
+        content:document.getElementById('sg-content').value.trim(),
+        ref:document.getElementById('sg-ref').value.trim(),
+        updatedAt:new Date().toISOString()
+      };
+      try{
+        await db.collection('rc_suggest').doc(docId).update(d);
+        Object.assign(item,d);
+        showToast('✅ 수정 완료','ok');
+        clearSuggest();
+        saveBtn.textContent='💾 저장';
+        saveBtn.onclick = saveSuggest;
+        renderSuggestList();
+        subTab('suggest','list');
+      }catch(e){showToast('수정 실패','err');}
+    };
+  }
+  subTab('suggest','write');
+}
+
+async function deleteSuggest(docId){
+  if(!confirm('이 제안을 삭제하시겠습니까?')) return;
+  try{
+    await db.collection('rc_suggest').doc(docId).delete();
+    suggestCache = suggestCache.filter(i=>i.docId!==docId);
+    renderSuggestList();
+    showToast('삭제 완료','ok');
+  }catch(e){showToast('삭제 실패','err');}
 }
 
 function renderCustomLinks(){
