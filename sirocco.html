@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>건조실 사양 시뮬레이터 v5.4</title>
+<title>건조실 사양 시뮬레이터 v5.5</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
@@ -159,7 +159,7 @@ input[type=range].sl::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
     <div class="hdr-right">
       <button class="btn-save" onclick="saveAll()">💾 저장</button>
       <button class="btn-save" onclick="loadLast()">📂 불러오기</button>
-      <span class="vbadge">v5.4</span>
+      <span class="vbadge">v5.5</span>
     </div>
   </div>
 </div>
@@ -182,8 +182,8 @@ input[type=range].sl::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
         <div class="room-grid">
           <div class="fg"><label>외기 습도 (%RH)</label><input type="number" id="r_rh" value="70" step="5" oninput="go()"></div>
           <div class="fg"><label>목표 습도 (%RH)</label><input type="number" id="r_trh" value="30" step="5" oninput="go()"></div>
-          <div class="fg"><label>히터 용량 (W)</label><input type="number" id="r_hw" value="3000" step="100" oninput="go()"></div>
           <div class="fg"><label>전력 단가 (원/kWh)</label><input type="number" id="r_ec" value="120" step="10" oninput="go()"></div>
+          <div class="fg"><label style="visibility:hidden;">·</label><input type="hidden" id="r_hw" value="3000"></div>
         </div>
         <div class="fg"><label>건조물 부하 계수</label>
           <select id="r_lf" oninput="go()">
@@ -271,6 +271,65 @@ input[type=range].sl::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
           <div style="font-size:9px;color:var(--t3);margin-top:2px;" id="dh_hint">시간당 4.17L/h · 1,230W · 사용면적 120㎡급</div>
         </div>
 
+        <!-- 6. 히터 용량 -->
+        <div class="sl-block">
+          <div class="sl-header">
+            <div class="sl-label">🔥 히터 용량</div>
+            <div class="sl-val-area">
+              <span class="sl-num" id="sv_hw" style="color:var(--dn)">3</span>
+              <span class="sl-unit">kW</span>
+              <span class="sl-tag" id="st_hw" style="background:#fef3cd;color:#856404;">표준</span>
+            </div>
+          </div>
+          <div><input type="range" class="sl" id="sl_hw" min="1000" max="10000" step="500" value="3000" oninput="onHW()"></div>
+          <div class="sl-ticks"><span>1kW</span><span>3kW</span><span>5kW</span><span>7kW</span><span>10kW</span></div>
+          <div style="font-size:9px;color:var(--t3);margin-top:2px;" id="hw_hint">단상 220V · 표준 산업 히터</div>
+        </div>
+
+        <!-- 7. 운전 시간 -->
+        <div class="sl-block">
+          <div class="sl-header">
+            <div class="sl-label">⏱️ 일 운전 시간</div>
+            <div class="sl-val-area">
+              <span class="sl-num" id="sv_oh" style="color:var(--vi)">8</span>
+              <span class="sl-unit">h/day</span>
+              <span class="sl-tag" id="st_oh" style="background:#f3e8ff;color:#6d28d9;">1교대</span>
+            </div>
+          </div>
+          <div><input type="range" class="sl" id="sl_oh" min="1" max="24" step="1" value="8" oninput="go()"></div>
+          <div class="sl-ticks"><span>1h</span><span>8h</span><span>16h</span><span>24h</span></div>
+        </div>
+
+        <!-- 8. 건조 아이템 수량 -->
+        <div class="sl-block">
+          <div class="sl-header">
+            <div class="sl-label">📦 건조 아이템 수량</div>
+            <div class="sl-val-area">
+              <span class="sl-num" id="sv_qty" style="color:var(--pl)">200</span>
+              <span class="sl-unit">개</span>
+              <span class="sl-tag" id="st_qty" style="background:#dce8f5;color:#1a4f8a;">표준</span>
+            </div>
+          </div>
+          <div><input type="range" class="sl" id="sl_qty" min="50" max="500" step="10" value="200" oninput="go()"></div>
+          <div class="sl-ticks"><span>50</span><span>200</span><span>350</span><span>500</span></div>
+          <div style="font-size:9px;color:var(--t3);margin-top:2px;" id="qty_hint">개당 50g × 잔류 10% 기준</div>
+        </div>
+
+        <!-- 9. 외기 도입 (배기 개구율) -->
+        <div class="sl-block">
+          <div class="sl-header">
+            <div class="sl-label">🌬️ 외기 도입율</div>
+            <div class="sl-val-area">
+              <span class="sl-num" id="sv_ex" style="color:var(--pr)">20</span>
+              <span class="sl-unit">%</span>
+              <span class="sl-tag" id="st_ex" style="background:#dce8f5;color:#1a4f8a;">표준</span>
+            </div>
+          </div>
+          <div><input type="range" class="sl" id="sl_ex" min="0" max="100" step="5" value="20" oninput="go()"></div>
+          <div class="sl-ticks"><span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span></div>
+          <div style="font-size:9px;color:var(--t3);margin-top:2px;">신선 외기 도입 (재순환↔배기 균형)</div>
+        </div>
+
         <!-- 최적화 버튼 -->
         <button class="opt-btn" onclick="applyOpt()">⚡ 최적값 자동 설정</button>
       </div>
@@ -313,10 +372,12 @@ input[type=range].sl::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
 
     <!-- 상관관계 배너 -->
     <div class="corr-banner">
-      <div class="corr-item"><span style="font-size:16px;">🌡️</span><span class="corr-arrow">→</span><span>온도↑ : ACH↑, 정압↓(밀도감소), 제습부하↑, 내열등급↑</span></div>
-      <div class="corr-item"><span style="font-size:16px;">🔢</span><span class="corr-arrow">→</span><span>팬대수↑ : 1대풍량↓, 균일성↑, 전력↑, 배치간격↓</span></div>
+      <div class="corr-item"><span style="font-size:16px;">🌡️</span><span class="corr-arrow">→</span><span>온도↑ : ACH↑, 정압↓, 제습부하↑, 내열등급↑</span></div>
+      <div class="corr-item"><span style="font-size:16px;">🔢</span><span class="corr-arrow">→</span><span>팬대수↑ : 1대풍량↓, 균일성↑, 전력↑</span></div>
       <div class="corr-item"><span style="font-size:16px;">♻️</span><span class="corr-arrow">→</span><span>재순환↑ : 히터절감↑, 내부습도↑ → 제습필요↑</span></div>
-      <div class="corr-item"><span style="font-size:16px;">💧</span><span class="corr-arrow">→</span><span>제습↑ : 건조효율↑, 전력↑, 히터절감↑ (습도제거)</span></div>
+      <div class="corr-item"><span style="font-size:16px;">💧</span><span class="corr-arrow">→</span><span>제습↑ : 효율↑, 전력↑ · 아이템수↑ → 완료시간↑</span></div>
+      <div class="corr-item"><span style="font-size:16px;">🔥</span><span class="corr-arrow">→</span><span>히터↑ : 승온속도↑, 소비전력↑</span></div>
+      <div class="corr-item"><span style="font-size:16px;">🌬️</span><span class="corr-arrow">→</span><span>외기도입↑ : 습도↓, 히터부하↑ (재순환과 상쇄)</span></div>
     </div>
 
     <!-- 차트 3×2 -->
@@ -397,7 +458,7 @@ input[type=range].sl::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
 </div><!-- end layout -->
 
 <div class="footer" style="text-align:center;color:var(--t3);font-size:10px;padding:12px;">
-  인시스 AI혁신 R&amp;D센터 · 건조실 사양 시뮬레이터 v5.4 · 2026
+  인시스 AI혁신 R&amp;D센터 · 건조실 사양 시뮬레이터 v5.5 · 2026
 </div>
 
 <script>
@@ -510,21 +571,32 @@ function onFF(){
   go();
   setTimeout(function(){_ffManual=false;},100);
 }
+function onHW(){
+  // 히터 슬라이더와 hidden input 동기화
+  var v=gi('sl_hw',3000);
+  sv('r_hw',v);
+  go();
+}
 
 // ════════════════════════════════════════════
 // 핵심 계산 엔진
 // ════════════════════════════════════════════
 function getS(){
+  // 히터 용량: 슬라이더가 있으면 슬라이더 값 사용, 없으면 hidden input
+  var hwVal = gel('sl_hw') ? gi('sl_hw',3000) : gn('r_hw',3000);
   return {
     L:gn('r_L',4),W:gn('r_W',1.2),H:gn('r_H',1.6),
     at:gn('r_at',25),rh:gn('r_rh',70),trh:gn('r_trh',30),
-    hw:gn('r_hw',3000),ec:gn('r_ec',120),lf:gn('r_lf',1.3),
+    hw:hwVal, ec:gn('r_ec',120),lf:gn('r_lf',1.3),
     temp:gi('sl_temp',50),
     fanN:gi('sl_fanN',3),
     ffOvr:gi('sl_ff',140),
     rc:gi('sl_rc',50),
     dh:gi('sl_dh',100),
-    oh:8,od:22,sf:1.2
+    oh:gi('sl_oh',8),           // 운전시간 슬라이더
+    qty:gi('sl_qty',200),        // 아이템 수량 슬라이더
+    ex:gi('sl_ex',20),           // 외기 도입율 슬라이더
+    od:22, sf:1.2
   };
 }
 
@@ -554,16 +626,21 @@ function calc(s){
   var dia=ff<=130?'φ150':ff<=220?'φ180':ff<=350?'φ200':'φ250';
   // 내열
   var hc=s.temp>=60?'F종 필수':s.temp>=55?'F종 권장':'B종';
-  // 히터 실효 (재순환 절감)
-  var htrSave=Math.round(s.hw*s.rc/100*0.85); // 회수효율 85%
+  // 히터 실효: 재순환 절감 - 외기 도입 손실
+  var htrSaveFromRC=Math.round(s.hw*s.rc/100*0.85);          // 재순환 회수효율 85%
+  var htrLossFromEx=Math.round(s.hw*(s.ex||0)/100*0.5);      // 외기 데우기 손실 (외기 도입율만큼 재가열)
+  var htrSave=Math.max(0,htrSaveFromRC-htrLossFromEx);
   var htrEff=s.hw-htrSave;
   // 제습 부하
   var svpT=s.temp<=40?51:s.temp<=50?83:130;
   // 재순환 시 내부 습도 상승 → 제습 부하 증가
-  var recircRhAdd=s.rc*0.3; // 재순환 비율에 비례 추가 습도
-  var effRH=Math.min(s.rh+recircRhAdd,95);
+  // 재순환 시 내부 습도 상승 - 외기 도입에 의한 습도 희석
+  var recircRhAdd=s.rc*0.3;                                        // 재순환에 의한 습도 증가
+  var exDilution=Math.round((s.ex||0)*0.3);                        // 외기 도입으로 습도 완화
+  var effRH=Math.min(Math.max(s.rh+recircRhAdd-exDilution,20),95); // 20~95% 범위
   var rhLoad=Math.max(0,(svpT*effRH/100-svpT*s.trh/100)*tf/1000);
-  var moistItem=200*50*0.10/1000; // 기본 아이템 잔류
+  // 아이템 수량 기반 잔류 수분 (개당 50g × 잔류율 10%)
+  var moistItem=(s.qty||200)*50*0.10/1000;
   var dhNeed=Math.ceil((moistItem+rhLoad)*1.3*10)/10;
   // dhNeed는 L/h → L/day로 환산
   var dhNeedDay = Math.ceil(dhNeed*24);
@@ -591,13 +668,18 @@ function calc(s){
   // 배치 간격
   var spacing=(s.L/s.fanN).toFixed(1);
 
+  // 건조 완료 예상 시간 (아이템 잔류 수분 ÷ 순 제습 능력)
+  var dryPower=Math.max(0.1, s.dh/24 - Math.max(0,rhLoad*0.3));  // L/h 순 제습
+  var dryTimeMin=moistItem>0?Math.round(moistItem/dryPower*60):0;
+
   return {vol:vol,rho:rho,ach:ach,tf:tf,tfActual:tfActual,ff:ff,cover:cover,
     sp:sp,spMm:spMm,mw:mw,mwS:mwS,hpL:hpL,dia:dia,hc:hc,
-    htrSave:htrSave,htrEff:htrEff,
+    htrSave:htrSave,htrEff:htrEff,htrSaveFromRC:htrSaveFromRC,htrLossFromEx:htrLossFromEx,
     dhNeed:dhNeed,dhNeedDay:dhNeedDay,dhMod:dhMod,dhW:dhW,dhLh:dhLh,dhCoverPct:dhCoverPct,
     fanTotW:fanTotW,totW:totW,eff:eff,monthly:monthly,
     vel:vel,spacing:spacing,
-    svpT:svpT,rhLoad:rhLoad,effRH:effRH};
+    svpT:svpT,rhLoad:rhLoad,effRH:effRH,
+    moistItem:moistItem,dryTimeMin:dryTimeMin};
 }
 
 // ════════════════════════════════════════════
@@ -662,12 +744,40 @@ function go(){
     else dhHintEl.textContent='시간당 '+c.dhLh+'L/h · '+c.dhW+'W · 사용면적 ≈'+(s.dh*1.2).toFixed(0)+'㎡';
   }
 
+  // ── 새 슬라이더 라벨 ──
+  var hwKW=(s.hw/1000).toFixed(s.hw%1000===0?0:1);
+  var hwLbl=s.hw<=2000?'소형':s.hw<=4000?'표준':s.hw<=6000?'대형':'초대형';
+  var hwBg=s.hw<=2000?'#dce8f5':s.hw<=4000?'#fef3cd':'#fde8e8';
+  var hwFc=s.hw<=2000?'#1a4f8a':s.hw<=4000?'#856404':'#c0392b';
+  _setSlbl('sv_hw',hwKW,'st_hw',hwLbl,hwBg,hwFc,'#c0392b');
+  var hwEl=gel('hw_hint');
+  if(hwEl) hwEl.textContent=s.hw+'W · '+(s.hw<=3300?'단상 220V':'3상 380V')+' · 실효 '+c.htrEff+'W (절감 '+c.htrSave+'W)';
+
+  var ohLbl=s.oh<=4?'단시간':s.oh<=8?'1교대':s.oh<=16?'2교대':'상시운전';
+  var ohBg=s.oh<=8?'#f3e8ff':s.oh<=16?'#fef3cd':'#fde8e8';
+  var ohFc=s.oh<=8?'#6d28d9':s.oh<=16?'#856404':'#c0392b';
+  _setSlbl('sv_oh',s.oh,'st_oh',ohLbl,ohBg,ohFc,'#6d28d9');
+
+  var qtyLbl=s.qty<=100?'소량':s.qty<=250?'표준':s.qty<=400?'대량':'초대량';
+  _setSlbl('sv_qty',s.qty,'st_qty',qtyLbl,'#dce8f5','#1a4f8a','#2563a8');
+  var qtyEl=gel('qty_hint');
+  if(qtyEl) qtyEl.textContent='잔류수분 '+c.moistItem.toFixed(2)+'kg · 완료 예상 '+c.dryTimeMin+'분';
+
+  var exLbl=s.ex===0?'완전순환':s.ex<=20?'표준':s.ex<=50?'환기적극':s.ex<=80?'외기위주':'외기전용';
+  var exBg=s.ex===0?'#e0f2ef':s.ex<=30?'#dce8f5':s.ex<=60?'#fef3cd':'#fde8e8';
+  var exFc=s.ex===0?'#0c7a69':s.ex<=30?'#1a4f8a':s.ex<=60?'#856404':'#c0392b';
+  _setSlbl('sv_ex',s.ex,'st_ex',exLbl,exBg,exFc,'#1a4f8a');
+
   // ── 트랙 색상 ──
   trk('sl_temp',s.temp,30,60,'#3b82f6','#ef4444');
   trk('sl_fanN',s.fanN,1,8,'#93c5fd','#1a4f8a');
   trk('sl_ff',c.ff,50,500,'#93c5fd','#1a4f8a');
   trk('sl_rc',s.rc,0,80,'#d1fae5','#0c7a69');
   trk('sl_dh',s.dh,0,200,'#d1d5db','#0c7a69');
+  trk('sl_hw',s.hw,1000,10000,'#fecaca','#c0392b');
+  trk('sl_oh',s.oh,1,24,'#e9d5ff','#6d28d9');
+  trk('sl_qty',s.qty,50,500,'#dbeafe','#2563a8');
+  trk('sl_ex',s.ex,0,100,'#dbeafe','#1a4f8a');
 
   // ── 요약 바 ──
   st('s_vol',c.vol.toFixed(2));
@@ -688,7 +798,7 @@ function go(){
   // ── 상세 사양 표 ──
   drawSpec(s,c,opt);
 
-  st('spec_sub',s.temp+'°C · '+s.fanN+'대 · 재순환'+s.rc+'% · 제습'+s.dh+'L/h');
+  st('spec_sub',s.temp+'°C · '+s.fanN+'대 · 히터'+(s.hw/1000).toFixed(1)+'kW · 재순환'+s.rc+'% · 제습'+s.dh+'L/day · 외기'+s.ex+'% · '+s.oh+'h/day · '+s.qty+'개');
 }
 
 function _setSlbl(valId,val,tagId,lbl,bg,fc,numCol){
@@ -866,6 +976,11 @@ function drawSpec(s,c,opt){
     ['필요 제습량',c.dhNeedDay+' L/day ('+c.dhLh+' L/h)','재순환 포함 습도부하','<span style="background:'+(s.dh>=c.dhNeedDay?'#e4f4f1':'#fde8e8')+';color:'+(s.dh>=c.dhNeedDay?'#0c7a69':'#c0392b')+';border-radius:3px;padding:1px 5px;font-size:10px;">'+(s.dh>=c.dhNeedDay?'✅ 충족':'⚠️ 부족 '+(c.dhNeedDay-s.dh)+'L')+'</span>'],
     ['추천 제습기',c.dhMod,'CDH-KP시리즈 기준','<span style="background:#dce8f5;color:#1a4f8a;border-radius:3px;padding:1px 5px;font-size:10px;">시장 표준</span>'],
     ['제습기 설치량',s.dh===0?'미설치':s.dh+' L/day ('+c.dhLh+' L/h)',s.dh===0?'—':'소비전력 '+c.dhW+'W',''],
+    ['🔥 히터 용량',(s.hw/1000).toFixed(1)+' kW ('+s.hw+'W)',s.hw<=3300?'단상 220V':'3상 380V','<span style="background:#fef3cd;color:#856404;border-radius:3px;padding:1px 5px;font-size:10px;">'+(s.hw<=2000?'소형':s.hw<=4000?'표준':'대형')+'</span>'],
+    ['외기 도입율',s.ex+' %',s.ex===0?'완전 재순환':'외기 손실 '+c.htrLossFromEx+'W',s.ex<=30?'<span style="background:#e4f4f1;color:#0c7a69;border-radius:3px;padding:1px 5px;font-size:10px;">에너지 효율</span>':'<span style="background:#fef3cd;color:#856404;border-radius:3px;padding:1px 5px;font-size:10px;">환기 우선</span>'],
+    ['건조 아이템 수량',s.qty+' 개','잔류 수분 '+c.moistItem.toFixed(2)+' kg',''],
+    ['건조 완료 예상',c.dryTimeMin+' 분',s.qty+'개 기준 순제습 속도',c.dryTimeMin<=60?'<span style="background:#e4f4f1;color:#0c7a69;border-radius:3px;padding:1px 5px;font-size:10px;">신속</span>':c.dryTimeMin<=120?'<span style="background:#fef3cd;color:#856404;border-radius:3px;padding:1px 5px;font-size:10px;">보통</span>':'<span style="background:#fde8e8;color:#c0392b;border-radius:3px;padding:1px 5px;font-size:10px;">장시간</span>'],
+    ['일 운전 시간',s.oh+' h/day',s.oh<=8?'1교대':s.oh<=16?'2교대':'상시운전',''],
     ['팬 총 전력',c.fanTotW+' W',c.hpL+'×'+s.fanN,''],
     ['총 소비 전력',c.totW+' W','팬+히터+제습',''],
     ['건조 효율 지수',c.eff+'/100','온도+팬+재순환+제습',c.eff>=80?'<span style="background:#e4f4f1;color:#0c7a69;border-radius:3px;padding:1px 5px;font-size:10px;">우수</span>':c.eff>=60?'<span style="background:#fef3cd;color:#856404;border-radius:3px;padding:1px 5px;font-size:10px;">보통</span>':'<span style="background:#fde8e8;color:#c0392b;border-radius:3px;padding:1px 5px;font-size:10px;">미흡</span>'],
@@ -883,6 +998,8 @@ function applyOpt(){
   var s=getS(),c=calc(s),opt=getOpt(s,c);
   sv('sl_temp',opt.optTemp); sv('sl_fanN',opt.optFanN);
   sv('sl_rc',opt.optRC); sv('sl_dh',opt.optDH);
+  // 외기 도입은 재순환의 반대 - 재순환 50%면 외기 20% 표준
+  sv('sl_ex',Math.max(10,Math.min(30,100-opt.optRC)));
   _ffManual=false;
   go();
   toast('✅ 최적값 적용 — '+opt.optTemp+'°C / '+opt.optFanN+'대 / 재순환'+opt.optRC+'% / 제습'+opt.optDH+'L/day');
@@ -938,8 +1055,9 @@ async function presetSave(){
     L:s.L, W:s.W, H:s.H,
     at:s.at, rh:s.rh, trh:s.trh,
     hw:s.hw, ec:s.ec, lf:s.lf,
-    // 5개 슬라이더 값
+    // 슬라이더 값 (9개)
     temp:s.temp, fanN:s.fanN, rc:s.rc, dh:s.dh,
+    hw:s.hw, oh:s.oh, qty:s.qty, ex:s.ex,
     // 계산 결과 (참고용)
     vol:parseFloat(c.vol.toFixed(2)),
     ach:c.ach, tf:c.tf, ff:c.ff,
@@ -973,9 +1091,13 @@ function presetLoad(id){
   sv('r_L',p.L); sv('r_W',p.W); sv('r_H',p.H);
   sv('r_at',p.at); sv('r_rh',p.rh); sv('r_trh',p.trh);
   sv('r_hw',p.hw); sv('r_ec',p.ec); sv('r_lf',p.lf);
-  // 5 슬라이더 복원
+  // 슬라이더 복원 (9개)
   sv('sl_temp',p.temp); sv('sl_fanN',p.fanN);
   sv('sl_rc',p.rc);     sv('sl_dh',p.dh);
+  if(p.hw!=null){sv('sl_hw',p.hw); sv('r_hw',p.hw);}
+  if(p.oh!=null) sv('sl_oh',p.oh);
+  if(p.qty!=null) sv('sl_qty',p.qty);
+  if(p.ex!=null) sv('sl_ex',p.ex);
   _ffManual=false;
 
   renderPresets();
