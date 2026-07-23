@@ -40,17 +40,30 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;color:#2c3e50;min-
 
 /* ── NAV ── */
 .nav{width:100%;background:#1a2744;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.3)}
-.nav-inner{max-width:1200px;margin:0 auto;padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:56px}
-.nav-logo{display:flex;align-items:center;gap:10px;color:#fff}
+.nav-inner{max-width:1200px;margin:0 auto;padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:64px}
+.nav-logo{display:flex;align-items:center;gap:10px;color:#fff;flex-shrink:0}
 .nav-logo i{font-size:18px;color:#5bc4f5}
 .nav-logo span{font-size:15px;font-weight:700;letter-spacing:-.3px}
 .nav-logo small{font-size:11px;font-weight:300;color:#9bb3d4;margin-left:4px}
-.nav-right{display:flex;align-items:center;gap:12px}
-.nav-date{font-size:12px;color:#9bb3d4}
+/* 날씨 중앙 영역 */
+.nav-weather{display:flex;align-items:center;gap:20px;padding:0 24px}
+.nav-weather-item{display:flex;align-items:center;gap:6px;color:#d4e3f7}
+.nav-weather-item i{font-size:14px;color:#5bc4f5}
+.nav-weather-val{font-size:13px;font-weight:500}
+.nav-weather-label{font-size:10px;color:#9bb3d4;margin-left:2px}
+.nav-weather-sep{width:1px;height:24px;background:rgba(255,255,255,.12)}
+/* 우측 버튼 영역 */
+.nav-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.nav-date{font-size:11px;color:#9bb3d4;white-space:nowrap}
 .nav-btn{background:#2d4a8a;border:none;color:#fff;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;display:flex;align-items:center;gap:6px;transition:.2s}
 .nav-btn:hover{background:#3a5fa0}
 .nav-btn.mobile-btn{background:#e67e22}
 .nav-btn.mobile-btn:hover{background:#d35400}
+/* 날씨 로딩 애니메이션 */
+@keyframes pulse{0%,100%{opacity:.5}50%{opacity:1}}
+.nav-weather-loading{animation:pulse 1.4s infinite;color:#9bb3d4;font-size:11px}
+@media(max-width:900px){.nav-weather{display:none}}
+@media(max-width:600px){.nav-date{display:none}}
 
 /* ── LAYOUT ── */
 .container{max-width:1200px;margin:0 auto;padding:16px 20px}
@@ -207,13 +220,21 @@ tr:hover td{background:#f8fafd}
 <!-- NAV -->
 <nav class="nav">
   <div class="nav-inner">
+    <!-- 로고 -->
     <div class="nav-logo">
       <i class="fa fa-hard-hat"></i>
       <div>
         <span>제주 아라이동 주택공사</span>
-        <small>현장관리시스템 v1.0</small>
+        <small>현장관리시스템 v1.1</small>
       </div>
     </div>
+
+    <!-- 날씨 · 일출 · 일몰 (중앙) -->
+    <div class="nav-weather" id="navWeather">
+      <span class="nav-weather-loading"><i class="fa fa-spinner fa-spin"></i> 날씨 로딩 중...</span>
+    </div>
+
+    <!-- 우측 -->
     <div class="nav-right">
       <span class="nav-date" id="navDate"></span>
       <button class="nav-btn" onclick="openScheduleModal()"><i class="fa fa-plus"></i> 공정추가</button>
@@ -533,6 +554,8 @@ function whenReady(fn) {
 document.addEventListener('DOMContentLoaded', () => {
   updateNavDate();
   setInterval(updateNavDate, 60000);
+  loadWeather();
+  setInterval(loadWeather, 600000); // 10분마다 갱신
 
   // 오늘 날짜 기본값
   const today = new Date().toISOString().split('T')[0];
@@ -550,6 +573,82 @@ document.addEventListener('DOMContentLoaded', () => {
 function updateNavDate() {
   const now = new Date();
   document.getElementById('navDate').textContent = now.toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
+}
+
+// ─── 제주 아라이동 날씨 / 일출 / 일몰 ─────────────────
+// 아라이동 좌표: 33.4836°N, 126.5296°E
+const JEJU_LAT = 33.4836;
+const JEJU_LON = 126.5296;
+
+async function loadWeather() {
+  try {
+    // Open-Meteo (무료, 키 불필요) - 현재 날씨 + 일출/일몰
+    const wUrl = `https://api.open-meteo.com/v1/forecast?latitude=${JEJU_LAT}&longitude=${JEJU_LON}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&daily=sunrise,sunset&timezone=Asia%2FSeoul&forecast_days=1`;
+    const res = await fetch(wUrl);
+    const data = await res.json();
+
+    const cur = data.current;
+    const daily = data.daily;
+    const temp = Math.round(cur.temperature_2m);
+    const humidity = cur.relative_humidity_2m;
+    const windSpeed = Math.round(cur.wind_speed_10m);
+    const wCode = cur.weather_code;
+
+    // WMO 날씨 코드 → 아이콘 + 설명
+    function wmoIcon(c) {
+      if(c===0) return {icon:'fa-sun',label:'맑음',col:'#f9ca24'};
+      if(c<=2)  return {icon:'fa-cloud-sun',label:'구름조금',col:'#dfe6e9'};
+      if(c<=3)  return {icon:'fa-cloud',label:'흐림',col:'#b2bec3'};
+      if(c<=49) return {icon:'fa-smog',label:'안개',col:'#b2bec3'};
+      if(c<=59) return {icon:'fa-cloud-drizzle',label:'이슬비',col:'#74b9ff'};
+      if(c<=69) return {icon:'fa-cloud-rain',label:'비',col:'#74b9ff'};
+      if(c<=79) return {icon:'fa-snowflake',label:'눈',col:'#dfe6e9'};
+      if(c<=82) return {icon:'fa-cloud-showers-heavy',label:'소나기',col:'#0984e3'};
+      return {icon:'fa-bolt',label:'뇌우',col:'#fdcb6e'};
+    }
+
+    const wi = wmoIcon(wCode);
+
+    // 일출 / 일몰 파싱
+    const sunrise = daily.sunrise[0] ? daily.sunrise[0].split('T')[1] : '--:--';
+    const sunset  = daily.sunset[0]  ? daily.sunset[0].split('T')[1]  : '--:--';
+
+    // 렌더
+    document.getElementById('navWeather').innerHTML = `
+      <div class="nav-weather-item">
+        <i class="fa ${wi.icon}" style="color:${wi.col}"></i>
+        <span class="nav-weather-val">${temp}°C</span>
+        <span class="nav-weather-label">${wi.label}</span>
+      </div>
+      <div class="nav-weather-sep"></div>
+      <div class="nav-weather-item">
+        <i class="fa fa-droplet" style="color:#74b9ff"></i>
+        <span class="nav-weather-val">${humidity}%</span>
+        <span class="nav-weather-label">습도</span>
+      </div>
+      <div class="nav-weather-sep"></div>
+      <div class="nav-weather-item">
+        <i class="fa fa-wind" style="color:#a29bfe"></i>
+        <span class="nav-weather-val">${windSpeed}㎞/h</span>
+        <span class="nav-weather-label">바람</span>
+      </div>
+      <div class="nav-weather-sep"></div>
+      <div class="nav-weather-item">
+        <i class="fa fa-sun" style="color:#fdcb6e"></i>
+        <span class="nav-weather-val">${sunrise}</span>
+        <span class="nav-weather-label">일출</span>
+      </div>
+      <div class="nav-weather-sep"></div>
+      <div class="nav-weather-item">
+        <i class="fa fa-moon" style="color:#a29bfe"></i>
+        <span class="nav-weather-val">${sunset}</span>
+        <span class="nav-weather-label">일몰</span>
+      </div>`;
+  } catch(e) {
+    document.getElementById('navWeather').innerHTML =
+      `<span style="font-size:11px;color:#9bb3d4"><i class="fa fa-exclamation-triangle"></i> 날씨 정보 불러오기 실패</span>`;
+    console.warn('weather load fail:',e);
+  }
 }
 
 // ─── TABS ────────────────────────────────────────────
