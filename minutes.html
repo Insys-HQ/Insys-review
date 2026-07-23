@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>재난대응봉사회 통합관리시스템 v2.3</title>
+<title>재난대응봉사회 통합관리시스템 v2.4</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -224,7 +224,7 @@ textarea{resize:vertical;min-height:100px;line-height:1.6}
     <div class="nav-left"><span class="dot"></span>HL0FRC</div>
     <div class="nav-sys">재난대응봉사회 통합관리시스템</div>
     <div class="nav-right">
-      <span class="ver">v2.3</span>
+      <span class="ver">v2.4</span>
     </div>
   </div>
 </div>
@@ -275,21 +275,26 @@ textarea{resize:vertical;min-height:100px;line-height:1.6}
 
   <!-- 작성 -->
   <div id="minutes-write" class="sub-content active">
-    <div class="card">
-      <div class="card-title">📷 사진 업로드 (회의록·캡처·화면)</div>
+    <div class="card" id="min-upload-card">
+      <div class="card-title">📎 파일 업로드 → AI 자동 분석</div>
       <div class="upload-zone" id="min-upzone" onclick="document.getElementById('min-photo').click()"
            ondragover="dzOver(event,'min-upzone')" ondragleave="dzLeave('min-upzone')" ondrop="dzDrop(event,'min-upzone','min-photos','minutes')">
-        <div class="upload-icon">🖼️</div>
-        <p><strong>클릭 또는 드래그</strong></p>
-        <p>손글씨 회의록 · 카카오톡 캡처 · 화면 캡처 · <strong>PDF 파일</strong> 모두 가능</p>
+        <div class="upload-icon">📎</div>
+        <p><strong>클릭 또는 드래그하여 업로드</strong></p>
+        <p style="margin-top:4px">📷 사진·화면캡처 &nbsp;|&nbsp; 📲 카카오톡 캡처 &nbsp;|&nbsp; 📄 PDF 파일</p>
+        <p style="margin-top:6px;font-size:11px;color:#9ab0c0">업로드하면 AI가 내용을 분석하여 회의록 양식에 자동으로 채워드립니다</p>
       </div>
       <input type="file" id="min-photo" accept="image/*,application/pdf" multiple style="display:none" onchange="addPhotos(event,'min-photos','minutes')">
       <div class="preview-imgs" id="min-photos"></div>
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-primary" id="min-extract-btn" style="display:none" onclick="aiExtract('minutes')">
-          <span class="spinner" id="min-spinner" style="display:none"></span>🤖 AI 자동 추출
-        </button>
-        <button class="btn btn-gray" id="min-clear-photo" style="display:none" onclick="clearPhotos('min-photos','min-photo','min-extract-btn','min-clear-photo')">🗑️ 사진 초기화</button>
+      <div id="min-upload-actions" style="display:none">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-primary" id="min-extract-btn" onclick="aiExtractAndPreview()">
+            <span class="spinner" id="min-spinner" style="display:none"></span>
+            🤖 AI 분석 → 회의록 자동 작성
+          </button>
+          <button class="btn btn-gray" onclick="clearPhotos('min-photos','min-photo','min-extract-btn','min-clear-photo')">🗑️ 파일 초기화</button>
+          <span id="min-file-count" style="font-size:12px;color:#5a7a96"></span>
+        </div>
       </div>
       <div class="ai-status" id="min-ai-status"></div>
     </div>
@@ -353,11 +358,16 @@ textarea{resize:vertical;min-height:100px;line-height:1.6}
   <!-- 미리보기 -->
   <div id="minutes-view" class="sub-content">
     <div class="card">
-      <div id="minutes-preview-area"><div class="empty-state"><div class="ei">📝</div><p>작성 탭에서 입력 후 미리보기를 확인하세요.</p></div></div>
+      <div class="card-title" style="justify-content:space-between">
+        <span>👁️ 회의록 미리보기</span>
+        <span id="min-preview-badge" style="display:none;font-size:11px;font-weight:600;padding:2px 8px;border-radius:8px;background:#fef9c3;color:#854d0e">미저장</span>
+      </div>
+      <div id="minutes-preview-area"><div class="empty-state"><div class="ei">📝</div><p>파일을 업로드하거나 작성 탭에서 내용을 입력해주세요.</p></div></div>
       <div class="btn-group" id="min-view-btns" style="display:none">
-        <button class="btn btn-outline" onclick="subTab('minutes','write')">✏️ 수정</button>
-        <button class="btn btn-green" onclick="saveDoc('minutes')">💾 저장</button>
-        <button class="btn btn-primary" onclick="dlPDF('minutes')">📄 PDF</button>
+        <button class="btn btn-outline" onclick="subTab('minutes','write')">✏️ 내용 수정</button>
+        <button class="btn btn-green" onclick="saveDoc('minutes')">💾 Firebase 저장</button>
+        <button class="btn btn-primary" onclick="dlPDF('minutes')">📄 PDF 내보내기</button>
+        <button class="btn btn-orange" onclick="printMinutes()">🖨️ 인쇄</button>
       </div>
     </div>
   </div>
@@ -365,10 +375,19 @@ textarea{resize:vertical;min-height:100px;line-height:1.6}
   <!-- 보관함 -->
   <div id="minutes-archive" class="sub-content">
     <div class="card">
-      <div class="card-title">🗂️ 월별 보관함</div>
-      <div style="display:flex;gap:8px;margin-bottom:12px">
-        <select id="min-arch-year" style="width:90px" onchange="loadArchive('minutes')"><option value="">연도</option></select>
-        <input type="text" id="min-arch-search" placeholder="검색..." style="flex:1" oninput="filterArchive('minutes')">
+      <div class="card-title" style="justify-content:space-between">
+        <span>🗂️ 회의록 보관함</span>
+        <span id="min-arch-count" style="font-size:12px;color:#7a98b0;font-weight:400"></span>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <select id="min-arch-year" style="width:90px" onchange="loadArchive('minutes')"><option value="">전체 연도</option></select>
+        <select id="min-arch-type" style="width:110px" onchange="filterArchive('minutes')">
+          <option value="">전체 구분</option>
+          <option value="monthly">월례회</option>
+          <option value="exec">임원회의</option>
+        </select>
+        <input type="text" id="min-arch-search" placeholder="🔍 날짜·장소·내용 검색..." style="flex:1;min-width:140px" oninput="filterArchive('minutes')">
+        <button class="btn btn-outline" style="padding:7px 12px;font-size:12px" onclick="loadArchive('minutes')">🔄 새로고침</button>
       </div>
       <div id="minutes-arch-list"><div class="empty-state"><div class="ei">📂</div><p>저장된 회의록이 없습니다.</p></div></div>
     </div>
@@ -1057,10 +1076,21 @@ function handleFiles(files, previewId, menu){
   if(!photoStore[menu]) photoStore[menu]=[];
   photoStore[menu].push(...valid);
   renderPreviews(previewId, menu);
+  // minutes 전용 UI
+  if(menu==='minutes'){
+    const actions = document.getElementById('min-upload-actions');
+    const countEl = document.getElementById('min-file-count');
+    if(actions) actions.style.display='block';
+    if(countEl){
+      const total = photoStore[menu].length;
+      const pdfs  = photoStore[menu].filter(f=>f.type==='application/pdf').length;
+      const imgs  = total - pdfs;
+      countEl.textContent = `📎 ${total}개 파일 (이미지 ${imgs}개, PDF ${pdfs}개)`;
+    }
+    return;
+  }
   const btn = document.getElementById(`${menu}-extract-btn`);
-  const clrBtn = document.getElementById(`${menu==='minutes'?'min-clear-photo':''}`);
   if(btn) btn.style.display='inline-flex';
-  if(clrBtn) clrBtn.style.display='inline-flex';
 }
 
 function renderPreviews(previewId, menu){
@@ -1098,9 +1128,25 @@ function clearPhotos(previewId, inputId, btnId, clrId){
 //  AI EXTRACT (공통)
 // ═══════════════════════════════════════════════════
 const AI_PROMPTS = {
-  minutes:`이 이미지는 회의록 또는 카카오톡/화면 캡처입니다. 다음 JSON만 응답(설명없이):
-{"meeting_date":"YYYY-MM-DD","meeting_time":"HH:MM","meeting_place":"","attendees":[{"name":"","call":""}],
-"open":"","report":"","agenda":"","other":"","close":"","award":"","plan":""}`,
+  minutes:`이 파일(이미지·PDF·캡처)은 아마추어 무선 봉사단체 회의록입니다.
+모든 텍스트를 꼼꼼히 읽고 아래 JSON 형식으로만 응답하세요(설명·마크다운 없이 JSON만):
+{
+  "meeting_date":"YYYY-MM-DD",
+  "meeting_time":"HH:MM",
+  "meeting_place":"회의 장소",
+  "attendees":[{"name":"참석자이름","call":"콜사인(없으면빈문자열)"}],
+  "open":"개회선언·사회자 내용",
+  "report":"보고사항 전체 내용(줄바꿈 포함)",
+  "agenda":"안건·심의·결의 내용 전체(줄바꿈 포함)",
+  "other":"기타사항·공지 내용",
+  "close":"폐회·다음회의 내용",
+  "award":"표창·수상 내용(없으면빈문자열)",
+  "plan":"훈련·활동계획(없으면빈문자열)"
+}
+- 날짜가 없으면 빈문자열, 시간이 없으면 빈문자열
+- 참석자가 없으면 attendees를 빈배열
+- 내용이 길면 전부 포함(요약하지 말것)
+- 반드시 JSON만 응답`,
   proxy:`이 이미지에서 위임장 관련 정보를 추출하여 다음 JSON만 응답:
 {"meeting":"","date":"YYYY-MM-DD","delegators":"위임인 목록(줄바꿈)","delegate":"","delegate_call":"","content":""}`,
   schedule:`이 이미지(카카오톡 캡처 포함)에서 일정 정보를 추출하여 다음 JSON만 응답:
@@ -1284,6 +1330,11 @@ async function saveDoc(menu){
     showToast('✅ 저장 완료','ok');
     loadArchive(menu);
     closeModal();
+    // 미리보기 뱃지 업데이트
+    if(menu==='minutes'){
+      const badge=document.getElementById('min-preview-badge');
+      if(badge){badge.textContent='저장됨';badge.style.background='#d1fae5';badge.style.color='#166534';}
+    }
   }catch(e){showToast('저장 실패: '+e.message,'err');}
 }
 
@@ -1307,12 +1358,18 @@ async function loadArchive(menu){
 }
 
 function renderArchive(menu){
-  const listId = (menu==='minutes'||menu==='proxy') ? `${menu}-arch-list` : `${menu}-arch-list`;
-  const el=document.getElementById(listId); if(!el) return;
+  const el=document.getElementById(`${menu}-arch-list`); if(!el) return;
   const data=archiveCache[menu]||[];
-  if(!data.length){el.innerHTML=`<div class="empty-state"><div class="ei">📂</div><p>데이터가 없습니다.</p></div>`;return;}
 
   const filtered=filterData(menu,data);
+
+  // 건수 표시 (minutes 전용)
+  if(menu==='minutes'){
+    const countEl=document.getElementById('min-arch-count');
+    if(countEl) countEl.textContent=`전체 ${data.length}건 / 표시 ${filtered.length}건`;
+  }
+
+  if(!data.length){el.innerHTML=`<div class="empty-state"><div class="ei">📂</div><p>저장된 회의록이 없습니다. 작성 후 저장해주세요.</p></div>`;return;}
   if(!filtered.length){el.innerHTML=`<div class="empty-state"><div class="ei">🔍</div><p>검색 결과가 없습니다.</p></div>`;return;}
 
   el.innerHTML=filtered.map(item=>buildArchiveRow(menu,item)).join('');
@@ -1323,10 +1380,12 @@ function filterData(menu,data){
   const kw=(document.getElementById(kwId)?.value||'').toLowerCase();
   const yrId=`${menu==='minutes'?'min-arch-year':menu+'-year'}`;
   const yr=document.getElementById(yrId)?.value||'';
+  const mtype=menu==='minutes'?(document.getElementById('min-arch-type')?.value||''):'';
   return data.filter(item=>{
     const matchKw=!kw||JSON.stringify(item).toLowerCase().includes(kw);
     const matchYr=!yr||(item.updatedAt||'').startsWith(yr)||(item.month||'').startsWith(yr)||(item.date||'').startsWith(yr);
-    return matchKw&&matchYr;
+    const matchType=!mtype||(item.meetingType||'monthly')===mtype;
+    return matchKw&&matchYr&&matchType;
   });
 }
 
@@ -1364,10 +1423,10 @@ function buildArchiveRow(menu,item){
     <div class="arch-item">
       <div><div class="arch-label">${label}</div><div class="arch-meta">${sub}</div></div>
       <div class="arch-actions">
-        <button onclick="loadDoc('${menu}','${item.docId}')">✏️ 열기</button>
-        <button onclick="previewDoc('${menu}','${item.docId}')">👁️ 보기</button>
-        <button onclick="dlDocPDF('${menu}','${item.docId}')">📄 PDF</button>
-        <button class="del-btn" onclick="deleteDoc('${menu}','${item.docId}')">🗑️</button>
+        <button onclick="loadAndPreview('${menu}','${item.docId}')" title="불러와서 미리보기">👁️ 보기</button>
+        <button onclick="loadDoc('${menu}','${item.docId}')" title="수정하기">✏️ 수정</button>
+        <button onclick="dlDocPDF('${menu}','${item.docId}')" title="PDF 내보내기">📄 PDF</button>
+        <button class="del-btn" onclick="deleteDoc('${menu}','${item.docId}')" title="삭제">🗑️</button>
       </div>
     </div>`;
 }
@@ -1804,6 +1863,127 @@ async function deleteSuggest(docId){
     renderSuggestList();
     showToast('삭제 완료','ok');
   }catch(e){showToast('삭제 실패','err');}
+}
+
+
+// ═══════════════════════════════════════════════════
+//  AI 추출 → 폼 채우기 → 미리보기 자동 전환 (회의록 전용)
+// ═══════════════════════════════════════════════════
+async function aiExtractAndPreview(){
+  const photos = photoStore['minutes']||[];
+  if(!photos.length){showToast('파일을 먼저 업로드해주세요.','err');return;}
+
+  const statusEl = document.getElementById('min-ai-status');
+  const spinner  = document.getElementById('min-spinner');
+  const btn      = document.getElementById('min-extract-btn');
+  if(spinner) spinner.style.display='inline-block';
+  if(btn) btn.disabled=true;
+  statusEl.className='ai-status loading';
+  statusEl.textContent='🤖 AI가 파일을 분석 중입니다... 잠시 기다려주세요';
+
+  try {
+    const fileContents = await Promise.all(photos.map(async f=>{
+      const b64 = await fileToB64(f);
+      if(f.type==='application/pdf'){
+        return {type:"document",source:{type:"base64",media_type:"application/pdf",data:b64}};
+      } else {
+        return {type:"image",source:{type:"base64",media_type:f.type||"image/jpeg",data:b64}};
+      }
+    }));
+
+    const res = await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        model:"claude-sonnet-4-6", max_tokens:1000,
+        messages:[{role:"user",content:[
+          ...fileContents,
+          {type:"text", text:AI_PROMPTS['minutes']}
+        ]}]
+      })
+    });
+
+    const data = await res.json();
+    if(data.error) throw new Error(data.error.message||'API 오류');
+
+    const text = data.content?.map(c=>c.text||'').join('')||'';
+    const m = text.match(/\{[\s\S]*\}/);
+    if(!m) throw new Error('회의록 내용을 인식하지 못했습니다. 더 선명한 파일을 업로드해주세요.');
+
+    const extracted = JSON.parse(m[0]);
+
+    // 폼 채우기
+    fillForm('minutes', extracted);
+
+    // 연월 자동 설정
+    if(extracted.meeting_date && extracted.meeting_date.length>=7){
+      document.getElementById('m-month').value = extracted.meeting_date.substring(0,7);
+    }
+
+    // 미리보기 즉시 렌더
+    const d = collectData('minutes');
+    currentPDFData = {menu:'minutes', data:d};
+    const area  = document.getElementById('minutes-preview-area');
+    const btns  = document.getElementById('min-view-btns');
+    const badge = document.getElementById('min-preview-badge');
+    if(area) area.innerHTML = buildMinutesHTML(d);
+    if(btns) btns.style.display='flex';
+    if(badge) badge.style.display='inline-block';
+
+    // 미리보기 탭으로 자동 전환
+    subTab('minutes','view');
+
+    statusEl.className='ai-status ok';
+    statusEl.textContent='✅ AI 분석 완료! 미리보기 탭에서 확인하세요. 내용 수정 후 저장해주세요.';
+    showToast('✅ 회의록 자동 작성 완료!','ok');
+
+  } catch(err){
+    console.error(err);
+    statusEl.className='ai-status err';
+    statusEl.textContent='❌ 분석 실패: '+err.message;
+    showToast('AI 분석 실패. 파일 상태를 확인해주세요.','err');
+  } finally {
+    if(spinner) spinner.style.display='none';
+    if(btn) btn.disabled=false;
+  }
+}
+
+
+// 보관함에서 불러와 즉시 미리보기 (minutes 특화)
+async function loadAndPreview(menu, docId){
+  try{
+    const snap = await db.collection(COLLS[menu]).doc(docId).get();
+    if(!snap.exists){showToast('문서를 찾을 수 없습니다','err');return;}
+    const d = snap.data();
+    currentPDFData={menu, data:d};
+    if(menu==='minutes'){
+      fillFormFromData('minutes', d);
+      const area  = document.getElementById('minutes-preview-area');
+      const btns  = document.getElementById('min-view-btns');
+      const badge = document.getElementById('min-preview-badge');
+      if(area) area.innerHTML = buildMinutesHTML(d);
+      if(btns) btns.style.display='flex';
+      if(badge){badge.textContent='저장됨';badge.style.background='#d1fae5';badge.style.color='#166534';badge.style.display='inline-block';}
+      showMenu_byName('minutes');
+      subTab('minutes','view');
+      showToast('✅ 회의록 불러오기 완료','ok');
+    } else {
+      previewDoc(menu, docId);
+    }
+  }catch(e){showToast('불러오기 실패: '+e.message,'err');}
+}
+
+function showMenu_byName(name){
+  document.querySelectorAll('.menu-section').forEach(s=>s.style.display='none');
+  document.getElementById(`menu-${name}`).style.display='block';
+  document.querySelectorAll('.mmenu-btn').forEach(b=>b.classList.remove('active'));
+  const btns=[...document.querySelectorAll('.mmenu-btn')];
+  const nameMap=['minutes','proxy','schedule','contacts','volunteer','meetdoc','actplan','actreport','links','suggest'];
+  const idx=nameMap.indexOf(name);
+  if(idx>=0&&btns[idx]) btns[idx].classList.add('active');
+  const titles={minutes:'회 의 록',proxy:'위 임 장',schedule:'일 정 관 리'};
+  const sub=document.getElementById('hero-subtitle');
+  if(sub) sub.textContent=titles[name]||'회 의 록';
+  document.querySelector('.mtype-toggle').style.display=name==='minutes'?'flex':'none';
 }
 
 function renderCustomLinks(){
