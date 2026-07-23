@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>GlucoLog v1.1 — 혈당관리</title>
+<title>GlucoLog v1.2 — 혈당관리</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script type="module">
@@ -208,7 +208,7 @@ textarea.form-input{resize:none;height:70px;}
 <div class="safe-top"></div>
 <header class="app-header">
   <div class="logo-block">
-    <div class="logo">Gluco<span>Log</span> <span class="ver">v1.1</span></div>
+    <div class="logo">Gluco<span>Log</span> <span class="ver">v1.2</span></div>
     <div class="logo-sub">혈당·혈압·식단 통합 관리</div>
   </div>
   <div id="headerDate" class="date-badge">로딩중...</div>
@@ -239,12 +239,22 @@ textarea.form-input{resize:none;height:70px;}
     <div class="card-title"><span class="dot" style="background:var(--yellow)"></span>자가 혈당 측정</div>
     <div class="input-row">
       <div class="form-group">
-        <label class="form-label">혈당 (mg/dL)</label>
-        <input class="form-input" type="number" id="glucoseVal" placeholder="예: 105" min="40" max="600">
+        <label class="form-label">측정 날짜</label>
+        <input class="form-input" type="date" id="glucoseDate">
       </div>
       <div class="form-group">
         <label class="form-label">측정 시각</label>
         <input class="form-input" type="time" id="glucoseTime">
+      </div>
+    </div>
+    <div class="input-row">
+      <div class="form-group">
+        <label class="form-label">혈당 (mg/dL)</label>
+        <input class="form-input" type="number" id="glucoseVal" placeholder="예: 105" min="40" max="600">
+      </div>
+      <div class="form-group">
+        <label class="form-label" style="visibility:hidden">.</label>
+        <button class="btn btn-sm" type="button" onclick="setToday('glucoseDate')" style="width:100%;padding:8px;background:var(--pl);color:var(--primary);border:1.5px solid var(--pl);border-radius:9px;font-weight:600">📅 오늘</button>
       </div>
     </div>
     <div class="form-group">
@@ -270,6 +280,16 @@ textarea.form-input{resize:none;height:70px;}
     <div class="card-title"><span class="dot" style="background:var(--primary)"></span>혈압 측정</div>
     <div class="input-row">
       <div class="form-group">
+        <label class="form-label">측정 날짜</label>
+        <input class="form-input" type="date" id="bpDate">
+      </div>
+      <div class="form-group">
+        <label class="form-label">측정 시각</label>
+        <input class="form-input" type="time" id="bpTime">
+      </div>
+    </div>
+    <div class="input-row">
+      <div class="form-group">
         <label class="form-label">수축기 (높은값)</label>
         <input class="form-input" type="number" id="bpSys" placeholder="예: 110">
       </div>
@@ -284,8 +304,8 @@ textarea.form-input{resize:none;height:70px;}
         <input class="form-input" type="number" id="bpPulse" placeholder="예: 72">
       </div>
       <div class="form-group">
-        <label class="form-label">측정 시각</label>
-        <input class="form-input" type="time" id="bpTime">
+        <label class="form-label" style="visibility:hidden">.</label>
+        <button class="btn btn-sm" type="button" onclick="setToday('bpDate')" style="width:100%;padding:8px;background:var(--pl);color:var(--primary);border:1.5px solid var(--pl);border-radius:9px;font-weight:600">📅 오늘</button>
       </div>
     </div>
     <button class="btn btn-primary" onclick="saveBP()">💊 혈압 저장</button>
@@ -296,6 +316,16 @@ textarea.form-input{resize:none;height:70px;}
     <div class="card-title"><span class="dot" style="background:var(--accent)"></span>식사 기록</div>
     <div class="input-row">
       <div class="form-group">
+        <label class="form-label">식사 날짜</label>
+        <input class="form-input" type="date" id="mealDate">
+      </div>
+      <div class="form-group">
+        <label class="form-label">식사 시각</label>
+        <input class="form-input" type="time" id="mealTime">
+      </div>
+    </div>
+    <div class="input-row">
+      <div class="form-group">
         <label class="form-label">식사 구분</label>
         <select class="form-input" id="mealType">
           <option>아침</option><option>아침간식</option><option>점심</option>
@@ -303,8 +333,8 @@ textarea.form-input{resize:none;height:70px;}
         </select>
       </div>
       <div class="form-group">
-        <label class="form-label">식사 시각</label>
-        <input class="form-input" type="time" id="mealTime">
+        <label class="form-label" style="visibility:hidden">.</label>
+        <button class="btn btn-sm" type="button" onclick="setToday('mealDate')" style="width:100%;padding:8px;background:var(--al);color:var(--accent);border:1.5px solid var(--al);border-radius:9px;font-weight:600">📅 오늘</button>
       </div>
     </div>
     <div class="form-group">
@@ -565,7 +595,7 @@ let db,col,addDoc,getDocs,q,orderBy;
 let gChart,bChart,mChart;
 let mealB64=null,labB64=null,quickB64=null;
 let calcMode=1;
-const VER='v1.1';
+const VER='v1.2';
 
 // ─ 날짜 유틸 ─
 const todayStr=()=>new Date().toISOString().slice(0,10);
@@ -584,8 +614,17 @@ window.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('glucoseTime').value=nowTime();
   document.getElementById('bpTime').value=nowTime();
   document.getElementById('mealTime').value=nowTime();
+  document.getElementById('glucoseDate').value=todayStr();
+  document.getElementById('bpDate').value=todayStr();
+  document.getElementById('mealDate').value=todayStr();
   document.getElementById('labDate').value=todayStr();
 });
+
+// 날짜를 오늘로 리셋
+function setToday(elId){
+  document.getElementById(elId).value=todayStr();
+  showToast('📅 오늘 날짜로 설정');
+}
 
 // ─ Firebase 대기 ─
 window.addEventListener('firebaseReady',async()=>{
@@ -652,17 +691,20 @@ async function saveGlucose(){
   const val=parseFloat(document.getElementById('glucoseVal').value);
   if(!val||val<40||val>600){showToast('⚠️ 혈당값 확인 (40~600)');return;}
   if(!db){showToast('⚠️ Firebase 연결 중');return;}
+  const inputDate=document.getElementById('glucoseDate').value||todayStr();
   await addDoc(col(db,'glucolog'),{
-    type:'glucose',date:todayStr(),
+    type:'glucose',date:inputDate,
     time:document.getElementById('glucoseTime').value,
     value:val,when:document.getElementById('glucoseWhen').value,
     memo:document.getElementById('glucoseMemo').value,
     createdAt:new Date()
   });
-  showToast('✅ 혈당 저장 완료');
+  const dateLabel=inputDate===todayStr()?'오늘':inputDate;
+  showToast(`✅ 혈당 저장 (${dateLabel})`);
   document.getElementById('glucoseVal').value='';
   document.getElementById('glucoseMemo').value='';
   document.getElementById('glucoseTime').value=nowTime();
+  document.getElementById('glucoseDate').value=todayStr();
   await loadTodayRecords();
 }
 
@@ -672,18 +714,21 @@ async function saveBP(){
   const dia=parseFloat(document.getElementById('bpDia').value);
   if(!sys||!dia){showToast('⚠️ 수축기/이완기 입력 필요');return;}
   if(!db){showToast('⚠️ Firebase 연결 중');return;}
+  const inputDate=document.getElementById('bpDate').value||todayStr();
   await addDoc(col(db,'glucolog'),{
-    type:'bp',date:todayStr(),
+    type:'bp',date:inputDate,
     time:document.getElementById('bpTime').value,
     systolic:sys,diastolic:dia,
     pulse:parseFloat(document.getElementById('bpPulse').value)||null,
     createdAt:new Date()
   });
-  showToast('✅ 혈압 저장 완료');
+  const dateLabel=inputDate===todayStr()?'오늘':inputDate;
+  showToast(`✅ 혈압 저장 (${dateLabel})`);
   document.getElementById('bpSys').value='';
   document.getElementById('bpDia').value='';
   document.getElementById('bpPulse').value='';
   document.getElementById('bpTime').value=nowTime();
+  document.getElementById('bpDate').value=todayStr();
   await loadTodayRecords();
 }
 
@@ -694,8 +739,9 @@ async function saveMeal(){
   if(!db){showToast('⚠️ Firebase 연결 중');return;}
   setBtnLoading('mealBtnTxt','mealSp',true,'');
   const mType=document.getElementById('mealType').value;
+  const inputDate=document.getElementById('mealDate').value||todayStr();
   const data={
-    type:'meal',date:todayStr(),
+    type:'meal',date:inputDate,
     time:document.getElementById('mealTime').value,
     mealType:mType,menu,
     memo:document.getElementById('mealMemo').value,
@@ -713,11 +759,13 @@ async function saveMeal(){
     document.getElementById('mealAiResult').classList.add('show');
   }catch(e){console.error(e);}
   await addDoc(col(db,'glucolog'),data);
-  showToast('✅ 식사 저장 완료');
+  const dateLabel=inputDate===todayStr()?'오늘':inputDate;
+  showToast(`✅ 식사 저장 (${dateLabel})`);
   setBtnLoading('mealBtnTxt','mealSp',false,'🍽️ 저장 + AI 식단 분석');
   document.getElementById('mealMenu').value='';
   document.getElementById('mealMemo').value='';
   document.getElementById('mealTime').value=nowTime();
+  document.getElementById('mealDate').value=todayStr();
   mealB64=null;
   document.getElementById('mealPrev').style.display='none';
   await loadTodayRecords();
