@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>건조실 사양 시뮬레이터 v5.3</title>
+<title>건조실 사양 시뮬레이터 v5.4</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
@@ -159,7 +159,7 @@ input[type=range].sl::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
     <div class="hdr-right">
       <button class="btn-save" onclick="saveAll()">💾 저장</button>
       <button class="btn-save" onclick="loadLast()">📂 불러오기</button>
-      <span class="vbadge">v5.3</span>
+      <span class="vbadge">v5.4</span>
     </div>
   </div>
 </div>
@@ -256,18 +256,19 @@ input[type=range].sl::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
           <div class="sl-ticks"><span>0%(없음)</span><span>20%</span><span>40%</span><span>60%</span><span>80%</span></div>
         </div>
 
-        <!-- 5. 제습기 용량 -->
+        <!-- 5. 제습기 용량 (L/day 기준) -->
         <div class="sl-block">
           <div class="sl-header">
-            <div class="sl-label">💧 제습기 용량</div>
+            <div class="sl-label">💧 제습기 용량 (일)</div>
             <div class="sl-val-area">
-              <span class="sl-num" id="sv_dh" style="color:var(--ac)">10</span>
-              <span class="sl-unit">L/h</span>
-              <span class="sl-tag" id="st_dh" style="background:#e0f2ef;color:#0c7a69;">표준</span>
+              <span class="sl-num" id="sv_dh" style="color:var(--ac)">100</span>
+              <span class="sl-unit">L/day</span>
+              <span class="sl-tag" id="st_dh" style="background:#e0f2ef;color:#0c7a69;">업소용</span>
             </div>
           </div>
-          <div><input type="range" class="sl" id="sl_dh" min="0" max="50" step="1" value="10" oninput="go()"></div>
-          <div class="sl-ticks"><span>0(없음)</span><span>10</span><span>20</span><span>30</span><span>40</span><span>50</span></div>
+          <div><input type="range" class="sl" id="sl_dh" min="0" max="200" step="10" value="100" oninput="go()"></div>
+          <div class="sl-ticks"><span>0</span><span>50</span><span>100</span><span>150</span><span>200</span></div>
+          <div style="font-size:9px;color:var(--t3);margin-top:2px;" id="dh_hint">시간당 4.17L/h · 1,230W · 사용면적 120㎡급</div>
         </div>
 
         <!-- 최적화 버튼 -->
@@ -396,7 +397,7 @@ input[type=range].sl::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
 </div><!-- end layout -->
 
 <div class="footer" style="text-align:center;color:var(--t3);font-size:10px;padding:12px;">
-  인시스 AI혁신 R&amp;D센터 · 건조실 사양 시뮬레이터 v5.3 · 2026
+  인시스 AI혁신 R&amp;D센터 · 건조실 사양 시뮬레이터 v5.4 · 2026
 </div>
 
 <script>
@@ -522,7 +523,7 @@ function getS(){
     fanN:gi('sl_fanN',3),
     ffOvr:gi('sl_ff',140),
     rc:gi('sl_rc',50),
-    dh:gi('sl_dh',10),
+    dh:gi('sl_dh',100),
     oh:8,od:22,sf:1.2
   };
 }
@@ -564,8 +565,15 @@ function calc(s){
   var rhLoad=Math.max(0,(svpT*effRH/100-svpT*s.trh/100)*tf/1000);
   var moistItem=200*50*0.10/1000; // 기본 아이템 잔류
   var dhNeed=Math.ceil((moistItem+rhLoad)*1.3*10)/10;
-  var dhMod=dhNeed<=3?'3L':dhNeed<=5?'5L':dhNeed<=10?'10L':dhNeed<=20?'20L':dhNeed<=30?'30L':'50L↑';
-  var dhW=s.dh*60;
+  // dhNeed는 L/h → L/day로 환산
+  var dhNeedDay = Math.ceil(dhNeed*24);
+  var dhMod=dhNeedDay<=30?'30L/day':dhNeedDay<=60?'60L/day':dhNeedDay<=100?'100L/day':dhNeedDay<=150?'150L/day':'200L/day↑';
+  // 소비전력: L/day × 12.3 (CDH-KP100G 기준 100L=1230W)
+  var dhW=Math.round(s.dh*12.3);
+  // 시간당 제습량
+  var dhLh = Math.round(s.dh/24*100)/100;
+  // 충족도
+  var dhCoverPct = dhNeedDay===0?100:Math.min(Math.round(s.dh/dhNeedDay*100),200);
   // 팬 총 전력
   var fanTotW=mwS*s.fanN;
   // 총 소비전력
@@ -574,7 +582,7 @@ function calc(s){
   var eT=Math.round((s.temp-30)/30*40);
   var eF=Math.round((s.fanN-1)/7*25);
   var eR=Math.round(s.rc/80*15);
-  var eD=Math.round(Math.min(s.dh/Math.max(dhNeed,1),1.2)*20);
+  var eD=Math.round(Math.min(s.dh/Math.max(dhNeedDay,1),1.2)*20);
   var eff=Math.min(eT+eF+eR+eD,100);
   // 월간 운영비
   var monthly=Math.round(totW/1000*s.oh*s.od*s.ec);
@@ -585,7 +593,8 @@ function calc(s){
 
   return {vol:vol,rho:rho,ach:ach,tf:tf,tfActual:tfActual,ff:ff,cover:cover,
     sp:sp,spMm:spMm,mw:mw,mwS:mwS,hpL:hpL,dia:dia,hc:hc,
-    htrSave:htrSave,htrEff:htrEff,dhNeed:dhNeed,dhMod:dhMod,dhW:dhW,
+    htrSave:htrSave,htrEff:htrEff,
+    dhNeed:dhNeed,dhNeedDay:dhNeedDay,dhMod:dhMod,dhW:dhW,dhLh:dhLh,dhCoverPct:dhCoverPct,
     fanTotW:fanTotW,totW:totW,eff:eff,monthly:monthly,
     vel:vel,spacing:spacing,
     svpT:svpT,rhLoad:rhLoad,effRH:effRH};
@@ -599,7 +608,7 @@ function getOpt(s,c){
   var optFanN=Math.max(2,Math.min(4,Math.round(c.vol*0.45)));
   var optFF=Math.round(c.tf/optFanN);
   var optRC=50; // 표준 재순환
-  var optDH=Math.max(5,Math.ceil(c.dhNeed));
+  var optDH=Math.max(30,Math.ceil(c.dhNeedDay/10)*10);
   var optRho=1.293*273/(273+optTemp);
   var optAch=optTemp<=40?30:optTemp<=50?35:40;
   var optTF=Math.round(c.vol*optAch*s.lf*s.sf);
@@ -609,7 +618,7 @@ function getOpt(s,c){
   var optHP=optMWS<=40?'40W':optMWS<=75?'0.1HP(75W)':optMWS<=110?'0.15HP':'0.2HP';
   var optDia=optFF<=130?'φ150mm':optFF<=220?'φ180mm':'φ200mm';
   var optHtrSave=Math.round(s.hw*optRC/100*0.85);
-  var optTotW=optMWS*optFanN+(s.hw-optHtrSave)+optDH*60;
+  var optTotW=optMWS*optFanN+(s.hw-optHtrSave)+Math.round(optDH*12.3);
   var optMonthly=Math.round(optTotW/1000*s.oh*s.od*s.ec);
   return {optTemp:optTemp,optFanN:optFanN,optFF:optFF,optRC:optRC,optDH:optDH,
     optHP:optHP,optDia:optDia,optMonthly:optMonthly,optTotW:optTotW,
@@ -642,17 +651,23 @@ function go(){
   var rcFc=s.rc===0?'#6b7280':s.rc<=25?'#0c7a69':s.rc<=60?'#0c7a69':'#856404';
   _setSlbl('sv_rc',s.rc,'st_rc',rcLbl,rcBg,rcFc,'#0c7a69');
 
-  var dhLbl=s.dh===0?'없음':s.dh<=5?'소형':s.dh<=10?'표준':s.dh<=20?'중형':'대형';
-  var dhBg=s.dh===0?'#f3f4f6':s.dh<=5?'#fef3cd':s.dh>=c.dhNeed?'#e0f2ef':'#fde8e8';
-  var dhFc=s.dh===0?'#6b7280':s.dh<=5?'#856404':s.dh>=c.dhNeed?'#0c7a69':'#c0392b';
+  var dhLbl=s.dh===0?'없음':s.dh<=30?'소형':s.dh<=60?'중형':s.dh<=100?'업소용':s.dh<=150?'대형':'산업용';
+  var dhBg=s.dh===0?'#f3f4f6':s.dh<c.dhNeedDay?'#fde8e8':'#e0f2ef';
+  var dhFc=s.dh===0?'#6b7280':s.dh<c.dhNeedDay?'#c0392b':'#0c7a69';
   _setSlbl('sv_dh',s.dh===0?'0':s.dh,'st_dh',dhLbl,dhBg,dhFc,'#0c7a69');
+  // 힌트 텍스트 (시간당 제습량 · 소비전력 · 등급)
+  var dhHintEl=gel('dh_hint');
+  if(dhHintEl){
+    if(s.dh===0) dhHintEl.textContent='제습기 미설치';
+    else dhHintEl.textContent='시간당 '+c.dhLh+'L/h · '+c.dhW+'W · 사용면적 ≈'+(s.dh*1.2).toFixed(0)+'㎡';
+  }
 
   // ── 트랙 색상 ──
   trk('sl_temp',s.temp,30,60,'#3b82f6','#ef4444');
   trk('sl_fanN',s.fanN,1,8,'#93c5fd','#1a4f8a');
   trk('sl_ff',c.ff,50,500,'#93c5fd','#1a4f8a');
   trk('sl_rc',s.rc,0,80,'#d1fae5','#0c7a69');
-  trk('sl_dh',s.dh,0,50,'#d1d5db','#0c7a69');
+  trk('sl_dh',s.dh,0,200,'#d1d5db','#0c7a69');
 
   // ── 요약 바 ──
   st('s_vol',c.vol.toFixed(2));
@@ -688,7 +703,7 @@ function drawCharts(s,c,opt){
   var temps=[30,33,35,38,40,43,45,48,50,53,55,58,60];
   var fanNs=[1,2,3,4,5,6,7,8];
   var rcs=[0,10,20,30,40,50,60,70,80];
-  var dhs=[0,3,5,8,10,15,20,25,30];
+  var dhs=[0,20,40,60,80,100,120,150,180,200];  // L/day
 
   // ── C1: 온도 → 총풍량 & ACH ──
   var flowByTemp=temps.map(function(t){
@@ -740,17 +755,19 @@ function drawCharts(s,c,opt){
   st('cd3_now','● 현재 '+s.rc+'%');
 
   // ── C4: 제습량 → 효율 & 운영비 ──
-  mkC('c4',{type:'line',data:{labels:dhs.map(function(d){return d===0?'없음':d+'L';}),
+  mkC('c4',{type:'line',data:{labels:dhs.map(function(d){return d===0?'없음':d+'L/day';}),
     datasets:[
       {label:'건조효율지수',data:dhs.map(function(d){
         var eT=Math.round((s.temp-30)/30*40),eF=Math.round((s.fanN-1)/7*25),eR=Math.round(s.rc/80*15);
-        var eD=Math.round(Math.min(d/Math.max(c.dhNeed,1),1.2)*20);
+        // L/day 기준으로 효율 기여도 계산 (dhNeedDay 대비)
+        var eD=Math.round(Math.min(d/Math.max(c.dhNeedDay,1),1.2)*20);
         return Math.min(eT+eF+eR+eD,100);
       }),borderColor:'#0c7a69',backgroundColor:'#0c7a6915',tension:.4,fill:true,borderWidth:2,yAxisID:'y',
         pointRadius:dhs.map(function(d){return d===s.dh?8:3;}),
         pointBackgroundColor:dhs.map(function(d){return d===s.dh?'#e74c3c':'#0c7a69';})},
       {label:'월 운영비(원÷1000)',data:dhs.map(function(d){
-        return Math.round((c.fanTotW+c.htrEff+d*60)/1000*s.oh*s.od*s.ec/1000);
+        // 소비전력: 12.3W × L/day
+        return Math.round((c.fanTotW+c.htrEff+d*12.3)/1000*s.oh*s.od*s.ec/1000);
       }),borderColor:'#c0392b',backgroundColor:'transparent',tension:.3,borderWidth:2,yAxisID:'y2',
         pointRadius:dhs.map(function(d){return d===s.dh?7:2;}),
         pointBackgroundColor:dhs.map(function(d){return d===s.dh?'#e74c3c':'#c0392b';})}
@@ -763,7 +780,7 @@ function drawCharts(s,c,opt){
     datasets:[
       {label:'현재',data:[
         normalize(s.temp,30,60),normalize(s.fanN,1,8),normalize(s.rc,0,80),
-        Math.round(Math.min(s.dh/Math.max(c.dhNeed,1),1.2)*100),c.eff],
+        Math.min(c.dhCoverPct,100),c.eff],
         borderColor:'#d97706',backgroundColor:'#d9770625',borderWidth:2,pointBackgroundColor:'#d97706',pointRadius:4},
       {label:'최적',data:[
         normalize(opt.optTemp,30,60),normalize(opt.optFanN,1,8),normalize(opt.optRC,0,80),100,
@@ -780,15 +797,16 @@ function drawCharts(s,c,opt){
     var sp=Math.round(100*(r/1.185)*1.2),mw=Math.round(ff/3600*sp/0.15);
     var ms=mw<=40?40:mw<=75?75:mw<=110?110:mw<=150?150:220;
     var htr=s.hw-Math.round(s.hw*rc/100*0.85);
-    return Math.round((ms*n+htr+dh*60)/1000*s.oh*s.od*s.ec);
+    // 제습 소비전력: 12.3W × L/day
+    return Math.round((ms*n+htr+dh*12.3)/1000*s.oh*s.od*s.ec);
   }
-  var combos=['현재','온도↑5°C','팬+1대','재순환↑20%','제습+10L','전체 최적'];
+  var combos=['현재','온도↑5°C','팬+1대','재순환↑20%','제습+30L','전체 최적'];
   mkC('c6',{type:'bar',data:{labels:combos,datasets:[{label:'월간 운영비(원)',
     data:[c.monthly,
       qCost(Math.min(s.temp+5,60),s.fanN,s.rc,s.dh),
       qCost(s.temp,s.fanN+1,s.rc,s.dh),
       qCost(s.temp,s.fanN,Math.min(s.rc+20,80),s.dh),
-      qCost(s.temp,s.fanN,s.rc,s.dh+10),
+      qCost(s.temp,s.fanN,s.rc,s.dh+30),
       opt.optMonthly],
     backgroundColor:['#c0392b88','#d9770688','#2563a888','#0c7a6988','#6d28d988','#0c7a69cc'],
     borderColor:['#c0392b','#d97706','#2563a8','#0c7a69','#6d28d9','#0c7a69'],borderWidth:2,borderRadius:6}]},
@@ -805,7 +823,7 @@ function drawOpt(s,c,opt){
     {l:'팬 1대 풍량',v:opt.optFF+'m³/h',cls:''},
     {l:'모터 선정',v:opt.optHP,cls:''},
     {l:'재순환율',v:opt.optRC+'%',cls:s.rc===opt.optRC?'best':''},
-    {l:'제습기',v:opt.optDH+'L/h',cls:s.dh>=opt.optDH?'best':'warn'},
+    {l:'제습기',v:opt.optDH+'L/day',cls:s.dh>=opt.optDH?'best':'warn'},
     {l:'최적 월 비용',v:opt.optMonthly.toLocaleString()+'원',cls:'best'},
     {l:'현재 vs 최적',v:opt.saving>0?'-'+opt.saving.toLocaleString()+'원':'최적 상태',cls:opt.saving>0?'warn':'best'},
   ];
@@ -817,7 +835,7 @@ function drawOpt(s,c,opt){
   var reasons=[];
   if(s.temp!==opt.optTemp)reasons.push({t:'온도',v:s.temp+'°C → '+opt.optTemp+'°C 권장'});
   if(s.fanN!==opt.optFanN)reasons.push({t:'팬수',v:s.fanN+'대 → '+opt.optFanN+'대 권장'});
-  if(s.dh<opt.optDH)reasons.push({t:'제습',v:'부족 (필요 '+opt.optDH+'L/h)'});
+  if(s.dh<opt.optDH)reasons.push({t:'제습',v:'부족 (필요 '+opt.optDH+'L/day)'});
   if(opt.saving>0)reasons.push({t:'절감',v:'월 '+opt.saving.toLocaleString()+'원 절감 가능'});
   else reasons.push({t:'최적',v:'현재 설정이 이미 최적 수준'});
   var or=gel('opt_reasons');
@@ -845,8 +863,9 @@ function drawSpec(s,c,opt){
     ['내열 등급',c.hc,s.temp+'°C 기준',c.hc==='B종'?'<span style="background:#e4f4f1;color:#0c7a69;border-radius:3px;padding:1px 5px;font-size:10px;">B종</span>':'<span style="background:#fde8e8;color:#c0392b;border-radius:3px;padding:1px 5px;font-size:10px;">⚠️ F종</span>'],
     ['재순환 히터 절감',c.htrSave+' W','히터 '+s.hw+'W × '+s.rc+'% × 85%',''],
     ['히터 실효 전력',c.htrEff+' W','절감 후',''],
-    ['필요 제습량',c.dhNeed.toFixed(1)+' L/h ('+c.dhMod+')','재순환 포함 부하','<span style="background:'+(s.dh>=c.dhNeed?'#e4f4f1':'#fde8e8')+';color:'+(s.dh>=c.dhNeed?'#0c7a69':'#c0392b')+';border-radius:3px;padding:1px 5px;font-size:10px;">'+(s.dh>=c.dhNeed?'✅ 충족':'⚠️ 부족')+'</span>'],
-    ['제습기 설치량',s.dh===0?'미설치':s.dh+' L/h',s.dh===0?'—':'소비전력 '+c.dhW+'W',''],
+    ['필요 제습량',c.dhNeedDay+' L/day ('+c.dhLh+' L/h)','재순환 포함 습도부하','<span style="background:'+(s.dh>=c.dhNeedDay?'#e4f4f1':'#fde8e8')+';color:'+(s.dh>=c.dhNeedDay?'#0c7a69':'#c0392b')+';border-radius:3px;padding:1px 5px;font-size:10px;">'+(s.dh>=c.dhNeedDay?'✅ 충족':'⚠️ 부족 '+(c.dhNeedDay-s.dh)+'L')+'</span>'],
+    ['추천 제습기',c.dhMod,'CDH-KP시리즈 기준','<span style="background:#dce8f5;color:#1a4f8a;border-radius:3px;padding:1px 5px;font-size:10px;">시장 표준</span>'],
+    ['제습기 설치량',s.dh===0?'미설치':s.dh+' L/day ('+c.dhLh+' L/h)',s.dh===0?'—':'소비전력 '+c.dhW+'W',''],
     ['팬 총 전력',c.fanTotW+' W',c.hpL+'×'+s.fanN,''],
     ['총 소비 전력',c.totW+' W','팬+히터+제습',''],
     ['건조 효율 지수',c.eff+'/100','온도+팬+재순환+제습',c.eff>=80?'<span style="background:#e4f4f1;color:#0c7a69;border-radius:3px;padding:1px 5px;font-size:10px;">우수</span>':c.eff>=60?'<span style="background:#fef3cd;color:#856404;border-radius:3px;padding:1px 5px;font-size:10px;">보통</span>':'<span style="background:#fde8e8;color:#c0392b;border-radius:3px;padding:1px 5px;font-size:10px;">미흡</span>'],
@@ -866,13 +885,13 @@ function applyOpt(){
   sv('sl_rc',opt.optRC); sv('sl_dh',opt.optDH);
   _ffManual=false;
   go();
-  toast('✅ 최적값 적용 — '+opt.optTemp+'°C / '+opt.optFanN+'대 / 재순환'+opt.optRC+'% / 제습'+opt.optDH+'L/h');
+  toast('✅ 최적값 적용 — '+opt.optTemp+'°C / '+opt.optFanN+'대 / 재순환'+opt.optRC+'% / 제습'+opt.optDH+'L/day');
 }
 
 // ── 저장/불러오기 ─────────────────────────────
 async function saveAll(){
   var s=getS(),c=calc(s);
-  var data={label:s.temp+'°C·'+s.fanN+'대·RC'+s.rc+'%·DH'+s.dh+'L',state:s,result:c};
+  var data={label:s.temp+'°C·'+s.fanN+'대·RC'+s.rc+'%·DH'+s.dh+'L/day',state:s,result:c};
   localStorage.setItem('dry_v5',JSON.stringify(data));
   var ok=await fbSave(data);
   toast(ok?'✅ Firebase + 로컬 저장 완료':'✅ 로컬 저장 완료');
@@ -992,7 +1011,7 @@ function renderPresets(){
   el.innerHTML=_presets.map(function(p){
     var isActive=p._id===_activeId;
     var dt=p.savedAt?p.savedAt.substring(0,16).replace('T',' '):'';
-    var metaParts=[p.temp+'°C',p.fanN+'대','재순환'+p.rc+'%','제습'+p.dh+'L'];
+    var metaParts=[p.temp+'°C',p.fanN+'대','재순환'+p.rc+'%','제습'+p.dh+'L/day'];
     var icon=p.temp>=55?'🔥':p.temp>=45?'🌡️':p.dh>=20?'💧':p.fanN>=5?'🌀':'🏭';
     return '<div class="preset-item'+(isActive?' active':'')+'" onclick="presetLoad(\''+p._id+'\')">'+
       '<span class="pi-icon">'+icon+'</span>'+
