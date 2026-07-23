@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>재난대응봉사회 통합관리시스템 v2.4</title>
+<title>재난대응봉사회 통합관리시스템 v2.5</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -224,7 +224,7 @@ textarea{resize:vertical;min-height:100px;line-height:1.6}
     <div class="nav-left"><span class="dot"></span>HL0FRC</div>
     <div class="nav-sys">재난대응봉사회 통합관리시스템</div>
     <div class="nav-right">
-      <span class="ver">v2.4</span>
+      <span class="ver">v2.5</span>
     </div>
   </div>
 </div>
@@ -1127,6 +1127,46 @@ function clearPhotos(previewId, inputId, btnId, clrId){
 // ═══════════════════════════════════════════════════
 //  AI EXTRACT (공통)
 // ═══════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════
+//  Claude API 공통 호출 (CORS 허용 방식)
+// ═══════════════════════════════════════════════════
+async function callClaudeAPI(contentBlocks, promptText){
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true"
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 2000,
+      messages: [{
+        role: "user",
+        content: [...contentBlocks, {type:"text", text:promptText}]
+      }]
+    })
+  });
+  if(!res.ok){
+    const err = await res.json().catch(()=>({error:{message:res.statusText}}));
+    throw new Error(err?.error?.message || `HTTP ${res.status}`);
+  }
+  const data = await res.json();
+  return data.content?.map(c=>c.text||'').join('')||'';
+}
+
+// 파일 → API 콘텐츠 블록 변환
+async function filesToContentBlocks(files){
+  return Promise.all(files.map(async f=>{
+    const b64 = await fileToB64(f);
+    if(f.type==='application/pdf'){
+      return {type:"document", source:{type:"base64", media_type:"application/pdf", data:b64}};
+    }
+    return {type:"image", source:{type:"base64", media_type:f.type||"image/jpeg", data:b64}};
+  }));
+}
+
 const AI_PROMPTS = {
   minutes:`이 파일(이미지·PDF·캡처)은 아마추어 무선 봉사단체 회의록입니다.
 모든 텍스트를 꼼꼼히 읽고 아래 JSON 형식으로만 응답하세요(설명·마크다운 없이 JSON만):
@@ -1165,49 +1205,26 @@ const AI_PROMPTS = {
 
 async function aiExtract(menu){
   const photos = photoStore[menu]||[];
-  if(!photos.length){showToast('사진을 먼저 업로드해주세요.','err');return;}
+  if(!photos.length){showToast('파일을 먼저 업로드해주세요.','err');return;}
   const statusEl = document.getElementById(`${menu}-ai-status`);
   const spinnerId = menu==='minutes'?'min-spinner':`${menu}-spinner`;
   const spinner = document.getElementById(spinnerId);
   if(spinner) spinner.style.display='inline-block';
   const btn = document.getElementById(`${menu}-extract-btn`);
   if(btn) btn.disabled=true;
-  statusEl.className='ai-status loading'; statusEl.textContent='🤖 AI 분석 중...';
-
+  statusEl.className='ai-status loading'; statusEl.textContent='🤖 파일 분석 중... (10~20초 소요)';
   try {
-    const fileContents = await Promise.all(photos.map(async f=>{
-      const b64 = await fileToB64(f);
-      if(f.type==='application/pdf'){
-        // PDF: document 타입으로 전송
-        return {type:"document",source:{type:"base64",media_type:"application/pdf",data:b64}};
-      } else {
-        // 이미지: image 타입으로 전송
-        return {type:"image",source:{type:"base64",media_type:f.type||"image/jpeg",data:b64}};
-      }
-    }));
-    // PDF 포함 여부에 따라 안내 텍스트 조정
-    const hasPDF = photos.some(f=>f.type==='application/pdf');
-    const promptText = hasPDF
-      ? (AI_PROMPTS[menu]||"내용을 JSON으로 추출하세요.").replace("이 이미지는","이 문서/이미지는").replace("이 이미지에서","이 문서/이미지에서")
-      : (AI_PROMPTS[menu]||"내용을 JSON으로 추출하세요.");
-    const res = await fetch("https://api.anthropic.com/v1/messages",{
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({
-        model:"claude-sonnet-4-6", max_tokens:1000,
-        messages:[{role:"user",content:[...fileContents,{type:"text",text:promptText}]}]
-      })
-    });
-    const data = await res.json();
-    const text = data.content?.map(c=>c.text||'').join('')||'';
+    const blocks = await filesToContentBlocks(photos);
+    const text = await callClaudeAPI(blocks, AI_PROMPTS[menu]||"내용을 JSON으로 추출하세요.");
     const m = text.match(/\{[\s\S]*\}/);
-    if(!m) throw new Error('JSON 파싱 실패');
+    if(!m) throw new Error('내용을 인식하지 못했습니다.');
     const extracted = JSON.parse(m[0]);
     fillForm(menu, extracted);
     statusEl.className='ai-status ok'; statusEl.textContent='✅ 추출 완료! 내용을 확인·수정하세요.';
     showToast('AI 추출 완료','ok');
   } catch(err){
-    statusEl.className='ai-status err'; statusEl.textContent='❌ 추출 실패 — 수동 입력해주세요.';
-    showToast('AI 추출 실패','err');
+    statusEl.className='ai-status err'; statusEl.textContent='❌ 추출 실패: '+err.message;
+    showToast('AI 추출 실패: '+err.message,'err');
   } finally {
     if(spinner) spinner.style.display='none';
     if(btn) btn.disabled=false;
@@ -1882,33 +1899,12 @@ async function aiExtractAndPreview(){
   statusEl.textContent='🤖 AI가 파일을 분석 중입니다... 잠시 기다려주세요';
 
   try {
-    const fileContents = await Promise.all(photos.map(async f=>{
-      const b64 = await fileToB64(f);
-      if(f.type==='application/pdf'){
-        return {type:"document",source:{type:"base64",media_type:"application/pdf",data:b64}};
-      } else {
-        return {type:"image",source:{type:"base64",media_type:f.type||"image/jpeg",data:b64}};
-      }
-    }));
-
-    const res = await fetch("https://api.anthropic.com/v1/messages",{
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({
-        model:"claude-sonnet-4-6", max_tokens:1000,
-        messages:[{role:"user",content:[
-          ...fileContents,
-          {type:"text", text:AI_PROMPTS['minutes']}
-        ]}]
-      })
-    });
-
-    const data = await res.json();
-    if(data.error) throw new Error(data.error.message||'API 오류');
-
-    const text = data.content?.map(c=>c.text||'').join('')||'';
+    statusEl.textContent = '🤖 파일 변환 중...';
+    const blocks = await filesToContentBlocks(photos);
+    statusEl.textContent = '🤖 AI가 회의록 내용을 분석 중... (10~20초 소요)';
+    const text = await callClaudeAPI(blocks, AI_PROMPTS['minutes']);
     const m = text.match(/\{[\s\S]*\}/);
     if(!m) throw new Error('회의록 내용을 인식하지 못했습니다. 더 선명한 파일을 업로드해주세요.');
-
     const extracted = JSON.parse(m[0]);
 
     // 폼 채우기
