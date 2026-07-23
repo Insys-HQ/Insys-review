@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>재난대응봉사회 통합관리시스템 v2.6</title>
+<title>재난대응봉사회 통합관리시스템 v2.7</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -214,42 +214,9 @@ textarea{resize:vertical;min-height:100px;line-height:1.6}
   .si-head{flex-direction:column;gap:6px}
   .si-right{width:100%;justify-content:space-between}
 }
-
-/* ── API KEY MODAL ── */
-.apikey-modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:700;align-items:center;justify-content:center}
-.apikey-modal-ov.open{display:flex}
-.apikey-modal{background:#fff;border-radius:14px;width:90%;max-width:480px;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,0.3)}
-.apikey-modal h3{font-size:16px;font-weight:900;color:#1b3a5c;margin-bottom:8px}
-.apikey-modal p{font-size:12px;color:#5a7a96;margin-bottom:16px;line-height:1.6}
-.apikey-modal input{width:100%;padding:10px 14px;border:1.5px solid #d0dce8;border-radius:8px;font-family:'Noto Sans KR',sans-serif;font-size:13px;margin-bottom:10px;outline:none}
-.apikey-modal input:focus{border-color:#2e6da4}
-.apikey-modal .api-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
-.apikey-info{display:flex;align-items:center;gap:6px;font-size:11px;color:#7a98b0;padding:8px 10px;background:#f7fafd;border-radius:6px;margin-bottom:12px}
-.apikey-set-btn{padding:5px 12px;border:1.5px solid #d0dce8;border-radius:6px;background:#fff;font-size:11px;color:#2e6da4;cursor:pointer;font-family:'Noto Sans KR',sans-serif;font-weight:600;white-space:nowrap}
-.apikey-set-btn:hover{background:#eef4fb}
-.apikey-indicator{width:8px;height:8px;border-radius:50%;background:#dc2626;display:inline-block;flex-shrink:0}
-.apikey-indicator.set{background:#16a34a}
 </style>
 </head>
 <body>
-
-<!-- API KEY MODAL -->
-<div class="apikey-modal-ov" id="apikey-modal-ov">
-  <div class="apikey-modal">
-    <h3>🔑 Claude API 키 설정</h3>
-    <p>
-      파일 업로드 AI 분석 기능을 사용하려면 Anthropic API 키가 필요합니다.<br>
-      API 키는 이 기기에만 저장되며 외부로 전송되지 않습니다.<br>
-      <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:#2e6da4">▶ API 키 발급받기 (console.anthropic.com)</a>
-    </p>
-    <input type="password" id="apikey-input" placeholder="sk-ant-api03-..." autocomplete="off">
-    <div style="font-size:11px;color:#9ca3af;margin-bottom:14px">입력한 키는 브라우저 세션에만 저장되며 페이지 종료 시 삭제됩니다.</div>
-    <div class="api-btns">
-      <button class="btn btn-outline" onclick="closeApiKeyModal()">취소</button>
-      <button class="btn btn-green" onclick="saveApiKey()">✅ 저장하고 분석 시작</button>
-    </div>
-  </div>
-</div>
 
 
 <!-- NAV -->
@@ -258,10 +225,7 @@ textarea{resize:vertical;min-height:100px;line-height:1.6}
     <div class="nav-left"><span class="dot"></span>HL0FRC</div>
     <div class="nav-sys">재난대응봉사회 통합관리시스템</div>
     <div class="nav-right">
-      <button class="apikey-set-btn" id="apikey-nav-btn" onclick="openApiKeyModal()">
-        <span class="apikey-indicator" id="apikey-indicator"></span> AI 키 설정
-      </button>
-      <span class="ver">v2.6</span>
+      <span class="ver">v2.7</span>
     </div>
   </div>
 </div>
@@ -1040,7 +1004,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
   loadAllArchives();
   loadCustomLinks();
   loadSuggest();
-  updateApiKeyIndicator();
 });
 
 // ═══════════════════════════════════════════════════
@@ -1170,17 +1133,10 @@ function clearPhotos(previewId, inputId, btnId, clrId){
 //  Claude API 공통 호출 (CORS 허용 방식)
 // ═══════════════════════════════════════════════════
 async function callClaudeAPI(contentBlocks, promptText){
-  const apiKey = sessionStorage.getItem('rc_claude_key');
-  if(!apiKey){
-    // 키 없으면 모달 오픈 후 중단
-    openApiKeyModal('pending');
-    throw new Error('API 키를 먼저 입력해주세요.');
-  }
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-api-key": apiKey,
       "anthropic-version": "2023-06-01",
       "anthropic-dangerous-direct-browser-access": "true"
     },
@@ -1195,14 +1151,7 @@ async function callClaudeAPI(contentBlocks, promptText){
   });
   if(!res.ok){
     const err = await res.json().catch(()=>({error:{message:res.statusText}}));
-    const msg = err?.error?.message || `HTTP ${res.status}`;
-    // 401이면 키 문제
-    if(res.status===401){
-      sessionStorage.removeItem('rc_claude_key');
-      updateApiKeyIndicator();
-      throw new Error('API 키가 유효하지 않습니다. 키를 다시 확인해주세요.');
-    }
-    throw new Error(msg);
+    throw new Error(err?.error?.message || `HTTP ${res.status}`);
   }
   const data = await res.json();
   return data.content?.map(c=>c.text||'').join('')||'';
@@ -2035,44 +1984,6 @@ function showMenu_byName(name){
 }
 
 
-// ═══════════════════════════════════════════════════
-//  API 키 관리
-// ═══════════════════════════════════════════════════
-let _pendingExtract = null; // 키 저장 후 재시도용
-
-function openApiKeyModal(mode){
-  _pendingExtract = mode||null;
-  document.getElementById('apikey-modal-ov').classList.add('open');
-  const existing = sessionStorage.getItem('rc_claude_key');
-  if(existing) document.getElementById('apikey-input').value = existing;
-  setTimeout(()=>document.getElementById('apikey-input').focus(), 100);
-}
-
-function closeApiKeyModal(){
-  document.getElementById('apikey-modal-ov').classList.remove('open');
-  document.getElementById('apikey-input').value = '';
-}
-
-function saveApiKey(){
-  const key = document.getElementById('apikey-input').value.trim();
-  if(!key.startsWith('sk-ant-')){
-    showToast('API 키 형식이 올바르지 않습니다. sk-ant- 로 시작해야 합니다.','err');
-    return;
-  }
-  sessionStorage.setItem('rc_claude_key', key);
-  updateApiKeyIndicator();
-  closeApiKeyModal();
-  showToast('✅ API 키 저장 완료. 다시 분석 버튼을 눌러주세요.','ok');
-}
-
-function updateApiKeyIndicator(){
-  const has = !!sessionStorage.getItem('rc_claude_key');
-  const ind = document.getElementById('apikey-indicator');
-  const btn = document.getElementById('apikey-nav-btn');
-  if(ind) ind.classList.toggle('set', has);
-  if(btn) btn.title = has ? 'API 키 설정됨 (클릭하여 변경)' : 'API 키 미설정';
-}
-
 function renderCustomLinks(){
   const c=document.getElementById('custom-links'); if(!c) return;
   if(!customLinks.length){c.innerHTML='';return;}
@@ -2103,7 +2014,6 @@ function showToast(msg,type=''){
 }
 
 document.getElementById('preview-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
-document.getElementById('apikey-modal-ov').addEventListener('click',e=>{if(e.target===e.currentTarget)closeApiKeyModal();});
 </script>
 </body>
 </html>
