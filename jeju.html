@@ -242,8 +242,14 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;color:#2c3e50;min-
    모바일 UI — 실제 폰 화면 전용 (360~430px)
    테이블 X, 세로 카드 리스트 O
    ══════════════════════════════════════ */
-.mob-ov{position:fixed;inset:0;z-index:9000;display:none;flex-direction:column;overflow:hidden;background:#eff2f7}
+.mob-ov{position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100vh;height:100dvh;z-index:9000;display:none;flex-direction:column;overflow:hidden;background:#eff2f7}
 .mob-ov.show{display:flex}
+/* 폰에서 모바일 뷰 열리면 PC 뷰 자동 숨김 */
+@media(max-width:768px){
+  .mob-ov{display:flex}
+  #pcView, nav.nav{display:none}
+  body{overflow:hidden}
+}
 
 /* 상단 앱바 */
 .mob-appbar{background:#1a2744;padding:10px 14px;flex-shrink:0;color:#fff}
@@ -252,6 +258,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;color:#2c3e50;min-
 .mob-appbar-t i{color:#5bc4f5;font-size:16px}
 .mob-appbar-t small{font-size:10px;color:#9bb3d4;font-weight:400}
 .mob-appbar-x{background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:8px;padding:7px 10px;font-size:12px;font-family:'Noto Sans KR',sans-serif;display:flex;align-items:center;gap:5px;cursor:pointer}
+@media(max-width:768px){.mob-appbar-x{display:none}}
 .mob-appbar-info{display:flex;align-items:center;justify-content:space-between;margin-top:8px;font-size:11px;color:#9bb3d4}
 .mob-appbar-weather{display:flex;align-items:center;gap:5px;color:#d4e3f7}
 .mob-appbar-weather i{color:#5bc4f5}
@@ -657,7 +664,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;color:#2c3e50;min-
       <i class="fa fa-hard-hat"></i>
       <div>
         <span>제주 아라이동 주택공사</span>
-        <small>현장관리시스템 v2.3</small>
+        <small>현장관리시스템 v2.4</small>
       </div>
     </div>
     <div class="nav-weather" id="navWeather">
@@ -789,7 +796,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;color:#2c3e50;min-
     <div class="mob-appbar-row">
       <div class="mob-appbar-t">
         <i class="fa fa-hard-hat"></i>
-        <div>아라이동 주택공사 <small>v2.3</small></div>
+        <div>아라이동 주택공사 <small>v2.4</small></div>
       </div>
       <button class="mob-appbar-x" onclick="closeMobileView()"><i class="fa fa-times"></i></button>
     </div>
@@ -1017,6 +1024,15 @@ const fb  = ()=>window._firebase;
 
 // ── INIT ─────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded',()=>{
+  // 폰 화면(768px 이하)이면 자동으로 모바일 뷰 오픈
+  const isPhone = window.innerWidth <= 768 || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if(isPhone){
+    setTimeout(()=>{
+      const mv=document.getElementById('mobileView');
+      if(mv) mv.classList.add('show');
+      document.body.style.overflow='hidden';
+    }, 100);
+  }
   updateNavDate();
   setInterval(updateNavDate,60000);
   loadWeather();
@@ -1134,12 +1150,15 @@ async function saveInfo(){
 
 // ── LOAD PROCESSES ────────────────────────────────────
 function loadLocalProcesses(){
-  // Firebase 없이 기본 공정 로컬 표시
   processes = DEFAULT_PROCESSES.map((p,i)=>({
     id:'local_'+i, ...p, progress:0, status:'대기',
     startDate:'', endDate:'', manager:'', note:'', photos:[], memo:''
   }));
   renderProcessList(); renderKpi(); renderMobProcTable();
+  if(document.getElementById('mobileView')?.classList.contains('show')){
+    if(typeof updateMobAppbar==='function') updateMobAppbar();
+    if(typeof syncMobKpi==='function') syncMobKpi();
+  }
 }
 
 async function loadProcesses(){
@@ -1163,6 +1182,10 @@ async function loadProcesses(){
       console.log('[loadProcesses] 등록 완료. 총:', processes.length);
     }
     renderProcessList(); renderKpi(); renderMobProcTable();
+    // 모바일 뷰가 이미 열려있으면 KPI/앱바도 갱신
+    if(document.getElementById('mobileView')?.classList.contains('show')){
+      updateMobAppbar(); syncMobKpi();
+    }
     showToast(`공정 ${processes.length}개 로드 완료`,'success');
   }catch(e){
     console.error('[loadProcesses] Firebase 오류:',e);
