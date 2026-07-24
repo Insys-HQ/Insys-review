@@ -3,6 +3,50 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<!-- 캐시 완전 차단 -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<script>
+// ═══ 자동 새로고침 시스템 ═══
+// GitHub Pages 캐시로 구버전이 뜨는 문제 방지
+(function(){
+  const CURRENT_VERSION = 'v4.2';
+  const CHECK_URL = 'https://raw.githubusercontent.com/Insys-HQ/Insys-review/main/jeju.html?_=' + Date.now();
+
+  // 이미 이 버전으로 강제 새로고침한 상태면 재체크 스킵 (무한루프 방지)
+  const reloadedKey = 'jeju_v_' + CURRENT_VERSION;
+  if(sessionStorage.getItem(reloadedKey)) {
+    console.log('[Version] 최신 버전:', CURRENT_VERSION);
+    return;
+  }
+
+  // GitHub raw 파일에서 실제 최신 버전 확인
+  fetch(CHECK_URL, {cache: 'no-store'})
+    .then(r => r.text())
+    .then(html => {
+      const m = html.match(/<small>\s*(v[\d.]+)\s*<\/small>/);
+      if(m && m[1] !== CURRENT_VERSION){
+        console.log('[Auto-Reload] 새 버전 발견:', m[1], '(현재:', CURRENT_VERSION, ') → 강제 새로고침');
+        // 새 버전 저장 후 캐시 무시 새로고침
+        sessionStorage.setItem('jeju_v_' + m[1], '1');
+        // URL에 timestamp 추가해서 캐시 우회
+        const url = new URL(location.href);
+        url.searchParams.set('v', m[1]);
+        url.searchParams.set('t', Date.now());
+        location.replace(url.toString());
+      } else {
+        // 최신 버전이면 이 버전을 마킹
+        sessionStorage.setItem(reloadedKey, '1');
+        console.log('[Version] 최신 버전 확인:', CURRENT_VERSION);
+      }
+    })
+    .catch(e => {
+      console.warn('[Version] 확인 실패 (오프라인 가능):', e.message);
+      sessionStorage.setItem(reloadedKey, '1'); // 오프라인이면 그냥 진행
+    });
+})();
+</script>
 <title>제주 아라이동 주택공사 현장사진일지</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -334,7 +378,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:#eff2f7;color:#2c3e50
     <div class="appbar-top">
       <div class="appbar-t">
         <i class="fa fa-hard-hat"></i>
-        <div>제주 아라이동 주택공사 <small>v4.1</small></div>
+        <div>제주 아라이동 주택공사 <small>v4.2</small></div>
       </div>
       <span class="appbar-date" id="appDate">-</span>
     </div>
