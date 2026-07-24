@@ -11,19 +11,26 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getFirestore, collection, doc, addDoc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, orderBy, where, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js';
-const firebaseConfig = {
-  apiKey:"AIzaSyBYqd2uRr1ZvFLDCWuS15h9qFkT-Dvg5Es",
-  authDomain:"insys-work.firebaseapp.com",
-  projectId:"insys-work",
-  storageBucket:"insys-work.appspot.com"
-};
-const app = initializeApp(firebaseConfig);
-const db  = getFirestore(app);
-const storage = getStorage(app);
-window._db = db; window._storage = storage;
-window._firebase = { collection,doc,addDoc,getDoc,getDocs,setDoc,updateDoc,deleteDoc,query,orderBy,where,serverTimestamp,ref,uploadBytesResumable,getDownloadURL,deleteObject };
-window._firebaseReady = true;
-window.dispatchEvent(new Event('firebaseReady'));
+try {
+  const firebaseConfig = {
+    apiKey:"AIzaSyBYqd2uRr1ZvFLDCWuS15h9qFkT-Dvg5Es",
+    authDomain:"insys-work.firebaseapp.com",
+    projectId:"insys-work",
+    storageBucket:"insys-work.appspot.com"
+  };
+  const app = initializeApp(firebaseConfig);
+  const db  = getFirestore(app);
+  const storage = getStorage(app);
+  window._db = db;
+  window._storage = storage;
+  window._firebase = { collection,doc,addDoc,getDoc,getDocs,setDoc,updateDoc,deleteDoc,query,orderBy,where,serverTimestamp,ref,uploadBytesResumable,getDownloadURL,deleteObject };
+  window._firebaseReady = true;
+  window.dispatchEvent(new Event('firebaseReady'));
+} catch(e) {
+  console.error('Firebase 초기화 실패:', e);
+  window._firebaseReady = false;
+  window.dispatchEvent(new Event('firebaseReady'));
+}
 </script>
 
 <style>
@@ -536,7 +543,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;color:#2c3e50;min-
       <i class="fa fa-hard-hat"></i>
       <div>
         <span>제주 아라이동 주택공사</span>
-        <small>현장관리시스템 v2.0</small>
+        <small>현장관리시스템 v1.9</small>
       </div>
     </div>
     <div class="nav-weather" id="navWeather">
@@ -622,7 +629,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;color:#2c3e50;min-
         <div class="card-title"><i class="fa fa-building"></i> 공사 기본정보</div>
         <div class="form-group"><label>공사명</label><input id="infoName" placeholder="제주 아라이동 단독주택 신축공사" value="제주시 아라이동 1462-11 신축공사"></div>
         <div class="form-row2">
-          <div class="form-group"><label>발주처 (건축주)</label><input id="infoClient" value="유한회사 더케이타워"></div>
+          <div class="form-group"><label>발주처</label><input id="infoClient" value="유한회사 더케이타워"></div>
           <div class="form-group"><label>시공사</label><input id="infoContractor" value="(주)그로브웍스"></div>
         </div>
         <div class="form-row2">
@@ -632,68 +639,15 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;color:#2c3e50;min-
         <div class="form-group"><label>현장 주소</label><input id="infoAddr" value="제주시 아라이동 1462-11"></div>
         <div class="form-row2">
           <div class="form-group"><label>현장소장</label><input id="infoManager" value="권창오"></div>
-          <div class="form-group"><label>현장소장 연락처</label><input id="infoTel" value="" placeholder="010-0000-0000"></div>
+          <div class="form-group"><label>연락처</label><input id="infoTel" value="010-4581-6779"></div>
         </div>
-        <div class="form-group"><label>메모</label><textarea id="infoNote" rows="2" placeholder="기타 메모사항"></textarea></div>
+        <div class="form-group"><label>특이사항</label><textarea id="infoNote" rows="3">허가번호: 2026-주택과-신축신고-17
+층수: 지상 2층 / 연면적: 81.42㎡ / 구조: 철근콘크리트조 / 용도: 단독주택
+설계자: (주)지오 건축사사무소 (055-715-9001)
+허가기관: 제주시 주택과 (064-728-3673)
+공사시공 연락처: 064-794-8330</textarea></div>
         <div style="display:flex;justify-content:flex-end"><button class="btn btn-primary" onclick="saveInfo()"><i class="fa fa-save"></i> 저장</button></div>
       </div>
-
-      <!-- 건축허가 상세 카드 -->
-      <div class="card">
-        <div class="card-title"><i class="fa fa-file-contract"></i> 건축허가 사항</div>
-        <table style="width:100%;border-collapse:collapse;font-size:13px">
-          <colgroup><col style="width:130px"><col></colgroup>
-          <tbody>
-            <tr style="border-bottom:1px solid #f0f2f5">
-              <td style="padding:7px 10px;font-weight:600;color:#6b7a99;background:#f8faff;font-size:12px">공 사 명</td>
-              <td style="padding:7px 12px;font-weight:700;color:#1a2744">제주시 아라이동 1462-11 신축공사</td>
-            </tr>
-            <tr style="border-bottom:1px solid #f0f2f5">
-              <td style="padding:7px 10px;font-weight:600;color:#6b7a99;background:#f8faff;font-size:12px">허 가 번 호</td>
-              <td style="padding:7px 12px;color:#2c3e50">2026-주택과-신축신고-17</td>
-            </tr>
-            <tr style="border-bottom:1px solid #f0f2f5">
-              <td style="padding:7px 10px;font-weight:600;color:#6b7a99;background:#f8faff;font-size:12px">대 지 위 치</td>
-              <td style="padding:7px 12px;color:#2c3e50">제주시 아라이동 1462-11</td>
-            </tr>
-            <tr style="border-bottom:1px solid #f0f2f5">
-              <td style="padding:7px 10px;font-weight:600;color:#6b7a99;background:#f8faff;font-size:12px">층 수</td>
-              <td style="padding:7px 12px;color:#2c3e50">지상 2층</td>
-            </tr>
-            <tr style="border-bottom:1px solid #f0f2f5">
-              <td style="padding:7px 10px;font-weight:600;color:#6b7a99;background:#f8faff;font-size:12px">연 면 적</td>
-              <td style="padding:7px 12px;color:#2c3e50">81.42 ㎡ (24.6평)</td>
-            </tr>
-            <tr style="border-bottom:1px solid #f0f2f5">
-              <td style="padding:7px 10px;font-weight:600;color:#6b7a99;background:#f8faff;font-size:12px">구 조</td>
-              <td style="padding:7px 12px;color:#2c3e50">철근콘크리트조 (RC조)</td>
-            </tr>
-            <tr style="border-bottom:1px solid #f0f2f5">
-              <td style="padding:7px 10px;font-weight:600;color:#6b7a99;background:#f8faff;font-size:12px">용 도</td>
-              <td style="padding:7px 12px;color:#2c3e50">단독주택</td>
-            </tr>
-            <tr style="border-bottom:1px solid #f0f2f5">
-              <td style="padding:7px 10px;font-weight:600;color:#6b7a99;background:#f8faff;font-size:12px">공 사 기 간</td>
-              <td style="padding:7px 12px;color:#2c3e50">2026.07.14 ~ 2026.12.15</td>
-            </tr>
-            <tr style="border-bottom:1px solid #f0f2f5">
-              <td style="padding:7px 10px;font-weight:600;color:#6b7a99;background:#f8faff;font-size:12px">건 축 주</td>
-              <td style="padding:7px 12px;color:#2c3e50">유한회사 더케이타워 <span style="color:#8a9ab5;font-size:11px">HP 010-4581-6779</span></td>
-            </tr>
-            <tr style="border-bottom:1px solid #f0f2f5">
-              <td style="padding:7px 10px;font-weight:600;color:#6b7a99;background:#f8faff;font-size:12px">설 계 자</td>
-              <td style="padding:7px 12px;color:#2c3e50">(주) 지오 건축사 사무소 <span style="color:#8a9ab5;font-size:11px">055-715-9001</span></td>
-            </tr>
-            <tr style="border-bottom:1px solid #f0f2f5">
-              <td style="padding:7px 10px;font-weight:600;color:#6b7a99;background:#f8faff;font-size:12px">공사시공</td>
-              <td style="padding:7px 12px;color:#2c3e50">(주) 그로브웍스 <span style="color:#8a9ab5;font-size:11px">064-794-8330</span></td>
-            </tr>
-            <tr>
-              <td style="padding:7px 10px;font-weight:600;color:#6b7a99;background:#f8faff;font-size:12px">허 가 기 관</td>
-              <td style="padding:7px 12px;color:#2c3e50">제주시 주택과 <span style="color:#8a9ab5;font-size:11px">064-728-3673</span></td>
-            </tr>
-          </tbody>
-        </table>
       <div class="card">
         <div class="card-title"><i class="fa fa-circle-info"></i> 사용 안내</div>
         <div style="font-size:13px;color:#4a5568;line-height:1.9">
@@ -720,7 +674,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;color:#2c3e50;min-
   <div class="mob-topbar">
     <div class="mob-topbar-logo">
       <i class="fa fa-hard-hat"></i>
-      <div><span>제주 아라이동 주택공사</span><small> v2.0</small></div>
+      <div><span>제주 아라이동 주택공사</span><small> v1.9</small></div>
     </div>
     <div class="mob-topbar-right">
       <div class="mob-topbar-weather" id="mobWeatherTop"></div>
@@ -947,7 +901,12 @@ let projectInfo = {};
 let currentTab = 'process';
 
 // ── FIREBASE ─────────────────────────────────────────
-function whenReady(fn){ if(window._firebaseReady) fn(); else window.addEventListener('firebaseReady',fn,{once:true}); }
+function whenReady(fn){
+  if(window._firebaseReady !== undefined) { fn(); return; }
+  window.addEventListener('firebaseReady', fn, {once:true});
+  // 3초 안에 이벤트 없으면 강제 실행
+  setTimeout(()=>{ if(window._firebaseReady===undefined){ window._firebaseReady=false; fn(); }}, 3000);
+}
 const db  = ()=>window._db;
 const st  = ()=>window._storage;
 const fb  = ()=>window._firebase;
@@ -1065,38 +1024,37 @@ async function saveInfo(){
 }
 
 // ── LOAD PROCESSES ────────────────────────────────────
+function loadLocalProcesses(){
+  // Firebase 없이 기본 공정 로컬 표시
+  processes = DEFAULT_PROCESSES.map((p,i)=>({
+    id:'local_'+i, ...p, progress:0, status:'대기',
+    startDate:'', endDate:'', manager:'', note:'', photos:[], memo:''
+  }));
+  renderProcessList(); renderKpi(); renderMobProcTable();
+}
+
 async function loadProcesses(){
+  if(!window._firebaseReady || !window._db){
+    loadLocalProcesses();
+    showToast('오프라인 모드 - 기본 공정 표시','info');
+    return;
+  }
   try{
     const {collection,getDocs,query,orderBy}=fb();
     const q=query(collection(db(),'jeju_processes'),orderBy('order','asc'));
     const snap=await getDocs(q);
     processes=snap.docs.map(d=>({id:d.id,...d.data()}));
-    // 처음 실행 시 기본 공정 자동 등록
     if(processes.length===0) await initDefaultProcesses();
-    renderProcessList();
-    renderKpi();
-    renderMobChips();
+    renderProcessList(); renderKpi(); renderMobProcTable();
   }catch(e){
-    console.warn('loadProcesses Firebase 오류:', e);
-    // Firebase 연결 실패 시 로컬 기본 공정으로 임시 렌더
-    if(processes.length===0){
-      processes = DEFAULT_PROCESSES.map((p,i)=>({
-        id:'local_'+i, ...p,
-        progress:0, status:'대기',
-        startDate:'', endDate:'', manager:'', note:'',
-        photos:[], memo:''
-      }));
-    }
-    renderProcessList();
-    renderKpi();
-    renderMobChips();
-    showToast('Firebase 연결 확인 필요 - 임시 공정 표시 중','info');
+    console.warn('loadProcesses 오류:',e);
+    loadLocalProcesses();
+    showToast('DB 연결 오류 - 기본 공정 표시','info');
   }
-}
 }
 
 async function initDefaultProcesses(){
-  const {collection,addDoc,serverTimestamp}=fb();
+  const {collection,addDoc,getDocs,query,orderBy,serverTimestamp}=fb();
   for(const p of DEFAULT_PROCESSES){
     await addDoc(collection(db(),'jeju_processes'),{
       ...p, progress:0, status:'대기',
@@ -1105,9 +1063,7 @@ async function initDefaultProcesses(){
       createdAt:serverTimestamp(), updatedAt:serverTimestamp()
     });
   }
-  // 재로드
-  const {getDocs,query,orderBy}=fb();
-  const q=query(collection(db(),'jeju_processes'),fb().orderBy('order','asc'));
+  const q=query(collection(db(),'jeju_processes'),orderBy('order','asc'));
   const snap=await getDocs(q);
   processes=snap.docs.map(d=>({id:d.id,...d.data()}));
 }
