@@ -44,8 +44,15 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:#eff2f7;color:#2c3e50
 .appbar-t small{font-size:10px;color:#9bb3d4;font-weight:400}
 .appbar-info{display:flex;align-items:center;justify-content:space-between;margin-top:4px;font-size:11px}
 .appbar-date{color:#d4e3f7}
-.appbar-weather{color:#d4e3f7;display:flex;align-items:center;gap:6px}
+.appbar-weather{color:#d4e3f7;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .appbar-weather i{color:#5bc4f5}
+.wx-item{display:flex;align-items:center;gap:4px;font-size:11px;white-space:nowrap}
+.wx-item b{color:#fff;font-weight:600}
+.wx-sep{width:1px;height:11px;background:rgba(255,255,255,.2)}
+@media(max-width:600px){
+  .wx-item{font-size:10px}
+  .appbar-weather{gap:6px}
+}
 
 /* ═══ 탭 ═══ */
 .tabs{background:#fff;border-bottom:1px solid #e5e9f0;position:sticky;top:56px;z-index:99}
@@ -266,12 +273,12 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:#eff2f7;color:#2c3e50
     <div class="appbar-top">
       <div class="appbar-t">
         <i class="fa fa-hard-hat"></i>
-        <div>제주 아라이동 주택공사 <small>v3.4</small></div>
+        <div>제주 아라이동 주택공사 <small>v3.5</small></div>
       </div>
     </div>
     <div class="appbar-info">
       <span class="appbar-date" id="appDate">-</span>
-      <span class="appbar-weather" id="appWeather"><i class="fa fa-spinner fa-spin"></i></span>
+      <span class="appbar-weather" id="appWeather"><i class="fa fa-spinner fa-spin"></i> 제주 아라이동 날씨 로딩 중...</span>
     </div>
   </div>
 </div>
@@ -452,13 +459,49 @@ function updateAppDate(){
 // ═══ 날씨 ═══
 async function loadWeather(){
   try{
-    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${JEJU_LAT}&longitude=${JEJU_LON}&current=temperature_2m,weather_code&timezone=Asia%2FSeoul`);
+    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${JEJU_LAT}&longitude=${JEJU_LON}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m&timezone=Asia%2FSeoul`);
     const d = await r.json();
-    const t = Math.round(d.current.temperature_2m);
-    const wc = d.current.weather_code;
-    const emoji = wc===0?'☀️':wc<=3?'⛅':wc<=49?'🌫':wc<=69?'🌧':wc<=79?'❄️':'⛈';
-    document.getElementById('appWeather').innerHTML = `${emoji} ${t}°C`;
-  }catch(e){ document.getElementById('appWeather').innerHTML = ''; }
+    const c = d.current;
+    const t = Math.round(c.temperature_2m);
+    const hum = c.relative_humidity_2m;
+    const ws = Math.round(c.wind_speed_10m);
+    const wd = c.wind_direction_10m;
+    const wc = c.weather_code;
+
+    // 기상 상태 (WMO 코드)
+    function wxInfo(c){
+      if(c===0) return {emoji:'☀️', label:'맑음'};
+      if(c<=2)  return {emoji:'⛅', label:'구름조금'};
+      if(c===3) return {emoji:'☁️', label:'흐림'};
+      if(c<=49) return {emoji:'🌫', label:'안개'};
+      if(c<=59) return {emoji:'🌦', label:'이슬비'};
+      if(c<=69) return {emoji:'🌧', label:'비'};
+      if(c<=79) return {emoji:'❄️', label:'눈'};
+      if(c<=82) return {emoji:'⛈', label:'소나기'};
+      if(c<=99) return {emoji:'🌩', label:'뇌우'};
+      return {emoji:'', label:''};
+    }
+    const wx = wxInfo(wc);
+
+    // 풍향 (16방위)
+    function windDir(deg){
+      const dirs = ['북','북북동','북동','동북동','동','동남동','남동','남남동','남','남남서','남서','서남서','서','서북서','북서','북북서'];
+      return dirs[Math.round(((deg%360)/22.5))%16];
+    }
+    const wdText = windDir(wd);
+
+    document.getElementById('appWeather').innerHTML = `
+      <span class="wx-item"><i class="fa fa-location-dot"></i>제주 아라이동</span>
+      <span class="wx-sep"></span>
+      <span class="wx-item">${wx.emoji}<b>${t}°C</b> ${wx.label}</span>
+      <span class="wx-sep"></span>
+      <span class="wx-item"><i class="fa fa-droplet"></i>습도 <b>${hum}%</b></span>
+      <span class="wx-sep"></span>
+      <span class="wx-item"><i class="fa fa-wind"></i>${wdText} <b>${ws}㎞/h</b></span>`;
+  }catch(e){
+    console.warn('weather:',e);
+    document.getElementById('appWeather').innerHTML = '<span class="wx-item"><i class="fa fa-location-dot"></i>제주 아라이동 · 날씨 정보 없음</span>';
+  }
 }
 
 // ═══ 탭 전환 ═══
