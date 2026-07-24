@@ -273,7 +273,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:#eff2f7;color:#2c3e50
     <div class="appbar-top">
       <div class="appbar-t">
         <i class="fa fa-hard-hat"></i>
-        <div>제주 아라이동 주택공사 <small>v3.6</small></div>
+        <div>제주 아라이동 주택공사 <small>v3.7</small></div>
       </div>
     </div>
     <div class="appbar-info">
@@ -688,27 +688,31 @@ async function handleUpload(files){
   let done = 0, failed = 0;
 
   for(const rawFile of fileArr){
-    text.textContent = `처리 중... (${done+1}/${fileArr.length})`;
     try{
-      // 1MB 초과 시 리사이즈
-      let file = rawFile;
-      if(rawFile.size > 1024*1024){
-        text.textContent = `이미지 압축 중... (${done+1}/${fileArr.length})`;
-        console.log(`[Compress] 원본: ${(rawFile.size/1024/1024).toFixed(2)}MB`);
-        file = await resizeImage(rawFile, 1600, 0.8);
-        console.log(`[Compress] 압축 후: ${(file.size/1024/1024).toFixed(2)}MB`);
-      }
-      text.textContent = `업로드 중... (${done+1}/${fileArr.length})`;
-      const res = await uploadPhotoFile(file, date, (pct)=>{
-        fill.style.width = Math.round(((done/fileArr.length)+(pct/100/fileArr.length))*100) + '%';
-      });
-      // Firestore에 저장
+      text.textContent = `압축 중... (${done+1}/${fileArr.length})`;
+      console.log(`[Upload] 원본: ${(rawFile.size/1024/1024).toFixed(2)}MB`);
+      // Firestore 문서 제한 1MB이므로 base64 후 700KB 이하로 압축
+      // base64는 원본보다 33% 크므로 실제 이미지는 ~500KB 이하로
+      const compressed = await resizeImageToTarget(rawFile, 500 * 1024);
+      console.log(`[Upload] 압축 후: ${(compressed.size/1024).toFixed(0)}KB`);
+
+      text.textContent = `저장 중... (${done+1}/${fileArr.length})`;
+      const base64 = await fileToBase64(compressed);
+      fill.style.width = Math.round(((done+0.5)/fileArr.length)*100) + '%';
+
+      // Firestore에 직접 저장 (base64 dataURL 사용)
       const {collection,addDoc,serverTimestamp}=fb();
       const docRef = await addDoc(collection(db(),'jeju_photos'),{
-        date, url:res.url, filename:res.filename,
-        comment:'', createdAt:serverTimestamp()
+        date,
+        url: base64,       // base64 dataURL (img src에 그대로 사용)
+        filename: rawFile.name,
+        size: compressed.size,
+        comment: '',
+        createdAt: serverTimestamp()
       });
-      photos.unshift({id:docRef.id, date, url:res.url, filename:res.filename, comment:''});
+      photos.unshift({id:docRef.id, date, url:base64, filename:rawFile.name, comment:''});
+      console.log(`[Upload] Firestore 저장 완료: ${docRef.id}`);
+      fill.style.width = Math.round(((done+1)/fileArr.length)*100) + '%';
     }catch(e){
       console.error('업로드 실패:',e);
       failed++;
@@ -724,6 +728,32 @@ async function handleUpload(files){
   renderDayList();
   updateKpi();
   if(done-failed>0) showToast(`${done-failed}장 저장되었습니다`,'success');
+}
+
+// 파일 → base64 dataURL
+function fileToBase64(file){
+  return new Promise((resolve,reject)=>{
+    const r = new FileReader();
+    r.onload = ()=>resolve(r.result);
+    r.onerror = ()=>reject(new Error('파일 읽기 실패'));
+    r.readAsDataURL(file);
+  });
+}
+
+// 목표 크기 이하로 반복 압축
+async function resizeImageToTarget(file, targetBytes){
+  let quality = 0.85;
+  let maxSize = 1600;
+  let result = await resizeImage(file, maxSize, quality);
+  // 여전히 크면 품질/해상도 낮춰가며 재압축
+  while(result.size > targetBytes && quality > 0.3){
+    quality -= 0.15;
+    if(quality < 0.5) maxSize = 1280;
+    if(quality < 0.35) maxSize = 1024;
+    result = await resizeImage(file, maxSize, quality);
+    console.log(`[Compress] 재시도: ${maxSize}px, q${quality.toFixed(2)} → ${(result.size/1024).toFixed(0)}KB`);
+  }
+  return result;
 }
 
 // 이미지 리사이즈 (긴 변 maxSize 이하, JPEG 압축)
@@ -856,11 +886,6 @@ async function deleteCurrentPhoto(){
   if(!p) return;
   if(!confirm('이 사진을 삭제하시겠습니까?')) return;
   try{
-    // Storage에서 삭제
-    try{
-      const {ref:sRef,deleteObject}=fb();
-      await deleteObject(sRef(st(), `jeju/${p.date}/${p.filename}`));
-    }catch(e){ console.warn('Storage 삭제 실패:',e); }
     // Firestore에서 삭제
     const {doc,deleteDoc}=fb();
     await deleteDoc(doc(db(),'jeju_photos',p.id));
