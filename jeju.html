@@ -258,7 +258,7 @@ tr:hover td{background:#f8fafd}
       <i class="fa fa-hard-hat"></i>
       <div>
         <span>제주 아라이동 주택공사</span>
-        <small>현장관리시스템 v1.2</small>
+        <small>현장관리시스템 v1.3</small>
       </div>
     </div>
 
@@ -291,7 +291,7 @@ tr:hover td{background:#f8fafd}
     </div>
     <div class="kpi green">
       <div class="kpi-val" id="kpiDone">0</div>
-      <div class="kpi-label">완료 공종</div>
+      <div class="kpi-label">완료 공정</div>
     </div>
     <div class="kpi orange">
       <div class="kpi-val" id="kpiPhotos">0</div>
@@ -318,7 +318,7 @@ tr:hover td{background:#f8fafd}
   <!-- ① 공정표 TAB -->
   <div id="tab-schedule">
     <div class="card">
-      <div class="card-title"><i class="fa fa-chart-gantt"></i> 공종별 진행현황</div>
+      <div class="card-title"><i class="fa fa-chart-gantt"></i> 공정별 진행현황</div>
       <!-- 전체 진행률 -->
       <div class="progress-wrap" style="margin-bottom:16px">
         <div class="progress-label"><span>전체 공정</span><span id="overallPct">0%</span></div>
@@ -330,7 +330,7 @@ tr:hover td{background:#f8fafd}
           <thead>
             <tr>
               <th style="width:40px">No</th>
-              <th>공종명</th>
+              <th>공정명</th>
               <th>시작일</th>
               <th>완료예정</th>
               <th style="width:120px">진행률</th>
@@ -543,9 +543,9 @@ tr:hover td{background:#f8fafd}
 <!-- 공정 추가/수정 모달 -->
 <div class="modal-overlay" id="scheduleModal">
   <div class="modal">
-    <h3><i class="fa fa-calendar-plus" style="color:#5bc4f5"></i> 공종 추가/수정</h3>
+    <h3><i class="fa fa-calendar-plus" style="color:#5bc4f5"></i> 공정 추가/수정</h3>
     <input type="hidden" id="scheduleId">
-    <div class="form-row single"><div><label>공종명 *</label><input id="schedName" placeholder="예) 골조공사"></div></div>
+    <div class="form-row single"><div><label>공정명 *</label><input id="schedName" placeholder="예) 골조공사"></div></div>
     <div class="form-row">
       <div><label>시작일 *</label><input type="date" id="schedStart"></div>
       <div><label>완료예정일 *</label><input type="date" id="schedEnd"></div>
@@ -875,7 +875,7 @@ function updateKpis() {
     const diff = Math.floor((new Date()-start)/86400000);
     document.getElementById('kpiDays').textContent = diff > 0 ? diff : 0;
   }
-  // 완료 공종
+  // 완료 공정
   const done = schedules.filter(s=>s.status==='완료').length;
   document.getElementById('kpiDone').textContent = done;
   // 전체 진행률
@@ -904,7 +904,7 @@ async function loadSchedules() {
 function renderSchedule() {
   const tbody = document.getElementById('scheduleTbody');
   if(!schedules.length){
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:#aaa;padding:30px">등록된 공종이 없습니다. <b>공정추가</b> 버튼을 눌러 시작하세요.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:#aaa;padding:30px">등록된 공정이 없습니다. <b>공정추가</b> 버튼을 눌러 시작하세요.</td></tr>`;
     return;
   }
   tbody.innerHTML = schedules.map((s,i) => `
@@ -972,7 +972,7 @@ function editSchedule(id){ openScheduleModal(id); }
 
 async function saveSchedule() {
   const name = document.getElementById('schedName').value.trim();
-  if(!name){ showToast('공종명을 입력하세요','error'); return; }
+  if(!name){ showToast('공정명을 입력하세요','error'); return; }
   const {collection, doc, addDoc, updateDoc, serverTimestamp} = fb();
   const id = document.getElementById('scheduleId').value;
   const data = {
@@ -988,11 +988,11 @@ async function saveSchedule() {
   try {
     if(id){
       await updateDoc(doc(db(),'jeju_schedules',id), data);
-      showToast('공종이 수정되었습니다.','success');
+      showToast('공정이 수정되었습니다.','success');
     } else {
       data.createdAt = serverTimestamp();
       await addDoc(collection(db(),'jeju_schedules'), data);
-      showToast('공종이 추가되었습니다.','success');
+      showToast('공정이 추가되었습니다.','success');
     }
     closeModal('scheduleModal');
     await loadSchedules();
@@ -1000,7 +1000,7 @@ async function saveSchedule() {
 }
 
 async function deleteSchedule(id) {
-  if(!confirm('이 공종을 삭제하시겠습니까?')) return;
+  if(!confirm('이 공정을 삭제하시겠습니까?')) return;
   const {doc, deleteDoc} = fb();
   await deleteDoc(doc(db(),'jeju_schedules',id));
   showToast('삭제되었습니다.','info');
