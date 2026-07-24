@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>GlucoLog v1.2 — 혈당관리</title>
+<title>GlucoLog v1.3 — 혈당관리</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script type="module">
@@ -208,7 +208,7 @@ textarea.form-input{resize:none;height:70px;}
 <div class="safe-top"></div>
 <header class="app-header">
   <div class="logo-block">
-    <div class="logo">Gluco<span>Log</span> <span class="ver">v1.2</span></div>
+    <div class="logo">Gluco<span>Log</span> <span class="ver">v1.3</span></div>
     <div class="logo-sub">혈당·혈압·식단 통합 관리</div>
   </div>
   <div id="headerDate" class="date-badge">로딩중...</div>
@@ -373,6 +373,21 @@ textarea.form-input{resize:none;height:70px;}
 <!-- ═══ TAB: 분석 ═══ -->
 <div class="tab-panel" id="tab-analysis">
 
+  <!-- 식단 기반 혈당관리 처방 (측정 없이도 가능) -->
+  <div class="card">
+    <div class="card-title"><span class="dot" style="background:var(--accent)"></span>오늘 식단 기반 혈당관리 처방</div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:10px;line-height:1.6">
+      혈당·혈압을 측정하지 않은 날도 괜찮습니다.<br>오늘 기록된 식사와 프로필·활동량만으로 AI가 혈당관리 처방을 내려드립니다.
+    </p>
+    <button class="btn btn-accent" onclick="generateDietPrescription()">
+      <span id="dietRxBtnTxt">💊 오늘 처방 받기</span><span class="spinner" id="dietRxSp"></span>
+    </button>
+    <div class="ai-result" id="dietRxResult">
+      <div class="ai-header">💊 AI 혈당관리 처방 <span style="font-size:10px;font-weight:400;color:var(--text3)">(참고용 — 최종 판단은 담당의에게)</span></div>
+      <div class="ai-body" id="dietRxBody"></div>
+    </div>
+  </div>
+
   <!-- 당화혈색소 계산기 -->
   <div class="card">
     <div class="card-title"><span class="dot" style="background:var(--yellow)"></span>당화혈색소(HbA1c) 계산기</div>
@@ -485,6 +500,93 @@ textarea.form-input{resize:none;height:70px;}
   </div>
 </div>
 
+<!-- ═══ TAB: 프로필 ═══ -->
+<div class="tab-panel" id="tab-profile">
+
+  <!-- 개인정보 -->
+  <div class="card">
+    <div class="card-title"><span class="dot" style="background:var(--primary)"></span>개인 정보</div>
+    <div class="input-row">
+      <div class="form-group">
+        <label class="form-label">성별</label>
+        <select class="form-input" id="pfGender">
+          <option value="male">남성</option>
+          <option value="female">여성</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">나이 (세)</label>
+        <input class="form-input" type="number" id="pfAge" placeholder="예: 45" min="1" max="120">
+      </div>
+    </div>
+    <div class="input-row">
+      <div class="form-group">
+        <label class="form-label">키 (cm)</label>
+        <input class="form-input" type="number" id="pfHeight" placeholder="예: 170" min="100" max="230">
+      </div>
+      <div class="form-group">
+        <label class="form-label">몸무게 (kg)</label>
+        <input class="form-input" type="number" id="pfWeight" placeholder="예: 68" min="20" max="250" step="0.1">
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="saveProfile()">💾 개인정보 저장</button>
+
+    <div class="hba1c-result-box" id="profileStatBox">
+      <div style="display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap">
+        <div style="text-align:center;flex:1;min-width:64px">
+          <div style="font-size:18px;font-weight:800;color:var(--primary)" id="bmiVal">—</div>
+          <div style="font-size:10px;color:var(--text3)">BMI</div>
+        </div>
+        <div style="text-align:center;flex:1;min-width:64px">
+          <div style="font-size:18px;font-weight:800;color:var(--accent)" id="bmrVal">—</div>
+          <div style="font-size:10px;color:var(--text3)">기초대사량(kcal)</div>
+        </div>
+        <div style="text-align:center;flex:1;min-width:64px">
+          <div style="font-size:18px;font-weight:800;color:var(--yellow)" id="stdWeightVal">—</div>
+          <div style="font-size:10px;color:var(--text3)">표준체중(kg)</div>
+        </div>
+      </div>
+      <div style="font-size:11px;margin-top:8px;text-align:center" id="bmiGradeTxt"></div>
+    </div>
+  </div>
+
+  <!-- 활동 감지 -->
+  <div class="card">
+    <div class="card-title"><span class="dot" style="background:var(--accent)"></span>오늘 활동량 감지 (걸음·러닝)</div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:10px;line-height:1.6">
+      휴대폰을 소지한 채 측정을 시작하면 걸음·달리기를 자동 감지하여 소모 칼로리를 계산합니다. (화면이 꺼지면 측정이 중단될 수 있습니다)
+    </p>
+    <button class="btn btn-accent" id="activityStartBtn" onclick="startActivityTracking()">▶️ 활동 측정 시작</button>
+    <button class="btn btn-warn" id="activityStopBtn" style="display:none" onclick="stopActivityTracking(true)">⏹ 측정 중지 및 저장</button>
+
+    <div id="activityLive" style="display:none;margin-top:10px">
+      <div class="today-summary" style="grid-template-columns:1fr 1fr 1fr 1fr">
+        <div class="summary-item"><div class="val" id="liveSteps" style="color:var(--primary);font-size:16px">0</div><div class="lbl">걸음</div></div>
+        <div class="summary-item"><div class="val" id="liveWalkMin" style="color:var(--accent);font-size:16px">0</div><div class="lbl">도보(분)</div></div>
+        <div class="summary-item"><div class="val" id="liveRunMin" style="color:var(--warn);font-size:16px">0</div><div class="lbl">러닝(분)</div></div>
+        <div class="summary-item"><div class="val" id="liveCal" style="color:var(--yellow);font-size:16px">0</div><div class="lbl">kcal</div></div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+    <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:6px">동작 감지가 안 될 때 — 걸음 수 직접 입력</div>
+    <div class="input-row">
+      <div class="form-group">
+        <input class="form-input" type="number" id="manualSteps" placeholder="예: 6000">
+      </div>
+      <div class="form-group" style="flex:0 0 80px">
+        <button class="btn btn-outline" style="padding:8px;font-size:12px" onclick="saveManualSteps()">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 오늘 활동 요약 -->
+  <div class="card">
+    <div class="card-title"><span class="dot" style="background:var(--text3)"></span>오늘 활동 · 소모 칼로리 요약</div>
+    <div id="todayActivitySummary"><div class="empty-state"><div class="e-icon">🏃</div><div class="e-txt">측정된 활동이 없습니다</div></div></div>
+  </div>
+</div>
+
 <!-- ═══ TAB: 그래프 ═══ -->
 <div class="tab-panel" id="tab-graph">
   <div class="card">
@@ -585,6 +687,7 @@ textarea.form-input{resize:none;height:70px;}
   <button class="nav-btn" id="navAnalysis" onclick="switchTab('analysis')"><span class="icon">🔬</span>분석</button>
   <button class="nav-btn" id="navGraph" onclick="switchTab('graph')"><span class="icon">📈</span>그래프</button>
   <button class="nav-btn" id="navReport" onclick="switchTab('report')"><span class="icon">🩺</span>리포트</button>
+  <button class="nav-btn" id="navProfile" onclick="switchTab('profile')"><span class="icon">👤</span>프로필</button>
 </nav>
 
 <div class="toast" id="toast"></div>
@@ -595,7 +698,13 @@ let db,col,addDoc,getDocs,q,orderBy;
 let gChart,bChart,mChart;
 let mealB64=null,labB64=null,quickB64=null;
 let calcMode=1;
-const VER='v1.2';
+const VER='v1.3';
+
+// ─ 프로필 & 활동 감지 상태 ─
+let profileData={gender:'male',age:null,height:null,weight:null};
+let isTracking=false, stepCount=0, lastStepTime=0;
+let walkingSeconds=0, runningSeconds=0, smoothedMag=9.8;
+let motionHandler=null, noMotionTimer=null;
 
 // ─ 날짜 유틸 ─
 const todayStr=()=>new Date().toISOString().slice(0,10);
@@ -637,6 +746,8 @@ window.addEventListener('firebaseReady',async()=>{
   loadGC('day',document.querySelector('#gcTabs .chart-tab'));
   loadBC('day',document.querySelector('#bcTabs .chart-tab'));
   loadMC('week',document.querySelector('#mcTabs .chart-tab'));
+  await loadProfile();
+  loadTodayActivity();
 });
 
 // ─ 탭 ─
@@ -648,6 +759,7 @@ function switchTab(name){
   if(nb) nb.classList.add('active');
   if(name==='graph') setTimeout(()=>{ loadGC(null,null); loadBC(null,null); loadMC(null,null); },60);
   if(name==='report') loadAllHistory();
+  if(name==='profile') loadTodayActivity();
 }
 
 // ─ 토스트 ─
@@ -679,6 +791,236 @@ async function callClaude(messages){
   const data=await res.json();
   if(data.error) throw new Error(data.error.message);
   return data.content.map(c=>c.text||'').join('');
+}
+
+// ══════════════════════════════════════════════
+// ─ 프로필 (개인정보) ─
+// ══════════════════════════════════════════════
+function calcBMI(w,h){ const m=h/100; return w/(m*m); }
+function calcBMR(gender,w,h,age){
+  return gender==='male' ? (10*w+6.25*h-5*age+5) : (10*w+6.25*h-5*age-161);
+}
+function calcStdWeight(h){ const m=h/100; return 22*m*m; }
+function bmiGrade(bmi){
+  if(bmi<18.5) return{txt:'저체중',color:'#1565C0'};
+  if(bmi<23) return{txt:'정상',color:'#2E7D32'};
+  if(bmi<25) return{txt:'과체중',color:'#E65100'};
+  if(bmi<30) return{txt:'비만',color:'#E53935'};
+  return{txt:'고도비만',color:'#B71C1C'};
+}
+
+function renderProfileStats(){
+  if(!profileData.height||!profileData.weight||!profileData.age){
+    document.getElementById('profileStatBox').style.display='none';
+    return;
+  }
+  const bmi=calcBMI(profileData.weight,profileData.height);
+  const bmr=calcBMR(profileData.gender,profileData.weight,profileData.height,profileData.age);
+  const std=calcStdWeight(profileData.height);
+  document.getElementById('bmiVal').textContent=bmi.toFixed(1);
+  document.getElementById('bmrVal').textContent=Math.round(bmr);
+  document.getElementById('stdWeightVal').textContent=std.toFixed(1);
+  const g=bmiGrade(bmi);
+  document.getElementById('bmiGradeTxt').innerHTML=`<span style="color:${g.color};font-weight:700">BMI 판정: ${g.txt}</span>`;
+  document.getElementById('profileStatBox').style.display='block';
+}
+
+async function saveProfile(){
+  const gender=document.getElementById('pfGender').value;
+  const age=parseFloat(document.getElementById('pfAge').value);
+  const height=parseFloat(document.getElementById('pfHeight').value);
+  const weight=parseFloat(document.getElementById('pfWeight').value);
+  if(!age||!height||!weight){showToast('⚠️ 나이·키·몸무게를 모두 입력하세요');return;}
+  if(!db){showToast('⚠️ Firebase 연결 중');return;}
+  profileData={gender,age,height,weight};
+  await addDoc(col(db,'glucolog'),{type:'profile',gender,age,height,weight,createdAt:new Date()});
+  showToast('✅ 개인정보 저장 완료');
+  renderProfileStats();
+}
+
+async function loadProfile(){
+  if(!db) return;
+  const snap=await getDocs(q(col(db,'glucolog'),orderBy('createdAt','desc')));
+  const rec=snap.docs.map(d=>d.data()).find(r=>r.type==='profile');
+  if(rec){
+    profileData={gender:rec.gender,age:rec.age,height:rec.height,weight:rec.weight};
+    document.getElementById('pfGender').value=rec.gender;
+    document.getElementById('pfAge').value=rec.age;
+    document.getElementById('pfHeight').value=rec.height;
+    document.getElementById('pfWeight').value=rec.weight;
+    renderProfileStats();
+  }
+}
+
+// ══════════════════════════════════════════════
+// ─ 활동 감지 (걸음·러닝 → 칼로리) ─
+// ══════════════════════════════════════════════
+function calcActivityCalories(walkSec,runSec){
+  const w=profileData.weight||65;
+  const walkCal=3.5*3.5*w/200*(walkSec/60);   // MET 3.5 (도보)
+  const runCal=9.8*3.5*w/200*(runSec/60);     // MET 9.8 (러닝)
+  return walkCal+runCal;
+}
+
+function updateActivityDisplay(){
+  document.getElementById('liveSteps').textContent=stepCount;
+  document.getElementById('liveWalkMin').textContent=(walkingSeconds/60).toFixed(1);
+  document.getElementById('liveRunMin').textContent=(runningSeconds/60).toFixed(1);
+  document.getElementById('liveCal').textContent=Math.round(calcActivityCalories(walkingSeconds,runningSeconds));
+}
+
+async function startActivityTracking(){
+  if(typeof DeviceMotionEvent!=='undefined' && typeof DeviceMotionEvent.requestPermission==='function'){
+    try{
+      const perm=await DeviceMotionEvent.requestPermission();
+      if(perm!=='granted'){showToast('⚠️ 동작 감지 권한이 거부되었습니다');return;}
+    }catch(e){showToast('⚠️ 권한 요청 실패 (HTTPS 환경 필요)');return;}
+  }
+  if(!window.DeviceMotionEvent){showToast('⚠️ 이 기기는 동작 감지를 지원하지 않습니다. 걸음 수를 직접 입력하세요');return;}
+
+  isTracking=true; stepCount=0; walkingSeconds=0; runningSeconds=0; lastStepTime=0; smoothedMag=9.8;
+
+  motionHandler=(e)=>{
+    const acc=e.accelerationIncludingGravity;
+    if(!acc||acc.x===null) return;
+    const mag=Math.sqrt(acc.x*acc.x+acc.y*acc.y+acc.z*acc.z);
+    smoothedMag=smoothedMag*0.9+mag*0.1;
+    const now=Date.now();
+    const threshold=smoothedMag+1.4;
+    if(mag>threshold && (now-lastStepTime)>300){
+      const interval=lastStepTime?now-lastStepTime:600;
+      lastStepTime=now;
+      stepCount++;
+      const cadence=60000/interval;
+      if(cadence>=150) runningSeconds+=interval/1000;
+      else walkingSeconds+=interval/1000;
+      updateActivityDisplay();
+    }
+  };
+  window.addEventListener('devicemotion',motionHandler);
+  document.getElementById('activityStartBtn').style.display='none';
+  document.getElementById('activityStopBtn').style.display='block';
+  document.getElementById('activityLive').style.display='block';
+  showToast('🏃 활동 감지 시작');
+
+  noMotionTimer=setTimeout(()=>{
+    if(stepCount===0) showToast('💡 움직임이 감지되지 않으면 브라우저의 동작 권한을 확인하세요',3500);
+  },4000);
+}
+
+async function stopActivityTracking(save){
+  if(motionHandler){window.removeEventListener('devicemotion',motionHandler);motionHandler=null;}
+  if(noMotionTimer){clearTimeout(noMotionTimer);noMotionTimer=null;}
+  isTracking=false;
+  document.getElementById('activityStartBtn').style.display='block';
+  document.getElementById('activityStopBtn').style.display='none';
+  if(save && stepCount>0) await saveActivityRecord();
+}
+
+async function saveActivityRecord(){
+  if(!db){showToast('⚠️ Firebase 연결 중');return;}
+  const cal=calcActivityCalories(walkingSeconds,runningSeconds);
+  await addDoc(col(db,'glucolog'),{
+    type:'activity',date:todayStr(),
+    steps:stepCount,
+    walkMin:+(walkingSeconds/60).toFixed(1),
+    runMin:+(runningSeconds/60).toFixed(1),
+    calories:Math.round(cal),method:'auto',
+    createdAt:new Date()
+  });
+  showToast(`✅ 활동 저장 (${stepCount}걸음, ${Math.round(cal)}kcal)`);
+  loadTodayActivity();
+}
+
+async function saveManualSteps(){
+  const steps=parseInt(document.getElementById('manualSteps').value);
+  if(!steps||steps<=0){showToast('⚠️ 걸음 수를 입력하세요');return;}
+  if(!db){showToast('⚠️ Firebase 연결 중');return;}
+  const minutes=steps/100;
+  const cal=calcActivityCalories(minutes*60,0);
+  await addDoc(col(db,'glucolog'),{
+    type:'activity',date:todayStr(),
+    steps,walkMin:+minutes.toFixed(1),runMin:0,
+    calories:Math.round(cal),method:'manual',
+    createdAt:new Date()
+  });
+  showToast(`✅ 걸음수 저장 (${steps}걸음, ${Math.round(cal)}kcal)`);
+  document.getElementById('manualSteps').value='';
+  loadTodayActivity();
+}
+
+async function loadTodayActivity(){
+  if(!db) return;
+  const snap=await getDocs(q(col(db,'glucolog'),orderBy('createdAt','desc')));
+  const all=snap.docs.map(d=>d.data()).filter(r=>r.type==='activity'&&r.date===todayStr());
+  const el=document.getElementById('todayActivitySummary');
+  if(!all.length){el.innerHTML='<div class="empty-state"><div class="e-icon">🏃</div><div class="e-txt">측정된 활동이 없습니다</div></div>';return;}
+  const totalSteps=all.reduce((a,b)=>a+(b.steps||0),0);
+  const totalCal=all.reduce((a,b)=>a+(b.calories||0),0);
+  const totalWalk=all.reduce((a,b)=>a+(b.walkMin||0),0);
+  const totalRun=all.reduce((a,b)=>a+(b.runMin||0),0);
+  el.innerHTML=`<div class="today-summary" style="grid-template-columns:1fr 1fr 1fr 1fr;margin-bottom:0">
+    <div class="summary-item"><div class="val" style="color:var(--primary);font-size:16px">${totalSteps}</div><div class="lbl">걸음</div></div>
+    <div class="summary-item"><div class="val" style="color:var(--accent);font-size:16px">${totalWalk.toFixed(0)}</div><div class="lbl">도보(분)</div></div>
+    <div class="summary-item"><div class="val" style="color:var(--warn);font-size:16px">${totalRun.toFixed(0)}</div><div class="lbl">러닝(분)</div></div>
+    <div class="summary-item"><div class="val" style="color:var(--yellow);font-size:16px">${Math.round(totalCal)}</div><div class="lbl">kcal</div></div>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════
+// ─ 식단 기반 혈당관리 처방 (측정 없이) ─
+// ══════════════════════════════════════════════
+async function generateDietPrescription(){
+  if(!db){showToast('⚠️ Firebase 연결 중');return;}
+  if(!profileData.age||!profileData.height||!profileData.weight){
+    showToast('⚠️ 먼저 프로필 탭에서 개인정보를 입력하세요');
+    switchTab('profile');
+    return;
+  }
+  setBtnLoading('dietRxBtnTxt','dietRxSp',true,'');
+  try{
+    const snap=await getDocs(q(col(db,'glucolog'),orderBy('createdAt','asc')));
+    const all=snap.docs.map(d=>d.data());
+    const todayMeals=all.filter(r=>r.type==='meal'&&r.date===todayStr());
+    const todayActivity=all.filter(r=>r.type==='activity'&&r.date===todayStr());
+
+    if(!todayMeals.length){
+      showToast('⚠️ 오늘 기록된 식사가 없습니다. 먼저 오늘 탭에서 식사를 기록하세요');
+      setBtnLoading('dietRxBtnTxt','dietRxSp',false,'💊 오늘 처방 받기');
+      return;
+    }
+
+    const bmi=calcBMI(profileData.weight,profileData.height);
+    const bmr=calcBMR(profileData.gender,profileData.weight,profileData.height,profileData.age);
+    const totalSteps=todayActivity.reduce((a,b)=>a+(b.steps||0),0);
+    const totalCal=todayActivity.reduce((a,b)=>a+(b.calories||0),0);
+    const mealList=todayMeals.map(m=>`${m.mealType}(${m.time}):${m.menu}`).join(' / ');
+
+    const prompt=`환자 프로필: ${profileData.gender==='male'?'남':'여'}, ${profileData.age}세, 키${profileData.height}cm, 체중${profileData.weight}kg, BMI ${bmi.toFixed(1)}, 기초대사량${Math.round(bmr)}kcal
+오늘 식사: ${mealList}
+오늘 활동량: 걸음수 ${totalSteps||'측정안됨'}, 활동소모칼로리 ${Math.round(totalCal)||0}kcal
+(오늘은 혈당·혈압을 별도로 측정하지 않았습니다. 식단·개인정보·활동량만으로 분석해주세요.)
+
+혈당관리 처방을 작성해주세요:
+1. 오늘 식단이 혈당에 미칠 것으로 예상되는 영향 (근거 포함)
+2. 부족·과다 영양소
+3. 오늘 남은 시간 실천 가능한 운동 처방 (활동량 고려, 구체적 시간·강도)
+4. 다음 식사 가이드 (무엇을 얼마나)
+5. 내일 식단 방향
+6. 종합 처방 요약 (실천항목 3~5가지, 처방전 형식)
+내분비내과 전문의가 진료 후 처방하는 수준으로 구체적이고 실용적으로 작성해주세요.`;
+
+    const res=await callClaude([{role:'user',content:prompt}]);
+    document.getElementById('dietRxBody').textContent=res;
+    document.getElementById('dietRxResult').classList.add('show');
+
+    await addDoc(col(db,'glucolog'),{
+      type:'dietPrescription',date:todayStr(),
+      prescription:res,mealCount:todayMeals.length,
+      createdAt:new Date()
+    });
+  }catch(e){showToast('❌ 처방 생성 오류');console.error(e);}
+  setBtnLoading('dietRxBtnTxt','dietRxSp',false,'💊 오늘 처방 받기');
 }
 
 function setBtnLoading(txtId,spId,loading,defaultTxt){
@@ -958,8 +1300,10 @@ async function generateReport(){
           </div>`).join('')}`;
     }
 
-    // AI 종합 소견
-    const summary=`혈당:${glR.length}건,평균${avgG||'-'}mg/dL,최고${maxG||'-'},최저${minG||'-'}|혈압:${bpR.length}건,평균${avgS||'-'}/${avgD||'-'}|식사:${mlR.length}건|검사:${lbR.length}건${lbR.length?'|최근검사소견:'+lbR[0].aiDiagnosis?.slice(0,200):''}`;
+    // AI 종합 소견 (프로필 정보 반영)
+    const profileStr=(profileData.age&&profileData.height&&profileData.weight)?
+      `환자:${profileData.gender==='male'?'남':'여'} ${profileData.age}세, 키${profileData.height}cm, 체중${profileData.weight}kg, BMI ${calcBMI(profileData.weight,profileData.height).toFixed(1)}|`:'';
+    const summary=`${profileStr}혈당:${glR.length}건,평균${avgG||'-'}mg/dL,최고${maxG||'-'},최저${minG||'-'}|혈압:${bpR.length}건,평균${avgS||'-'}/${avgD||'-'}|식사:${mlR.length}건|검사:${lbR.length}건${lbR.length?'|최근검사소견:'+lbR[0].aiDiagnosis?.slice(0,200):''}`;
     const res=await callClaude([{role:'user',content:`환자 데이터:${summary}\n\n종합 건강 리포트 작성:\n1. 혈당 조절 상태 평가\n2. 혈압 상태 및 심혈관 위험도\n3. 주요 위험 요인 및 경고\n4. 즉시 실천 생활습관 개선 3~5가지\n5. 병원 방문 권고 및 검사 추천\n6. 목표 혈당 범위 제안\n내과·내분비내과 전문의 수준으로 작성.`}]);
     document.getElementById('reportAiBody').textContent=res;
     document.getElementById('reportOutput').style.display='block';
