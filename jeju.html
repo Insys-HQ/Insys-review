@@ -543,7 +543,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;color:#2c3e50;min-
       <i class="fa fa-hard-hat"></i>
       <div>
         <span>제주 아라이동 주택공사</span>
-        <small>현장관리시스템 v1.9</small>
+        <small>현장관리시스템 v2.2</small>
       </div>
     </div>
     <div class="nav-weather" id="navWeather">
@@ -674,7 +674,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f2f5;color:#2c3e50;min-
   <div class="mob-topbar">
     <div class="mob-topbar-logo">
       <i class="fa fa-hard-hat"></i>
-      <div><span>제주 아라이동 주택공사</span><small> v1.9</small></div>
+      <div><span>제주 아라이동 주택공사</span><small> v2.2</small></div>
     </div>
     <div class="mob-topbar-right">
       <div class="mob-topbar-weather" id="mobWeatherTop"></div>
@@ -919,15 +919,20 @@ document.addEventListener('DOMContentLoaded',()=>{
   setInterval(loadWeather,600000);
 
   const today = new Date().toISOString().split('T')[0];
-  document.getElementById('mobDate').value = today;
+  const mobDateEl = document.getElementById('mobDate');
+  if(mobDateEl) mobDateEl.value = today;
   updateMobDate();
 
   whenReady(async()=>{
-    await loadProjectInfo();
-    // Firestore에 저장된 정보가 없으면 HTML 초기값으로 자동 저장
-    if(!projectInfo || !projectInfo.name){
-      await saveInfo();
-    }
+    console.log('[Init] whenReady 진입. Firebase:', window._firebaseReady);
+    // 각 단계 개별 try-catch로 감싸서 하나 실패해도 다음 단계 계속
+    try{ await loadProjectInfo(); }catch(e){ console.warn('loadProjectInfo 실패:',e); }
+    try{
+      if((!projectInfo || !projectInfo.name) && window._firebaseReady){
+        await saveInfo();
+      }
+    }catch(e){ console.warn('saveInfo 초기 실행 실패:',e); }
+    // 공정은 반드시 실행
     await loadProcesses();
     renderKpi();
   });
@@ -1034,38 +1039,56 @@ function loadLocalProcesses(){
 }
 
 async function loadProcesses(){
+  console.log('[loadProcesses] 시작. Firebase ready:', window._firebaseReady, 'db:', !!window._db);
   if(!window._firebaseReady || !window._db){
+    console.warn('[loadProcesses] Firebase 미준비 → 로컬 폴백');
     loadLocalProcesses();
     showToast('오프라인 모드 - 기본 공정 표시','info');
     return;
   }
   try{
     const {collection,getDocs,query,orderBy}=fb();
+    console.log('[loadProcesses] Firestore 쿼리 실행...');
     const q=query(collection(db(),'jeju_processes'),orderBy('order','asc'));
     const snap=await getDocs(q);
     processes=snap.docs.map(d=>({id:d.id,...d.data()}));
-    if(processes.length===0) await initDefaultProcesses();
+    console.log('[loadProcesses] 로드된 공정 수:', processes.length);
+    if(processes.length===0){
+      console.log('[loadProcesses] 공정 없음 → 기본 42개 등록');
+      await initDefaultProcesses();
+      console.log('[loadProcesses] 등록 완료. 총:', processes.length);
+    }
     renderProcessList(); renderKpi(); renderMobProcTable();
+    showToast(`공정 ${processes.length}개 로드 완료`,'success');
   }catch(e){
-    console.warn('loadProcesses 오류:',e);
+    console.error('[loadProcesses] Firebase 오류:',e);
     loadLocalProcesses();
-    showToast('DB 연결 오류 - 기본 공정 표시','info');
+    showToast('DB 오류: '+e.message.substring(0,50),'error');
   }
 }
 
 async function initDefaultProcesses(){
-  const {collection,addDoc,getDocs,query,orderBy,serverTimestamp}=fb();
-  for(const p of DEFAULT_PROCESSES){
-    await addDoc(collection(db(),'jeju_processes'),{
-      ...p, progress:0, status:'대기',
-      startDate:'', endDate:'', manager:'', note:'',
-      photos:[], memo:'',
-      createdAt:serverTimestamp(), updatedAt:serverTimestamp()
-    });
+  try{
+    const {collection,addDoc,getDocs,query,orderBy,serverTimestamp}=fb();
+    console.log('[initDefault] 42개 공정 등록 시작...');
+    for(const p of DEFAULT_PROCESSES){
+      await addDoc(collection(db(),'jeju_processes'),{
+        ...p, progress:0, status:'대기',
+        startDate:'', endDate:'', manager:'', note:'',
+        photos:[], memo:'',
+        createdAt:serverTimestamp(), updatedAt:serverTimestamp()
+      });
+    }
+    console.log('[initDefault] 등록 완료');
+    const q=query(collection(db(),'jeju_processes'),orderBy('order','asc'));
+    const snap=await getDocs(q);
+    processes=snap.docs.map(d=>({id:d.id,...d.data()}));
+  }catch(e){
+    console.error('[initDefault] 실패:',e);
+    // Firestore write 거부 시 로컬 표시로 폴백
+    loadLocalProcesses();
+    throw e; // 상위에서 알림 표시하도록
   }
-  const q=query(collection(db(),'jeju_processes'),orderBy('order','asc'));
-  const snap=await getDocs(q);
-  processes=snap.docs.map(d=>({id:d.id,...d.data()}));
 }
 
 // ── RENDER 공정 테이블 ────────────────────────────────
@@ -1817,7 +1840,7 @@ async function handleMobUpload(files){
     grid.appendChild(item);
     text.textContent=`업로드 중... (${done+1}/${fileArr.length})`;
     try{
-      const date=document.getElementById('mobDate').value||new Date().toISOString().split('T')[0];
+      const date=(document.getElementById('mobDate')?.value)||new Date().toISOString().split('T')[0];
       const res=await uploadPhoto(file,'mob_'+date,(pct)=>{
         fill.style.width=Math.round(((done/fileArr.length)+(pct/100/fileArr.length))*100)+'%';
       });
@@ -1850,8 +1873,9 @@ function removeMobPhoto(idx){
 // ── 모바일 저장 ───────────────────────────────────────
 async function saveMobEntry(){
   const procIds=getSelectedProcIds();
-  const memo=document.getElementById('mobMemo').value.trim();
-  const date=document.getElementById('mobDate').value;
+  const memoEl=document.getElementById('mobMemo');
+  const memo=memoEl?memoEl.value.trim():'';
+  const date=(document.getElementById('mobDate')?.value)||new Date().toISOString().split('T')[0];
   if(!procIds.length&&!mobPendingPhotos.length){showToast('공정을 선택하거나 사진을 추가하세요','error');return;}
   const {doc,updateDoc,serverTimestamp}=fb();
   // 선택한 공정들에 사진+메모 추가
