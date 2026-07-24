@@ -193,36 +193,37 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:#eff2f7;color:#2c3e50
   background:rgba(0,0,0,.5);color:#fff;font-size:11px;
   padding:4px 10px;border-radius:12px;z-index:11;
 }
-/* ═ 설명 영역 — 하단 반투명 오버레이 (접기/펴기) ═ */
+/* ═ 설명 영역 — 하단 반투명 오버레이 (기본은 접혀있음) ═ */
 .viewer-comment{
   position:absolute;bottom:0;left:0;right:0;z-index:12;
-  background:linear-gradient(0deg,rgba(0,0,0,.92),rgba(0,0,0,.75));
-  color:#fff;padding:10px 14px 12px;
-  transform:translateY(0);transition:transform .25s;
+  background:linear-gradient(0deg,rgba(0,0,0,.95),rgba(0,0,0,.7));
+  color:#fff;padding:5px 10px 6px;
+  transform:translateY(calc(100% - 30px));transition:transform .25s;
 }
-.viewer-comment.hidden{transform:translateY(calc(100% - 38px))}
+.viewer-comment.open{transform:translateY(0)}
 .viewer-comment-t{
-  font-size:11px;color:#aab3c9;font-weight:600;margin-bottom:6px;
+  font-size:10px;color:#aab3c9;font-weight:600;margin-bottom:4px;
   display:flex;align-items:center;justify-content:space-between;
-  cursor:pointer;user-select:none;
+  cursor:pointer;user-select:none;padding:2px 0;
 }
-.viewer-comment-t i{color:#5bc4f5;margin-right:4px}
-.viewer-comment-t .toggle{color:#5bc4f5;font-size:11px}
+.viewer-comment-t i{color:#5bc4f5;margin-right:3px;font-size:10px}
+.viewer-comment-t .toggle{color:#5bc4f5;font-size:10px}
 .viewer-comment textarea{
-  width:100%;border:1.5px solid rgba(255,255,255,.15);border-radius:8px;
-  padding:8px 10px;font-family:'Noto Sans KR',sans-serif;font-size:13px;
+  width:100%;border:1.5px solid rgba(255,255,255,.15);border-radius:6px;
+  padding:5px 8px;font-family:'Noto Sans KR',sans-serif;font-size:12px;
   color:#fff;background:rgba(255,255,255,.08);outline:none;resize:none;
-  min-height:48px;max-height:80px;box-sizing:border-box;line-height:1.5;
+  min-height:34px;max-height:56px;box-sizing:border-box;line-height:1.4;
 }
-.viewer-comment textarea::placeholder{color:rgba(255,255,255,.35)}
+.viewer-comment textarea::placeholder{color:rgba(255,255,255,.35);font-size:11px}
 .viewer-comment textarea:focus{border-color:#5bc4f5;background:rgba(255,255,255,.12)}
-.viewer-comment-actions{display:flex;gap:6px;margin-top:6px}
+.viewer-comment-actions{display:flex;gap:5px;margin-top:5px}
 .vc-btn{
-  flex:1;padding:8px;border:none;border-radius:8px;
-  font-family:'Noto Sans KR',sans-serif;font-size:12px;font-weight:600;
-  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;
+  flex:1;padding:6px;border:none;border-radius:6px;
+  font-family:'Noto Sans KR',sans-serif;font-size:11px;font-weight:600;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;
   -webkit-tap-highlight-color:transparent;
 }
+.vc-btn i{font-size:10px}
 .vc-btn.save{background:#27ae60;color:#fff}
 .vc-btn.del{background:#e74c3c;color:#fff}
 .vc-btn:active{opacity:.85}
@@ -288,7 +289,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:#eff2f7;color:#2c3e50
     <div class="appbar-top">
       <div class="appbar-t">
         <i class="fa fa-hard-hat"></i>
-        <div>제주 아라이동 주택공사 <small>v3.8</small></div>
+        <div>제주 아라이동 주택공사 <small>v3.9</small></div>
       </div>
     </div>
     <div class="appbar-info">
@@ -415,7 +416,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:#eff2f7;color:#2c3e50
   <div class="viewer-comment" id="viewerCommentBox">
     <div class="viewer-comment-t" onclick="toggleViewerComment()">
       <span><i class="fa fa-comment"></i>사진 설명</span>
-      <span class="toggle" id="viewerCommentToggle"><i class="fa fa-chevron-down"></i> 접기</span>
+      <span class="toggle" id="viewerCommentToggle"><i class="fa fa-chevron-up"></i> 펴기</span>
     </div>
     <textarea id="viewerComment" placeholder="이 사진에 대한 설명·특이사항·작업내용을 입력하세요"></textarea>
     <div class="viewer-comment-actions">
@@ -866,6 +867,16 @@ function showCurrentPhoto(){
   document.getElementById('viewerFilename').textContent = '';
   document.getElementById('viewerCounter').textContent = `${viewerIdx+1} / ${viewerList.length}`;
   document.getElementById('viewerComment').value = p.comment || '';
+  // 설명이 있으면 자동으로 펼치기, 없으면 접기
+  const box = document.getElementById('viewerCommentBox');
+  const toggle = document.getElementById('viewerCommentToggle');
+  if(p.comment && p.comment.trim()){
+    box.classList.add('open');
+    toggle.innerHTML = '<i class="fa fa-chevron-down"></i> 접기';
+  } else {
+    box.classList.remove('open');
+    toggle.innerHTML = '<i class="fa fa-chevron-up"></i> 펴기';
+  }
 }
 
 function closeViewer(){
@@ -881,11 +892,11 @@ function viewerMove(dir){
 function toggleViewerComment(){
   const box = document.getElementById('viewerCommentBox');
   const toggle = document.getElementById('viewerCommentToggle');
-  box.classList.toggle('hidden');
-  if(box.classList.contains('hidden')){
-    toggle.innerHTML = '<i class="fa fa-chevron-up"></i> 펴기';
-  } else {
+  box.classList.toggle('open');
+  if(box.classList.contains('open')){
     toggle.innerHTML = '<i class="fa fa-chevron-down"></i> 접기';
+  } else {
+    toggle.innerHTML = '<i class="fa fa-chevron-up"></i> 펴기';
   }
 }
 
