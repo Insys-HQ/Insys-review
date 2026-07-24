@@ -159,51 +159,66 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:#eff2f7;color:#2c3e50
 }
 .viewer.show{display:flex}
 .viewer-hd{
-  background:rgba(0,0,0,.85);color:#fff;
-  padding:12px 14px;display:flex;align-items:center;justify-content:space-between;
-  flex-shrink:0;
+  position:absolute;top:0;left:0;right:0;z-index:10;
+  background:linear-gradient(180deg,rgba(0,0,0,.75),transparent);
+  color:#fff;padding:10px 14px;
+  display:flex;align-items:center;justify-content:space-between;
 }
 .viewer-hd-info{font-size:12px;color:#ccc}
 .viewer-hd-info b{color:#fff;font-size:13px;margin-right:6px}
 .viewer-x{
-  background:rgba(255,255,255,.15);border:none;color:#fff;
+  background:rgba(0,0,0,.5);border:none;color:#fff;
   border-radius:50%;width:34px;height:34px;font-size:14px;cursor:pointer;
   display:flex;align-items:center;justify-content:center;
 }
-.viewer-body{flex:1;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#000}
-.viewer-img{max-width:100%;max-height:100%;object-fit:contain;user-select:none}
+/* 사진이 전체 뷰포트 차지 */
+.viewer-body{
+  flex:1;position:relative;display:flex;
+  align-items:center;justify-content:center;
+  overflow:hidden;background:#000;
+  width:100%;height:100vh;
+}
+.viewer-img{max-width:100%;max-height:100vh;object-fit:contain;user-select:none;display:block}
 .viewer-nav{
   position:absolute;top:50%;transform:translateY(-50%);
-  background:rgba(255,255,255,.15);color:#fff;border:none;
+  background:rgba(0,0,0,.4);color:#fff;border:none;
   width:42px;height:42px;border-radius:50%;font-size:16px;
   display:flex;align-items:center;justify-content:center;cursor:pointer;
+  z-index:11;
 }
-.viewer-nav.prev{left:10px}
-.viewer-nav.next{right:10px}
+.viewer-nav.prev{left:12px}
+.viewer-nav.next{right:12px}
 .viewer-counter{
-  position:absolute;top:10px;left:50%;transform:translateX(-50%);
+  position:absolute;top:12px;left:50%;transform:translateX(-50%);
   background:rgba(0,0,0,.5);color:#fff;font-size:11px;
-  padding:4px 10px;border-radius:12px;
+  padding:4px 10px;border-radius:12px;z-index:11;
 }
+/* ═ 설명 영역 — 하단 반투명 오버레이 (접기/펴기) ═ */
 .viewer-comment{
-  background:#fff;padding:14px;flex-shrink:0;
-  max-height:35vh;overflow-y:auto;
+  position:absolute;bottom:0;left:0;right:0;z-index:12;
+  background:linear-gradient(0deg,rgba(0,0,0,.92),rgba(0,0,0,.75));
+  color:#fff;padding:10px 14px 12px;
+  transform:translateY(0);transition:transform .25s;
 }
+.viewer-comment.hidden{transform:translateY(calc(100% - 38px))}
 .viewer-comment-t{
-  font-size:11px;color:#8a9ab5;font-weight:600;margin-bottom:6px;
+  font-size:11px;color:#aab3c9;font-weight:600;margin-bottom:6px;
   display:flex;align-items:center;justify-content:space-between;
+  cursor:pointer;user-select:none;
 }
 .viewer-comment-t i{color:#5bc4f5;margin-right:4px}
+.viewer-comment-t .toggle{color:#5bc4f5;font-size:11px}
 .viewer-comment textarea{
-  width:100%;border:1.5px solid #dde3f0;border-radius:8px;
-  padding:10px 12px;font-family:'Noto Sans KR',sans-serif;font-size:13px;
-  color:#2c3e50;background:#fafbfd;outline:none;resize:none;
-  min-height:60px;box-sizing:border-box;line-height:1.5;
+  width:100%;border:1.5px solid rgba(255,255,255,.15);border-radius:8px;
+  padding:8px 10px;font-family:'Noto Sans KR',sans-serif;font-size:13px;
+  color:#fff;background:rgba(255,255,255,.08);outline:none;resize:none;
+  min-height:48px;max-height:80px;box-sizing:border-box;line-height:1.5;
 }
-.viewer-comment textarea:focus{border-color:#2980b9;background:#fff}
-.viewer-comment-actions{display:flex;gap:6px;margin-top:8px}
+.viewer-comment textarea::placeholder{color:rgba(255,255,255,.35)}
+.viewer-comment textarea:focus{border-color:#5bc4f5;background:rgba(255,255,255,.12)}
+.viewer-comment-actions{display:flex;gap:6px;margin-top:6px}
 .vc-btn{
-  flex:1;padding:9px;border:none;border-radius:8px;
+  flex:1;padding:8px;border:none;border-radius:8px;
   font-family:'Noto Sans KR',sans-serif;font-size:12px;font-weight:600;
   cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;
   -webkit-tap-highlight-color:transparent;
@@ -273,7 +288,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:#eff2f7;color:#2c3e50
     <div class="appbar-top">
       <div class="appbar-t">
         <i class="fa fa-hard-hat"></i>
-        <div>제주 아라이동 주택공사 <small>v3.7</small></div>
+        <div>제주 아라이동 주택공사 <small>v3.8</small></div>
       </div>
     </div>
     <div class="appbar-info">
@@ -397,10 +412,10 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:#eff2f7;color:#2c3e50
     <img class="viewer-img" id="viewerImg" src="" alt="">
     <button class="viewer-nav next" onclick="viewerMove(1)"><i class="fa fa-chevron-right"></i></button>
   </div>
-  <div class="viewer-comment">
-    <div class="viewer-comment-t">
+  <div class="viewer-comment" id="viewerCommentBox">
+    <div class="viewer-comment-t" onclick="toggleViewerComment()">
       <span><i class="fa fa-comment"></i>사진 설명</span>
-      <span id="viewerHint" style="color:#aab3c9;font-size:10px">변경 후 저장 클릭</span>
+      <span class="toggle" id="viewerCommentToggle"><i class="fa fa-chevron-down"></i> 접기</span>
     </div>
     <textarea id="viewerComment" placeholder="이 사진에 대한 설명·특이사항·작업내용을 입력하세요"></textarea>
     <div class="viewer-comment-actions">
@@ -861,6 +876,17 @@ function closeViewer(){
 function viewerMove(dir){
   viewerIdx = (viewerIdx + dir + viewerList.length) % viewerList.length;
   showCurrentPhoto();
+}
+
+function toggleViewerComment(){
+  const box = document.getElementById('viewerCommentBox');
+  const toggle = document.getElementById('viewerCommentToggle');
+  box.classList.toggle('hidden');
+  if(box.classList.contains('hidden')){
+    toggle.innerHTML = '<i class="fa fa-chevron-up"></i> 펴기';
+  } else {
+    toggle.innerHTML = '<i class="fa fa-chevron-down"></i> 접기';
+  }
 }
 
 async function saveCurrentComment(){
