@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>GlucoLog v1.7 — 혈당관리</title>
+<title>GlucoLog v1.8 — 혈당관리</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script type="module">
@@ -227,7 +227,7 @@ textarea.form-input{resize:none;height:70px;}
 <div class="safe-top"></div>
 <header class="app-header">
   <div class="logo-block">
-    <div class="logo">Gluco<span>Log</span> <span class="ver">v1.7</span></div>
+    <div class="logo">Gluco<span>Log</span> <span class="ver">v1.8</span></div>
     <div class="logo-sub">혈당·혈압·식단 통합 관리</div>
   </div>
   <div id="headerDate" class="date-badge">로딩중...</div>
@@ -753,7 +753,7 @@ let db,col,addDoc,getDocs,q,orderBy;
 let gChart,bChart,mChart;
 let mealB64=null,labB64=null,quickB64=null;
 let calcMode=1;
-const VER='v1.7';
+const VER='v1.8';
 
 // ─ Firestore 문서 조작 함수 ─
 let fsDoc,updateDoc,deleteDoc;
@@ -788,6 +788,9 @@ window.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('bpDate').value=todayStr();
   document.getElementById('mealDate').value=todayStr();
   document.getElementById('labDate').value=todayStr();
+  restorePhotoState('mealPhotoInput','mealPrev','mealB64');
+  restorePhotoState('labPhotoInput','labPrev','labB64');
+  restorePhotoState('quickFoodInput','quickPrev','quickB64');
 });
 
 // 날짜를 오늘로 리셋
@@ -834,29 +837,70 @@ function showToast(msg,dur=2500){
   setTimeout(()=>t.classList.remove('show'),dur);
 }
 
-// ─ 사진 미리보기 ─
+// ─ 이미지 압축 (용량 축소 + Firestore 저장 가능하게) ─
+function compressImage(base64,maxDim,quality){
+  return new Promise((resolve)=>{
+    const img=new Image();
+    img.onload=()=>{
+      let w=img.width,h=img.height;
+      if(w>h && w>maxDim){h=Math.round(h*maxDim/w);w=maxDim;}
+      else if(h>=w && h>maxDim){w=Math.round(w*maxDim/h);h=maxDim;}
+      const canvas=document.createElement('canvas');
+      canvas.width=w; canvas.height=h;
+      const ctx=canvas.getContext('2d');
+      ctx.drawImage(img,0,0,w,h);
+      try{
+        resolve(canvas.toDataURL('image/jpeg',quality).split(',')[1]);
+      }catch(e){ resolve(base64); }
+    };
+    img.onerror=()=>resolve(base64);
+    img.src='data:image/jpeg;base64,'+base64;
+  });
+}
+
+// ─ 사진 미리보기 (압축 + 선택상태 세션 유지로 재선택 방지) ─
 function prevPhoto(input,previewId,b64Key){
   if(!input.files[0]) return;
   const r=new FileReader();
-  r.onload=e=>{
+  r.onload=async(e)=>{
+    const rawB64=e.target.result.split(',')[1];
+    let finalB64=rawB64;
+    try{ finalB64=await compressImage(rawB64,800,0.65); }catch(err){}
+    window[b64Key]=finalB64;
+    try{ sessionStorage.setItem('gl_photo_'+b64Key, finalB64); }catch(err){}
     const img=document.getElementById(previewId);
-    img.src=e.target.result; img.style.display='block';
-    window[b64Key]=e.target.result.split(',')[1];
-    const zone=input.closest('.photo-zone');
-    if(zone){
-      zone.classList.add('selected');
-      const txt=zone.querySelector('.ph-txt');
-      if(txt){
-        if(!zone.dataset.origTxt) zone.dataset.origTxt=txt.innerHTML;
-        txt.innerHTML='✅ 사진 선택 완료<br><span style="font-size:10px;color:var(--accent)">다른 사진으로 바꾸려면 다시 탭하세요</span>';
-      }
-    }
+    img.src='data:image/jpeg;base64,'+finalB64; img.style.display='block';
+    markPhotoSelected(input);
   };
   r.readAsDataURL(input.files[0]);
 }
 
-// 사진 선택 상태 초기화 (저장/분석 완료 후)
-function resetPhotoZone(inputId){
+function markPhotoSelected(input){
+  const zone=input.closest('.photo-zone');
+  if(!zone) return;
+  zone.classList.add('selected');
+  const txt=zone.querySelector('.ph-txt');
+  if(txt){
+    if(!zone.dataset.origTxt) zone.dataset.origTxt=txt.innerHTML;
+    txt.innerHTML='✅ 사진 선택 완료<br><span style="font-size:10px;color:var(--accent)">다른 사진으로 바꾸려면 다시 탭하세요</span>';
+  }
+}
+
+// 사진 선택 상태 복원 (백그라운드 전환·카메라 왕복 후 재선택 요구 방지)
+function restorePhotoState(inputId,previewId,b64Key){
+  try{
+    const saved=sessionStorage.getItem('gl_photo_'+b64Key);
+    if(!saved) return;
+    window[b64Key]=saved;
+    const img=document.getElementById(previewId);
+    img.src='data:image/jpeg;base64,'+saved; img.style.display='block';
+    const input=document.getElementById(inputId);
+    if(input) markPhotoSelected(input);
+  }catch(e){}
+}
+
+// 사진 선택 상태 초기화 (저장 완료 후)
+function resetPhotoZone(inputId,b64Key){
   const input=document.getElementById(inputId);
   if(!input) return;
   const zone=input.closest('.photo-zone');
@@ -866,6 +910,10 @@ function resetPhotoZone(inputId){
     if(txt && zone.dataset.origTxt) txt.innerHTML=zone.dataset.origTxt;
   }
   input.value='';
+  if(b64Key){
+    window[b64Key]=null;
+    try{ sessionStorage.removeItem('gl_photo_'+b64Key); }catch(e){}
+  }
 }
 
 // ─ Claude API ─
@@ -1169,12 +1217,13 @@ async function saveMeal(){
   setBtnLoading('mealBtnTxt','mealSp',true,'');
   const mType=document.getElementById('mealType').value;
   const inputDate=document.getElementById('mealDate').value||todayStr();
+  const photoToStore=(mealB64 && mealB64.length<700000)?mealB64:null;
   const data={
     type:'meal',date:inputDate,
     time:document.getElementById('mealTime').value,
     mealType:mType,menu,
     memo:document.getElementById('mealMemo').value,
-    hasPhoto:!!mealB64,createdAt:new Date()
+    hasPhoto:!!mealB64,photoData:photoToStore,createdAt:new Date()
   };
   let aiText='';
   try{
@@ -1195,9 +1244,8 @@ async function saveMeal(){
   document.getElementById('mealMemo').value='';
   document.getElementById('mealTime').value=nowTime();
   document.getElementById('mealDate').value=todayStr();
-  mealB64=null;
   document.getElementById('mealPrev').style.display='none';
-  resetPhotoZone('mealPhotoInput');
+  resetPhotoZone('mealPhotoInput','mealB64');
   loadMealOptions();
   await loadTodayRecords();
 }
@@ -1263,7 +1311,7 @@ async function loadMealOptions(){
   }
   sel.innerHTML='<option value="">-- 식사를 선택하세요 --</option>'+meals.map(m=>{
     const menuTxt=(m.menu||'').length>18?(m.menu||'').slice(0,18)+'...':(m.menu||'');
-    const photoTag=m.hasPhoto?'📷 ':'';
+    const photoTag=m.photoData?'📷 ':'';
     const analyzedTag=m.aiAnalysis?'✓ ':'';
     return `<option value="${m._id}">${analyzedTag}${photoTag}${m.date.slice(5)} ${m.mealType}(${m.time||''}) - ${menuTxt}</option>`;
   }).join('');
@@ -1285,15 +1333,21 @@ async function analyzeSelectedMeal(){
 
   setBtnLoading('mealSelBtnTxt','mealSelSp',true,'');
   try{
-    const prompt=`식사구분:${m.mealType}, 메뉴:${m.menu}\n\n아래 항목을 분석해주세요:\n1. 예상 총 칼로리 (kcal)\n2. 탄수화물/단백질/지방 (g)\n3. 혈당지수(GI) 추정 및 혈당 상승 위험 요인\n4. 혈당 관리 유리/불리 요소\n5. 개선 추천 (간략히)\n구체적 수치와 근거 포함.`;
-    const res=await callClaude([{role:'user',content:prompt}]);
+    const promptText=`식사구분:${m.mealType}, 메뉴:${m.menu}\n\n아래 항목을 분석해주세요:\n1. 예상 총 칼로리 (kcal)\n2. 탄수화물/단백질/지방 (g)\n3. 혈당지수(GI) 추정 및 혈당 상승 위험 요인\n4. 혈당 관리 유리/불리 요소\n5. 개선 추천 (간략히)\n구체적 수치와 근거 포함.`;
+    const messages=m.photoData?
+      [{role:'user',content:[
+        {type:'image',source:{type:'base64',media_type:'image/jpeg',data:m.photoData}},
+        {type:'text',text:promptText}
+      ]}]:
+      [{role:'user',content:promptText}];
+    const res=await callClaude(messages);
     document.getElementById('mealSelBody').textContent=res;
     document.getElementById('mealSelResult').classList.add('show');
     if(db&&fsDoc&&updateDoc){
       await updateDoc(fsDoc(db,'glucolog',id),{aiAnalysis:res});
       m.aiAnalysis=res;
     }
-    showToast('✅ 분석 완료 (결과 저장됨)');
+    showToast(m.photoData?'✅ 사진 기반 분석 완료':'✅ 분석 완료 (텍스트 기반)');
     loadMealOptions();
   }catch(e){showToast('❌ 분석 오류');console.error(e);}
   setBtnLoading('mealSelBtnTxt','mealSelSp',false,'🔍 선택한 식단 분석');
