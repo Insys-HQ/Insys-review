@@ -3,10 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>재난대응봉사회 통합관리시스템 v2.7</title>
+<title>재난대응봉사회 통합관리시스템 v2.8</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -214,6 +215,32 @@ textarea{resize:vertical;min-height:100px;line-height:1.6}
   .si-head{flex-direction:column;gap:6px}
   .si-right{width:100%;justify-content:space-between}
 }
+
+/* ── MANUAL / LINKS TABS ── */
+.manual-item{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1.5px solid #e0eaf2;border-radius:9px;background:#fff;margin-bottom:8px;transition:all .2s}
+.manual-item:hover{border-color:#2e6da4;box-shadow:0 2px 8px rgba(46,109,164,0.08)}
+.manual-icon{font-size:28px;flex-shrink:0;width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:#f0f4f8;border-radius:8px}
+.manual-info{flex:1;min-width:0}
+.manual-name{font-size:13px;font-weight:700;color:#1b3a5c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.manual-meta{font-size:11px;color:#7a98b0;margin-top:2px}
+.manual-actions{display:flex;gap:6px;flex-shrink:0}
+.manual-actions button{padding:5px 10px;border:1.5px solid #d0dce8;border-radius:6px;background:#fff;font-size:11px;color:#3d5a72;cursor:pointer;font-family:'Noto Sans KR',sans-serif;font-weight:500;transition:all .2s;white-space:nowrap}
+.manual-actions button:hover{border-color:#2e6da4;color:#2e6da4}
+.manual-actions .del-btn:hover{border-color:#dc2626;color:#dc2626}
+.upload-progress{height:6px;background:#e0eaf2;border-radius:3px;margin-top:8px;overflow:hidden;display:none}
+.upload-progress-bar{height:100%;background:linear-gradient(90deg,#2e6da4,#b91c1c);border-radius:3px;transition:width .3s;width:0%}
+.file-type-badge{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;margin-left:6px}
+.badge-pdf{background:#fee2e2;color:#991b1b}
+.badge-img{background:#dbeafe;color:#1e40af}
+.badge-doc{background:#d1fae5;color:#065f46}
+.badge-etc{background:#f3f4f6;color:#374151}
+.cat-filter{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.cat-btn{padding:5px 12px;border:1.5px solid #d0dce8;border-radius:20px;background:#fff;font-size:12px;font-weight:500;color:#5a7a96;cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:all .2s}
+.cat-btn.active{background:#1b3a5c;color:#fff;border-color:#1b3a5c}
+@media(max-width:768px){
+  .manual-item{flex-wrap:wrap}
+  .manual-actions{width:100%;justify-content:flex-end}
+}
 </style>
 </head>
 <body>
@@ -225,7 +252,7 @@ textarea{resize:vertical;min-height:100px;line-height:1.6}
     <div class="nav-left"><span class="dot"></span>HL0FRC</div>
     <div class="nav-sys">재난대응봉사회 통합관리시스템</div>
     <div class="nav-right">
-      <span class="ver">v2.7</span>
+      <span class="ver">v2.8</span>
     </div>
   </div>
 </div>
@@ -781,60 +808,161 @@ textarea{resize:vertical;min-height:100px;line-height:1.6}
   </div>
 </div>
 
-<!-- ==================== 9. 링크모음 ==================== -->
+<!-- ==================== 9. 링크모음 & 매뉴얼 ==================== -->
 <div id="menu-links" class="menu-section" style="display:none">
-  <div class="card">
-    <div class="card-title">🔗 적십자봉사회 관련 링크</div>
-    <div class="link-section-title">📋 회의 & 문서관리</div>
-    <div class="links-grid">
-      <a class="link-card" href="https://insys-hq.github.io/Insys-review/minutes.html" target="_blank">
-        <div class="lc-icon">📋</div><div class="lc-title">회의록 통합관리</div><div class="lc-desc">월례회·임원회의 회의록</div>
-      </a>
-      <a class="link-card" href="https://insys-hq.github.io/Insys-review/proxy.html" target="_blank">
-        <div class="lc-icon">📝</div><div class="lc-title">위임장</div><div class="lc-desc">회의 위임장 작성·관리</div>
-      </a>
-      <a class="link-card" href="https://insys-hq.github.io/Insys-review/meeting.html" target="_blank">
-        <div class="lc-icon">🗓️</div><div class="lc-title">회의 일정</div><div class="lc-desc">회의 일정 관리</div>
-      </a>
+  <div class="sub-tabs">
+    <button class="sub-tab active" onclick="subTab('links','fixed')">🔗 주요 링크</button>
+    <button class="sub-tab" onclick="subTab('links','custom')">➕ 링크 관리</button>
+    <button class="sub-tab" onclick="subTab('links','manual')">📖 매뉴얼 자료실</button>
+  </div>
+
+  <!-- 고정 링크 -->
+  <div id="links-fixed" class="sub-content active">
+    <div class="card">
+      <div class="card-title">📋 회의 & 문서관리</div>
+      <div class="links-grid">
+        <a class="link-card" href="https://insys-hq.github.io/Insys-review/minutes.html" target="_blank">
+          <div class="lc-icon">📋</div><div class="lc-title">회의록 통합관리</div><div class="lc-desc">월례회·임원회의 회의록</div>
+        </a>
+        <a class="link-card" href="https://insys-hq.github.io/Insys-review/proxy.html" target="_blank">
+          <div class="lc-icon">📝</div><div class="lc-title">위임장</div><div class="lc-desc">회의 위임장 작성·관리</div>
+        </a>
+        <a class="link-card" href="https://insys-hq.github.io/Insys-review/meeting.html" target="_blank">
+          <div class="lc-icon">🗓️</div><div class="lc-title">회의 일정</div><div class="lc-desc">회의 일정 관리</div>
+        </a>
+      </div>
     </div>
-    <div class="link-section-title">📡 WIRES-X / 무선통신</div>
-    <div class="links-grid">
-      <a class="link-card" href="https://insys-hq.github.io/Insys-review/rcnet_guide.html" target="_blank">
-        <div class="lc-icon">📡</div><div class="lc-title">RCnet 운영 가이드</div><div class="lc-desc">WIRES-X 재난통신망 운영</div>
-      </a>
-      <a class="link-card" href="https://insys-hq.github.io/Insys-review/wiresx_guide.html" target="_blank">
-        <div class="lc-icon">🔧</div><div class="lc-title">WIRES-X 가이드</div><div class="lc-desc">장비 설정 및 운영 가이드</div>
-      </a>
-      <a class="link-card" href="https://insys-hq.github.io/Insys-review/wirex_network.html" target="_blank">
-        <div class="lc-icon">🌐</div><div class="lc-title">네트워크 구성도</div><div class="lc-desc">RCnet 네트워크 다이어그램</div>
-      </a>
-      <a class="link-card" href="https://insys-hq.github.io/Insys-review/wirex_nodes.html" target="_blank">
-        <div class="lc-icon">📍</div><div class="lc-title">노드 현황</div><div class="lc-desc">DS0ARC·HL0FRC·HL2TLS 노드</div>
-      </a>
-      <a class="link-card" href="https://insys-hq.github.io/Insys-review/HL0FRC-AI.html" target="_blank">
-        <div class="lc-icon">🤖</div><div class="lc-title">HL0FRC AI 도우미</div><div class="lc-desc">AI 기반 통신 지원</div>
-      </a>
+    <div class="card">
+      <div class="card-title">📡 WIRES-X / 무선통신</div>
+      <div class="links-grid">
+        <a class="link-card" href="https://insys-hq.github.io/Insys-review/rcnet_guide.html" target="_blank">
+          <div class="lc-icon">📡</div><div class="lc-title">RCnet 운영 가이드</div><div class="lc-desc">WIRES-X 재난통신망 운영</div>
+        </a>
+        <a class="link-card" href="https://insys-hq.github.io/Insys-review/wiresx_guide.html" target="_blank">
+          <div class="lc-icon">🔧</div><div class="lc-title">WIRES-X 가이드</div><div class="lc-desc">장비 설정 및 운영 가이드</div>
+        </a>
+        <a class="link-card" href="https://insys-hq.github.io/Insys-review/wirex_network.html" target="_blank">
+          <div class="lc-icon">🌐</div><div class="lc-title">네트워크 구성도</div><div class="lc-desc">RCnet 네트워크 다이어그램</div>
+        </a>
+        <a class="link-card" href="https://insys-hq.github.io/Insys-review/HL0FRC-AI.html" target="_blank">
+          <div class="lc-icon">🤖</div><div class="lc-title">HL0FRC AI 도우미</div><div class="lc-desc">AI 기반 통신 지원</div>
+        </a>
+      </div>
     </div>
-    <div class="link-section-title">🏥 대한적십자사 공식</div>
-    <div class="links-grid">
-      <a class="link-card" href="https://www.redcross.or.kr" target="_blank">
-        <div class="lc-icon">🏥</div><div class="lc-title">대한적십자사</div><div class="lc-desc">공식 홈페이지</div>
-      </a>
-      <a class="link-card" href="https://volunteer.redcross.or.kr" target="_blank">
-        <div class="lc-icon">❤️</div><div class="lc-title">봉사활동 포털</div><div class="lc-desc">봉사시간 조회·등록</div>
-      </a>
+    <div class="card">
+      <div class="card-title">🏥 대한적십자사 공식</div>
+      <div class="links-grid">
+        <a class="link-card" href="https://www.redcross.or.kr" target="_blank">
+          <div class="lc-icon">🏥</div><div class="lc-title">대한적십자사</div><div class="lc-desc">공식 홈페이지</div>
+        </a>
+        <a class="link-card" href="https://volunteer.redcross.or.kr" target="_blank">
+          <div class="lc-icon">❤️</div><div class="lc-title">봉사활동 포털</div><div class="lc-desc">봉사시간 조회·등록</div>
+        </a>
+      </div>
     </div>
-    <div class="link-section-title" style="margin-top:16px">⚙️ 링크 직접 추가</div>
-    <div class="card" style="background:#f7fafd;box-shadow:none;border:1.5px solid #e0eaf2">
-      <div class="form-row c3">
-        <div><label>링크 이름</label><input type="text" id="lk-title" placeholder="이름"></div>
+  </div>
+
+  <!-- 링크 관리 -->
+  <div id="links-custom" class="sub-content">
+    <div class="card">
+      <div class="card-title">➕ 링크 추가</div>
+      <div class="form-row c2">
+        <div><label>링크 이름</label><input type="text" id="lk-title" placeholder="예: YAESU FTM-510D 공식사이트"></div>
+        <div><label>구분</label>
+          <select id="lk-cat">
+            <option>무선통신</option><option>장비·부품</option><option>적십자</option>
+            <option>교육·훈련</option><option>법령·규정</option><option>기타</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row c2">
         <div><label>URL</label><input type="text" id="lk-url" placeholder="https://..."></div>
         <div><label>설명</label><input type="text" id="lk-desc" placeholder="간단 설명"></div>
       </div>
       <div class="btn-group">
-        <button class="btn btn-green" onclick="addCustomLink()">➕ 추가</button>
+        <button class="btn btn-green" onclick="addCustomLink()">➕ 링크 추가</button>
       </div>
-      <div id="custom-links" style="margin-top:12px"></div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between">
+        <span>📋 등록된 링크</span>
+        <span id="lk-count" style="font-size:12px;color:#7a98b0;font-weight:400"></span>
+      </div>
+      <div class="cat-filter" id="lk-cat-filter">
+        <button class="cat-btn active" onclick="filterLinks('')">전체</button>
+        <button class="cat-btn" onclick="filterLinks('무선통신')">📡 무선통신</button>
+        <button class="cat-btn" onclick="filterLinks('장비·부품')">🔧 장비·부품</button>
+        <button class="cat-btn" onclick="filterLinks('적십자')">🏥 적십자</button>
+        <button class="cat-btn" onclick="filterLinks('교육·훈련')">📚 교육·훈련</button>
+        <button class="cat-btn" onclick="filterLinks('법령·규정')">📜 법령·규정</button>
+        <button class="cat-btn" onclick="filterLinks('기타')">📌 기타</button>
+      </div>
+      <input type="text" id="lk-search" placeholder="🔍 링크 검색..." style="margin-bottom:10px" oninput="renderCustomLinks()">
+      <div id="custom-links"></div>
+    </div>
+  </div>
+
+  <!-- 매뉴얼 자료실 -->
+  <div id="links-manual" class="sub-content">
+    <div class="card">
+      <div class="card-title">📤 매뉴얼 업로드</div>
+      <div class="form-row c3">
+        <div><label>자료명</label><input type="text" id="mn-title" placeholder="예: FTM-510D 사용자 매뉴얼"></div>
+        <div><label>장비/구분</label>
+          <select id="mn-cat">
+            <option>무전기</option><option>안테나</option><option>전원장치</option>
+            <option>WIRES-X</option><option>재난장비</option><option>교육자료</option><option>기타</option>
+          </select>
+        </div>
+        <div><label>설명</label><input type="text" id="mn-desc" placeholder="간단 설명 (선택)"></div>
+      </div>
+      <div class="upload-zone" id="mn-upzone" onclick="document.getElementById('mn-file').click()"
+           ondragover="dzOver(event,'mn-upzone')" ondragleave="dzLeave('mn-upzone')"
+           ondrop="mnDrop(event)">
+        <div class="upload-icon">📎</div>
+        <p><strong>클릭 또는 드래그하여 파일 업로드</strong></p>
+        <p>PDF · Word · 이미지 · 모든 파일 형식 지원</p>
+      </div>
+      <input type="file" id="mn-file" style="display:none" onchange="manualFileSelected(event)">
+      <div id="mn-selected" style="display:none;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#f0f4f8;border-radius:7px">
+          <span id="mn-file-icon" style="font-size:20px">📄</span>
+          <div>
+            <div id="mn-file-name" style="font-size:13px;font-weight:600;color:#1b3a5c"></div>
+            <div id="mn-file-size" style="font-size:11px;color:#7a98b0"></div>
+          </div>
+          <button class="btn btn-gray" style="margin-left:auto;padding:4px 10px;font-size:11px" onclick="clearManualFile()">✕ 취소</button>
+        </div>
+        <div class="upload-progress" id="mn-progress">
+          <div class="upload-progress-bar" id="mn-progress-bar"></div>
+        </div>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-green" id="mn-upload-btn" onclick="uploadManual()" disabled>📤 업로드</button>
+      </div>
+      <div class="ai-status" id="mn-status"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between">
+        <span>📖 매뉴얼 목록</span>
+        <span id="mn-count" style="font-size:12px;color:#7a98b0;font-weight:400"></span>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <div class="cat-filter" id="mn-cat-filter" style="margin-bottom:0;flex:1">
+          <button class="cat-btn active" onclick="filterManuals('')">전체</button>
+          <button class="cat-btn" onclick="filterManuals('무전기')">📻 무전기</button>
+          <button class="cat-btn" onclick="filterManuals('안테나')">📡 안테나</button>
+          <button class="cat-btn" onclick="filterManuals('WIRES-X')">🔗 WIRES-X</button>
+          <button class="cat-btn" onclick="filterManuals('재난장비')">🚨 재난장비</button>
+          <button class="cat-btn" onclick="filterManuals('교육자료')">📚 교육자료</button>
+          <button class="cat-btn" onclick="filterManuals('기타')">📌 기타</button>
+        </div>
+        <input type="text" id="mn-search" placeholder="🔍 검색..." style="width:160px" oninput="renderManualList()">
+      </div>
+      <div id="manual-list">
+        <div class="empty-state"><div class="ei">📖</div><p>등록된 매뉴얼이 없습니다.</p></div>
+      </div>
     </div>
   </div>
 </div>
@@ -966,6 +1094,7 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+const storage = firebase.storage();
 
 // 컬렉션 매핑
 const COLLS = {
@@ -1003,6 +1132,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   });
   loadAllArchives();
   loadCustomLinks();
+  loadManuals();
   loadSuggest();
 });
 
@@ -1019,12 +1149,13 @@ function showMenu(name){
   // hero title update
   const titles={minutes:'회 의 록',proxy:'위 임 장',schedule:'일 정 관 리',
     contacts:'주 소 록',volunteer:'봉 사 시 간',meetdoc:'회 의 자 료',
-    actplan:'활 동 계 획 서',actreport:'봉 사 활 동 보 고',links:'링 크 모 음',suggest:'개 선 제 안'};
+    actplan:'활 동 계 획 서',actreport:'봉 사 활 동 보 고',links:'링크 & 매뉴얼',suggest:'개 선 제 안'};
   document.getElementById('hero-subtitle').textContent = titles[name]||'회 의 록';
   // hero mtype toggle 표시/숨김
   document.querySelector('.mtype-toggle').style.display = name==='minutes' ? 'flex' : 'none';
   if(name==='minutes') loadArchive('minutes');
   else if(name==='suggest') loadSuggest();
+  else if(name==='links'){ loadCustomLinks(); loadManuals(); }
   else if(COLLS[name]) loadArchive(name);
 }
 
@@ -1036,6 +1167,8 @@ function subTab(menu, tab){
   document.getElementById(`${menu}-${tab}`).classList.add('active');
   if(tab==='archive'||tab==='list') loadArchive(menu);
   if(tab==='view') renderMinutesView();
+  if(menu==='links'&&tab==='custom') loadCustomLinks();
+  if(menu==='links'&&tab==='manual') loadManuals();
 }
 function getTabIdx(menu,tab){
   const maps={
@@ -1043,7 +1176,8 @@ function getTabIdx(menu,tab){
     proxy:{write:0,archive:1},
     schedule:{write:0,list:1},contacts:{write:0,list:1},
     volunteer:{write:0,list:1},meetdoc:{write:0,list:1},
-    actplan:{write:0,list:1},actreport:{write:0,list:1}
+    actplan:{write:0,list:1},actreport:{write:0,list:1},
+    links:{fixed:0,custom:1,manual:2}
   };
   return maps[menu]?.[tab]??0;
 }
@@ -1700,25 +1834,56 @@ function clearSection(menu){
 //  CUSTOM LINKS
 // ═══════════════════════════════════════════════════
 let customLinks=[];
+// ── 링크 관리 ─────────────────────────────────────────
+let currentLinkFilter='';
+
 function loadCustomLinks(){
   db.collection('rc_links').orderBy('addedAt','desc').get().then(snap=>{
     customLinks=snap.docs.map(d=>({id:d.id,...d.data()}));
     renderCustomLinks();
-  }).catch(()=>{});
+  }).catch(e=>console.error('links load:',e));
 }
 
 async function addCustomLink(){
-  const t=document.getElementById('lk-title').value.trim();
-  const u=document.getElementById('lk-url').value.trim();
-  const de=document.getElementById('lk-desc').value.trim();
-  if(!t||!u){showToast('이름과 URL을 입력해주세요','err');return;}
+  const t  =document.getElementById('lk-title').value.trim();
+  const u  =document.getElementById('lk-url').value.trim();
+  const de =document.getElementById('lk-desc').value.trim();
+  const cat=document.getElementById('lk-cat')?.value||'기타';
+  if(!t){showToast('링크 이름을 입력해주세요','err');return;}
+  if(!u){showToast('URL을 입력해주세요','err');return;}
+  const url=u.startsWith('http')?u:'https://'+u;
   try{
-    await db.collection('rc_links').add({title:t,url:u,desc:de,addedAt:new Date().toISOString()});
-    document.getElementById('lk-title').value='';
-    document.getElementById('lk-url').value='';
-    document.getElementById('lk-desc').value='';
+    await db.collection('rc_links').add({title:t,url,desc:de,category:cat,addedAt:new Date().toISOString()});
+    ['lk-title','lk-url','lk-desc'].forEach(id=>document.getElementById(id).value='');
     showToast('링크 추가 완료','ok'); loadCustomLinks();
-  }catch(e){showToast('저장 실패','err');}
+  }catch(e){showToast('저장 실패: '+e.message,'err');}
+}
+
+async function deleteCustomLink(id){
+  if(!confirm('이 링크를 삭제하시겠습니까?')) return;
+  try{
+    await db.collection('rc_links').doc(id).delete();
+    showToast('삭제 완료','ok'); loadCustomLinks();
+  }catch(e){showToast('삭제 실패','err');}
+}
+
+async function editCustomLink(id){
+  const item=customLinks.find(l=>l.id===id); if(!item) return;
+  const newTitle=prompt('링크 이름 수정:',item.title); if(newTitle===null) return;
+  const newUrl=prompt('URL 수정:',item.url);           if(newUrl===null) return;
+  const newDesc=prompt('설명 수정:',item.desc||'');    if(newDesc===null) return;
+  try{
+    await db.collection('rc_links').doc(id).update({title:newTitle,url:newUrl,desc:newDesc,updatedAt:new Date().toISOString()});
+    showToast('수정 완료','ok'); loadCustomLinks();
+  }catch(e){showToast('수정 실패','err');}
+}
+
+function filterLinks(cat){
+  currentLinkFilter=cat;
+  document.querySelectorAll('#lk-cat-filter .cat-btn').forEach(b=>{
+    b.classList.toggle('active',b.textContent.includes(cat)||(cat===''&&b.textContent==='전체'));
+  });
+  renderCustomLinks();
 }
 
 
@@ -1986,13 +2151,174 @@ function showMenu_byName(name){
 
 function renderCustomLinks(){
   const c=document.getElementById('custom-links'); if(!c) return;
-  if(!customLinks.length){c.innerHTML='';return;}
-  c.innerHTML='<div class="links-grid">'+customLinks.map(lk=>`
-    <a class="link-card" href="${lk.url}" target="_blank">
-      <div class="lc-icon">🔗</div>
-      <div class="lc-title">${lk.title}</div>
-      <div class="lc-desc">${lk.desc||lk.url}</div>
-    </a>`).join('')+'</div>';
+  const kw=(document.getElementById('lk-search')?.value||'').toLowerCase();
+  const filtered=customLinks.filter(lk=>{
+    const matchCat=!currentLinkFilter||lk.category===currentLinkFilter;
+    const matchKw=!kw||(lk.title+lk.url+(lk.desc||'')+(lk.category||'')).toLowerCase().includes(kw);
+    return matchCat&&matchKw;
+  });
+  const countEl=document.getElementById('lk-count');
+  if(countEl) countEl.textContent=`전체 ${customLinks.length}개 / 표시 ${filtered.length}개`;
+  if(!filtered.length){
+    c.innerHTML='<div class="empty-state"><div class="ei">🔗</div><p>'+(customLinks.length?'검색 결과 없음':'등록된 링크가 없습니다.')+'</p></div>';
+    return;
+  }
+  const ci={'무선통신':'📡','장비·부품':'🔧','적십자':'🏥','교육·훈련':'📚','법령·규정':'📜','기타':'📌'};
+  c.innerHTML=filtered.map(lk=>`
+    <div class="manual-item">
+      <div class="manual-icon">${ci[lk.category]||'🔗'}</div>
+      <div class="manual-info">
+        <div class="manual-name">${esc(lk.title)} <span class="file-type-badge badge-etc">${lk.category||'링크'}</span></div>
+        <div class="manual-meta"><a href="${lk.url}" target="_blank" style="color:#2e6da4">${lk.url.substring(0,50)}${lk.url.length>50?'…':''}</a>${lk.desc?' | '+esc(lk.desc):''}</div>
+      </div>
+      <div class="manual-actions">
+        <button onclick="window.open('${lk.url}','_blank')">🔗 열기</button>
+        <button onclick="editCustomLink('${lk.id}')">✏️ 수정</button>
+        <button class="del-btn" onclick="deleteCustomLink('${lk.id}')">🗑️</button>
+      </div>
+    </div>`).join('');
+}
+
+// ── 매뉴얼 자료실 ──────────────────────────────────────
+let manualCache=[];
+let currentManualFilter='';
+let selectedManualFile=null;
+
+function manualFileSelected(e){const f=e.target.files[0];if(!f)return;selectedManualFile=f;showManualFilePreview(f);}
+function mnDrop(e){e.preventDefault();dzLeave('mn-upzone');const f=e.dataTransfer.files[0];if(!f)return;selectedManualFile=f;showManualFilePreview(f);}
+
+function showManualFilePreview(f){
+  const icons={'application/pdf':'📄','application/msword':'📝','application/vnd.openxmlformats-officedocument.wordprocessingml.document':'📝'};
+  const icon=f.type.startsWith('image/')?'🖼️':(icons[f.type]||'📎');
+  document.getElementById('mn-file-icon').textContent=icon;
+  document.getElementById('mn-file-name').textContent=f.name;
+  document.getElementById('mn-file-size').textContent=formatFileSize(f.size);
+  document.getElementById('mn-selected').style.display='block';
+  document.getElementById('mn-upload-btn').disabled=false;
+}
+function clearManualFile(){
+  selectedManualFile=null;document.getElementById('mn-file').value='';
+  document.getElementById('mn-selected').style.display='none';
+  document.getElementById('mn-upload-btn').disabled=true;
+  document.getElementById('mn-status').className='ai-status';
+}
+function formatFileSize(b){if(b<1024)return b+'B';if(b<1048576)return(b/1024).toFixed(1)+'KB';return(b/1048576).toFixed(1)+'MB';}
+
+async function uploadManual(){
+  if(!selectedManualFile){showToast('파일을 선택해주세요','err');return;}
+  const title=document.getElementById('mn-title').value.trim();
+  const cat=document.getElementById('mn-cat').value;
+  const desc=document.getElementById('mn-desc').value.trim();
+  if(!title){showToast('자료명을 입력해주세요','err');return;}
+  const statusEl=document.getElementById('mn-status');
+  const progressWrap=document.getElementById('mn-progress');
+  const progressBar=document.getElementById('mn-progress-bar');
+  const btn=document.getElementById('mn-upload-btn');
+  btn.disabled=true;
+  statusEl.className='ai-status loading';statusEl.textContent='📤 업로드 중...';statusEl.style.display='block';
+  progressWrap.style.display='block';progressBar.style.width='0%';
+  try{
+    const fileId=Date.now().toString();
+    const storagePath=`rc_manuals/${fileId}_${selectedManualFile.name}`;
+    const storageRef=storage.ref(storagePath);
+    const uploadTask=storageRef.put(selectedManualFile);
+    await new Promise((resolve,reject)=>{
+      uploadTask.on('state_changed',
+        snap=>{const pct=(snap.bytesTransferred/snap.totalBytes*100).toFixed(0);progressBar.style.width=pct+'%';statusEl.textContent=`📤 업로드 중... ${pct}%`;},
+        reject,resolve
+      );
+    });
+    const downloadURL=await storageRef.getDownloadURL();
+    await db.collection('rc_manuals').doc(fileId).set({
+      id:fileId,title,category:cat,desc,
+      fileName:selectedManualFile.name,fileSize:selectedManualFile.size,fileType:selectedManualFile.type,
+      storagePath,downloadURL,uploadedAt:new Date().toISOString()
+    });
+    statusEl.className='ai-status ok';statusEl.textContent='✅ 업로드 완료!';
+    showToast('✅ 매뉴얼 업로드 완료','ok');
+    clearManualFile();
+    document.getElementById('mn-title').value='';
+    document.getElementById('mn-desc').value='';
+    progressWrap.style.display='none';
+    await loadManuals();
+  }catch(e){
+    statusEl.className='ai-status err';statusEl.textContent='❌ 업로드 실패: '+e.message;
+    showToast('업로드 실패: '+e.message,'err');btn.disabled=false;
+  }
+}
+
+async function loadManuals(){
+  try{
+    const snap=await db.collection('rc_manuals').orderBy('uploadedAt','desc').get();
+    manualCache=snap.docs.map(d=>({...d.data(),docId:d.id}));
+    renderManualList();
+  }catch(e){console.error('manual load:',e);}
+}
+
+function filterManuals(cat){
+  currentManualFilter=cat;
+  document.querySelectorAll('#mn-cat-filter .cat-btn').forEach(b=>{
+    b.classList.toggle('active',b.textContent.includes(cat)||(cat===''&&b.textContent==='전체'));
+  });
+  renderManualList();
+}
+
+function renderManualList(){
+  const el=document.getElementById('manual-list'); if(!el) return;
+  const kw=(document.getElementById('mn-search')?.value||'').toLowerCase();
+  const filtered=manualCache.filter(m=>{
+    const matchCat=!currentManualFilter||m.category===currentManualFilter;
+    const matchKw=!kw||(m.title+(m.desc||')+m.fileName+(m.category||'')).toLowerCase().includes(kw);
+    return matchCat&&matchKw;
+  });
+  const countEl=document.getElementById('mn-count');
+  if(countEl) countEl.textContent=`전체 ${manualCache.length}개 / 표시 ${filtered.length}개`;
+  if(!filtered.length){el.innerHTML='<div class="empty-state"><div class="ei">📖</div><p>'+(manualCache.length?'검색 결과가 없습니다.':'등록된 매뉴얼이 없습니다.')+'</p></div>';return;}
+  const ci={'무전기':'📻','안테나':'📡','전원장치':'🔋','WIRES-X':'🔗','재난장비':'🚨','교육자료':'📚','기타':'📎'};
+  const typeIcon=t=>t==='application/pdf'?'📄':t?.startsWith('image/')?'🖼️':t?.includes('word')?'📝':'📎';
+  const typeBadge=t=>t==='application/pdf'?'badge-pdf':t?.startsWith('image/')?'badge-img':t?.includes('word')?'badge-doc':'badge-etc';
+  const typeLabel=t=>t==='application/pdf'?'PDF':t?.startsWith('image/')?'이미지':t?.includes('word')?'Word':'파일';
+  el.innerHTML=filtered.map(m=>`
+    <div class="manual-item">
+      <div class="manual-icon">${ci[m.category]||'📎'}</div>
+      <div class="manual-info">
+        <div class="manual-name">${esc(m.title)} <span class="file-type-badge ${typeBadge(m.fileType)}">${typeLabel(m.fileType)}</span> <span class="file-type-badge badge-etc">${m.category}</span></div>
+        <div class="manual-meta">${m.desc?esc(m.desc)+' | ':''} ${esc(m.fileName)} · ${formatFileSize(m.fileSize)} · ${new Date(m.uploadedAt).toLocaleDateString('ko-KR')}</div>
+      </div>
+      <div class="manual-actions">
+        <button onclick="window.open('${m.downloadURL}','_blank')">👁️ 열기</button>
+        <button onclick="downloadManual('${m.downloadURL}','${esc(m.fileName)}')">⬇️ 다운</button>
+        <button onclick="editManual('${m.docId}')">✏️ 수정</button>
+        <button class="del-btn" onclick="deleteManual('${m.docId}','${m.storagePath}')">🗑️</button>
+      </div>
+    </div>`).join('');
+}
+
+function downloadManual(url,name){const a=document.createElement('a');a.href=url;a.download=name;a.target='_blank';document.body.appendChild(a);a.click();document.body.removeChild(a);}
+
+async function editManual(docId){
+  const item=manualCache.find(m=>m.docId===docId); if(!item) return;
+  const newTitle=prompt('자료명 수정:',item.title); if(newTitle===null) return;
+  const newDesc=prompt('설명 수정:',item.desc||'');  if(newDesc===null) return;
+  const catList=['무전기','안테나','전원장치','WIRES-X','재난장비','교육자료','기타'];
+  const newCat=prompt(`구분 수정 (${catList.join('/')}):`,item.category); if(newCat===null) return;
+  try{
+    await db.collection('rc_manuals').doc(docId).update({
+      title:newTitle,desc:newDesc,
+      category:catList.includes(newCat)?newCat:item.category,
+      updatedAt:new Date().toISOString()
+    });
+    showToast('수정 완료','ok'); loadManuals();
+  }catch(e){showToast('수정 실패','err');}
+}
+
+async function deleteManual(docId,storagePath){
+  if(!confirm('이 매뉴얼을 삭제하시겠습니까?\n파일도 함께 삭제됩니다.')) return;
+  try{
+    await storage.ref(storagePath).delete().catch(()=>{});
+    await db.collection('rc_manuals').doc(docId).delete();
+    showToast('삭제 완료','ok'); loadManuals();
+  }catch(e){showToast('삭제 실패: '+e.message,'err');}
 }
 
 // ═══════════════════════════════════════════════════
