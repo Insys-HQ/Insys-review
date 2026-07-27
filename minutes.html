@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>재난대응봉사회 통합관리시스템 v2.8</title>
+<title>재난대응봉사회 통합관리시스템 v2.9</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -252,7 +252,7 @@ textarea{resize:vertical;min-height:100px;line-height:1.6}
     <div class="nav-left"><span class="dot"></span>HL0FRC</div>
     <div class="nav-sys">재난대응봉사회 통합관리시스템</div>
     <div class="nav-right">
-      <span class="ver">v2.8</span>
+      <span class="ver">v2.9</span>
     </div>
   </div>
 </div>
@@ -1266,11 +1266,36 @@ function clearPhotos(previewId, inputId, btnId, clrId){
 // ═══════════════════════════════════════════════════
 //  Claude API 공통 호출 (CORS 허용 방식)
 // ═══════════════════════════════════════════════════
+function getApiKey(){
+  let key = localStorage.getItem('rc_anthropic_key');
+  if(!key){
+    key = prompt('Anthropic API 키를 입력하세요 (한 번만 입력하면 이 기기에 저장됩니다).\n키 발급: console.anthropic.com/settings/keys\n\nsk-ant-api03-...');
+    if(key && key.trim().startsWith('sk-ant-')){
+      localStorage.setItem('rc_anthropic_key', key.trim());
+      key = key.trim();
+    } else if(key!==null){
+      alert('API 키 형식이 올바르지 않습니다 (sk-ant- 로 시작해야 함)');
+      return null;
+    } else {
+      return null;
+    }
+  }
+  return key;
+}
+
+function resetApiKey(){
+  localStorage.removeItem('rc_anthropic_key');
+  showToast('API 키가 삭제되었습니다. 다음 분석 시 다시 입력합니다.','ok');
+}
+
 async function callClaudeAPI(contentBlocks, promptText){
+  const apiKey = getApiKey();
+  if(!apiKey) throw new Error('API 키가 필요합니다.');
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "x-api-key": apiKey,
       "anthropic-version": "2023-06-01",
       "anthropic-dangerous-direct-browser-access": "true"
     },
@@ -1285,6 +1310,10 @@ async function callClaudeAPI(contentBlocks, promptText){
   });
   if(!res.ok){
     const err = await res.json().catch(()=>({error:{message:res.statusText}}));
+    if(res.status===401){
+      localStorage.removeItem('rc_anthropic_key');
+      throw new Error('API 키가 유효하지 않습니다. 다시 시도하면 키를 재입력합니다.');
+    }
     throw new Error(err?.error?.message || `HTTP ${res.status}`);
   }
   const data = await res.json();
@@ -2268,7 +2297,7 @@ function renderManualList(){
   const kw=(document.getElementById('mn-search')?.value||'').toLowerCase();
   const filtered=manualCache.filter(m=>{
     const matchCat=!currentManualFilter||m.category===currentManualFilter;
-    const matchKw=!kw||(m.title+(m.desc||')+m.fileName+(m.category||'')).toLowerCase().includes(kw);
+    const matchKw=!kw||(m.title+(m.desc||'')+m.fileName+(m.category||'')).toLowerCase().includes(kw);
     return matchCat&&matchKw;
   });
   const countEl=document.getElementById('mn-count');
