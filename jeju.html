@@ -11,7 +11,7 @@
 // ═══ 자동 새로고침 시스템 ═══
 // GitHub Pages 캐시로 구버전이 뜨는 문제 방지
 (function(){
-  const CURRENT_VERSION = 'v4.2';
+  const CURRENT_VERSION = 'v4.3';
   const CHECK_URL = 'https://raw.githubusercontent.com/Insys-HQ/Insys-review/main/jeju.html?_=' + Date.now();
 
   // 이미 이 버전으로 강제 새로고침한 상태면 재체크 스킵 (무한루프 방지)
@@ -251,7 +251,10 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:#eff2f7;color:#2c3e50
 .viewer-hd{
   position:absolute;top:0;left:0;right:0;z-index:10;
   background:linear-gradient(180deg,rgba(0,0,0,.75),transparent);
-  color:#fff;padding:10px 14px;
+  color:#fff;padding:10px 0;
+}
+.viewer-hd-inner{
+  max-width:1100px;margin:0 auto;padding:0 14px;
   display:flex;align-items:center;justify-content:space-between;
 }
 .viewer-hd-info{font-size:12px;color:#ccc}
@@ -286,35 +289,38 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:#eff2f7;color:#2c3e50
 /* ═ 설명 영역 — 하단 반투명 오버레이 (접기/펴기) ═ */
 .viewer-comment{
   position:absolute;bottom:0;left:0;right:0;z-index:12;
-  background:linear-gradient(0deg,rgba(0,0,0,.92),rgba(0,0,0,.75));
-  color:#fff;padding:10px 14px 12px;
-  transform:translateY(0);transition:transform .25s;
+  background:linear-gradient(0deg,rgba(0,0,0,.95),rgba(0,0,0,.7));
+  color:#fff;padding:5px 10px 6px;
+  transform:translateY(calc(100% - 30px));transition:transform .25s;
 }
-.viewer-comment.hidden{transform:translateY(calc(100% - 38px))}
+.viewer-comment.open{transform:translateY(0)}
+.viewer-comment-inner{max-width:1100px;margin:0 auto}
 .viewer-comment-t{
-  font-size:11px;color:#aab3c9;font-weight:600;margin-bottom:6px;
+  font-size:10px;color:#aab3c9;font-weight:600;margin-bottom:4px;
   display:flex;align-items:center;justify-content:space-between;
-  cursor:pointer;user-select:none;
+  cursor:pointer;user-select:none;padding:2px 0;
 }
-.viewer-comment-t i{color:#5bc4f5;margin-right:4px}
-.viewer-comment-t .toggle{color:#5bc4f5;font-size:11px}
+.viewer-comment-t i{color:#5bc4f5;margin-right:3px;font-size:10px}
+.viewer-comment-t .toggle{color:#5bc4f5;font-size:10px}
 .viewer-comment textarea{
-  width:100%;border:1.5px solid rgba(255,255,255,.15);border-radius:8px;
-  padding:8px 10px;font-family:'Noto Sans KR',sans-serif;font-size:13px;
+  width:100%;border:1.5px solid rgba(255,255,255,.15);border-radius:6px;
+  padding:5px 8px;font-family:'Noto Sans KR',sans-serif;font-size:12px;
   color:#fff;background:rgba(255,255,255,.08);outline:none;resize:none;
-  min-height:48px;max-height:80px;box-sizing:border-box;line-height:1.5;
+  min-height:34px;max-height:56px;box-sizing:border-box;line-height:1.4;
 }
-.viewer-comment textarea::placeholder{color:rgba(255,255,255,.35)}
+.viewer-comment textarea::placeholder{color:rgba(255,255,255,.35);font-size:11px}
 .viewer-comment textarea:focus{border-color:#5bc4f5;background:rgba(255,255,255,.12)}
-.viewer-comment-actions{display:flex;gap:6px;margin-top:6px}
+.viewer-comment-actions{display:flex;gap:5px;margin-top:5px}
 .vc-btn{
-  flex:1;padding:8px;border:none;border-radius:8px;
-  font-family:'Noto Sans KR',sans-serif;font-size:12px;font-weight:600;
-  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;
+  flex:1;padding:6px;border:none;border-radius:6px;
+  font-family:'Noto Sans KR',sans-serif;font-size:11px;font-weight:600;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;
   -webkit-tap-highlight-color:transparent;
 }
+.vc-btn i{font-size:10px}
 .vc-btn.save{background:#27ae60;color:#fff}
 .vc-btn.del{background:#e74c3c;color:#fff}
+.vc-btn.download{background:#2980b9;color:#fff}
 .vc-btn:active{opacity:.85}
 
 /* ═══ 현장정보 카드 ═══ */
@@ -378,7 +384,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:#eff2f7;color:#2c3e50
     <div class="appbar-top">
       <div class="appbar-t">
         <i class="fa fa-hard-hat"></i>
-        <div>제주 아라이동 주택공사 <small>v4.2</small></div>
+        <div>제주 아라이동 주택공사 <small>v4.3</small></div>
       </div>
       <span class="appbar-date" id="appDate">-</span>
     </div>
@@ -490,11 +496,13 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:#eff2f7;color:#2c3e50
 <!-- 사진 뷰어 -->
 <div class="viewer" id="viewer">
   <div class="viewer-hd">
-    <div class="viewer-hd-info">
-      <b id="viewerDate">-</b>
-      <span id="viewerFilename"></span>
+    <div class="viewer-hd-inner">
+      <div class="viewer-hd-info">
+        <b id="viewerDate">-</b>
+        <span id="viewerFilename"></span>
+      </div>
+      <button class="viewer-x" onclick="closeViewer()"><i class="fa fa-times"></i></button>
     </div>
-    <button class="viewer-x" onclick="closeViewer()"><i class="fa fa-times"></i></button>
   </div>
   <div class="viewer-body">
     <div class="viewer-counter" id="viewerCounter">1 / 1</div>
@@ -503,14 +511,17 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:#eff2f7;color:#2c3e50
     <button class="viewer-nav next" onclick="viewerMove(1)"><i class="fa fa-chevron-right"></i></button>
   </div>
   <div class="viewer-comment" id="viewerCommentBox">
-    <div class="viewer-comment-t" onclick="toggleViewerComment()">
-      <span><i class="fa fa-comment"></i>사진 설명</span>
-      <span class="toggle" id="viewerCommentToggle"><i class="fa fa-chevron-down"></i> 접기</span>
-    </div>
-    <textarea id="viewerComment" placeholder="이 사진에 대한 설명·특이사항·작업내용을 입력하세요"></textarea>
-    <div class="viewer-comment-actions">
-      <button class="vc-btn del" onclick="deleteCurrentPhoto()"><i class="fa fa-trash"></i> 사진 삭제</button>
-      <button class="vc-btn save" onclick="saveCurrentComment()"><i class="fa fa-check"></i> 설명 저장</button>
+    <div class="viewer-comment-inner">
+      <div class="viewer-comment-t" onclick="toggleViewerComment()">
+        <span><i class="fa fa-comment"></i>사진 설명</span>
+        <span class="toggle" id="viewerCommentToggle"><i class="fa fa-chevron-up"></i> 펴기</span>
+      </div>
+      <textarea id="viewerComment" placeholder="이 사진에 대한 설명·특이사항·작업내용을 입력하세요"></textarea>
+      <div class="viewer-comment-actions">
+        <button class="vc-btn del" onclick="deleteCurrentPhoto()"><i class="fa fa-trash"></i> 삭제</button>
+        <button class="vc-btn download" onclick="downloadCurrentPhoto()"><i class="fa fa-download"></i> 다운로드</button>
+        <button class="vc-btn save" onclick="saveCurrentComment()"><i class="fa fa-check"></i> 설명 저장</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1071,6 +1082,26 @@ function toggleViewerComment(){
   }
 }
 
+// 현재 사진 다운로드
+function downloadCurrentPhoto(){
+  const p = viewerList[viewerIdx];
+  if(!p) return;
+  try{
+    const a = document.createElement('a');
+    a.href = p.url;
+    // 파일명: 날짜_원본파일명 (없으면 photo.jpg)
+    const safeName = (p.filename || 'photo.jpg').replace(/[^\w.-]/g,'_');
+    a.download = `${p.date}_${safeName}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    showToast('다운로드되었습니다','success');
+  }catch(e){
+    console.error('다운로드 실패:',e);
+    showToast('다운로드 실패: '+e.message,'error');
+  }
+}
+
 async function saveCurrentComment(){
   const p = viewerList[viewerIdx];
   if(!p) return;
@@ -1089,8 +1120,7 @@ async function saveCurrentComment(){
   }catch(e){ showToast('저장 실패: '+e.message,'error'); }
 }
 
-async function deleteCurrentPhoto(){
-  const p = viewerList[viewerIdx];
+async function deleteCurrentPhoto(){  const p = viewerList[viewerIdx];
   if(!p) return;
   if(!confirm('이 사진을 삭제하시겠습니까?')) return;
   try{
