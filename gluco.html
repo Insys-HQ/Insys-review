@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>GlucoLog v1.6 — 혈당관리</title>
+<title>GlucoLog v1.7 — 혈당관리</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script type="module">
@@ -103,6 +103,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
   font-family:'Noto Sans KR',sans-serif;font-size:14px;color:var(--text);
   background:#FAFBFC;outline:none;transition:border-color 0.15s;}
 .form-input:focus{border-color:var(--primary);background:#fff;}
+.form-input.prefilled{background:#FFFDE7;border-color:var(--yellow);}
 .input-row{display:flex;gap:8px;}
 .input-row .form-group{flex:1;}
 select.form-input{appearance:none;}
@@ -226,7 +227,7 @@ textarea.form-input{resize:none;height:70px;}
 <div class="safe-top"></div>
 <header class="app-header">
   <div class="logo-block">
-    <div class="logo">Gluco<span>Log</span> <span class="ver">v1.6</span></div>
+    <div class="logo">Gluco<span>Log</span> <span class="ver">v1.7</span></div>
     <div class="logo-sub">혈당·혈압·식단 통합 관리</div>
   </div>
   <div id="headerDate" class="date-badge">로딩중...</div>
@@ -255,6 +256,7 @@ textarea.form-input{resize:none;height:70px;}
   <!-- 혈당 입력 -->
   <div class="card">
     <div class="card-title"><span class="dot" style="background:var(--yellow)"></span>자가 혈당 측정</div>
+    <p style="font-size:11px;color:var(--text3);margin-bottom:8px">💡 최근 입력값이 자동으로 채워집니다. 같으면 그대로, 다르면 수정 후 저장하세요.</p>
     <div class="input-row">
       <div class="form-group">
         <label class="form-label">측정 날짜</label>
@@ -296,6 +298,7 @@ textarea.form-input{resize:none;height:70px;}
   <!-- 혈압 입력 -->
   <div class="card">
     <div class="card-title"><span class="dot" style="background:var(--primary)"></span>혈압 측정</div>
+    <p style="font-size:11px;color:var(--text3);margin-bottom:8px">💡 최근 입력값이 자동으로 채워집니다. 같으면 그대로, 다르면 수정 후 저장하세요.</p>
     <div class="input-row">
       <div class="form-group">
         <label class="form-label">측정 날짜</label>
@@ -750,7 +753,7 @@ let db,col,addDoc,getDocs,q,orderBy;
 let gChart,bChart,mChart;
 let mealB64=null,labB64=null,quickB64=null;
 let calcMode=1;
-const VER='v1.6';
+const VER='v1.7';
 
 // ─ Firestore 문서 조작 함수 ─
 let fsDoc,updateDoc,deleteDoc;
@@ -808,6 +811,7 @@ window.addEventListener('firebaseReady',async()=>{
   await loadProfile();
   loadTodayActivity();
   loadMealOptions();
+  await loadLastVitals();
 });
 
 // ─ 탭 ─
@@ -1126,10 +1130,10 @@ async function saveGlucose(){
   });
   const dateLabel=inputDate===todayStr()?'오늘':inputDate;
   showToast(`✅ 혈당 저장 (${dateLabel})`);
-  document.getElementById('glucoseVal').value='';
   document.getElementById('glucoseMemo').value='';
   document.getElementById('glucoseTime').value=nowTime();
   document.getElementById('glucoseDate').value=todayStr();
+  document.getElementById('glucoseVal').classList.remove('prefilled');
   await loadTodayRecords();
 }
 
@@ -1149,11 +1153,11 @@ async function saveBP(){
   });
   const dateLabel=inputDate===todayStr()?'오늘':inputDate;
   showToast(`✅ 혈압 저장 (${dateLabel})`);
-  document.getElementById('bpSys').value='';
-  document.getElementById('bpDia').value='';
-  document.getElementById('bpPulse').value='';
   document.getElementById('bpTime').value=nowTime();
   document.getElementById('bpDate').value=todayStr();
+  document.getElementById('bpSys').classList.remove('prefilled');
+  document.getElementById('bpDia').classList.remove('prefilled');
+  document.getElementById('bpPulse').classList.remove('prefilled');
   await loadTodayRecords();
 }
 
@@ -1214,6 +1218,34 @@ async function analyzeLabResult(){
     if(db) await addDoc(col(db,'glucolog'),{type:'labResult',date:labDate||todayStr(),memo,aiDiagnosis:res,createdAt:new Date()});
   }catch(e){showToast('❌ 분석 오류');console.error(e);}
   setBtnLoading('labBtnTxt','labSp',false,'🩺 AI 종합 진단 시작');
+}
+
+// ─ 최근 혈당/혈압 값 자동 채우기 (반복입력 방지) ─
+function markPrefilled(id){
+  const el=document.getElementById(id);
+  if(!el) return;
+  el.classList.add('prefilled');
+  el.addEventListener('input',()=>el.classList.remove('prefilled'),{once:true});
+}
+
+async function loadLastVitals(){
+  if(!db) return;
+  const snap=await getDocs(q(col(db,'glucolog'),orderBy('createdAt','desc')));
+  const all=snap.docs.map(d=>d.data());
+  const lastG=all.find(r=>r.type==='glucose');
+  const lastB=all.find(r=>r.type==='bp');
+  if(lastG){
+    document.getElementById('glucoseVal').value=lastG.value;
+    if(lastG.when) document.getElementById('glucoseWhen').value=lastG.when;
+    markPrefilled('glucoseVal');
+  }
+  if(lastB){
+    document.getElementById('bpSys').value=lastB.systolic;
+    document.getElementById('bpDia').value=lastB.diastolic;
+    if(lastB.pulse) document.getElementById('bpPulse').value=lastB.pulse;
+    markPrefilled('bpSys'); markPrefilled('bpDia');
+    if(lastB.pulse) markPrefilled('bpPulse');
+  }
 }
 
 // ─ 기록된 식단 선택 분석 ─
