@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>GlucoLog v1.4 — 혈당관리</title>
+<title>GlucoLog v1.5 — 혈당관리</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, collection, addDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getFirestore, collection, addDoc, getDocs, query, orderBy, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
   const cfg = {
     apiKey:"AIzaSyBYqd2uRr1ZvFLDCWuS15h9qFkT-Dvg5Es",
     authDomain:"insys-work.firebaseapp.com",
@@ -20,6 +20,7 @@
   const db = getFirestore(app);
   window._db=db; window._col=collection; window._addDoc=addDoc;
   window._getDocs=getDocs; window._q=query; window._orderBy=orderBy;
+  window._doc=doc; window._updateDoc=updateDoc; window._deleteDoc=deleteDoc;
   window.dispatchEvent(new Event('firebaseReady'));
 </script>
 <style>
@@ -197,6 +198,22 @@ textarea.form-input{resize:none;height:70px;}
   .ai-result{display:block!important;}
   @page{margin:15mm 12mm;}
 }
+/* ── 기록 수정/삭제 ── */
+.item-actions{display:flex;gap:4px;flex-shrink:0;align-self:center;margin-left:auto;}
+.icon-btn{width:28px;height:28px;border:none;background:var(--bg);border-radius:8px;
+  font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  -webkit-tap-highlight-color:transparent;transition:background 0.15s;}
+.icon-btn:active{background:var(--border);}
+.icon-btn.del:active{background:var(--wl);}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:500;
+  display:none;align-items:flex-end;justify-content:center;}
+.modal-overlay.show{display:flex;}
+.modal-sheet{background:#fff;width:100%;max-width:430px;border-radius:18px 18px 0 0;
+  padding:14px 18px calc(18px + var(--sab));max-height:80vh;overflow-y:auto;
+  animation:slideUp 0.25s ease;}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-bar{width:36px;height:4px;background:var(--border);border-radius:4px;margin:0 auto 12px;}
+.modal-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:12px;}
 .print-header{display:none;}
 @media print{
   .print-header{display:flex;align-items:center;justify-content:space-between;
@@ -209,7 +226,7 @@ textarea.form-input{resize:none;height:70px;}
 <div class="safe-top"></div>
 <header class="app-header">
   <div class="logo-block">
-    <div class="logo">Gluco<span>Log</span> <span class="ver">v1.4</span></div>
+    <div class="logo">Gluco<span>Log</span> <span class="ver">v1.5</span></div>
     <div class="logo-sub">혈당·혈압·식단 통합 관리</div>
   </div>
   <div id="headerDate" class="date-badge">로딩중...</div>
@@ -693,13 +710,31 @@ textarea.form-input{resize:none;height:70px;}
 
 <div class="toast" id="toast"></div>
 
+<!-- 기록 수정 모달 -->
+<div class="modal-overlay" id="editOverlay" onclick="closeEditModal()">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-bar"></div>
+    <div class="modal-title" id="editTitle">기록 수정</div>
+    <div id="editFields"></div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn btn-outline" style="flex:1" onclick="closeEditModal()">취소</button>
+      <button class="btn btn-primary" style="flex:1" onclick="saveEditRecord()">💾 저장</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ─ 전역 상태 ─
 let db,col,addDoc,getDocs,q,orderBy;
 let gChart,bChart,mChart;
 let mealB64=null,labB64=null,quickB64=null;
 let calcMode=1;
-const VER='v1.4';
+const VER='v1.5';
+
+// ─ Firestore 문서 조작 함수 ─
+let fsDoc,updateDoc,deleteDoc;
+let todayRecordsCache=[];
+let editingId=null, editingType=null;
 
 // ─ 프로필 & 활동 감지 상태 ─
 let profileData={gender:'male',age:null,height:null,weight:null};
@@ -740,6 +775,7 @@ function setToday(elId){
 window.addEventListener('firebaseReady',async()=>{
   db=window._db; col=window._col; addDoc=window._addDoc;
   getDocs=window._getDocs; q=window._q; orderBy=window._orderBy;
+  fsDoc=window._doc; updateDoc=window._updateDoc; deleteDoc=window._deleteDoc;
   const dot=document.getElementById('fbDot');
   dot.style.background='#4CAF50'; dot.style.boxShadow='0 0 6px #4CAF50';
   await loadTodayRecords();
@@ -1345,7 +1381,8 @@ function printReport(){
 async function loadTodayRecords(){
   if(!db) return;
   const snap=await getDocs(q(col(db,'glucolog'),orderBy('createdAt','asc')));
-  const all=snap.docs.map(d=>d.data()).filter(r=>r.date===todayStr());
+  const all=snap.docs.map(d=>({...d.data(),_id:d.id})).filter(r=>r.date===todayStr());
+  todayRecordsCache=all;
   const glR=all.filter(r=>r.type==='glucose');
   const bpR=all.filter(r=>r.type==='bp');
   const mlR=all.filter(r=>r.type==='meal');
@@ -1354,6 +1391,10 @@ async function loadTodayRecords(){
   document.getElementById('sumMeals').textContent=mlR.length;
   const el=document.getElementById('todayList');
   if(!all.length){el.innerHTML='<div class="empty-state"><div class="e-icon">📋</div><div class="e-txt">아직 오늘 기록이 없어요</div></div>';return;}
+  const actionsHTML=id=>`<div class="item-actions">
+      <button class="icon-btn" onclick="openEditModal('${id}')" aria-label="수정">✏️</button>
+      <button class="icon-btn del" onclick="confirmDeleteRecord('${id}')" aria-label="삭제">🗑️</button>
+    </div>`;
   el.innerHTML=[...all].reverse().map(r=>{
     if(r.type==='glucose'){
       const sc=r.value>180?'s-high':r.value<70?'s-low':'s-normal';
@@ -1364,7 +1405,7 @@ async function loadTodayRecords(){
           <div class="meal-name">🩸 혈당 <b>${r.value}</b> mg/dL</div>
           <div class="meal-meta">${r.when} · <span class="status-badge ${sc}">${st}</span></div>
           ${r.memo?`<div class="meal-meta">${r.memo}</div>`:''}
-        </div></div>`;
+        </div>${actionsHTML(r._id)}</div>`;
     }else if(r.type==='bp'){
       const sc=r.systolic>=140||r.diastolic>=90?'s-high':r.systolic>=130?'s-low':'s-normal';
       const st=r.systolic>=140?'고혈압':r.systolic>=130?'주의':'정상';
@@ -1373,7 +1414,7 @@ async function loadTodayRecords(){
         <div class="meal-info">
           <div class="meal-name">💊 혈압 <b>${r.systolic}/${r.diastolic}</b> mmHg${r.pulse?` · 맥박 ${r.pulse}`:''}</div>
           <div class="meal-meta"><span class="status-badge ${sc}">${st}</span></div>
-        </div></div>`;
+        </div>${actionsHTML(r._id)}</div>`;
     }else if(r.type==='meal'){
       return `<div class="meal-item">
         <span class="meal-time-badge" style="background:var(--al);color:var(--accent)">${r.time||''}</span>
@@ -1381,10 +1422,111 @@ async function loadTodayRecords(){
           <div class="meal-name">🍽️ ${r.mealType} — ${r.menu}</div>
           ${r.memo?`<div class="meal-meta">${r.memo}</div>`:''}
           ${r.hasPhoto?'<div class="meal-meta" style="color:var(--accent)">📷 사진 첨부</div>':''}
-        </div></div>`;
+        </div>${actionsHTML(r._id)}</div>`;
     }
     return '';
   }).join('');
+}
+
+// ─ 기록 수정/삭제 ─
+function openEditModal(id){
+  const r=todayRecordsCache.find(x=>x._id===id);
+  if(!r) return;
+  editingId=id; editingType=r.type;
+  const body=document.getElementById('editFields');
+  const esc=s=>(s||'').toString().replace(/"/g,'&quot;');
+  document.getElementById('editTitle').textContent=
+    r.type==='glucose'?'🩸 혈당 기록 수정':r.type==='bp'?'💊 혈압 기록 수정':'🍽️ 식사 기록 수정';
+
+  if(r.type==='glucose'){
+    body.innerHTML=`
+      <div class="input-row">
+        <div class="form-group"><label class="form-label">측정 시각</label>
+          <input class="form-input" type="time" id="edTime" value="${esc(r.time)}"></div>
+        <div class="form-group"><label class="form-label">혈당 (mg/dL)</label>
+          <input class="form-input" type="number" id="edValue" value="${r.value||''}"></div>
+      </div>
+      <div class="form-group"><label class="form-label">측정 시점</label>
+        <select class="form-input" id="edWhen">
+          ${['공복','식전','식후1시간','식후2시간','취침전','기타'].map(o=>`<option${o===r.when?' selected':''}>${o}</option>`).join('')}
+        </select></div>
+      <div class="form-group"><label class="form-label">메모</label>
+        <input class="form-input" type="text" id="edMemo" value="${esc(r.memo)}"></div>`;
+  }else if(r.type==='bp'){
+    body.innerHTML=`
+      <div class="input-row">
+        <div class="form-group"><label class="form-label">수축기</label>
+          <input class="form-input" type="number" id="edSys" value="${r.systolic||''}"></div>
+        <div class="form-group"><label class="form-label">이완기</label>
+          <input class="form-input" type="number" id="edDia" value="${r.diastolic||''}"></div>
+      </div>
+      <div class="input-row">
+        <div class="form-group"><label class="form-label">맥박</label>
+          <input class="form-input" type="number" id="edPulse" value="${r.pulse||''}"></div>
+        <div class="form-group"><label class="form-label">측정 시각</label>
+          <input class="form-input" type="time" id="edTime" value="${esc(r.time)}"></div>
+      </div>`;
+  }else if(r.type==='meal'){
+    body.innerHTML=`
+      <div class="input-row">
+        <div class="form-group"><label class="form-label">식사 구분</label>
+          <select class="form-input" id="edMealType">
+            ${['아침','아침간식','점심','점심간식','저녁','야식'].map(o=>`<option${o===r.mealType?' selected':''}>${o}</option>`).join('')}
+          </select></div>
+        <div class="form-group"><label class="form-label">식사 시각</label>
+          <input class="form-input" type="time" id="edTime" value="${esc(r.time)}"></div>
+      </div>
+      <div class="form-group"><label class="form-label">메뉴</label>
+        <input class="form-input" type="text" id="edMenu" value="${esc(r.menu)}"></div>
+      <div class="form-group"><label class="form-label">특이사항</label>
+        <input class="form-input" type="text" id="edMemo" value="${esc(r.memo)}"></div>`;
+  }
+  document.getElementById('editOverlay').classList.add('show');
+}
+
+function closeEditModal(){
+  document.getElementById('editOverlay').classList.remove('show');
+  editingId=null; editingType=null;
+}
+
+async function saveEditRecord(){
+  if(!editingId||!db) return;
+  let updateData={};
+  if(editingType==='glucose'){
+    const val=parseFloat(document.getElementById('edValue').value);
+    if(!val||val<40||val>600){showToast('⚠️ 혈당값 확인 (40~600)');return;}
+    updateData={value:val,time:document.getElementById('edTime').value,
+      when:document.getElementById('edWhen').value,memo:document.getElementById('edMemo').value};
+  }else if(editingType==='bp'){
+    const sys=parseFloat(document.getElementById('edSys').value);
+    const dia=parseFloat(document.getElementById('edDia').value);
+    if(!sys||!dia){showToast('⚠️ 수축기/이완기 확인');return;}
+    updateData={systolic:sys,diastolic:dia,
+      pulse:parseFloat(document.getElementById('edPulse').value)||null,
+      time:document.getElementById('edTime').value};
+  }else if(editingType==='meal'){
+    const menu=document.getElementById('edMenu').value.trim();
+    if(!menu){showToast('⚠️ 메뉴를 입력하세요');return;}
+    updateData={mealType:document.getElementById('edMealType').value,
+      time:document.getElementById('edTime').value,
+      menu,memo:document.getElementById('edMemo').value};
+  }
+  try{
+    await updateDoc(fsDoc(db,'glucolog',editingId),updateData);
+    showToast('✅ 수정 완료');
+    closeEditModal();
+    await loadTodayRecords();
+  }catch(e){showToast('❌ 수정 실패');console.error(e);}
+}
+
+async function confirmDeleteRecord(id){
+  if(!confirm('이 기록을 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.')) return;
+  if(!db) return;
+  try{
+    await deleteDoc(fsDoc(db,'glucolog',id));
+    showToast('🗑️ 삭제 완료');
+    await loadTodayRecords();
+  }catch(e){showToast('❌ 삭제 실패');console.error(e);}
 }
 
 // ─ 전체 기록 ─
