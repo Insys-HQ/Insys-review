@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>GlucoLog v1.5 — 혈당관리</title>
+<title>GlucoLog v1.6 — 혈당관리</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script type="module">
@@ -226,7 +226,7 @@ textarea.form-input{resize:none;height:70px;}
 <div class="safe-top"></div>
 <header class="app-header">
   <div class="logo-block">
-    <div class="logo">Gluco<span>Log</span> <span class="ver">v1.5</span></div>
+    <div class="logo">Gluco<span>Log</span> <span class="ver">v1.6</span></div>
     <div class="logo-sub">혈당·혈압·식단 통합 관리</div>
   </div>
   <div id="headerDate" class="date-badge">로딩중...</div>
@@ -499,6 +499,27 @@ textarea.form-input{resize:none;height:70px;}
     </div>
   </div>
 
+  <!-- 기록된 식단 선택 분석 -->
+  <div class="card">
+    <div class="card-title"><span class="dot" style="background:var(--accent)"></span>기록된 식단 선택 분석</div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:10px;line-height:1.6">
+      오늘 탭에서 이미 기록한 식사를 선택하면 저장된 분석을 보여주거나 새로 분석합니다.
+    </p>
+    <div class="form-group">
+      <label class="form-label">식사 선택</label>
+      <select class="form-input" id="mealSelectDropdown">
+        <option value="">-- 기록된 식사가 없습니다 --</option>
+      </select>
+    </div>
+    <button class="btn btn-accent" onclick="analyzeSelectedMeal()">
+      <span id="mealSelBtnTxt">🔍 선택한 식단 분석</span><span class="spinner" id="mealSelSp"></span>
+    </button>
+    <div class="ai-result" id="mealSelResult">
+      <div class="ai-header">🤖 식단 분석 결과</div>
+      <div class="ai-body" id="mealSelBody"></div>
+    </div>
+  </div>
+
   <!-- 식단 빠른 분석 -->
   <div class="card">
     <div class="card-title"><span class="dot" style="background:var(--accent)"></span>식단 사진 분석</div>
@@ -729,12 +750,13 @@ let db,col,addDoc,getDocs,q,orderBy;
 let gChart,bChart,mChart;
 let mealB64=null,labB64=null,quickB64=null;
 let calcMode=1;
-const VER='v1.5';
+const VER='v1.6';
 
 // ─ Firestore 문서 조작 함수 ─
 let fsDoc,updateDoc,deleteDoc;
 let todayRecordsCache=[];
 let editingId=null, editingType=null;
+let mealOptionsCache=[];
 
 // ─ 프로필 & 활동 감지 상태 ─
 let profileData={gender:'male',age:null,height:null,weight:null};
@@ -785,6 +807,7 @@ window.addEventListener('firebaseReady',async()=>{
   loadMC('week',document.querySelector('#mcTabs .chart-tab'));
   await loadProfile();
   loadTodayActivity();
+  loadMealOptions();
 });
 
 // ─ 탭 ─
@@ -797,6 +820,7 @@ function switchTab(name){
   if(name==='graph') setTimeout(()=>{ loadGC(null,null); loadBC(null,null); loadMC(null,null); },60);
   if(name==='report') loadAllHistory();
   if(name==='profile') loadTodayActivity();
+  if(name==='analysis') loadMealOptions();
 }
 
 // ─ 토스트 ─
@@ -1170,6 +1194,7 @@ async function saveMeal(){
   mealB64=null;
   document.getElementById('mealPrev').style.display='none';
   resetPhotoZone('mealPhotoInput');
+  loadMealOptions();
   await loadTodayRecords();
 }
 
@@ -1189,6 +1214,57 @@ async function analyzeLabResult(){
     if(db) await addDoc(col(db,'glucolog'),{type:'labResult',date:labDate||todayStr(),memo,aiDiagnosis:res,createdAt:new Date()});
   }catch(e){showToast('❌ 분석 오류');console.error(e);}
   setBtnLoading('labBtnTxt','labSp',false,'🩺 AI 종합 진단 시작');
+}
+
+// ─ 기록된 식단 선택 분석 ─
+async function loadMealOptions(){
+  if(!db) return;
+  const snap=await getDocs(q(col(db,'glucolog'),orderBy('createdAt','desc')));
+  const meals=snap.docs.map(d=>({...d.data(),_id:d.id})).filter(r=>r.type==='meal').slice(0,30);
+  mealOptionsCache=meals;
+  const sel=document.getElementById('mealSelectDropdown');
+  if(!sel) return;
+  const prevVal=sel.value;
+  if(!meals.length){
+    sel.innerHTML='<option value="">-- 기록된 식사가 없습니다 --</option>';
+    return;
+  }
+  sel.innerHTML='<option value="">-- 식사를 선택하세요 --</option>'+meals.map(m=>{
+    const menuTxt=(m.menu||'').length>18?(m.menu||'').slice(0,18)+'...':(m.menu||'');
+    const photoTag=m.hasPhoto?'📷 ':'';
+    const analyzedTag=m.aiAnalysis?'✓ ':'';
+    return `<option value="${m._id}">${analyzedTag}${photoTag}${m.date.slice(5)} ${m.mealType}(${m.time||''}) - ${menuTxt}</option>`;
+  }).join('');
+  if(prevVal && meals.some(m=>m._id===prevVal)) sel.value=prevVal;
+}
+
+async function analyzeSelectedMeal(){
+  const id=document.getElementById('mealSelectDropdown').value;
+  if(!id){showToast('⚠️ 분석할 식사를 선택하세요');return;}
+  const m=mealOptionsCache.find(x=>x._id===id);
+  if(!m) return;
+
+  if(m.aiAnalysis){
+    document.getElementById('mealSelBody').textContent=m.aiAnalysis;
+    document.getElementById('mealSelResult').classList.add('show');
+    showToast('📄 저장된 분석 결과를 표시합니다');
+    return;
+  }
+
+  setBtnLoading('mealSelBtnTxt','mealSelSp',true,'');
+  try{
+    const prompt=`식사구분:${m.mealType}, 메뉴:${m.menu}\n\n아래 항목을 분석해주세요:\n1. 예상 총 칼로리 (kcal)\n2. 탄수화물/단백질/지방 (g)\n3. 혈당지수(GI) 추정 및 혈당 상승 위험 요인\n4. 혈당 관리 유리/불리 요소\n5. 개선 추천 (간략히)\n구체적 수치와 근거 포함.`;
+    const res=await callClaude([{role:'user',content:prompt}]);
+    document.getElementById('mealSelBody').textContent=res;
+    document.getElementById('mealSelResult').classList.add('show');
+    if(db&&fsDoc&&updateDoc){
+      await updateDoc(fsDoc(db,'glucolog',id),{aiAnalysis:res});
+      m.aiAnalysis=res;
+    }
+    showToast('✅ 분석 완료 (결과 저장됨)');
+    loadMealOptions();
+  }catch(e){showToast('❌ 분석 오류');console.error(e);}
+  setBtnLoading('mealSelBtnTxt','mealSelSp',false,'🔍 선택한 식단 분석');
 }
 
 // ─ 식단 빠른 분석 ─
