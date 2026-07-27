@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>설비 임대료 산정 계산기 — 인시스 AI혁신 연구개발실</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#12233F; --ink2:#33507A; --mute:#6B7C97;
+  --line:#D6DEEA; --line2:#E9EEF5;
+  --bg:#F4F6FA; --card:#FFFFFF;
+  --accent:#0E7C66; --accent-l:#E4F3EF;
+  --blue:#1F5FBF; --blue-l:#E8F0FC;
+  --amber:#C77A0A; --amber-l:#FCF3E3;
+  --shadow:0 1px 3px rgba(18,35,63,.06),0 6px 24px rgba(18,35,63,.06);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--ink);line-height:1.55;font-size:15px;padding-bottom:60px}
+.wrap{max-width:1100px;margin:0 auto;padding:0 20px}
+
+/* header */
+.top{background:var(--ink);color:#fff}
+.top-inner{max-width:1100px;margin:0 auto;padding:22px 20px;display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.top h1{font-size:19px;font-weight:700;letter-spacing:-.02em}
+.top .sub{font-size:12px;color:#9DB4D6;font-weight:400}
+.top .dept{font-size:12px;color:#7C97C4}
+
+/* view toggle */
+.vt{display:flex;gap:6px;margin:18px 0 4px;justify-content:flex-end}
+.vt button{font-family:inherit;font-size:12px;font-weight:500;border:1px solid var(--line);background:var(--card);color:var(--mute);padding:6px 14px;border-radius:20px;cursor:pointer;transition:.15s}
+.vt button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+.lead{margin:14px 0 4px;font-size:13px;color:var(--mute)}
+
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px}
+.pane.mobile-w .grid{grid-template-columns:1fr}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.card > h2{font-size:14px;font-weight:700;padding:12px 18px;background:var(--ink);color:#fff;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+.card .body{padding:14px 18px}
+
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px dashed var(--line2)}
+.row:last-child{border-bottom:0}
+.row label{font-size:13px;color:var(--ink2);font-weight:500;flex:1}
+.row .hint{display:block;font-size:11px;color:var(--mute);font-weight:400;margin-top:1px}
+.ctrl{display:flex;align-items:center;gap:6px}
+.ctrl input[type=number]{width:120px;font-family:inherit;font-size:14px;text-align:right;border:1px solid var(--line);border-radius:8px;padding:7px 10px;color:var(--ink);font-weight:500}
+.ctrl input:focus{outline:2px solid var(--blue-l);border-color:var(--blue)}
+.ctrl .unit{font-size:12px;color:var(--mute);min-width:24px}
+select{font-family:inherit;font-size:13px;border:1px solid var(--line);border-radius:8px;padding:7px 10px;color:var(--ink);background:#fff}
+
+.preset{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 10px}
+.preset button{font-family:inherit;font-size:12px;border:1px solid var(--blue);color:var(--blue);background:var(--blue-l);padding:5px 12px;border-radius:8px;cursor:pointer;font-weight:500;transition:.15s}
+.preset button:hover{background:var(--blue);color:#fff}
+
+/* result */
+.result{background:linear-gradient(135deg,#0E7C66,#0B6353);color:#fff;border:0}
+.result h2{background:transparent;padding-bottom:2px}
+.result .body{padding-top:6px}
+.big{font-size:40px;font-weight:900;letter-spacing:-.03em;line-height:1.1;margin:6px 0}
+.big small{font-size:16px;font-weight:500;opacity:.85}
+.range{font-size:13px;opacity:.9;margin-bottom:14px}
+.bd{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.15);font-size:13px}
+.bd:last-child{border-bottom:0}
+.bd .v{font-weight:600}
+.bd.tot{font-size:15px;font-weight:700;padding-top:9px;margin-top:3px;border-top:1.5px solid rgba(255,255,255,.4);border-bottom:0}
+
+.note{font-size:12px;color:var(--mute);line-height:1.6;margin-top:12px;padding:12px 14px;background:var(--amber-l);border-left:3px solid var(--amber);border-radius:0 8px 8px 0}
+.note b{color:var(--amber)}
+
+/* methods compare */
+.methods{margin-top:16px}
+.mtable{width:100%;border-collapse:collapse;font-size:13px}
+.mtable th,.mtable td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line2)}
+.mtable th{background:var(--blue-l);color:var(--ink);font-weight:700;font-size:12px}
+.mtable td.n{text-align:right;font-weight:600;color:var(--ink)}
+.mtable tr.hl td{background:var(--accent-l);font-weight:700;color:var(--accent)}
+
+.foot{text-align:center;font-size:11px;color:var(--mute);margin-top:26px;line-height:1.7}
+.copy{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--blue);background:var(--blue-l);border:1px solid var(--blue);padding:6px 14px;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:500;margin-top:10px}
+.copy:hover{background:var(--blue);color:#fff}
+.ver{font-size:11px;color:var(--mute);margin-left:6px}
+
+@media(max-width:720px){
+  .grid{grid-template-columns:1fr!important}
+  .big{font-size:34px}
+  .ctrl input[type=number]{width:100px}
+}
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="top-inner">
+    <div>
+      <h1>설비 임대료 산정 계산기 <span class="ver">v1.0</span></h1>
+      <div class="sub">딥러닝 비전검사기 임대 견적 — 원가기반 산정</div>
+    </div>
+    <div class="dept">인시스 AI혁신 연구개발실</div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="vt">
+    <button id="btnM" class="on" onclick="setView('m')">모바일</button>
+    <button id="btnP" onclick="setView('p')">PC</button>
+  </div>
+  <p class="lead">설비가·임대기간·이자율 등 변수를 입력하면 감가상각·금융비용·유지보수·마진을 반영한 적정 월 임대료가 자동 계산됩니다. 아래 프리셋으로 대표 시나리오를 빠르게 불러올 수 있습니다.</p>
+
+  <div class="preset">
+    <button onclick="preset('verify')">검증형 6,000만</button>
+    <button onclick="preset('auto')">자동화형 8,500만</button>
+    <button onclick="preset('full')">완성형 1억4천</button>
+  </div>
+
+  <div id="pane" class="pane mobile-w">
+  <div class="grid">
+    <!-- 입력 -->
+    <div class="card">
+      <h2>📥 입력 변수</h2>
+      <div class="body">
+        <div class="row">
+          <label>설비 제작원가<span class="hint">인시스 투자 제작비 (VAT 별도)</span></label>
+          <div class="ctrl"><input type="number" id="cost" value="6000" step="100"><span class="unit">만원</span></div>
+        </div>
+        <div class="row">
+          <label>임대 기간<span class="hint">계약 개월 수 (통상 24~36개월)</span></label>
+          <div class="ctrl"><input type="number" id="months" value="36" step="6"><span class="unit">개월</span></div>
+        </div>
+        <div class="row">
+          <label>잔존가치율<span class="hint">기간 종료 후 설비 잔가 (통상 10~20%)</span></label>
+          <div class="ctrl"><input type="number" id="salvage" value="10" step="5"><span class="unit">%</span></div>
+        </div>
+        <div class="row">
+          <label>연 금융비용률<span class="hint">투자금 조달 이자 (기준금리+α, 통상 5~7%)</span></label>
+          <div class="ctrl"><input type="number" id="rate" value="6" step="0.5"><span class="unit">%</span></div>
+        </div>
+        <div class="row">
+          <label>연 유지보수율<span class="hint">설비가 대비 연간 유지·A/S (통상 8~15%)</span></label>
+          <div class="ctrl"><input type="number" id="maint" value="12" step="1"><span class="unit">%</span></div>
+        </div>
+        <div class="row">
+          <label>사업 마진율<span class="hint">인시스 운영 마진 (통상 12~20%)</span></label>
+          <div class="ctrl"><input type="number" id="margin" value="15" step="1"><span class="unit">%</span></div>
+        </div>
+        <div class="row">
+          <label>보증금 방식<span class="hint">보증금 있으면 월 임대료 인하</span></label>
+          <div class="ctrl">
+            <select id="deposit">
+              <option value="0">없음</option>
+              <option value="10">설비가 10%</option>
+              <option value="20">설비가 20%</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 결과 -->
+    <div class="card result">
+      <h2>💰 적정 월 임대료</h2>
+      <div class="body">
+        <div class="big" id="rMonthly">— <small>원 / 월</small></div>
+        <div class="range" id="rRange"></div>
+        <div class="bd"><span>월 감가상각</span><span class="v" id="rDep">—</span></div>
+        <div class="bd"><span>월 금융비용</span><span class="v" id="rInt">—</span></div>
+        <div class="bd"><span>월 유지보수</span><span class="v" id="rMaint">—</span></div>
+        <div class="bd"><span>월 사업마진</span><span class="v" id="rMargin">—</span></div>
+        <div class="bd tot"><span>월 임대료 합계</span><span class="v" id="rTot">—</span></div>
+        <div class="bd" style="margin-top:8px"><span>연간 임대료</span><span class="v" id="rYear">—</span></div>
+        <div class="bd"><span>보증금</span><span class="v" id="rDep2">—</span></div>
+        <div class="bd"><span>총 회수액 (기간)</span><span class="v" id="rRecover">—</span></div>
+        <div class="bd"><span>회수 배수</span><span class="v" id="rMult">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 방식 비교 -->
+  <div class="card methods">
+    <h2>📊 산정 방식 교차 검증</h2>
+    <div class="body" style="padding:0">
+      <table class="mtable">
+        <thead><tr><th>산정 방식</th><th>계산 기준</th><th style="text-align:right">월 임대료</th></tr></thead>
+        <tbody id="mBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="note" id="advice"></div>
+
+  <div style="text-align:center">
+    <button class="copy" onclick="copyResult()">📋 견적 요약 복사</button>
+  </div>
+  </div>
+
+  <div class="foot">
+    본 계산기는 원가기반(감가상각+금융비용+유지보수+마진) 산정을 기본으로 하며, 결과는 협의용 참고값입니다.<br>
+    실제 임대료는 계약 조건·시장 상황에 따라 조정될 수 있습니다. · 인시스 AI혁신 연구개발실 · ys.kim@in-sys.co.kr
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const won=n=>Math.round(n).toLocaleString('ko-KR');
+const manToWon=m=>m*10000;
+
+function setView(v){
+  const pane=$('pane');
+  if(v==='m'){pane.classList.add('mobile-w');$('btnM').classList.add('on');$('btnP').classList.remove('on');}
+  else{pane.classList.remove('mobile-w');$('btnP').classList.add('on');$('btnM').classList.remove('on');}
+}
+
+function preset(k){
+  const P={
+    verify:{cost:6000,months:36,salvage:10,rate:6,maint:12,margin:15,deposit:'0'},
+    auto:{cost:8500,months:36,salvage:15,rate:6,maint:10,margin:15,deposit:'10'},
+    full:{cost:14000,months:36,salvage:15,rate:6.5,maint:10,margin:18,deposit:'20'}
+  }[k];
+  for(const key in P) $(key).value=P[key];
+  calc();
+}
+
+function calc(){
+  const cost=manToWon(parseFloat($('cost').value)||0);
+  const months=parseFloat($('months').value)||1;
+  const years=months/12;
+  const salvageR=(parseFloat($('salvage').value)||0)/100;
+  const rate=(parseFloat($('rate').value)||0)/100;
+  const maintR=(parseFloat($('maint').value)||0)/100;
+  const marginR=(parseFloat($('margin').value)||0)/100;
+  const depositR=parseFloat($('deposit').value)/100;
+
+  const salvage=cost*salvageR;
+  const depreciable=cost-salvage;
+
+  // 연간 항목
+  const annualDep=depreciable/years;
+  const avgBal=(cost+salvage)/2;                 // 평균 잔액
+  const deposit=cost*depositR;
+  const annualInt=(avgBal-deposit)*rate;         // 보증금은 조달 부담 경감
+  const annualMaint=cost*maintR;
+  const sub=annualDep+annualInt+annualMaint;
+  const annualMargin=sub*marginR;
+  const annualTotal=sub+annualMargin;
+
+  const mDep=annualDep/12, mInt=annualInt/12, mMaint=annualMaint/12, mMargin=annualMargin/12;
+  const monthly=annualTotal/12;
+
+  $('rMonthly').innerHTML=won(monthly)+' <small>원 / 월</small>';
+  $('rRange').textContent='권장 범위  '+won(monthly*0.92)+' ~ '+won(monthly*1.08)+' 원';
+  $('rDep').textContent=won(mDep)+' 원';
+  $('rInt').textContent=won(mInt)+' 원';
+  $('rMaint').textContent=won(mMaint)+' 원';
+  $('rMargin').textContent=won(mMargin)+' 원';
+  $('rTot').textContent=won(monthly)+' 원';
+  $('rYear').textContent=won(annualTotal)+' 원';
+  $('rDep2').textContent=deposit>0?won(deposit)+' 원':'없음';
+  const recover=monthly*months+deposit*0; // 보증금은 반환분
+  $('rRecover').textContent=won(monthly*months)+' 원';
+  $('rMult').textContent=(monthly*months/cost).toFixed(2)+' 배';
+
+  // 방식 비교
+  const lrf=0.035;
+  const m2=cost*lrf;
+  const m3=cost*1.3/months;
+  const rows=[
+    ['원가기반 (권장)','감가상각+금융+유지+마진',monthly,true],
+    ['리스율요소(LRF)','설비가 × 3.5%',m2,false],
+    ['회수배수','설비가 × 1.3 ÷ 기간',m3,false],
+    ['3방식 평균','—',(monthly+m2+m3)/3,false],
+  ];
+  $('mBody').innerHTML=rows.map(r=>
+    `<tr class="${r[3]?'hl':''}"><td>${r[0]}</td><td style="color:#6B7C97;font-size:12px">${r[1]}</td><td class="n">${won(r[2])} 원</td></tr>`
+  ).join('');
+
+  // 조언
+  const mult=monthly*months/cost;
+  let adv='';
+  if(mult<1.15) adv='<b>회수 배수가 낮습니다.</b> 임대 기간 내 원가 회수가 빠듯합니다. 유지보수율·마진율을 점검하거나 기간을 늘리세요.';
+  else if(mult>1.6) adv='<b>회수 배수가 높습니다.</b> 고객사에 부담이 될 수 있어 경쟁력이 떨어질 수 있습니다. 기간 연장 또는 마진 조정을 검토하세요.';
+  else adv='<b>적정 수준입니다.</b> 회수 배수 '+mult.toFixed(2)+'배로 원가 회수와 고객 부담이 균형을 이룹니다. 검증형은 낮은 마진으로 실적 확보에 집중하는 것도 전략입니다.';
+  $('advice').innerHTML=adv;
+}
+
+function copyResult(){
+  const t=`[설비 임대료 견적 요약]
+설비 제작원가: ${$('cost').value}만원
+임대 기간: ${$('months').value}개월
+─────────────
+월 임대료: ${$('rMonthly').textContent.replace(' 원 / 월','원')}
+연간 임대료: ${$('rYear').textContent}
+회수 배수: ${$('rMult').textContent}
+(원가기반 산정 · 인시스 AI혁신 연구개발실)`;
+  navigator.clipboard.writeText(t).then(()=>{
+    const b=event.target;const o=b.textContent;b.textContent='✓ 복사됨';setTimeout(()=>b.textContent=o,1500);
+  });
+}
+
+['cost','months','salvage','rate','maint','margin','deposit'].forEach(id=>{
+  $(id).addEventListener('input',calc);
+  $(id).addEventListener('change',calc);
+});
+calc();
+</script>
+</body>
+</html>
