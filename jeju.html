@@ -11,7 +11,7 @@
 // ═══ 자동 새로고침 시스템 ═══
 // GitHub Pages 캐시로 구버전이 뜨는 문제 방지
 (function(){
-  const CURRENT_VERSION = 'v4.3';
+  const CURRENT_VERSION = 'v4.4';
   const CHECK_URL = 'https://raw.githubusercontent.com/Insys-HQ/Insys-review/main/jeju.html?_=' + Date.now();
 
   // 이미 이 버전으로 강제 새로고침한 상태면 재체크 스킵 (무한루프 방지)
@@ -225,6 +225,18 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:#eff2f7;color:#2c3e50
   font-size:9px;padding:2px 5px;border-radius:8px;
   display:flex;align-items:center;gap:3px;
 }
+.photo-item .dl-btn{
+  position:absolute;top:4px;right:4px;
+  background:rgba(0,0,0,.55);color:#fff;
+  width:26px;height:26px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;transition:.15s;z-index:2;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;
+  opacity:.85;
+}
+.photo-item .dl-btn:hover,.photo-item .dl-btn:active{
+  background:#2980b9;opacity:1;transform:scale(1.08);
+}
 .photo-item.uploading{opacity:.5}
 .photo-item.uploading::after{
   content:'';position:absolute;inset:0;
@@ -290,34 +302,30 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:#eff2f7;color:#2c3e50
 .viewer-comment{
   position:absolute;bottom:0;left:0;right:0;z-index:12;
   background:linear-gradient(0deg,rgba(0,0,0,.95),rgba(0,0,0,.7));
-  color:#fff;padding:5px 10px 6px;
-  transform:translateY(calc(100% - 30px));transition:transform .25s;
+  color:#fff;padding:8px 10px 10px;
 }
-.viewer-comment.open{transform:translateY(0)}
 .viewer-comment-inner{max-width:1100px;margin:0 auto}
 .viewer-comment-t{
-  font-size:10px;color:#aab3c9;font-weight:600;margin-bottom:4px;
-  display:flex;align-items:center;justify-content:space-between;
-  cursor:pointer;user-select:none;padding:2px 0;
+  font-size:10px;color:#aab3c9;font-weight:600;margin-bottom:5px;
+  display:flex;align-items:center;padding:2px 0;
 }
-.viewer-comment-t i{color:#5bc4f5;margin-right:3px;font-size:10px}
-.viewer-comment-t .toggle{color:#5bc4f5;font-size:10px}
+.viewer-comment-t i{color:#5bc4f5;margin-right:4px;font-size:10px}
 .viewer-comment textarea{
   width:100%;border:1.5px solid rgba(255,255,255,.15);border-radius:6px;
-  padding:5px 8px;font-family:'Noto Sans KR',sans-serif;font-size:12px;
+  padding:6px 9px;font-family:'Noto Sans KR',sans-serif;font-size:12px;
   color:#fff;background:rgba(255,255,255,.08);outline:none;resize:none;
-  min-height:34px;max-height:56px;box-sizing:border-box;line-height:1.4;
+  min-height:38px;max-height:60px;box-sizing:border-box;line-height:1.4;
 }
 .viewer-comment textarea::placeholder{color:rgba(255,255,255,.35);font-size:11px}
 .viewer-comment textarea:focus{border-color:#5bc4f5;background:rgba(255,255,255,.12)}
-.viewer-comment-actions{display:flex;gap:5px;margin-top:5px}
+.viewer-comment-actions{display:flex;gap:5px;margin-top:6px}
 .vc-btn{
-  flex:1;padding:6px;border:none;border-radius:6px;
-  font-family:'Noto Sans KR',sans-serif;font-size:11px;font-weight:600;
-  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;
+  flex:1;padding:8px;border:none;border-radius:6px;
+  font-family:'Noto Sans KR',sans-serif;font-size:12px;font-weight:600;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;
   -webkit-tap-highlight-color:transparent;
 }
-.vc-btn i{font-size:10px}
+.vc-btn i{font-size:11px}
 .vc-btn.save{background:#27ae60;color:#fff}
 .vc-btn.del{background:#e74c3c;color:#fff}
 .vc-btn.download{background:#2980b9;color:#fff}
@@ -384,7 +392,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:#eff2f7;color:#2c3e50
     <div class="appbar-top">
       <div class="appbar-t">
         <i class="fa fa-hard-hat"></i>
-        <div>제주 아라이동 주택공사 <small>v4.3</small></div>
+        <div>제주 아라이동 주택공사 <small>v4.4</small></div>
       </div>
       <span class="appbar-date" id="appDate">-</span>
     </div>
@@ -512,9 +520,8 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:#eff2f7;color:#2c3e50
   </div>
   <div class="viewer-comment" id="viewerCommentBox">
     <div class="viewer-comment-inner">
-      <div class="viewer-comment-t" onclick="toggleViewerComment()">
+      <div class="viewer-comment-t">
         <span><i class="fa fa-comment"></i>사진 설명</span>
-        <span class="toggle" id="viewerCommentToggle"><i class="fa fa-chevron-up"></i> 펴기</span>
       </div>
       <textarea id="viewerComment" placeholder="이 사진에 대한 설명·특이사항·작업내용을 입력하세요"></textarea>
       <div class="viewer-comment-actions">
@@ -782,6 +789,9 @@ function renderDayList(){
         ${items.map((p,i)=>`
           <div class="photo-item" onclick="openViewer('${date}',${i})">
             <img src="${p.url}" loading="lazy" alt="">
+            <div class="dl-btn" onclick="event.stopPropagation();downloadPhotoById('${p.id}')" title="다운로드">
+              <i class="fa fa-download"></i>
+            </div>
             ${p.comment?`<div class="comment-dot"><i class="fa fa-comment"></i> ${p.comment.length>15?p.comment.substring(0,15)+'..':p.comment}</div>`:''}
           </div>`).join('')}
       </div>
@@ -1071,18 +1081,27 @@ function viewerMove(dir){
   showCurrentPhoto();
 }
 
-function toggleViewerComment(){
-  const box = document.getElementById('viewerCommentBox');
-  const toggle = document.getElementById('viewerCommentToggle');
-  box.classList.toggle('hidden');
-  if(box.classList.contains('hidden')){
-    toggle.innerHTML = '<i class="fa fa-chevron-up"></i> 펴기';
-  } else {
-    toggle.innerHTML = '<i class="fa fa-chevron-down"></i> 접기';
+function toggleViewerComment(){} // 사용 안함 (호환용)
+
+// 썸네일에서 직접 다운로드 (뷰어 안 열림)
+function downloadPhotoById(id){
+  const p = photos.find(x=>x.id===id);
+  if(!p) return;
+  try{
+    const a = document.createElement('a');
+    a.href = p.url;
+    const safeName = (p.filename || 'photo.jpg').replace(/[^\w.-]/g,'_');
+    a.download = `${p.date}_${safeName}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    showToast('다운로드되었습니다','success');
+  }catch(e){
+    showToast('다운로드 실패: '+e.message,'error');
   }
 }
 
-// 현재 사진 다운로드
+// 현재 사진 다운로드 (뷰어 내부에서)
 function downloadCurrentPhoto(){
   const p = viewerList[viewerIdx];
   if(!p) return;
