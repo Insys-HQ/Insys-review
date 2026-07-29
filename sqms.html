@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>셰플러 기준서 관리 시스템 v1.0</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#1B3A6B;--navy2:#2B5090;--white:#fff;
+  --gray50:#F4F6FA;--gray100:#E2E8F0;--gray300:#A0AEC0;--gray500:#4A5568;--gray700:#2D3748;
+  --red:#C53030;--redL:#FED7D7;--redB:#E53E3E;
+  --green:#276749;--greenL:#C6F6D5;--greenB:#38A169;
+  --blue:#2B6CB0;--blueL:#EBF8FF;--blueB:#4299E1;
+  --yellow:#B7791F;--yellowL:#FEFCBF;--yellowB:#D69E2E;
+  --orange:#C05621;--orangeL:#FEEBC8;
+}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--gray50);color:var(--gray700);font-size:14px;min-height:100vh}
+
+/* NAV */
+.nav{width:100%;background:var(--navy);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.nav-inner{max-width:1200px;margin:0 auto;padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:52px}
+.nav-brand{color:#B0C4DE;font-size:11px;font-weight:500;letter-spacing:.5px}
+.nav-brand b{color:#fff;font-size:15px;font-weight:700;margin-right:8px}
+.nav-tabs{display:flex;gap:2px}
+.nav-tab{padding:6px 14px;border-radius:6px;color:#CBD5E0;font-size:13px;font-weight:500;cursor:pointer;border:none;background:none;transition:all .2s}
+.nav-tab:hover{background:rgba(255,255,255,.1);color:#fff}
+.nav-tab.active{background:rgba(255,255,255,.15);color:#fff;font-weight:700}
+.nav-badge{background:var(--red);color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;margin-left:4px}
+
+/* PAGES */
+.page{display:none;max-width:1200px;margin:0 auto;padding:16px 20px}
+.page.active{display:block}
+
+/* PAGE HEADER */
+.page-header{margin-bottom:16px}
+.page-title{font-size:20px;font-weight:700;color:var(--navy)}
+.page-sub{font-size:12px;color:var(--gray300);margin-top:2px}
+
+/* CARDS */
+.card{background:#fff;border-radius:10px;border:1px solid var(--gray100);padding:16px;margin-bottom:12px}
+.card-title{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.card-title .dot{width:8px;height:8px;border-radius:50%;background:var(--navy)}
+
+/* STAT CARDS */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.stat-card{background:#fff;border-radius:10px;border:1px solid var(--gray100);padding:14px 16px}
+.stat-label{font-size:11px;color:var(--gray300);font-weight:500;margin-bottom:4px}
+.stat-val{font-size:28px;font-weight:900;color:var(--navy);line-height:1}
+.stat-sub{font-size:11px;color:var(--gray500);margin-top:4px}
+.stat-card.warn .stat-val{color:var(--red)}
+.stat-card.ok .stat-val{color:var(--green)}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid}
+.badge-green{background:var(--greenL);color:var(--green);border-color:var(--greenB)}
+.badge-red{background:var(--redL);color:var(--red);border-color:var(--redB)}
+.badge-blue{background:var(--blueL);color:var(--blue);border-color:var(--blueB)}
+.badge-yellow{background:var(--yellowL);color:var(--yellow);border-color:var(--yellowB)}
+.badge-gray{background:var(--gray50);color:var(--gray500);border-color:var(--gray100)}
+.badge-orange{background:var(--orangeL);color:var(--orange);border-color:#ED8936}
+
+/* TABLE */
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{background:var(--navy);color:#fff;padding:9px 10px;text-align:left;font-weight:600;font-size:12px}
+.tbl td{padding:9px 10px;border-bottom:1px solid var(--gray100);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:var(--gray50)}
+.tbl-warn td{background:#fff8f8}
+
+/* FORMS */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:10px}
+.form-row.three{grid-template-columns:1fr 1fr 1fr}
+.form-row.one{grid-template-columns:1fr}
+label{display:block;font-size:12px;font-weight:600;color:var(--gray500);margin-bottom:4px}
+input,select,textarea{width:100%;border:1px solid var(--gray100);border-radius:6px;padding:8px 10px;font-size:13px;font-family:'Noto Sans KR',sans-serif;color:var(--gray700);outline:none;transition:border .2s}
+input:focus,select:focus,textarea:focus{border-color:var(--blueB);box-shadow:0 0 0 2px rgba(66,153,225,.15)}
+textarea{resize:vertical;min-height:72px}
+.file-area{border:2px dashed var(--gray100);border-radius:8px;padding:20px;text-align:center;cursor:pointer;transition:all .2s;background:var(--gray50)}
+.file-area:hover{border-color:var(--blueB);background:var(--blueL)}
+.file-area p{font-size:12px;color:var(--gray300);margin-top:6px}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:7px;font-size:13px;font-weight:600;font-family:'Noto Sans KR',sans-serif;cursor:pointer;border:none;transition:all .2s}
+.btn-primary{background:var(--navy);color:#fff}
+.btn-primary:hover{background:var(--navy2)}
+.btn-green{background:var(--greenB);color:#fff}
+.btn-green:hover{background:var(--green)}
+.btn-red{background:var(--redB);color:#fff}
+.btn-red:hover{background:var(--red)}
+.btn-outline{background:#fff;color:var(--navy);border:1px solid var(--gray100)}
+.btn-outline:hover{border-color:var(--navy);background:var(--gray50)}
+.btn-sm{padding:5px 10px;font-size:11px}
+.btn-row{display:flex;gap:8px;margin-top:12px}
+
+/* ALERT */
+.alert{border-radius:8px;padding:10px 14px;font-size:12px;display:flex;align-items:flex-start;gap:8px;margin-bottom:12px}
+.alert-red{background:var(--redL);color:var(--red);border:1px solid var(--redB)}
+.alert-blue{background:var(--blueL);color:var(--blue);border:1px solid var(--blueB)}
+.alert-green{background:var(--greenL);color:var(--green);border:1px solid var(--greenB)}
+.alert-icon{font-size:15px;flex-shrink:0;margin-top:1px}
+
+/* CHECKLIST */
+.check-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:7px;border:1px solid var(--gray100);background:#fff;margin-bottom:8px;transition:all .2s}
+.check-item.checked{border-color:var(--greenB);background:var(--greenL)}
+.check-item.missing{border-color:var(--redB);background:var(--redL)}
+.check-item input[type=checkbox]{width:16px;height:16px;accent-color:var(--green);cursor:pointer}
+.check-label{flex:1;font-size:13px}
+.check-status{font-size:11px;font-weight:700}
+
+/* TIMELINE */
+.timeline{position:relative;padding-left:28px}
+.timeline::before{content:'';position:absolute;left:8px;top:0;bottom:0;width:2px;background:var(--gray100)}
+.tl-item{position:relative;margin-bottom:16px}
+.tl-dot{position:absolute;left:-24px;top:2px;width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 2px var(--gray100)}
+.tl-dot.green{background:var(--greenB);box-shadow:0 0 0 2px var(--greenB)}
+.tl-dot.red{background:var(--redB);box-shadow:0 0 0 2px var(--redB)}
+.tl-dot.blue{background:var(--blueB);box-shadow:0 0 0 2px var(--blueB)}
+.tl-dot.gray{background:var(--gray300);box-shadow:0 0 0 2px var(--gray300)}
+.tl-time{font-size:11px;color:var(--gray300);margin-bottom:2px}
+.tl-text{font-size:13px;color:var(--gray700)}
+.tl-tag{font-size:11px;color:var(--gray500);margin-top:2px}
+
+/* PROGRESS */
+.prog-bar{background:var(--gray100);border-radius:99px;height:8px;overflow:hidden;margin-top:4px}
+.prog-fill{height:100%;border-radius:99px;background:var(--navy);transition:width .6s}
+.prog-fill.green{background:var(--greenB)}
+.prog-fill.red{background:var(--redB)}
+.prog-fill.yellow{background:var(--yellowB)}
+
+/* MODAL */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:#fff;border-radius:12px;padding:24px;width:90%;max-width:560px;max-height:90vh;overflow-y:auto}
+.modal-title{font-size:17px;font-weight:700;color:var(--navy);margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--gray100)}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:12px;border-top:1px solid var(--gray100)}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--gray700);color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:500;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+
+/* DIVIDER */
+.divider{height:1px;background:var(--gray100);margin:14px 0}
+
+/* MOBILE */
+@media(max-width:768px){
+  .stat-grid{grid-template-columns:repeat(2,1fr)}
+  .form-row,.form-row.three{grid-template-columns:1fr}
+  .nav-tabs{gap:0}
+  .nav-tab{padding:5px 9px;font-size:11px}
+  .tbl{font-size:12px}
+  .tbl th,.tbl td{padding:7px 8px}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="nav-brand"><b>📋 기준서 관리</b> Schaeffler · (주)인시스</div>
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="showPage('dashboard')">대시보드</button>
+      <button class="nav-tab" onclick="showPage('items')">품목관리</button>
+      <button class="nav-tab" onclick="showPage('inspect')">점검실행</button>
+      <button class="nav-tab" onclick="showPage('issues')">이슈관리 <span class="nav-badge" id="issue-cnt">0</span></button>
+      <button class="nav-tab" onclick="showPage('history')">이력·보고서</button>
+    </div>
+  </div>
+</nav>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- ══════════════ PAGE 1: 대시보드 ══════════════ -->
+<div class="page active" id="page-dashboard">
+  <div class="page-header">
+    <div class="page-title">📊 대시보드</div>
+    <div class="page-sub" id="today-date"></div>
+  </div>
+
+  <div id="alert-area"></div>
+
+  <div class="stat-grid">
+    <div class="stat-card"><div class="stat-label">전체 등록 품목</div><div class="stat-val" id="s-total">0</div><div class="stat-sub">셰플러 관리 대상</div></div>
+    <div class="stat-card ok"><div class="stat-label">점검 완료</div><div class="stat-val" id="s-ok">0</div><div class="stat-sub">기준서 정상</div></div>
+    <div class="stat-card warn"><div class="stat-label">점검 필요</div><div class="stat-val" id="s-need">0</div><div class="stat-sub">누락·미갱신</div></div>
+    <div class="stat-card warn"><div class="stat-label">미처리 이슈</div><div class="stat-val" id="s-issue">0</div><div class="stat-sub">요청 후 미완료</div></div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>점검 필요 품목 <span class="badge badge-red" id="need-cnt">0</span></div>
+      <div id="need-list"><p style="color:var(--gray300);font-size:12px">점검 필요 품목이 없습니다.</p></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>최근 이슈 현황</div>
+      <div id="recent-issues"><p style="color:var(--gray300);font-size:12px">등록된 이슈가 없습니다.</p></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="dot"></span>전체 점검 진행률</div>
+    <div id="prog-area"></div>
+  </div>
+</div>
+
+<!-- ══════════════ PAGE 2: 품목관리 ══════════════ -->
+<div class="page" id="page-items">
+  <div class="page-header">
+    <div class="page-title">🔩 품목 관리</div>
+    <div class="page-sub">셰플러 기준서 등록 품목 관리 — 개선품 리비전 추적 포함</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="dot"></span>신규 품목 등록</div>
+    <div class="form-row three">
+      <div><label>품목 번호 *</label><input id="i-num" placeholder="예: A3C0056420000"></div>
+      <div><label>품목명 *</label><input id="i-name" placeholder="예: Connector"></div>
+      <div><label>구버전 품목번호 (리비전 시)</label><input id="i-prev" placeholder="이전 품목번호 (있으면 입력)"></div>
+    </div>
+    <div class="form-row">
+      <div><label>기준서 버전</label><input id="i-ver" placeholder="예: Rev.3"></div>
+      <div><label>기준서 수령일</label><input id="i-date" type="date"></div>
+    </div>
+    <div class="form-row one">
+      <div>
+        <label>기준서 파일 첨부 (PDF/이미지)</label>
+        <div class="file-area" onclick="document.getElementById('i-file').click()">
+          <div style="font-size:24px">📁</div>
+          <div style="font-size:13px;font-weight:600;margin-top:4px" id="file-name">파일을 클릭하거나 드래그하여 업로드</div>
+          <p>PDF, JPG, PNG 지원</p>
+        </div>
+        <input type="file" id="i-file" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="handleFile(this)">
+      </div>
+    </div>
+    <div class="form-row one">
+      <div><label>비고</label><textarea id="i-note" placeholder="외관 항목 누락 여부, 특이사항 등"></textarea></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="addItem()">+ 품목 등록</button>
+      <button class="btn btn-outline" onclick="clearItemForm()">초기화</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="dot"></span>등록 품목 목록</div>
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>품목번호</th><th>품목명</th><th>버전</th><th>수령일</th><th>파일</th><th>상태</th><th>비고</th><th>관리</th>
+        </tr>
+      </thead>
+      <tbody id="item-tbody">
+        <tr><td colspan="8" style="text-align:center;color:var(--gray300);padding:24px">등록된 품목이 없습니다.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════ PAGE 3: 점검실행 ══════════════ -->
+<div class="page" id="page-inspect">
+  <div class="page-header">
+    <div class="page-title">✅ 점검 실행</div>
+    <div class="page-sub">기준서 항목별 체크리스트 — 점검 완료 시 자동 이력 저장</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="dot"></span>점검 대상 선택</div>
+    <div class="form-row">
+      <div><label>품목 선택 *</label>
+        <select id="insp-item" onchange="loadInspectChecklist()">
+          <option value="">— 품목을 선택하세요 —</option>
+        </select>
+      </div>
+      <div><label>점검 담당자</label><input id="insp-user" placeholder="성명 입력"></div>
+    </div>
+  </div>
+
+  <div id="checklist-area" style="display:none">
+    <div class="alert alert-blue"><span class="alert-icon">ℹ️</span><span>모든 항목을 확인한 후 점검 완료 버튼을 눌러 이력을 저장하세요.</span></div>
+
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>점검 체크리스트</div>
+
+      <div id="chk-list">
+        <!-- 체크항목 동적 생성 -->
+      </div>
+
+      <div class="divider"></div>
+      <div class="form-row one">
+        <div><label>점검 의견 / 특이사항</label><textarea id="insp-note" placeholder="이상 없음 / 외관 항목 확인 완료 / 기타 특이사항 기재"></textarea></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-green" onclick="completeInspect()">✅ 점검 완료 저장</button>
+        <button class="btn btn-red" onclick="reportIssue()">⚠️ 이슈 등록</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ PAGE 4: 이슈관리 ══════════════ -->
+<div class="page" id="page-issues">
+  <div class="page-header">
+    <div class="page-title">⚠️ 이슈 관리</div>
+    <div class="page-sub">누락·미갱신 발견 시 서면 요청 → 처리 → 완료 보고 전 과정 추적</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="dot"></span>이슈 신규 등록</div>
+    <div class="form-row">
+      <div><label>관련 품목번호 *</label><input id="iss-num" placeholder="A3C0056420000"></div>
+      <div><label>이슈 유형 *</label>
+        <select id="iss-type">
+          <option>외관 검사항목 누락</option>
+          <option>기준서 미갱신 (리비전)</option>
+          <option>파일 첨부 없음</option>
+          <option>항목 내용 오류</option>
+          <option>기타</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div><label>발견자</label><input id="iss-finder" placeholder="성명"></div>
+      <div><label>요청 대상</label><input id="iss-target" placeholder="예: SQM팀 담당자"></div>
+    </div>
+    <div class="form-row one">
+      <div><label>이슈 내용 *</label><textarea id="iss-desc" placeholder="구체적인 누락·오류 내용을 기재하세요"></textarea></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="addIssue()">📋 이슈 등록</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="dot"></span>이슈 현황</div>
+    <table class="tbl">
+      <thead>
+        <tr><th>번호</th><th>품목번호</th><th>유형</th><th>발견자</th><th>등록일</th><th>상태</th><th>처리</th></tr>
+      </thead>
+      <tbody id="issue-tbody">
+        <tr><td colspan="7" style="text-align:center;color:var(--gray300);padding:24px">등록된 이슈가 없습니다.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════ PAGE 5: 이력·보고서 ══════════════ -->
+<div class="page" id="page-history">
+  <div class="page-header">
+    <div class="page-title">📁 이력 · 보고서</div>
+    <div class="page-sub">전체 점검 이력 조회 및 월간 보고서 출력</div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>기간 조회</div>
+      <div class="form-row">
+        <div><label>시작일</label><input type="date" id="h-from"></div>
+        <div><label>종료일</label><input type="date" id="h-to"></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary btn-sm" onclick="filterHistory()">조회</button>
+        <button class="btn btn-outline btn-sm" onclick="resetHistory()">전체</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>월간 보고서 출력</div>
+      <div class="form-row one">
+        <div><label>보고 월</label><input type="month" id="h-month"></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-green btn-sm" onclick="printReport()">🖨️ 보고서 출력</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="dot"></span>점검 이력</div>
+    <table class="tbl">
+      <thead>
+        <tr><th>점검일시</th><th>품목번호</th><th>품목명</th><th>담당자</th><th>결과</th><th>특이사항</th></tr>
+      </thead>
+      <tbody id="hist-tbody">
+        <tr><td colspan="6" style="text-align:center;color:var(--gray300);padding:24px">이력이 없습니다.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- MODAL: 이슈 상세 -->
+<div class="modal-bg" id="modal-issue">
+  <div class="modal">
+    <div class="modal-title">⚠️ 이슈 상세 / 처리</div>
+    <div id="modal-issue-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-green btn-sm" onclick="resolveIssue()">✅ 처리 완료</button>
+      <button class="btn btn-outline btn-sm" onclick="closeModal('modal-issue')">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: 월간 보고서 -->
+<div class="modal-bg" id="modal-report">
+  <div class="modal" style="max-width:700px">
+    <div class="modal-title">🖨️ 월간 점검 보고서</div>
+    <div id="modal-report-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-primary btn-sm" onclick="window.print()">인쇄</button>
+      <button class="btn btn-outline btn-sm" onclick="closeModal('modal-report')">닫기</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Firebase ───────────────────────────────────────
+const FB_URL = 'https://insys-work-default-rtdb.firebaseio.com';
+
+async function fbGet(path){
+  const r = await fetch(`${FB_URL}${path}.json`);
+  return r.ok ? r.json() : null;
+}
+async function fbSet(path, data){
+  await fetch(`${FB_URL}${path}.json`, {method:'PUT', body:JSON.stringify(data)});
+}
+async function fbPush(path, data){
+  const r = await fetch(`${FB_URL}${path}.json`, {method:'POST', body:JSON.stringify(data)});
+  return (await r.json()).name;
+}
+async function fbDelete(path){
+  await fetch(`${FB_URL}${path}.json`, {method:'DELETE'});
+}
+
+// ─── State ──────────────────────────────────────────
+let items = {};   // {id: {num, name, ver, date, note, status, fileUrl, fileName, prevNum}}
+let issues = {};  // {id: {num, type, finder, target, desc, date, status, resolvedNote}}
+let history = []; // [{dt, num, name, user, result, note}]
+let currentIssueId = null;
+
+// ─── Init ────────────────────────────────────────────
+window.onload = async () => {
+  document.getElementById('today-date').textContent =
+    '기준일: ' + new Date().toLocaleDateString('ko-KR', {year:'numeric',month:'long',day:'numeric'});
+  document.getElementById('i-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('h-month').value = new Date().toISOString().slice(0,7);
+
+  const [dbItems, dbIssues, dbHist] = await Promise.all([
+    fbGet('/sqms/items'), fbGet('/sqms/issues'), fbGet('/sqms/history')
+  ]);
+  items   = dbItems  || {};
+  issues  = dbIssues || {};
+  history = dbHist   ? Object.values(dbHist) : [];
+
+  renderAll();
+};
+
+function renderAll(){
+  renderDashboard();
+  renderItemTable();
+  renderInspectSelect();
+  renderIssueTable();
+  renderHistory(history);
+}
+
+// ─── UTILS ───────────────────────────────────────────
+function toast(msg, dur=2200){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), dur);
+}
+function showPage(p){
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(el=>el.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  const tabs = ['dashboard','items','inspect','issues','history'];
+  document.querySelectorAll('.nav-tab')[tabs.indexOf(p)].classList.add('active');
+}
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+function fmtDt(iso){ return new Date(iso).toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}); }
+function fmtD(iso){ return iso ? iso.replace(/-/g,'.') : '-'; }
+
+// ─── DASHBOARD ───────────────────────────────────────
+function renderDashboard(){
+  const arr = Object.values(items);
+  const ok = arr.filter(i=>i.status==='정상').length;
+  const need = arr.filter(i=>i.status!=='정상').length;
+  const openIss = Object.values(issues).filter(i=>i.status!=='완료').length;
+
+  document.getElementById('s-total').textContent = arr.length;
+  document.getElementById('s-ok').textContent = ok;
+  document.getElementById('s-need').textContent = need;
+  document.getElementById('s-issue').textContent = openIss;
+  document.getElementById('issue-cnt').textContent = openIss;
+  document.getElementById('need-cnt').textContent = need;
+
+  // Alert
+  const alertArea = document.getElementById('alert-area');
+  alertArea.innerHTML = '';
+  if(openIss > 0){
+    alertArea.innerHTML += `<div class="alert alert-red"><span class="alert-icon">⚠️</span><span>미처리 이슈 <b>${openIss}건</b>이 있습니다. 이슈관리 탭에서 확인하세요.</span></div>`;
+  }
+  if(need > 0){
+    alertArea.innerHTML += `<div class="alert alert-blue"><span class="alert-icon">📋</span><span>점검이 필요한 품목 <b>${need}건</b>이 있습니다. 점검실행 탭에서 진행하세요.</span></div>`;
+  }
+  if(arr.length === 0){
+    alertArea.innerHTML = `<div class="alert alert-blue"><span class="alert-icon">ℹ️</span><span>품목관리 탭에서 셰플러 품목을 먼저 등록하세요.</span></div>`;
+  }
+
+  // Need list
+  const needItems = arr.filter(i=>i.status!=='정상');
+  const nl = document.getElementById('need-list');
+  nl.innerHTML = needItems.length === 0
+    ? '<p style="color:var(--gray300);font-size:12px">점검 필요 품목이 없습니다. ✅</p>'
+    : needItems.map(i=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray100)">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--navy)">${i.num}</div>
+          <div style="font-size:11px;color:var(--gray300)">${i.name} · ${fmtD(i.date)}</div>
+        </div>
+        <span class="badge ${i.status==='누락'?'badge-red':'badge-yellow'}">${i.status||'미점검'}</span>
+      </div>`).join('');
+
+  // Recent issues
+  const issArr = Object.entries(issues).sort((a,b)=>b[1].date.localeCompare(a[1].date)).slice(0,4);
+  const ri = document.getElementById('recent-issues');
+  ri.innerHTML = issArr.length === 0
+    ? '<p style="color:var(--gray300);font-size:12px">등록된 이슈가 없습니다.</p>'
+    : issArr.map(([,i])=>`
+      <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--gray100)">
+        <div>
+          <div style="font-size:12px;font-weight:600">${i.num} <span style="color:var(--gray300);font-weight:400">· ${i.type}</span></div>
+          <div style="font-size:11px;color:var(--gray300)">${fmtD(i.date)} · ${i.finder}</div>
+        </div>
+        <span class="badge ${i.status==='완료'?'badge-green':'badge-red'}">${i.status}</span>
+      </div>`).join('');
+
+  // Progress
+  const pct = arr.length ? Math.round(ok/arr.length*100) : 0;
+  const pc = document.getElementById('prog-area');
+  pc.innerHTML = `
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+      <span style="font-size:12px;color:var(--gray500)">점검 완료율</span>
+      <span style="font-size:13px;font-weight:700;color:var(--navy)">${pct}%  (${ok} / ${arr.length})</span>
+    </div>
+    <div class="prog-bar"><div class="prog-fill ${pct===100?'green':pct>50?'':''}" style="width:${pct}%"></div></div>`;
+}
+
+// ─── ITEMS ───────────────────────────────────────────
+let pendingFile = null;
+function handleFile(inp){
+  pendingFile = inp.files[0];
+  document.getElementById('file-name').textContent = pendingFile ? pendingFile.name : '파일을 선택하세요';
+}
+function clearItemForm(){
+  ['i-num','i-name','i-prev','i-ver','i-note'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('i-date').value = new Date().toISOString().slice(0,10);
+  pendingFile = null;
+  document.getElementById('file-name').textContent = '파일을 클릭하거나 드래그하여 업로드';
+}
+async function addItem(){
+  const num = document.getElementById('i-num').value.trim();
+  const name = document.getElementById('i-name').value.trim();
+  if(!num||!name){ toast('⚠️ 품목번호와 품목명은 필수입니다.'); return; }
+
+  const id = 'item_' + Date.now();
+  const item = {
+    id, num, name,
+    ver: document.getElementById('i-ver').value.trim() || '-',
+    date: document.getElementById('i-date').value,
+    prevNum: document.getElementById('i-prev').value.trim(),
+    note: document.getElementById('i-note').value.trim(),
+    fileName: pendingFile ? pendingFile.name : '',
+    status: '미점검',
+    regDt: new Date().toISOString(),
+  };
+
+  // 리비전 감지: 구버전 있으면 경고 플래그
+  if(item.prevNum && items[Object.keys(items).find(k=>items[k].num===item.prevNum)]){
+    item.revisionFlag = true;
+  }
+
+  items[id] = item;
+  await fbSet(`/sqms/items/${id}`, item);
+  clearItemForm();
+  renderAll();
+  toast('✅ 품목이 등록되었습니다.');
+}
+async function deleteItem(id){
+  if(!confirm('삭제하시겠습니까?')) return;
+  delete items[id];
+  await fbDelete(`/sqms/items/${id}`);
+  renderAll();
+  toast('삭제되었습니다.');
+}
+async function toggleStatus(id){
+  const item = items[id];
+  item.status = item.status === '정상' ? '미점검' : '정상';
+  await fbSet(`/sqms/items/${id}`, item);
+  renderAll();
+}
+function renderItemTable(){
+  const arr = Object.entries(items);
+  const tb = document.getElementById('item-tbody');
+  if(!arr.length){
+    tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--gray300);padding:24px">등록된 품목이 없습니다.</td></tr>';
+    return;
+  }
+  tb.innerHTML = arr.map(([id,i])=>`
+    <tr class="${i.status!=='정상'?'tbl-warn':''}">
+      <td><b>${i.num}</b>${i.prevNum?`<br><span style="font-size:10px;color:var(--gray300)">구: ${i.prevNum}</span>`:''}</td>
+      <td>${i.name}</td>
+      <td>${i.ver}</td>
+      <td>${fmtD(i.date)}</td>
+      <td>${i.fileName?`<span style="font-size:11px;color:var(--blue)">📎 ${i.fileName}</span>`:'-'}</td>
+      <td><span class="badge ${i.status==='정상'?'badge-green':i.status==='누락'?'badge-red':'badge-yellow'}">${i.status}</span>
+        ${i.revisionFlag?'<br><span class="badge badge-orange" style="margin-top:3px">리비전</span>':''}</td>
+      <td style="font-size:11px;color:var(--gray500)">${i.note||'-'}</td>
+      <td>
+        <button class="btn btn-outline btn-sm" onclick="toggleStatus('${id}')">상태변경</button>
+        <button class="btn btn-red btn-sm" onclick="deleteItem('${id}')" style="margin-top:3px">삭제</button>
+      </td>
+    </tr>`).join('');
+}
+
+// ─── INSPECT ─────────────────────────────────────────
+const CHECKLIST = [
+  '기준서 파일이 첨부되어 있는가',
+  '외관 검사항목이 누락 없이 포함되어 있는가',
+  '색상·외관 참조 사진이 정상적으로 포함되어 있는가',
+  '품목번호가 기준서와 일치하는가',
+  '개선품 리비전 여부를 확인하였는가',
+  '구버전 기준서와 비교 점검을 완료하였는가',
+  '기준서 버전(Rev.)이 최신인지 확인하였는가',
+];
+function renderInspectSelect(){
+  const sel = document.getElementById('insp-item');
+  sel.innerHTML = '<option value="">— 품목을 선택하세요 —</option>';
+  Object.values(items).forEach(i=>{
+    sel.innerHTML += `<option value="${i.id}">${i.num}  ${i.name}</option>`;
+  });
+}
+function loadInspectChecklist(){
+  const id = document.getElementById('insp-item').value;
+  if(!id){ document.getElementById('checklist-area').style.display='none'; return; }
+  document.getElementById('checklist-area').style.display='block';
+  const list = document.getElementById('chk-list');
+  list.innerHTML = CHECKLIST.map((c,i)=>`
+    <div class="check-item" id="ci-${i}">
+      <input type="checkbox" id="chk-${i}" onchange="toggleCheck(${i})">
+      <label class="check-label" for="chk-${i}">${c}</label>
+      <span class="check-status" id="cs-${i}" style="color:var(--gray300)">미확인</span>
+    </div>`).join('');
+}
+function toggleCheck(i){
+  const chk = document.getElementById(`chk-${i}`);
+  const item = document.getElementById(`ci-${i}`);
+  const stat = document.getElementById(`cs-${i}`);
+  item.classList.toggle('checked', chk.checked);
+  stat.textContent = chk.checked ? '✅ 확인' : '미확인';
+  stat.style.color = chk.checked ? 'var(--green)' : 'var(--gray300)';
+}
+async function completeInspect(){
+  const id = document.getElementById('insp-item').value;
+  if(!id){ toast('품목을 선택하세요.'); return; }
+  const checks = CHECKLIST.map((_,i)=>document.getElementById(`chk-${i}`).checked);
+  const allOk = checks.every(Boolean);
+  const item = items[id];
+  const user = document.getElementById('insp-user').value || '미입력';
+  const note = document.getElementById('insp-note').value;
+
+  const rec = {
+    dt: new Date().toISOString(),
+    num: item.num, name: item.name,
+    user, result: allOk ? '정상' : '일부 누락',
+    note, checks,
+  };
+  history.unshift(rec);
+  await fbPush('/sqms/history', rec);
+
+  // 품목 상태 업데이트
+  item.status = allOk ? '정상' : '누락';
+  item.lastInspect = rec.dt;
+  await fbSet(`/sqms/items/${id}`, item);
+
+  renderAll();
+  document.getElementById('checklist-area').style.display='none';
+  document.getElementById('insp-item').value='';
+  toast(allOk ? '✅ 점검 완료 — 정상 처리되었습니다.' : '⚠️ 점검 완료 — 일부 항목 누락이 있습니다. 이슈 등록을 권장합니다.', 3000);
+}
+function reportIssue(){
+  const id = document.getElementById('insp-item').value;
+  if(!id){ toast('품목을 선택하세요.'); return; }
+  const item = items[id];
+  document.getElementById('iss-num').value = item.num;
+  showPage('issues');
+  toast('이슈 내용을 입력 후 등록하세요.');
+}
+
+// ─── ISSUES ──────────────────────────────────────────
+async function addIssue(){
+  const num  = document.getElementById('iss-num').value.trim();
+  const desc = document.getElementById('iss-desc').value.trim();
+  if(!num||!desc){ toast('⚠️ 품목번호와 이슈 내용은 필수입니다.'); return; }
+  const id = 'iss_' + Date.now();
+  const issue = {
+    id, num,
+    type   : document.getElementById('iss-type').value,
+    finder : document.getElementById('iss-finder').value || '미입력',
+    target : document.getElementById('iss-target').value || '미입력',
+    desc, date: new Date().toISOString().slice(0,10),
+    status : '미처리',
+  };
+  issues[id] = issue;
+  await fbSet(`/sqms/issues/${id}`, issue);
+  ['iss-num','iss-finder','iss-target','iss-desc'].forEach(i=>document.getElementById(i).value='');
+  renderAll();
+  toast('✅ 이슈가 등록되었습니다.');
+}
+function renderIssueTable(){
+  const arr = Object.entries(issues).sort((a,b)=>b[1].date.localeCompare(a[1].date));
+  const tb = document.getElementById('issue-tbody');
+  if(!arr.length){
+    tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--gray300);padding:24px">등록된 이슈가 없습니다.</td></tr>';
+    return;
+  }
+  tb.innerHTML = arr.map(([id,i],idx)=>`
+    <tr>
+      <td>${idx+1}</td>
+      <td><b>${i.num}</b></td>
+      <td><span class="badge badge-orange">${i.type}</span></td>
+      <td>${i.finder}</td>
+      <td>${fmtD(i.date)}</td>
+      <td><span class="badge ${i.status==='완료'?'badge-green':'badge-red'}">${i.status}</span></td>
+      <td>
+        <button class="btn btn-outline btn-sm" onclick="openIssueModal('${id}')">상세</button>
+        ${i.status!=='완료'?`<button class="btn btn-green btn-sm" onclick="quickResolve('${id}')" style="margin-left:4px">완료</button>`:''}
+      </td>
+    </tr>`).join('');
+}
+function openIssueModal(id){
+  currentIssueId = id;
+  const i = issues[id];
+  document.getElementById('modal-issue-body').innerHTML = `
+    <div class="timeline">
+      <div class="tl-item"><div class="tl-dot blue"></div><div class="tl-time">${fmtD(i.date)}</div><div class="tl-text"><b>이슈 등록</b> — ${i.finder}</div><div class="tl-tag">${i.type} · ${i.num}</div></div>
+      <div class="tl-item"><div class="tl-dot ${i.status==='완료'?'green':'gray'}"></div><div class="tl-time">${i.resolvedDt?fmtD(i.resolvedDt):'처리 대기'}</div><div class="tl-text"><b>${i.status==='완료'?'처리 완료':'처리 대기 중'}</b>${i.resolvedNote?` — ${i.resolvedNote}`:''}</div></div>
+    </div>
+    <div class="divider"></div>
+    <p style="font-size:13px;color:var(--gray700);line-height:1.6">${i.desc}</p>
+    <div class="divider"></div>
+    <label>처리 완료 비고</label>
+    <input id="resolve-note" placeholder="처리 내용 입력" value="${i.resolvedNote||''}">`;
+  document.getElementById('modal-issue').classList.add('open');
+}
+async function resolveIssue(){
+  const id = currentIssueId;
+  if(!id) return;
+  issues[id].status = '완료';
+  issues[id].resolvedNote = document.getElementById('resolve-note').value;
+  issues[id].resolvedDt = new Date().toISOString().slice(0,10);
+  await fbSet(`/sqms/issues/${id}`, issues[id]);
+  closeModal('modal-issue');
+  renderAll();
+  toast('✅ 이슈가 완료 처리되었습니다.');
+}
+async function quickResolve(id){
+  issues[id].status='완료';
+  issues[id].resolvedDt=new Date().toISOString().slice(0,10);
+  await fbSet(`/sqms/issues/${id}`, issues[id]);
+  renderAll();
+  toast('✅ 완료 처리되었습니다.');
+}
+
+// ─── HISTORY ─────────────────────────────────────────
+function renderHistory(arr){
+  const tb = document.getElementById('hist-tbody');
+  if(!arr.length){
+    tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--gray300);padding:24px">이력이 없습니다.</td></tr>';
+    return;
+  }
+  tb.innerHTML = arr.map(h=>`
+    <tr>
+      <td style="font-size:12px">${fmtDt(h.dt)}</td>
+      <td><b>${h.num}</b></td>
+      <td>${h.name}</td>
+      <td>${h.user}</td>
+      <td><span class="badge ${h.result==='정상'?'badge-green':'badge-red'}">${h.result}</span></td>
+      <td style="font-size:11px;color:var(--gray500)">${h.note||'-'}</td>
+    </tr>`).join('');
+}
+function filterHistory(){
+  const from = document.getElementById('h-from').value;
+  const to   = document.getElementById('h-to').value;
+  const filtered = history.filter(h=>(!from||h.dt>=from)&&(!to||h.dt<=to+'T23:59:59'));
+  renderHistory(filtered);
+}
+function resetHistory(){ renderHistory(history); }
+
+function printReport(){
+  const month = document.getElementById('h-month').value;
+  if(!month){ toast('보고 월을 선택하세요.'); return; }
+  const filtered = history.filter(h=>h.dt.startsWith(month));
+  const openIss = Object.values(issues).filter(i=>i.status!=='완료');
+  const body = document.getElementById('modal-report-body');
+  body.innerHTML = `
+    <div style="text-align:center;margin-bottom:16px">
+      <div style="font-size:17px;font-weight:700;color:var(--navy)">셰플러 기준서 월간 점검 보고서</div>
+      <div style="font-size:12px;color:var(--gray300);margin-top:4px">${month.replace('-','년 ')}월  ·  (주)인시스 AI혁신 R&D센터</div>
+    </div>
+    <table class="tbl" style="margin-bottom:14px">
+      <thead><tr><th>점검일시</th><th>품목번호</th><th>품목명</th><th>담당자</th><th>결과</th><th>특이사항</th></tr></thead>
+      <tbody>${filtered.length
+        ? filtered.map(h=>`<tr><td>${fmtDt(h.dt)}</td><td>${h.num}</td><td>${h.name}</td><td>${h.user}</td><td><span class="badge ${h.result==='정상'?'badge-green':'badge-red'}">${h.result}</span></td><td>${h.note||'-'}</td></tr>`).join('')
+        : '<tr><td colspan="6" style="text-align:center;color:var(--gray300);padding:16px">해당 월 이력 없음</td></tr>'
+      }</tbody>
+    </table>
+    <div style="font-size:12px;color:var(--gray700);padding:10px;background:var(--gray50);border-radius:7px">
+      <b>요약</b>: 총 점검 ${filtered.length}건 · 정상 ${filtered.filter(h=>h.result==='정상').length}건 · 미처리 이슈 ${openIss.length}건
+    </div>`;
+  document.getElementById('modal-report').classList.add('open');
+}
+</script>
+</body>
+</html>
