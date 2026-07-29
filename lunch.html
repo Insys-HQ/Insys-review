@@ -6,7 +6,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>인시스 점심주문관리 v6.5</title>
+<title>인시스 점심주문관리 v6.6</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -751,10 +751,10 @@ body.season-warm {
   <div class="hd-inner">
     <div class="hd-left" style="display:flex;align-items:center;gap:10px">
       <h1>인시스 점심주문관리</h1>
-      <span class="ver-badge">v6.5</span>
+      <span class="ver-badge">v6.6</span>
     </div>
     <div class="hd-right">
-      <div id="weatherInfo">🌡️ 로딩중</div>
+      <div id="weatherInfo"></div>
       <span id="clock">--:--:--</span>
       <span id="userBadge">—</span>
     </div>
@@ -1010,7 +1010,7 @@ body.season-warm {
     <div id="restaurantAdminList"></div>
   </div>
 
-  <div class="footer-info">점심주문관리 시스템 v6.5</div>
+  <div class="footer-info">점심주문관리 시스템 v6.6</div>
 
   <!-- ══ AI 추천 모달 ══ -->
   <div id="aiModal" class="modal-overlay hidden">
@@ -1182,15 +1182,18 @@ $('todayDate').textContent = new Date().toLocaleDateString('ko-KR',{year:'numeri
 populateNames();
 bindEvents();
 startClock();
-loadWeather();
 applyViewMode(localStorage.getItem('insys_viewmode')||'auto');
 
+// 앱 먼저 시작, 날씨는 백그라운드
 if (myName) {
   $('nameSelect').value = myName;
   startApp();
 } else {
   $('loginScreen').classList.remove('hidden');
 }
+
+// 날씨는 앱 시작과 무관하게 백그라운드 로드
+loadWeather().catch(()=>{});
 
 // ── 이름 목록 채우기 ──────────────────────────────────
 function populateNames() {
@@ -1905,11 +1908,16 @@ function renderHistoryCards(list) {
 // ══════════════════════════════════════════════════════
 async function loadWeather() {
   try {
+    // 3초 타임아웃
+    const ctrl = new AbortController();
+    const tmt  = setTimeout(() => ctrl.abort(), 3000);
     const res = await fetch(
       'https://api.open-meteo.com/v1/forecast?latitude=35.2281&longitude=128.6812' +
       '&current=temperature_2m,weathercode,relative_humidity_2m' +
-      '&hourly=precipitation_probability&timezone=Asia%2FSeoul&forecast_days=1'
+      '&hourly=precipitation_probability&timezone=Asia%2FSeoul&forecast_days=1',
+      { signal: ctrl.signal }
     );
+    clearTimeout(tmt);
     const data = await res.json();
     const temp  = Math.round(data.current.temperature_2m);
     const code  = data.current.weathercode;
@@ -1957,7 +1965,7 @@ async function loadWeather() {
     console.log('날씨 로드:', temp + '°C', wdesc, '강수확률' + precip + '%');
   } catch(e) {
     console.warn('날씨 로드 실패:', e);
-    $('weatherInfo').textContent = '';
+    $('weatherInfo').innerHTML = '<span style="font-size:11px;opacity:.5">창원</span>';
     G_WEATHER.loaded = false;
   }
 }
