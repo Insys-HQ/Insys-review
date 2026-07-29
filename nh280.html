@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+
+<meta property="og:title" content="🏗 노형동 282 신축공사 v1.1">
+<meta property="og:description" content="현장 사진일지 · 공사내용 · 건축허가 정보">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://insys-hq.github.io/Insys-review/nh280.html">
+<meta property="og:site_name" content="인시스 AI혁신 R&D센터">
+
+<title>🏗 노형동 282 신축공사</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<style>
+:root{
+  --blue-dk:#1d3a5f;
+  --gray-dk:#374151;
+  --blue-mid:#2563eb;
+  --pastel-blue:#e8f1fc;
+  --pastel-blue-bd:#c7ddf7;
+  --pastel-amber:#fef6e4;
+  --pastel-amber-bd:#f3e0b0;
+  --bg:#f4f6f9;
+  --card:#ffffff;
+  --line:#e5e9f0;
+  --radius:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  font-family:'Noto Sans KR',sans-serif;
+  background:var(--bg);
+  color:var(--gray-dk);
+  font-size:13px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:var(--blue-mid);text-decoration:none;}
+button{font-family:inherit;cursor:pointer;border:none;background:none;font-size:12px;}
+input,select,textarea{font-family:inherit;font-size:12px;color:var(--gray-dk);}
+
+/* ===== App bar ===== */
+.appbar{
+  background:linear-gradient(135deg,var(--blue-dk),#25507f);
+  color:#fff;
+  padding:8px 6px;
+}
+.appbar-inner{
+  max-width:1100px;margin:0 auto;padding:0 12px;
+}
+.appbar-top{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.appbar-title{font-size:15px;font-weight:700;display:flex;align-items:center;gap:6px;}
+.appbar-title small{font-size:10px;font-weight:400;opacity:.85;background:rgba(255,255,255,.15);padding:1px 6px;border-radius:8px;}
+.appbar-date{font-size:11px;opacity:.9;white-space:nowrap;}
+.appbar-weather{
+  margin-top:6px;font-size:11px;opacity:.92;
+  display:flex;gap:10px;flex-wrap:wrap;align-items:center;
+}
+
+/* ===== Tabs ===== */
+.tabs{background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20;}
+.tabs-inner{max-width:1100px;margin:0 auto;padding:0 12px;display:flex;}
+.tab-btn{
+  flex:1;padding:9px 4px;text-align:center;font-size:11.5px;font-weight:500;
+  color:#8a94a3;border-bottom:2.5px solid transparent;white-space:nowrap;
+}
+.tab-btn.active{color:var(--blue-mid);border-bottom-color:var(--blue-mid);font-weight:700;}
+
+/* ===== Wrap ===== */
+.wrap{max-width:1100px;margin:0 auto;padding:10px 10px 60px;}
+.tabpanel{display:none;}
+.tabpanel.active{display:block;}
+
+/* ===== Card ===== */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:9px 11px;margin-bottom:9px;}
+.card-title{font-size:12.5px;font-weight:700;color:var(--blue-dk);margin-bottom:6px;display:flex;align-items:center;gap:5px;}
+
+/* ===== Upload card ===== */
+.upload-card{
+  background:linear-gradient(135deg,var(--pastel-blue),#f7fbff);
+  border:1px solid var(--pastel-blue-bd);
+}
+.upload-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px;}
+.upload-row input[type=date]{
+  padding:6px 8px;border:1px solid var(--pastel-blue-bd);border-radius:8px;background:#fff;
+}
+.btn{
+  padding:7px 12px;border-radius:8px;font-weight:600;font-size:11.5px;
+  display:inline-flex;align-items:center;gap:5px;
+}
+.btn-primary{background:var(--blue-mid);color:#fff;}
+.btn-outline{background:#fff;border:1px solid var(--pastel-blue-bd);color:var(--blue-dk);}
+.btn-danger{background:#fdeeee;color:#b3261e;border:1px solid #f3c9c6;}
+.btn-sm{padding:4px 8px;font-size:11px;}
+.progress-wrap{height:5px;background:#dce8fb;border-radius:4px;margin-top:6px;overflow:hidden;display:none;}
+.progress-bar{height:100%;background:var(--blue-mid);width:0%;transition:width .2s;}
+
+/* ===== Day group ===== */
+.day-group{margin-bottom:10px;}
+.day-head{
+  display:flex;align-items:center;gap:6px;padding:5px 2px;
+  border-bottom:1px solid var(--line);margin-bottom:6px;
+}
+.day-head .d-date{font-weight:700;color:var(--blue-dk);font-size:12px;white-space:nowrap;}
+.day-head .d-count{background:var(--pastel-blue);color:var(--blue-mid);font-size:10px;padding:1px 6px;border-radius:8px;}
+.day-head .d-memo{
+  flex:1;border:1px solid transparent;border-radius:6px;padding:3px 6px;font-size:11.5px;
+  background:transparent;color:var(--gray-dk);
+}
+.day-head .d-memo:focus{border-color:var(--pastel-blue-bd);background:#fff;}
+
+.photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+.photo-thumb{
+  position:relative;aspect-ratio:1/1;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:#eee;
+}
+.photo-thumb img{width:100%;height:100%;object-fit:cover;cursor:pointer;}
+.thumb-dl{
+  position:absolute;top:3px;right:3px;background:rgba(29,58,95,.75);color:#fff;
+  width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;
+}
+.thumb-comment{
+  position:absolute;left:3px;bottom:3px;background:rgba(0,0,0,.55);color:#fff;
+  font-size:9.5px;padding:1px 5px;border-radius:5px;max-width:85%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+
+/* ===== 일지목록 ===== */
+.memo-item{
+  display:flex;align-items:flex-start;gap:8px;padding:8px 4px;border-bottom:1px solid var(--line);
+}
+.memo-item .m-date{font-weight:700;color:var(--blue-dk);font-size:11.5px;width:78px;flex-shrink:0;padding-top:2px;}
+.memo-item textarea{
+  flex:1;border:1px solid var(--line);border-radius:6px;padding:5px 7px;resize:vertical;min-height:32px;
+}
+.memo-item .m-actions{display:flex;flex-direction:column;gap:4px;}
+
+/* ===== Doc list ===== */
+.doc-item{display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid var(--line);}
+.doc-icon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
+.doc-icon.pdf{background:#fde8e8;color:#c0392b;}
+.doc-icon.img{background:#e8f1fc;color:#2563eb;}
+.doc-icon.etc{background:#eef0f3;color:#5b6472;}
+.doc-info{flex:1;min-width:0;}
+.doc-title{font-weight:600;font-size:12px;color:var(--gray-dk);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.doc-meta{font-size:10.5px;color:#8a94a3;}
+.doc-actions{display:flex;gap:4px;}
+.icon-btn{width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;background:#f2f4f7;color:var(--gray-dk);font-size:11px;}
+
+/* ===== Info tab ===== */
+.info-g{margin-bottom:4px;}
+.info-g label{display:block;font-size:10.5px;color:#8a94a3;margin-bottom:2px;}
+.info-g input,.info-g textarea{
+  width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:#fbfcfe;
+}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;}
+@media(max-width:520px){.info-grid{grid-template-columns:1fr;}}
+
+/* ===== Viewer ===== */
+.viewer{display:none;position:fixed;inset:0;background:rgba(10,15,25,.94);z-index:100;flex-direction:column;}
+.viewer.open{display:flex;}
+.viewer-top{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;color:#fff;font-size:12px;}
+.viewer-top button{color:#fff;font-size:18px;}
+.viewer-body{flex:1;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;}
+.viewer-body img{max-width:94%;max-height:94%;object-fit:contain;}
+.viewer-nav{position:absolute;top:50%;transform:translateY(-50%);color:#fff;font-size:26px;padding:10px;opacity:.8;}
+.viewer-nav.prev{left:6px;}
+.viewer-nav.next{right:6px;}
+.viewer-comment{background:rgba(15,20,30,.9);padding:8px 10px;}
+.viewer-comment-inner{max-width:1100px;margin:0 auto;padding:0 12px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.viewer-comment-inner input{flex:1;min-width:120px;padding:7px 9px;border-radius:8px;border:none;background:#fff;}
+
+/* ===== Modal ===== */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(20,25,35,.5);z-index:90;align-items:center;justify-content:center;padding:16px;}
+.modal-bg.open{display:flex;}
+.modal{background:#fff;border-radius:14px;padding:16px;width:100%;max-width:380px;max-height:86vh;overflow:auto;}
+.modal h3{font-size:13.5px;color:var(--blue-dk);margin-bottom:10px;}
+.modal .info-g{margin-bottom:8px;}
+.modal-actions{display:flex;gap:6px;justify-content:flex-end;margin-top:10px;}
+
+/* ===== Toast ===== */
+.toast{
+  position:fixed;bottom:16px;left:50%;transform:translateX(-50%);
+  background:var(--blue-dk);color:#fff;padding:8px 16px;border-radius:20px;font-size:11.5px;
+  z-index:200;opacity:0;transition:opacity .25s;pointer-events:none;
+}
+.toast.show{opacity:1;}
+
+.empty{text-align:center;color:#a2aab6;font-size:11.5px;padding:26px 0;}
+
+/* ===== PC/Mobile toggle ===== */
+.view-toggle{display:flex;gap:4px;}
+.view-toggle button{
+  background:rgba(255,255,255,.15);color:#fff;padding:3px 8px;border-radius:6px;font-size:10px;
+}
+.view-toggle button.on{background:#fff;color:var(--blue-dk);font-weight:700;}
+
+body.pc-view .photo-grid{grid-template-columns:repeat(5,1fr);}
+@media(min-width:900px){
+  body:not(.mobile-force) .photo-grid{grid-template-columns:repeat(5,1fr);}
+}
+</style>
+</head>
+<body>
+
+<div class="appbar">
+  <div class="appbar-inner">
+    <div class="appbar-top">
+      <div class="appbar-title">🏗 노형동 282 신축공사 <small id="verTag">v1.1</small></div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="appbar-date" id="todayTag">-</div>
+        <div class="view-toggle">
+          <button id="btnMobileView" class="on">모바일</button>
+          <button id="btnPcView">PC</button>
+        </div>
+      </div>
+    </div>
+    <div class="appbar-weather" id="weatherLine">📍 제주 노형동 282 · 날씨 불러오는 중…</div>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tabs-inner">
+    <button class="tab-btn active" data-tab="photo">📷 사진일지</button>
+    <button class="tab-btn" data-tab="memo">📋 일지 목록</button>
+    <button class="tab-btn" data-tab="doc">📄 문서저장</button>
+    <button class="tab-btn" data-tab="info">ℹ 현장정보</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ===== 사진일지 ===== -->
+  <div class="tabpanel active" id="tab-photo">
+    <div class="card upload-card">
+      <div class="card-title"><i class="fa-solid fa-camera"></i> 사진 업로드</div>
+      <div class="upload-row">
+        <input type="date" id="photoDate">
+        <label class="btn btn-primary">
+          <i class="fa-solid fa-camera"></i> 촬영
+          <input type="file" accept="image/*" capture="environment" id="photoCapture" style="display:none">
+        </label>
+        <label class="btn btn-outline">
+          <i class="fa-solid fa-images"></i> 갤러리
+          <input type="file" accept="image/*" multiple id="photoGallery" style="display:none">
+        </label>
+      </div>
+      <div class="progress-wrap" id="uploadProgWrap"><div class="progress-bar" id="uploadProgBar"></div></div>
+    </div>
+
+    <div id="photoList"></div>
+  </div>
+
+  <!-- ===== 일지목록 ===== -->
+  <div class="tabpanel" id="tab-memo">
+    <div class="card upload-card">
+      <div class="card-title"><i class="fa-solid fa-plus"></i> 일지 추가</div>
+      <div class="upload-row">
+        <input type="date" id="memoDate">
+        <button class="btn btn-primary" id="btnAddMemo"><i class="fa-solid fa-plus"></i> 추가</button>
+      </div>
+    </div>
+    <div id="memoList"></div>
+  </div>
+
+  <!-- ===== 문서저장 ===== -->
+  <div class="tabpanel" id="tab-doc">
+    <div class="card upload-card">
+      <div class="card-title"><i class="fa-solid fa-file-arrow-up"></i> 문서 업로드</div>
+      <div class="info-grid" style="margin-top:6px;">
+        <div class="info-g"><label>날짜</label><input type="date" id="docDate"></div>
+        <div class="info-g"><label>제목</label><input type="text" id="docTitle" placeholder="예) 건축허가서"></div>
+      </div>
+      <div class="upload-row">
+        <label class="btn btn-primary">
+          <i class="fa-solid fa-paperclip"></i> 파일 선택
+          <input type="file" id="docFile" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.hwp,.xls,.xlsx" style="display:none">
+        </label>
+        <span id="docFileName" style="font-size:11px;color:#8a94a3;">선택된 파일 없음 (최대 900KB)</span>
+      </div>
+      <div class="progress-wrap" id="docProgWrap"><div class="progress-bar" id="docProgBar"></div></div>
+    </div>
+    <div id="docList"></div>
+  </div>
+
+  <!-- ===== 현장정보 ===== -->
+  <div class="tabpanel" id="tab-info">
+    <div class="card">
+      <div class="card-title"><i class="fa-solid fa-building"></i> 공사 기본정보</div>
+      <div class="info-grid">
+        <div class="info-g"><label>공사명</label><input type="text" id="pName" placeholder="노형동 282 신축공사"></div>
+        <div class="info-g"><label>건축주</label><input type="text" id="pClient"></div>
+        <div class="info-g"><label>시공사</label><input type="text" id="pContractor"></div>
+        <div class="info-g"><label>설계자</label><input type="text" id="pDesigner"></div>
+        <div class="info-g"><label>허가기관</label><input type="text" id="pAuth"></div>
+        <div class="info-g"><label>건축허가번호</label><input type="text" id="pPermitNo"></div>
+        <div class="info-g"><label>착공일</label><input type="date" id="pStart"></div>
+        <div class="info-g"><label>준공예정일</label><input type="date" id="pEnd"></div>
+        <div class="info-g"><label>층수</label><input type="text" id="pFloors" placeholder="지상 2층"></div>
+        <div class="info-g"><label>연면적</label><input type="text" id="pArea" placeholder="㎡"></div>
+        <div class="info-g"><label>구조</label><input type="text" id="pStruct" placeholder="철근콘크리트조"></div>
+        <div class="info-g"><label>용도</label><input type="text" id="pUse" placeholder="단독주택"></div>
+        <div class="info-g"><label>현장소장</label><input type="text" id="pManager"></div>
+        <div class="info-g"><label>연락처</label><input type="text" id="pTel"></div>
+      </div>
+      <div class="info-g" style="margin-top:4px;">
+        <label>주소</label><input type="text" id="pAddr" placeholder="제주시 노형동 282" value="제주시 노형동 282">
+      </div>
+      <div class="info-g">
+        <label>비고</label><textarea id="pNote" rows="3"></textarea>
+      </div>
+      <div class="modal-actions" style="justify-content:flex-start;margin-top:8px;">
+        <button class="btn btn-primary" id="btnSaveInfo"><i class="fa-solid fa-floppy-disk"></i> 저장</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ===== 사진 뷰어 ===== -->
+<div class="viewer" id="viewer">
+  <div class="viewer-top">
+    <div id="viewerDate">-</div>
+    <button id="viewerClose"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div class="viewer-body">
+    <button class="viewer-nav prev" id="viewerPrev"><i class="fa-solid fa-chevron-left"></i></button>
+    <img id="viewerImg" src="">
+    <button class="viewer-nav next" id="viewerNext"><i class="fa-solid fa-chevron-right"></i></button>
+  </div>
+  <div class="viewer-comment">
+    <div class="viewer-comment-inner">
+      <input type="text" id="viewerCommentInput" placeholder="사진 설명 입력">
+      <button class="btn btn-outline btn-sm" id="viewerSaveComment">설명저장</button>
+      <button class="btn btn-outline btn-sm" id="viewerDownload"><i class="fa-solid fa-download"></i></button>
+      <button class="btn btn-danger btn-sm" id="viewerDelete"><i class="fa-solid fa-trash"></i></button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 문서 수정 모달 ===== -->
+<div class="modal-bg" id="docEditBg">
+  <div class="modal">
+    <h3>문서 정보 수정</h3>
+    <div class="info-g"><label>날짜</label><input type="date" id="docEditDate"></div>
+    <div class="info-g"><label>제목</label><input type="text" id="docEditTitle"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline btn-sm" id="docEditCancel">취소</button>
+      <button class="btn btn-primary btn-sm" id="docEditSave">저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= 버전 / 자동 새로고침 ================= */
+const CURRENT_VERSION = 'v1.1';
+document.getElementById('verTag').textContent = CURRENT_VERSION;
+
+(function checkVersion(){
+  const CHECK_URL = 'https://raw.githubusercontent.com/Insys-HQ/Insys-review/main/nh280.html?_=' + Date.now();
+  fetch(CHECK_URL, {cache:'no-store'}).then(r=>r.text()).then(html=>{
+    const m = html.match(/<small[^>]*id="verTag"[^>]*>\s*(v[\d.]+)\s*<\/small>/);
+    if(m && m[1] !== CURRENT_VERSION){
+      const url = new URL(location.href);
+      url.searchParams.set('v', m[1]);
+      url.searchParams.set('t', Date.now());
+      location.replace(url.toString());
+    }
+  }).catch(()=>{});
+})();
+
+/* ================= 날짜/요일 ================= */
+const WD = ['일','월','화','수','목','금','토'];
+function fmtDate(dstr){
+  const d = new Date(dstr+'T00:00:00');
+  if(isNaN(d)) return dstr;
+  return (d.getMonth()+1)+'월 '+d.getDate()+'일 ('+WD[d.getDay()]+')';
+}
+(function(){
+  const t = new Date();
+  document.getElementById('todayTag').textContent =
+    (t.getMonth()+1)+'월 '+t.getDate()+'일 ('+WD[t.getDay()]+')';
+  document.getElementById('photoDate').value = t.toISOString().slice(0,10);
+  document.getElementById('memoDate').value = t.toISOString().slice(0,10);
+  document.getElementById('docDate').value = t.toISOString().slice(0,10);
+})();
+
+/* ================= 날씨 (Open-Meteo) ================= */
+const SITE_LAT = 33.4289, SITE_LNG = 126.4752; // 노형동 282 동중심 근사좌표 - 정밀 지번좌표는 현장 GPS 확인 권장
+fetch(`https://api.open-meteo.com/v1/forecast?latitude=${SITE_LAT}&longitude=${SITE_LNG}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&timezone=Asia%2FSeoul`)
+  .then(r=>r.json()).then(d=>{
+    const c = d.current;
+    const codeMap = {0:'맑음',1:'대체로맑음',2:'구름조금',3:'흐림',45:'안개',48:'안개',
+      51:'이슬비',61:'비',63:'비',65:'폭우',71:'눈',73:'눈',80:'소나기',95:'뇌우'};
+    const desc = codeMap[c.weather_code] || '-';
+    document.getElementById('weatherLine').innerHTML =
+      `📍 제주 노형동 282 · ☀️ ${Math.round(c.temperature_2m)}°C ${desc} · 💧${c.relative_humidity_2m}% · 💨${Math.round(c.wind_speed_10m)}㎞/h`;
+  }).catch(()=>{
+    document.getElementById('weatherLine').textContent = '📍 제주 노형동 282 · 날씨 정보를 불러올 수 없습니다';
+  });
+
+/* ================= Firebase ================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyBYqd2uRr1ZvFLDCWuS15h9qFkT-Dvg5Es",
+  projectId: "insys-work",
+  storageBucket: "insys-work.firebasestorage.app"
+};
+let db = null, fbReady = false;
+try{
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.firestore();
+  fbReady = true;
+}catch(e){ console.error('firebase init error', e); }
+
+const COL_PHOTOS = 'nh_photos';
+const COL_MEMO   = 'nh_daymemo';
+const COL_DOCS   = 'nh_docs';
+const COL_INFO   = 'nh_project';
+
+function whenReady(fn){
+  if(fbReady){ fn(); } else { setTimeout(()=>fn(), 800); }
+}
+
+/* ================= 토스트 ================= */
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+/* ================= 탭 전환 ================= */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tabpanel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+  });
+});
+
+/* ================= 모바일/PC 뷰 ================= */
+function applyView(mobile){
+  document.body.classList.toggle('mobile-force', mobile);
+  document.getElementById('btnMobileView').classList.toggle('on', mobile);
+  document.getElementById('btnPcView').classList.toggle('on', !mobile);
+}
+const isMobileUA = window.innerWidth <= 768 || /Mobi/i.test(navigator.userAgent);
+applyView(isMobileUA);
+document.getElementById('btnMobileView').onclick = ()=>applyView(true);
+document.getElementById('btnPcView').onclick = ()=>applyView(false);
+
+/* ================= 이미지 리사이즈 (500KB 이하) ================= */
+function resizeImage(file){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onload = e=>{
+      const img = new Image();
+      img.onload = ()=>{
+        let {width, height} = img;
+        const MAXDIM = 1600;
+        if(width>height && width>MAXDIM){ height = Math.round(height*MAXDIM/width); width = MAXDIM; }
+        else if(height>=width && height>MAXDIM){ width = Math.round(width*MAXDIM/height); height = MAXDIM; }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img,0,0,width,height);
+        let quality = 0.82;
+        let dataUrl = canvas.toDataURL('image/jpeg', quality);
+        while(dataUrl.length > 500*1024*1.37 && quality > 0.35){
+          quality -= 0.1;
+          dataUrl = canvas.toDataURL('image/jpeg', quality);
+        }
+        resolve(dataUrl);
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ================= 사진일지 ================= */
+let photosCache = [];
+
+function loadPhotos(){
+  if(!fbReady) return;
+  db.collection(COL_PHOTOS).orderBy('date','desc').onSnapshot(snap=>{
+    photosCache = [];
+    snap.forEach(doc=> photosCache.push({id:doc.id, ...doc.data()}));
+    renderPhotos();
+  }, err=>console.error(err));
+}
+
+let memoCache = {}; // date -> {id, memo}
+function loadMemos(){
+  if(!fbReady) return;
+  db.collection(COL_MEMO).orderBy('date','desc').onSnapshot(snap=>{
+    memoCache = {};
+    snap.forEach(doc=>{ const d = doc.data(); memoCache[d.date] = {id:doc.id, ...d}; });
+    renderPhotos();
+    renderMemoList();
+  }, err=>console.error(err));
+}
+
+function renderPhotos(){
+  const wrap = document.getElementById('photoList');
+  if(photosCache.length===0){ wrap.innerHTML = '<div class="empty">등록된 사진이 없습니다</div>'; return; }
+  const groups = {};
+  photosCache.forEach(p=>{ (groups[p.date] = groups[p.date]||[]).push(p); });
+  const dates = Object.keys(groups).sort().reverse();
+  let html = '';
+  dates.forEach(date=>{
+    const memo = memoCache[date] ? memoCache[date].memo : '';
+    html += `<div class="day-group">
+      <div class="day-head">
+        <span class="d-date">${fmtDate(date)}</span>
+        <span class="d-count">${groups[date].length}장</span>
+        <input class="d-memo" data-date="${date}" placeholder="공사내용 입력" value="${(memo||'').replace(/"/g,'&quot;')}">
+      </div>
+      <div class="photo-grid">`;
+    groups[date].forEach(p=>{
+      html += `<div class="photo-thumb">
+        <img src="${p.url}" data-id="${p.id}" onclick="openViewer('${p.id}')">
+        <div class="thumb-dl" onclick="downloadPhoto('${p.id}')"><i class="fa-solid fa-download"></i></div>
+        ${p.comment ? `<div class="thumb-comment">${escapeHtml(p.comment)}</div>` : ''}
+      </div>`;
+    });
+    html += `</div></div>`;
+  });
+  wrap.innerHTML = html;
+
+  wrap.querySelectorAll('.d-memo').forEach(inp=>{
+    inp.addEventListener('keydown', e=>{
+      if(e.key==='Enter'){ e.target.blur(); }
+      if(e.key==='Escape'){ e.target.value = memoCache[e.target.dataset.date]?.memo || ''; e.target.blur(); }
+    });
+    inp.addEventListener('blur', e=> saveDayMemo(e.target.dataset.date, e.target.value));
+  });
+}
+
+function escapeHtml(s){ return (s||'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function saveDayMemo(date, memo){
+  if(!fbReady) return;
+  const existing = memoCache[date];
+  const payload = { date, memo, updatedAt: Date.now() };
+  if(existing){
+    db.collection(COL_MEMO).doc(existing.id).update(payload).then(()=>toast('저장됨'));
+  } else {
+    payload.createdAt = Date.now();
+    db.collection(COL_MEMO).add(payload).then(()=>toast('저장됨'));
+  }
+}
+
+async function handlePhotoFiles(files, date){
+  if(!files || files.length===0) return;
+  const progWrap = document.getElementById('uploadProgWrap');
+  const progBar = document.getElementById('uploadProgBar');
+  progWrap.style.display = 'block';
+  let done = 0;
+  for(const file of files){
+    try{
+      const dataUrl = await resizeImage(file);
+      await db.collection(COL_PHOTOS).add({
+        date, url: dataUrl, filename: file.name,
+        size: dataUrl.length, comment: '', createdAt: Date.now()
+      });
+      done++;
+      progBar.style.width = Math.round(done/files.length*100)+'%';
+    }catch(e){ console.error(e); toast('업로드 실패: '+file.name); }
+  }
+  setTimeout(()=>{ progWrap.style.display='none'; progBar.style.width='0%'; }, 600);
+  toast(done+'장 업로드 완료');
+}
+
+document.getElementById('photoCapture').addEventListener('change', e=>{
+  handlePhotoFiles(e.target.files, document.getElementById('photoDate').value);
+  e.target.value = '';
+});
+document.getElementById('photoGallery').addEventListener('change', e=>{
+  handlePhotoFiles(e.target.files, document.getElementById('photoDate').value);
+  e.target.value = '';
+});
+
+function downloadPhoto(id){
+  const p = photosCache.find(x=>x.id===id);
+  if(!p) return;
+  const a = document.createElement('a');
+  a.href = p.url; a.download = p.filename || (p.date+'.jpg');
+  a.click();
+}
+
+/* ================= 사진 뷰어 ================= */
+let viewerList = [];
+let viewerIdx = 0;
+
+window.openViewer = function(id){
+  const p = photosCache.find(x=>x.id===id);
+  if(!p) return;
+  viewerList = photosCache.filter(x=>x.date===p.date);
+  viewerIdx = viewerList.findIndex(x=>x.id===id);
+  showViewer();
+  document.getElementById('viewer').classList.add('open');
+};
+function showViewer(){
+  const p = viewerList[viewerIdx];
+  document.getElementById('viewerImg').src = p.url;
+  document.getElementById('viewerDate').textContent = fmtDate(p.date);
+  document.getElementById('viewerCommentInput').value = p.comment || '';
+}
+document.getElementById('viewerClose').onclick = ()=> document.getElementById('viewer').classList.remove('open');
+document.getElementById('viewerPrev').onclick = ()=>{ viewerIdx = (viewerIdx-1+viewerList.length)%viewerList.length; showViewer(); };
+document.getElementById('viewerNext').onclick = ()=>{ viewerIdx = (viewerIdx+1)%viewerList.length; showViewer(); };
+document.addEventListener('keydown', e=>{
+  if(!document.getElementById('viewer').classList.contains('open')) return;
+  if(e.key==='ArrowLeft') document.getElementById('viewerPrev').click();
+  if(e.key==='ArrowRight') document.getElementById('viewerNext').click();
+  if(e.key==='Escape') document.getElementById('viewerClose').click();
+});
+let touchStartX = 0;
+document.querySelector('.viewer-body').addEventListener('touchstart', e=> touchStartX = e.touches[0].clientX);
+document.querySelector('.viewer-body').addEventListener('touchend', e=>{
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  if(dx > 50) document.getElementById('viewerPrev').click();
+  if(dx < -50) document.getElementById('viewerNext').click();
+});
+document.getElementById('viewerDownload').onclick = ()=> downloadPhoto(viewerList[viewerIdx].id);
+document.getElementById('viewerSaveComment').onclick = ()=>{
+  const p = viewerList[viewerIdx];
+  const val = document.getElementById('viewerCommentInput').value;
+  db.collection(COL_PHOTOS).doc(p.id).update({comment: val}).then(()=>toast('설명 저장됨'));
+};
+document.getElementById('viewerDelete').onclick = ()=>{
+  if(!confirm('이 사진을 삭제할까요?')) return;
+  const p = viewerList[viewerIdx];
+  db.collection(COL_PHOTOS).doc(p.id).delete().then(()=>{
+    toast('삭제됨');
+    document.getElementById('viewerClose').click();
+  });
+};
+
+/* ================= 일지목록 탭 ================= */
+function renderMemoList(){
+  const wrap = document.getElementById('memoList');
+  const dates = Object.keys(memoCache).sort().reverse();
+  if(dates.length===0){ wrap.innerHTML = '<div class="empty">등록된 일지가 없습니다</div>'; return; }
+  let html = '';
+  dates.forEach(date=>{
+    const m = memoCache[date];
+    html += `<div class="memo-item">
+      <div class="m-date">${fmtDate(date)}</div>
+      <textarea data-date="${date}">${escapeHtml(m.memo||'')}</textarea>
+      <div class="m-actions">
+        <button class="icon-btn" onclick="deleteMemo('${date}')"><i class="fa-solid fa-trash"></i></button>
+      </div>
+    </div>`;
+  });
+  wrap.innerHTML = html;
+  wrap.querySelectorAll('textarea').forEach(t=>{
+    t.addEventListener('blur', e=> saveDayMemo(e.target.dataset.date, e.target.value));
+  });
+}
+window.deleteMemo = function(date){
+  if(!confirm('이 일지를 삭제할까요?')) return;
+  const m = memoCache[date];
+  if(!m) return;
+  db.collection(COL_MEMO).doc(m.id).delete().then(()=>toast('삭제됨'));
+};
+document.getElementById('btnAddMemo').onclick = ()=>{
+  const date = document.getElementById('memoDate').value;
+  if(!date){ toast('날짜를 선택하세요'); return; }
+  if(memoCache[date]){ toast('이미 등록된 날짜입니다'); return; }
+  db.collection(COL_MEMO).add({date, memo:'', createdAt:Date.now()}).then(()=>toast('추가됨'));
+};
+
+/* ================= 문서저장 ================= */
+let docsCache = [];
+let pendingDocFile = null;
+
+function loadDocs(){
+  if(!fbReady) return;
+  db.collection(COL_DOCS).orderBy('createdAt','desc').onSnapshot(snap=>{
+    docsCache = [];
+    snap.forEach(doc=> docsCache.push({id:doc.id, ...doc.data()}));
+    renderDocs();
+  });
+}
+
+document.getElementById('docFile').addEventListener('change', e=>{
+  const f = e.target.files[0];
+  if(!f) return;
+  if(f.size > 900*1024){ toast('900KB 이하 파일만 업로드 가능합니다'); e.target.value=''; return; }
+  pendingDocFile = f;
+  document.getElementById('docFileName').textContent = f.name + ' (' + Math.round(f.size/1024) + 'KB)';
+  uploadDoc();
+});
+
+function uploadDoc(){
+  const date = document.getElementById('docDate').value;
+  const title = document.getElementById('docTitle').value.trim();
+  if(!pendingDocFile){ return; }
+  if(!title){ toast('제목을 입력하세요'); return; }
+  const progWrap = document.getElementById('docProgWrap');
+  const progBar = document.getElementById('docProgBar');
+  progWrap.style.display='block'; progBar.style.width='30%';
+  const reader = new FileReader();
+  reader.onload = e=>{
+    progBar.style.width='70%';
+    db.collection(COL_DOCS).add({
+      date, title, filename: pendingDocFile.name, size: pendingDocFile.size,
+      mimeType: pendingDocFile.type, data: e.target.result, createdAt: Date.now()
+    }).then(()=>{
+      progBar.style.width='100%';
+      setTimeout(()=>{ progWrap.style.display='none'; progBar.style.width='0%'; }, 500);
+      toast('문서 업로드 완료');
+      document.getElementById('docTitle').value='';
+      document.getElementById('docFileName').textContent='선택된 파일 없음 (최대 900KB)';
+      pendingDocFile = null;
+    }).catch(err=>{ console.error(err); toast('업로드 실패'); });
+  };
+  reader.readAsDataURL(pendingDocFile);
+}
+
+function docIconClass(mime, filename){
+  if((mime||'').includes('pdf') || /\.pdf$/i.test(filename)) return {c:'pdf', i:'fa-file-pdf'};
+  if((mime||'').startsWith('image') || /\.(jpg|jpeg|png)$/i.test(filename)) return {c:'img', i:'fa-file-image'};
+  return {c:'etc', i:'fa-file'};
+}
+
+function renderDocs(){
+  const wrap = document.getElementById('docList');
+  if(docsCache.length===0){ wrap.innerHTML = '<div class="empty">등록된 문서가 없습니다</div>'; return; }
+  let html = '';
+  docsCache.forEach(d=>{
+    const ic = docIconClass(d.mimeType, d.filename);
+    html += `<div class="doc-item">
+      <div class="doc-icon ${ic.c}"><i class="fa-solid ${ic.i}"></i></div>
+      <div class="doc-info">
+        <div class="doc-title">${escapeHtml(d.title)}</div>
+        <div class="doc-meta">${fmtDate(d.date)} · ${Math.round(d.size/1024)}KB</div>
+      </div>
+      <div class="doc-actions">
+        <button class="icon-btn" onclick="downloadDoc('${d.id}')"><i class="fa-solid fa-download"></i></button>
+        <button class="icon-btn" onclick="openDocEdit('${d.id}')"><i class="fa-solid fa-pen"></i></button>
+        <button class="icon-btn" onclick="deleteDoc('${d.id}')"><i class="fa-solid fa-trash"></i></button>
+      </div>
+    </div>`;
+  });
+  wrap.innerHTML = html;
+}
+window.downloadDoc = function(id){
+  const d = docsCache.find(x=>x.id===id);
+  if(!d) return;
+  const a = document.createElement('a');
+  a.href = d.data; a.download = d.filename;
+  a.click();
+};
+window.deleteDoc = function(id){
+  if(!confirm('이 문서를 삭제할까요?')) return;
+  db.collection(COL_DOCS).doc(id).delete().then(()=>toast('삭제됨'));
+};
+let docEditId = null;
+window.openDocEdit = function(id){
+  const d = docsCache.find(x=>x.id===id);
+  if(!d) return;
+  docEditId = id;
+  document.getElementById('docEditDate').value = d.date;
+  document.getElementById('docEditTitle').value = d.title;
+  document.getElementById('docEditBg').classList.add('open');
+};
+document.getElementById('docEditCancel').onclick = ()=> document.getElementById('docEditBg').classList.remove('open');
+document.getElementById('docEditSave').onclick = ()=>{
+  const date = document.getElementById('docEditDate').value;
+  const title = document.getElementById('docEditTitle').value.trim();
+  if(!title){ toast('제목을 입력하세요'); return; }
+  db.collection(COL_DOCS).doc(docEditId).update({date, title}).then(()=>{
+    toast('수정됨');
+    document.getElementById('docEditBg').classList.remove('open');
+  });
+};
+
+/* ================= 현장정보 ================= */
+const infoFields = ['pName','pClient','pContractor','pDesigner','pAuth','pPermitNo','pStart','pEnd',
+  'pFloors','pArea','pStruct','pUse','pManager','pTel','pAddr','pNote'];
+const infoKeyMap = {
+  pName:'name', pClient:'client', pContractor:'contractor', pDesigner:'designer', pAuth:'authority',
+  pPermitNo:'permitNo', pStart:'startDate', pEnd:'endDate', pFloors:'floors', pArea:'area',
+  pStruct:'structure', pUse:'usage', pManager:'manager', pTel:'tel', pAddr:'addr', pNote:'note'
+};
+function loadProjectInfo(){
+  if(!fbReady) return;
+  db.collection(COL_INFO).doc('info').get().then(doc=>{
+    if(!doc.exists) return;
+    const d = doc.data();
+    infoFields.forEach(id=>{
+      const key = infoKeyMap[id];
+      if(d[key] !== undefined) document.getElementById(id).value = d[key];
+    });
+  });
+}
+document.getElementById('btnSaveInfo').onclick = ()=>{
+  const payload = {};
+  infoFields.forEach(id=>{ payload[infoKeyMap[id]] = document.getElementById(id).value; });
+  payload.updatedAt = Date.now();
+  db.collection(COL_INFO).doc('info').set(payload, {merge:true}).then(()=> toast('저장되었습니다'));
+};
+
+/* ================= 초기화 ================= */
+whenReady(()=>{
+  loadPhotos();
+  loadMemos();
+  loadDocs();
+  loadProjectInfo();
+});
+</script>
+</body>
+</html>
