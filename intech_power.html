@@ -103,7 +103,7 @@ input:checked + .slider-tog:before{transform:translateX(18px);}
   <div class="header-inner">
     <div>
       <h1>인텍코리아 신축공장 계약전력 산출 시뮬레이터</h1>
-      <div class="ver">인시스 AI혁신 연구개발실 · v1.3</div>
+      <div class="ver">인시스 AI혁신 연구개발실 · v1.4</div>
     </div>
     <div class="view-toggle">
       <button id="btnMobile" class="active" onclick="setView('mobile')">모바일</button>
@@ -237,7 +237,25 @@ function areaOptions(arr, wPerM2){
 }
 const compressorOpts = hpOptions([10,15,20,25,30,40,50,60,70,75,100,125,150,175,200]);
 const hvacOpts = hpOptions([5,8,10,13,15,20,25,30,40,50]);
-const lightOpts = areaOptions([50,100,150,200,300,500,700,1000], 10); // LED 10W/㎡ 가정
+// LED 조명: 등기구 W 선택 → 6m 고천장 커버면적 기준 등수·총kW 자동 산정
+// (도면기준 건물면적 27.45m × 40.25m ≈ 1,105㎡. 고천장 감안, 이전 10W/㎡ 가정은 과소하여 상향)
+const BUILDING_AREA = 1105; // ㎡ (X1~X5 27450mm × Y1~Y5 40250mm)
+const ledSpec = [
+  {w:100, coverage:10},
+  {w:150, coverage:15},
+  {w:200, coverage:20},
+  {w:240, coverage:24},
+  {w:300, coverage:30}
+];
+function ledLightOptions(area){
+  return ledSpec.map(o=>{
+    const count = Math.ceil(area/o.coverage);
+    const kw = +(count*o.w/1000).toFixed(1);
+    return {label:`${o.w}W×${count}등`, kw:kw, count:count};
+  });
+}
+const led1fOpts = ledLightOptions(BUILDING_AREA);
+const led2fOpts = ledLightOptions(BUILDING_AREA);
 const elevatorTbl = [
   {ton:1, kw:5.5},{ton:1.5, kw:7.5},{ton:2, kw:7.5},{ton:2.5, kw:11},
   {ton:3, kw:11},{ton:5, kw:18.5},{ton:7, kw:22},{ton:10, kw:30},{ton:15, kw:37}
@@ -257,7 +275,8 @@ let equip = [
   {id:"hvac", group:"냉난방설비", washGroup:null, name:"대형냉난방기", note:"마력 선택 시 kW 자동 계산, 4대 기준", qty:4, kw:11.2, checked:true, capacityOptions:hvacOpts, capIndex:4},
   {id:"forklift", group:"기타설비", washGroup:null, name:"지게차 충전기 (추정)", note:"실측 확인 필요", qty:1, kw:5, checked:true},
   {id:"officeac", group:"기타설비", washGroup:null, name:"사무실 소형 에어콘", note:"3kW × 2대 가정", qty:2, kw:3, checked:true},
-  {id:"light2f", group:"신축 건물설비", washGroup:null, name:"2층 건물 조명 (LED)", note:"연면적 선택 시 kW 자동 계산 (LED 10W/㎡ 가정)", qty:1, kw:5, checked:true, capacityOptions:lightOpts, capIndex:5},
+  {id:"light1f", group:"신축 건물설비", washGroup:null, name:"1층 공장 조명 (LED)", note:"등당 W 선택 시 등수·kW 자동계산 (연면적 약1,105㎡, 6m 고천장)", qty:1, kw:led1fOpts[1].kw, checked:true, capacityOptions:led1fOpts, capIndex:1},
+  {id:"light2f", group:"신축 건물설비", washGroup:null, name:"2층 사무/휴게 조명 (LED)", note:"등당 W 선택 시 등수·kW 자동계산 (연면적 약1,105㎡, 6m 고천장)", qty:1, kw:led2fOpts[1].kw, checked:true, capacityOptions:led2fOpts, capIndex:1},
   {id:"elevator5t", group:"신축 건물설비", washGroup:null, name:"화물 엘리베이터", note:"톤수 선택 시 kW 자동 계산", qty:1, kw:18.5, checked:true, capacityOptions:elevatorOpts, capIndex:5},
   {id:"extra_fire", group:"신축 건물설비", washGroup:null, name:"소방펌프 (예상 추가)", note:"신축시 소방법상 필요, 실측 확인", qty:1, kw:7.5, checked:false},
   {id:"extra_ahu", group:"신축 건물설비", washGroup:null, name:"공조기(AHU) (예상 추가)", note:"2층 환기용 가정", qty:1, kw:5.5, checked:false},
