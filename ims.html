@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>셰플러 이천공장 수입검사 업무관리 시스템</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+
+<style>
+/* ── Reset & Base ─────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:    #0F2244;
+  --teal:   #0096B4;
+  --tealD:  #007A93;
+  --tealL:  #E0F5FA;
+  --silver: #F1F5F9;
+  --line:   #CBD5E1;
+  --slate:  #64748B;
+  --white:  #FFFFFF;
+  --red:    #C0392B;
+  --redL:   #FDECEA;
+  --green:  #1A7A4A;
+  --greenL: #E8F5EE;
+  --amber:  #B45309;
+  --amberL: #FEF3C7;
+  --blue:   #2563EB;
+  --blueL:  #EFF6FF;
+}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--silver);color:var(--ink);font-size:14px;min-height:100vh}
+
+/* ── NAV ─────────────────────────────────────── */
+.nav{width:100%;background:var(--ink);position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,.3)}
+.nav-inner{max-width:1200px;margin:0 auto;padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:54px}
+.nav-brand{display:flex;align-items:center;gap:10px}
+.nav-brand .dot{width:8px;height:8px;border-radius:50%;background:var(--teal)}
+.nav-title{color:#fff;font-size:15px;font-weight:700;letter-spacing:-.3px}
+.nav-sub{color:#90CAD8;font-size:11px;font-weight:400}
+.nav-tabs{display:flex;gap:2px}
+.nav-tab{padding:6px 13px;border-radius:6px;color:#94A3B8;font-size:12px;font-weight:500;cursor:pointer;border:none;background:none;transition:all .2s;font-family:'Noto Sans KR',sans-serif}
+.nav-tab:hover{background:rgba(255,255,255,.08);color:#fff}
+.nav-tab.active{background:var(--teal);color:#fff;font-weight:700}
+.nav-badge{background:var(--red);color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 5px;margin-left:3px}
+
+/* ── PAGES ────────────────────────────────────── */
+.page{display:none;max-width:1200px;margin:0 auto;padding:16px 20px 40px}
+.page.active{display:block}
+
+/* ── PAGE HEADER ──────────────────────────────── */
+.page-hdr{margin-bottom:16px;display:flex;align-items:flex-end;justify-content:space-between}
+.page-hdr-left h2{font-size:20px;font-weight:700;color:var(--ink)}
+.page-hdr-left p{font-size:11px;color:var(--slate);margin-top:2px}
+.page-hdr-right{display:flex;gap:8px;align-items:center}
+
+/* ── STAT CARDS ───────────────────────────────── */
+.stat-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px}
+.stat-card{background:#fff;border-radius:10px;border:1px solid var(--line);padding:14px 16px;position:relative;overflow:hidden}
+.stat-card::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%}
+.stat-card.teal::before{background:var(--teal)}
+.stat-card.green::before{background:var(--green)}
+.stat-card.red::before{background:var(--red)}
+.stat-card.amber::before{background:var(--amber)}
+.stat-card.blue::before{background:var(--blue)}
+.stat-label{font-size:10px;color:var(--slate);font-weight:500;margin-bottom:4px}
+.stat-val{font-size:30px;font-weight:900;color:var(--ink);line-height:1}
+.stat-sub{font-size:10px;color:var(--slate);margin-top:4px}
+
+/* ── CARDS ────────────────────────────────────── */
+.card{background:#fff;border-radius:10px;border:1px solid var(--line);padding:16px;margin-bottom:12px}
+.card-title{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.card-title .bar{width:4px;height:16px;border-radius:2px;background:var(--teal)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+
+/* ── TABLES ───────────────────────────────────── */
+.tbl-wrap{overflow-x:auto}
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{background:var(--ink);color:#fff;padding:9px 10px;text-align:left;font-weight:600;font-size:11px;white-space:nowrap}
+.tbl td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:var(--silver)}
+.tbl-warn td{background:#fff8f8}
+
+/* ── BADGES ───────────────────────────────────── */
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;border:1px solid;white-space:nowrap}
+.badge-green{background:var(--greenL);color:var(--green);border-color:#38A169}
+.badge-red{background:var(--redL);color:var(--red);border-color:var(--red)}
+.badge-amber{background:var(--amberL);color:var(--amber);border-color:#D69E2E}
+.badge-blue{background:var(--blueL);color:var(--blue);border-color:#60A5FA}
+.badge-teal{background:var(--tealL);color:var(--tealD);border-color:var(--teal)}
+.badge-gray{background:var(--silver);color:var(--slate);border-color:var(--line)}
+
+/* ── FORMS ────────────────────────────────────── */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.form-grid.g3{grid-template-columns:1fr 1fr 1fr}
+.form-grid.g1{grid-template-columns:1fr}
+.form-group{display:flex;flex-direction:column;gap:4px}
+label{font-size:11px;font-weight:600;color:var(--slate)}
+input,select,textarea{width:100%;border:1px solid var(--line);border-radius:7px;padding:8px 10px;font-size:13px;font-family:'Noto Sans KR',sans-serif;color:var(--ink);outline:none;transition:border .2s;background:#fff}
+input:focus,select:focus,textarea:focus{border-color:var(--teal);box-shadow:0 0 0 2px rgba(0,150,180,.12)}
+textarea{resize:vertical;min-height:64px}
+.check-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:7px;margin-bottom:6px;transition:all .2s;cursor:pointer}
+.check-row:hover{border-color:var(--teal);background:var(--tealL)}
+.check-row.checked{border-color:var(--green);background:var(--greenL)}
+.check-row input[type=checkbox]{width:16px;height:16px;accent-color:var(--green);cursor:pointer}
+.check-row-label{flex:1;font-size:12px}
+.check-row-result{font-size:11px;font-weight:700;color:var(--green)}
+
+/* ── BUTTONS ──────────────────────────────────── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:7px;font-size:12px;font-weight:600;font-family:'Noto Sans KR',sans-serif;cursor:pointer;border:none;transition:all .2s;white-space:nowrap}
+.btn-primary{background:var(--ink);color:#fff}
+.btn-primary:hover{background:#1B3A6B}
+.btn-teal{background:var(--teal);color:#fff}
+.btn-teal:hover{background:var(--tealD)}
+.btn-green{background:var(--green);color:#fff}
+.btn-red{background:var(--red);color:#fff}
+.btn-outline{background:#fff;color:var(--ink);border:1px solid var(--line)}
+.btn-outline:hover{border-color:var(--ink)}
+.btn-sm{padding:5px 10px;font-size:11px}
+.btn-row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+
+/* ── ALERT ────────────────────────────────────── */
+.alert{border-radius:8px;padding:10px 14px;font-size:12px;display:flex;align-items:flex-start;gap:8px;margin-bottom:10px;border:1px solid}
+.alert-red{background:var(--redL);color:var(--red);border-color:var(--red)}
+.alert-teal{background:var(--tealL);color:var(--tealD);border-color:var(--teal)}
+.alert-green{background:var(--greenL);color:var(--green);border-color:#38A169}
+.alert-amber{background:var(--amberL);color:var(--amber);border-color:#D69E2E}
+
+/* ── MODAL ────────────────────────────────────── */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:#fff;border-radius:12px;padding:24px;width:92%;max-width:580px;max-height:90vh;overflow-y:auto}
+.modal-title{font-size:16px;font-weight:700;color:var(--ink);margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:12px;border-top:1px solid var(--line)}
+
+/* ── TOAST ────────────────────────────────────── */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--ink);color:#fff;padding:10px 18px;border-radius:8px;font-size:12px;font-weight:500;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;max-width:300px}
+.toast.show{opacity:1}
+
+/* ── DIVIDER ──────────────────────────────────── */
+.divider{height:1px;background:var(--line);margin:12px 0}
+
+/* ── TIMELINE ─────────────────────────────────── */
+.tl{position:relative;padding-left:26px}
+.tl::before{content:'';position:absolute;left:7px;top:0;bottom:0;width:2px;background:var(--line)}
+.tl-item{position:relative;margin-bottom:14px}
+.tl-dot{position:absolute;left:-23px;top:3px;width:14px;height:14px;border-radius:50%;border:2px solid #fff}
+.tl-time{font-size:10px;color:var(--slate);margin-bottom:2px}
+.tl-text{font-size:12px}
+
+/* ── SAP 검토표 ───────────────────────────────── */
+.sap-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.sap-item{border:1px solid var(--line);border-radius:8px;padding:10px;background:#fff}
+.sap-item.ok{border-color:#38A169;background:var(--greenL)}
+.sap-item.ng{border-color:var(--red);background:var(--redL)}
+.sap-item.na{border-color:var(--line);background:var(--silver)}
+.sap-item-label{font-size:10px;font-weight:600;color:var(--slate);margin-bottom:4px}
+.sap-item-val{font-size:12px;font-weight:700}
+.sap-item select{margin-top:4px;padding:4px 6px;font-size:11px}
+
+/* ── MOBILE ───────────────────────────────────── */
+@media(max-width:768px){
+  .stat-grid{grid-template-columns:repeat(2,1fr)}
+  .grid2,.grid3,.form-grid,.form-grid.g3{grid-template-columns:1fr}
+  .nav-tabs{gap:0}
+  .nav-tab{padding:5px 8px;font-size:10px}
+  .sap-grid{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="nav-brand">
+      <div class="dot"></div>
+      <div>
+        <div class="nav-title">셰플러 이천공장 수입검사 업무관리 시스템</div>
+        <div class="nav-sub">Schaeffler Icheon  ·  (주)인시스</div>
+      </div>
+    </div>
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="showPage('dash')">대시보드</button>
+      <button class="nav-tab" onclick="showPage('incoming')">입고검사</button>
+      <button class="nav-tab" onclick="showPage('sap')">SAP 성적서</button>
+      <button class="nav-tab" onclick="showPage('measure')">측정의뢰</button>
+      <button class="nav-tab" onclick="showPage('nonconf')">부적합<span class="nav-badge" id="nc-badge">0</span></button>
+      <button class="nav-tab" onclick="showPage('supply')">소모품 신청</button>
+      <button class="nav-tab" onclick="showPage('report')">보고서</button>
+    </div>
+  </div>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<!-- ══ 대시보드 ══════════════════════════════════ -->
+<div class="page active" id="page-dash">
+  <div class="page-hdr">
+    <div class="page-hdr-left">
+      <h2>📊 대시보드</h2>
+      <p id="today-str"></p>
+    </div>
+    <div class="page-hdr-right">
+      <button class="btn btn-teal btn-sm" onclick="showPage('incoming')">+ 입고검사 등록</button>
+    </div>
+  </div>
+
+  <div id="dash-alerts"></div>
+
+  <div class="stat-grid">
+    <div class="stat-card teal"><div class="stat-label">오늘 입고 검사</div><div class="stat-val" id="d-today">0</div><div class="stat-sub">건</div></div>
+    <div class="stat-card green"><div class="stat-label">이번 달 합격</div><div class="stat-val" id="d-pass">0</div><div class="stat-sub">건</div></div>
+    <div class="stat-card red"><div class="stat-label">부적합 미처리</div><div class="stat-val" id="d-nc">0</div><div class="stat-sub">건</div></div>
+    <div class="stat-card amber"><div class="stat-label">SAP 성적서 요청</div><div class="stat-val" id="d-sap">0</div><div class="stat-sub">미처리</div></div>
+    <div class="stat-card blue"><div class="stat-label">측정의뢰 진행 중</div><div class="stat-val" id="d-meas">0</div><div class="stat-sub">건</div></div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title"><span class="bar"></span>최근 입고검사 (5건)</div>
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead><tr><th>일시</th><th>품목번호</th><th>품목명</th><th>판정</th></tr></thead>
+          <tbody id="dash-recent"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="bar"></span>미처리 부적합 현황</div>
+      <div id="dash-nc-list"><p style="color:var(--slate);font-size:12px;padding:8px 0">부적합 없음 ✅</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 입고검사 ═══════════════════════════════════ -->
+<div class="page" id="page-incoming">
+  <div class="page-hdr">
+    <div class="page-hdr-left"><h2>📦 입고검사 등록</h2><p>입고 발생 시 검사 결과 및 소요시간 기록</p></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="bar"></span>기본 정보</div>
+    <div class="form-grid g3">
+      <div class="form-group"><label>검사 일자 *</label><input type="date" id="in-date"></div>
+      <div class="form-group"><label>입고 시간</label><input type="time" id="in-time"></div>
+      <div class="form-group"><label>검사 담당자</label><input id="in-user" placeholder="성명"></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>품목번호 *</label><input id="in-num" placeholder="예: A3C0056420000"></div>
+      <div class="form-group"><label>품목명 *</label><input id="in-name" placeholder="예: Connector"></div>
+    </div>
+    <div class="form-grid g3">
+      <div class="form-group"><label>입고 수량</label><input id="in-qty" type="number" placeholder="0"></div>
+      <div class="form-group"><label>샘플 수량</label><input id="in-sample" type="number" placeholder="0"></div>
+      <div class="form-group"><label>검사 소요시간 (분)</label><input id="in-time2" type="number" placeholder="0"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="bar"></span>검사기준서 확인 체크리스트</div>
+    <div id="checklist">
+      <div class="check-row" onclick="toggleCheck(this)"><input type="checkbox"><span class="check-row-label">SAP에서 기종별 검사성적서 유무 확인</span><span class="check-row-result"></span></div>
+      <div class="check-row" onclick="toggleCheck(this)"><input type="checkbox"><span class="check-row-label">외관 검사항목이 누락 없이 포함되어 있는가</span><span class="check-row-result"></span></div>
+      <div class="check-row" onclick="toggleCheck(this)"><input type="checkbox"><span class="check-row-label">색상·외관 참조 사진이 정상적으로 포함되어 있는가</span><span class="check-row-result"></span></div>
+      <div class="check-row" onclick="toggleCheck(this)"><input type="checkbox"><span class="check-row-label">품목번호가 기준서와 일치하는가</span><span class="check-row-result"></span></div>
+      <div class="check-row" onclick="toggleCheck(this)"><input type="checkbox"><span class="check-row-label">개선품 리비전 여부를 확인하였는가</span><span class="check-row-result"></span></div>
+      <div class="check-row" onclick="toggleCheck(this)"><input type="checkbox"><span class="check-row-label">구버전 기준서와 비교 점검을 완료하였는가</span><span class="check-row-result"></span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="bar"></span>검사 결과</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>외관 검사 결과 *</label>
+        <select id="in-visual"><option value="">선택</option><option>정상</option><option>불량</option><option>보류</option></select>
+      </div>
+      <div class="form-group">
+        <label>치수 검사 결과</label>
+        <select id="in-dim"><option value="">선택</option><option>정상</option><option>불량</option><option>해당없음</option></select>
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>최종 판정 *</label>
+        <select id="in-judge"><option value="">선택</option><option value="합격">합격</option><option value="불합격">불합격</option><option value="보류">보류</option></select>
+      </div>
+      <div class="form-group">
+        <label>SAP 입력 여부</label>
+        <select id="in-sap"><option value="">선택</option><option>완료</option><option>미입력</option></select>
+      </div>
+    </div>
+    <div class="form-grid g1">
+      <div class="form-group"><label>특이사항</label><textarea id="in-note" placeholder="이상 없음 / 외관 항목 확인 완료 / 기타"></textarea></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-teal" onclick="saveIncoming()">✅ 검사 결과 저장</button>
+      <button class="btn btn-red btn-sm" onclick="saveIncomingNc()">⚠️ 부적합 등록</button>
+      <button class="btn btn-outline btn-sm" onclick="clearIncoming()">초기화</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="bar"></span>입고검사 이력</div>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>일자</th><th>품목번호</th><th>품목명</th><th>수량</th><th>소요(분)</th><th>판정</th><th>SAP</th><th>특이사항</th><th>삭제</th></tr></thead>
+        <tbody id="in-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SAP 성적서 검토 ═══════════════════════════ -->
+<div class="page" id="page-sap">
+  <div class="page-hdr">
+    <div class="page-hdr-left"><h2>📋 SAP 검사성적서 검토</h2><p>성적서 유무 확인 후 내용 검토 결과 기입</p></div>
+  </div>
+
+  <div class="alert alert-teal">ℹ️ SAP에서 기종별 성적서 유무를 먼저 확인하고, 성적서가 있을 경우 아래 7개 항목을 검토하여 결과를 기입합니다.</div>
+
+  <div class="card">
+    <div class="card-title"><span class="bar"></span>대상 품목</div>
+    <div class="form-grid g3">
+      <div class="form-group"><label>품목번호 *</label><input id="sap-num" placeholder="A3C0056420000"></div>
+      <div class="form-group"><label>품목명</label><input id="sap-name" placeholder="Connector"></div>
+      <div class="form-group"><label>검토 일자</label><input type="date" id="sap-date"></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>검토 담당자</label><input id="sap-user" placeholder="성명"></div>
+      <div class="form-group"><label>성적서 Rev. 번호</label><input id="sap-rev" placeholder="예: Rev.3"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="bar"></span>성적서 내용 검토 (7개 항목)</div>
+    <div class="sap-grid" id="sap-checks">
+      <div class="sap-item" data-key="exist">
+        <div class="sap-item-label">① 성적서 유무</div>
+        <select onchange="sapCheck(this,'exist')"><option value="">선택</option><option value="ok">유</option><option value="ng">무 (SQM 요청)</option></select>
+      </div>
+      <div class="sap-item" data-key="ver">
+        <div class="sap-item-label">② 최신 버전 여부</div>
+        <select onchange="sapCheck(this,'ver')"><option value="">선택</option><option value="ok">최신</option><option value="ng">구버전 (SQM 요청)</option></select>
+      </div>
+      <div class="sap-item" data-key="visual">
+        <div class="sap-item-label">③ 외관 검사항목 완전성</div>
+        <select onchange="sapCheck(this,'visual')"><option value="">선택</option><option value="ok">정상</option><option value="ng">누락 있음</option></select>
+      </div>
+      <div class="sap-item" data-key="dim">
+        <div class="sap-item-label">④ 치수 검사항목 완전성</div>
+        <select onchange="sapCheck(this,'dim')"><option value="">선택</option><option value="ok">정상</option><option value="ng">누락 있음</option></select>
+      </div>
+      <div class="sap-item" data-key="partno">
+        <div class="sap-item-label">⑤ 품목번호 일치</div>
+        <select onchange="sapCheck(this,'partno')"><option value="">선택</option><option value="ok">일치</option><option value="ng">불일치 (검사 보류)</option></select>
+      </div>
+      <div class="sap-item" data-key="revision">
+        <div class="sap-item-label">⑥ 리비전 이전 품목 여부</div>
+        <select onchange="sapCheck(this,'revision')"><option value="">선택</option><option value="ok">해당 없음</option><option value="ng">해당 (구버전 동시 점검)</option></select>
+      </div>
+      <div class="sap-item" data-key="overall">
+        <div class="sap-item-label">⑦ 종합 검토 의견</div>
+        <select onchange="sapCheck(this,'overall')"><option value="">선택</option><option value="ok">이상 없음</option><option value="ng">이상 있음</option></select>
+      </div>
+    </div>
+    <div class="form-grid g1">
+      <div class="form-group"><label>SAP 특기사항란 기입 내용</label><textarea id="sap-note" placeholder="각 항목 검토 결과 및 이상 내용 구체 기재"></textarea></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-teal" onclick="saveSap()">💾 검토 결과 저장</button>
+      <button class="btn btn-outline btn-sm" onclick="clearSap()">초기화</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="bar"></span>성적서 검토 이력</div>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>검토일</th><th>품목번호</th><th>Rev.</th><th>담당자</th><th>종합결과</th><th>특이사항</th><th>삭제</th></tr></thead>
+        <tbody id="sap-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 측정의뢰 ═══════════════════════════════════ -->
+<div class="page" id="page-measure">
+  <div class="page-hdr">
+    <div class="page-hdr-left"><h2>🔬 측정의뢰 현황</h2><p>입고품 외 별도 측정의뢰 — 의뢰일·완료일·소요시간·결과 기록</p></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="bar"></span>측정의뢰 등록</div>
+    <div class="form-grid">
+      <div class="form-group"><label>의뢰일 *</label><input type="date" id="ms-date"></div>
+      <div class="form-group"><label>완료(예정)일</label><input type="date" id="ms-done"></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>품목번호</label><input id="ms-num" placeholder="품목번호"></div>
+      <div class="form-group"><label>품목명</label><input id="ms-name" placeholder="품목명"></div>
+    </div>
+    <div class="form-grid g1">
+      <div class="form-group"><label>의뢰 내용 *</label><textarea id="ms-desc" placeholder="측정 항목 및 목적 기재"></textarea></div>
+    </div>
+    <div class="form-grid g3">
+      <div class="form-group"><label>소요시간 (분)</label><input id="ms-time" type="number" placeholder="0"></div>
+      <div class="form-group"><label>측정 결과</label><select id="ms-result"><option value="">선택</option><option>정상</option><option>불량</option><option>진행 중</option></select></div>
+      <div class="form-group"><label>담당자</label><input id="ms-user" placeholder="성명"></div>
+    </div>
+    <div class="form-grid g1">
+      <div class="form-group"><label>비고</label><input id="ms-note" placeholder="특이사항"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-teal" onclick="saveMeasure()">+ 의뢰 등록</button>
+      <button class="btn btn-outline btn-sm" onclick="clearMeasure()">초기화</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="bar"></span>측정의뢰 현황</div>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>의뢰일</th><th>완료일</th><th>품목번호</th><th>품목명</th><th>의뢰 내용</th><th>소요(분)</th><th>결과</th><th>담당</th><th>처리</th></tr></thead>
+        <tbody id="ms-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 부적합 관리 ════════════════════════════════ -->
+<div class="page" id="page-nonconf">
+  <div class="page-hdr">
+    <div class="page-hdr-left"><h2>⚠️ 부적합 관리</h2><p>부적합 발생 → 격리 → 처리 → 완료 이력 추적</p></div>
+    <div class="page-hdr-right">
+      <button class="btn btn-red btn-sm" onclick="openNcModal()">+ 부적합 등록</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="bar"></span>부적합 현황</div>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>발생일</th><th>품목번호</th><th>품목명</th><th>유형</th><th>수량</th><th>상태</th><th>처리 방법</th><th>담당</th><th>처리</th></tr></thead>
+        <tbody id="nc-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 소모품 신청 ════════════════════════════════ -->
+<div class="page" id="page-supply">
+  <div class="page-hdr">
+    <div class="page-hdr-left"><h2>📦 소모품 · 용품 신청</h2><p>매월 말일까지 경영지원실(총무) 신청 → 익월 초 지급</p></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="bar"></span>신청 정보</div>
+    <div class="form-grid g3">
+      <div class="form-group"><label>신청 월</label><input type="month" id="sup-month"></div>
+      <div class="form-group"><label>신청자</label><input id="sup-user" placeholder="성명"></div>
+      <div class="form-group"><label>긴급 여부</label><select id="sup-urgent"><option>일반</option><option>긴급</option></select></div>
+    </div>
+    <div class="form-grid g1">
+      <div class="form-group"><label>수령 희망일</label><input type="date" id="sup-wish"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="bar"></span>신청 목록</div>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>분류</th><th>품목명</th><th>규격/사이즈</th><th>단위</th><th>재고</th><th>신청수량</th><th>사유</th></tr></thead>
+        <tbody id="sup-items">
+          <tr><td><span class="badge badge-blue">사무용품</span></td><td>A4 용지</td><td>80g/㎡</td><td>box</td><td><input style="width:50px;padding:3px 5px" type="number" placeholder="0"></td><td><input style="width:50px;padding:3px 5px" type="number" placeholder="0"></td><td><input style="width:100%" placeholder=""></td></tr>
+          <tr><td><span class="badge badge-blue">사무용품</span></td><td>프린터 잉크/토너</td><td>기종 확인 후</td><td>개</td><td><input style="width:50px;padding:3px 5px" type="number" placeholder="0"></td><td><input style="width:50px;padding:3px 5px" type="number" placeholder="0"></td><td><input style="width:100%" placeholder=""></td></tr>
+          <tr><td><span class="badge badge-blue">사무용품</span></td><td>검사 라벨 (합격/불합격)</td><td>적색/녹색</td><td>roll</td><td><input style="width:50px;padding:3px 5px" type="number" placeholder="0"></td><td><input style="width:50px;padding:3px 5px" type="number" placeholder="0"></td><td><input style="width:100%" placeholder=""></td></tr>
+          <tr><td><span class="badge badge-amber">안전용품</span></td><td>안전화</td><td><input style="width:80px;padding:3px 5px" placeholder="사이즈 mm"></td><td>켤레</td><td><input style="width:50px;padding:3px 5px" type="number" placeholder="0"></td><td><input style="width:50px;padding:3px 5px" type="number" placeholder="0"></td><td><input style="width:100%" placeholder=""></td></tr>
+          <tr><td><span class="badge badge-amber">안전용품</span></td><td>안전모</td><td><input style="width:80px;padding:3px 5px" placeholder="색상"></td><td>개</td><td><input style="width:50px;padding:3px 5px" type="number" placeholder="0"></td><td><input style="width:50px;padding:3px 5px" type="number" placeholder="0"></td><td><input style="width:100%" placeholder=""></td></tr>
+          <tr><td><span class="badge badge-amber">안전용품</span></td><td>면장갑 / 니트릴 장갑</td><td>M / L</td><td>box</td><td><input style="width:50px;padding:3px 5px" type="number" placeholder="0"></td><td><input style="width:50px;padding:3px 5px" type="number" placeholder="0"></td><td><input style="width:100%" placeholder=""></td></tr>
+          <tr><td><span class="badge badge-green">근무복</span></td><td>작업복 상의</td><td><input style="width:80px;padding:3px 5px" placeholder="사이즈"></td><td>벌</td><td><input style="width:50px;padding:3px 5px" type="number" placeholder="0"></td><td><input style="width:50px;padding:3px 5px" type="number" placeholder="0"></td><td><input style="width:100%" placeholder=""></td></tr>
+          <tr><td><span class="badge badge-green">근무복</span></td><td>작업복 하의</td><td><input style="width:80px;padding:3px 5px" placeholder="사이즈"></td><td>벌</td><td><input style="width:50px;padding:3px 5px" type="number" placeholder="0"></td><td><input style="width:50px;padding:3px 5px" type="number" placeholder="0"></td><td><input style="width:100%" placeholder=""></td></tr>
+          <tr><td><span class="badge badge-gray">기타</span></td><td><input style="width:100%;padding:3px 5px" placeholder="품목명 직접 입력"></td><td><input style="width:100%;padding:3px 5px" placeholder="규격"></td><td><input style="width:40px;padding:3px 5px" placeholder="단위"></td><td><input style="width:50px;padding:3px 5px" type="number" placeholder="0"></td><td><input style="width:50px;padding:3px 5px" type="number" placeholder="0"></td><td><input style="width:100%" placeholder=""></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="form-grid g1" style="margin-top:10px">
+      <div class="form-group"><label>특이사항</label><textarea id="sup-note" placeholder="긴급 사유, 추가 요청 사항 등"></textarea></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-teal" onclick="saveSupply()">📨 신청서 제출</button>
+      <button class="btn btn-outline btn-sm" onclick="printSupply()">🖨️ 출력</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="bar"></span>신청 이력</div>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>신청월</th><th>신청자</th><th>긴급</th><th>신청일</th><th>상태</th><th>비고</th></tr></thead>
+        <tbody id="sup-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 보고서 ══════════════════════════════════════ -->
+<div class="page" id="page-report">
+  <div class="page-hdr">
+    <div class="page-hdr-left"><h2>📁 보고서 · 이력</h2><p>기간별 검사 현황 조회 및 보고서 출력</p></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="bar"></span>기간 조회</div>
+    <div class="form-grid g3">
+      <div class="form-group"><label>시작일</label><input type="date" id="rp-from"></div>
+      <div class="form-group"><label>종료일</label><input type="date" id="rp-to"></div>
+      <div class="form-group"><label>품목번호 (선택)</label><input id="rp-num" placeholder="전체"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary btn-sm" onclick="filterReport()">조회</button>
+      <button class="btn btn-outline btn-sm" onclick="resetReport()">전체</button>
+      <button class="btn btn-teal btn-sm" onclick="printReport()">🖨️ 일일 보고서 출력</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="bar"></span>검사 이력</div>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>일자</th><th>품목번호</th><th>품목명</th><th>수량</th><th>소요(분)</th><th>판정</th><th>SAP</th><th>특이사항</th></tr></thead>
+        <tbody id="rp-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- 부적합 Modal -->
+<div class="modal-bg" id="nc-modal">
+  <div class="modal">
+    <div class="modal-title">⚠️ 부적합 등록</div>
+    <div class="form-grid">
+      <div class="form-group"><label>발생일 *</label><input type="date" id="nc-date"></div>
+      <div class="form-group"><label>품목번호 *</label><input id="nc-num" placeholder="품목번호"></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>품목명</label><input id="nc-name"></div>
+      <div class="form-group"><label>부적합 수량</label><input id="nc-qty" type="number" placeholder="0"></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>유형</label><select id="nc-type"><option>외관 불량</option><option>치수 불량</option><option>성적서 누락</option><option>기준서 미갱신</option><option>기타</option></select></div>
+      <div class="form-group"><label>처리 방법</label><select id="nc-action"><option>반품</option><option>특채</option><option>재작업</option><option>폐기</option><option>보류</option></select></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>담당자</label><input id="nc-user" placeholder="성명"></div>
+      <div class="form-group"><label>격리 구역</label><input id="nc-loc" placeholder="불량품 보관 창고 위치"></div>
+    </div>
+    <div class="form-grid g1">
+      <div class="form-group"><label>상세 내용</label><textarea id="nc-desc" placeholder="부적합 내용 구체 기재"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-red" onclick="saveNc()">등록</button>
+      <button class="btn btn-outline" onclick="closeModal('nc-modal')">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase -->
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { getDatabase, ref, push, set, get, remove, onValue }
+  from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+
+const app = initializeApp({
+  apiKey:    'AIzaSyBYqd2uRr1ZvFLDCWuS15h9qFkT-Dvg5Es',
+  authDomain:'insys-work.firebaseapp.com',
+  databaseURL:'https://insys-work-default-rtdb.firebaseio.com',
+  projectId: 'insys-work',
+  storageBucket:'insys-work.appspot.com',
+  messagingSenderId:'942952823146',
+  appId:     '1:942952823146:web:abc123',
+});
+const db = getDatabase(app);
+
+// ── state
+let incoming = {}, sapRecs = {}, measures = {}, ncRecs = {}, supplyRecs = {};
+
+// ── init
+window.addEventListener('load', () => {
+  const today = new Date().toISOString().slice(0,10);
+  ['in-date','sap-date','ms-date','nc-date'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=today; });
+  document.getElementById('sup-month').value = today.slice(0,7);
+  document.getElementById('today-str').textContent =
+    '기준일: ' + new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'});
+
+  // Firebase 실시간 리스닝
+  onValue(ref(db,'/ims/incoming'),  snap=>{ incoming  = snap.val()||{}; renderAll(); });
+  onValue(ref(db,'/ims/sap'),       snap=>{ sapRecs   = snap.val()||{}; renderAll(); });
+  onValue(ref(db,'/ims/measures'),  snap=>{ measures  = snap.val()||{}; renderAll(); });
+  onValue(ref(db,'/ims/nc'),        snap=>{ ncRecs    = snap.val()||{}; renderAll(); });
+  onValue(ref(db,'/ims/supply'),    snap=>{ supplyRecs= snap.val()||{}; renderAll(); });
+});
+
+function renderAll(){ renderDash(); renderInTable(); renderSapTable(); renderMsTable(); renderNcTable(); renderSupTable(); renderReport(Object.values(incoming)); }
+
+// ── UTILS
+window.showPage = p => {
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(el=>el.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  ['dash','incoming','sap','measure','nonconf','supply','report'].forEach((n,i)=>{ if(n===p) document.querySelectorAll('.nav-tab')[i].classList.add('active'); });
+};
+window.toast = (msg,dur=2200) => { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),dur); };
+window.closeModal = id => document.getElementById(id).classList.remove('open');
+window.openNcModal = () => document.getElementById('nc-modal').classList.add('open');
+const fmtD = iso => iso?iso.replace(/-/g,'.'):'';
+const fmtDt = iso => { const d=new Date(iso); return `${(d.getMonth()+1).toString().padStart(2,'0')}.${d.getDate().toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`; };
+const badgeClass = v => v==='합격'||v==='정상'||v==='완료'?'badge-green': v==='불합격'||v==='불량'||v==='미처리'?'badge-red': v==='보류'||v==='진행 중'?'badge-amber':'badge-gray';
+
+// ── DASH
+function renderDash(){
+  const arr = Object.values(incoming);
+  const today = new Date().toISOString().slice(0,10);
+  const thisMonth = today.slice(0,7);
+  const todayCnt = arr.filter(r=>r.date===today).length;
+  const passCnt  = arr.filter(r=>r.month===thisMonth && r.judge==='합격').length;
+  const ncOpen   = Object.values(ncRecs).filter(r=>r.status!=='완료').length;
+  const sapPend  = Object.values(sapRecs).filter(r=>r.overall==='ng').length;
+  const measProg = Object.values(measures).filter(r=>r.result==='진행 중').length;
+
+  document.getElementById('d-today').textContent = todayCnt;
+  document.getElementById('d-pass').textContent  = passCnt;
+  document.getElementById('d-nc').textContent    = ncOpen;
+  document.getElementById('d-sap').textContent   = sapPend;
+  document.getElementById('d-meas').textContent  = measProg;
+  document.getElementById('nc-badge').textContent= ncOpen;
+
+  const alerts = document.getElementById('dash-alerts');
+  alerts.innerHTML = '';
+  if(ncOpen>0) alerts.innerHTML += `<div class="alert alert-red">⚠️ 미처리 부적합 <b>${ncOpen}건</b>이 있습니다.</div>`;
+  if(sapPend>0) alerts.innerHTML += `<div class="alert alert-amber">📋 SAP 성적서 이상 <b>${sapPend}건</b> 확인 필요</div>`;
+
+  const recent = arr.sort((a,b)=>b.dt.localeCompare(a.dt)).slice(0,5);
+  const tb = document.getElementById('dash-recent');
+  tb.innerHTML = recent.length ? recent.map(r=>`<tr><td>${fmtD(r.date)}</td><td style="font-size:11px">${r.num}</td><td>${r.name}</td><td><span class="badge ${badgeClass(r.judge)}">${r.judge}</span></td></tr>`).join('') : '<tr><td colspan="4" style="text-align:center;color:var(--slate)">이력 없음</td></tr>';
+
+  const ncList = Object.values(ncRecs).filter(r=>r.status!=='완료');
+  const ncDiv = document.getElementById('dash-nc-list');
+  ncDiv.innerHTML = ncList.length ? ncList.map(r=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:12px"><div><b>${r.num}</b> <span style="color:var(--slate)">${r.ncType}</span><br><span style="font-size:10px;color:var(--slate)">${fmtD(r.date)}</span></div><span class="badge badge-red">${r.action}</span></div>`).join('') : '<p style="color:var(--slate);font-size:12px;padding:8px 0">부적합 없음 ✅</p>';
+}
+
+// ── INCOMING
+window.toggleCheck = el => {
+  const cb = el.querySelector('input[type=checkbox]');
+  cb.checked = !cb.checked;
+  el.classList.toggle('checked', cb.checked);
+  el.querySelector('.check-row-result').textContent = cb.checked ? '✅ 확인' : '';
+};
+window.clearIncoming = () => ['in-num','in-name','in-user','in-note'].forEach(id=>document.getElementById(id).value='');
+
+window.saveIncoming = async () => {
+  const num = document.getElementById('in-num').value.trim();
+  const name = document.getElementById('in-name').value.trim();
+  const judge = document.getElementById('in-judge').value;
+  if(!num||!name||!judge){ toast('⚠️ 품목번호·품목명·판정은 필수입니다.'); return; }
+  const date = document.getElementById('in-date').value;
+  const rec = {
+    dt: new Date().toISOString(), date, month: date.slice(0,7),
+    time: document.getElementById('in-time').value,
+    user: document.getElementById('in-user').value,
+    num, name,
+    qty:    document.getElementById('in-qty').value,
+    sample: document.getElementById('in-sample').value,
+    elapsed:document.getElementById('in-time2').value,
+    visual: document.getElementById('in-visual').value,
+    dim:    document.getElementById('in-dim').value,
+    judge, sap: document.getElementById('in-sap').value,
+    note:   document.getElementById('in-note').value,
+  };
+  await push(ref(db,'/ims/incoming'), rec);
+  clearIncoming();
+  toast('✅ 검사 결과가 저장되었습니다.');
+};
+
+window.saveIncomingNc = () => {
+  const num = document.getElementById('in-num').value.trim();
+  if(num) document.getElementById('nc-num').value = num;
+  const name = document.getElementById('in-name').value.trim();
+  if(name) document.getElementById('nc-name').value = name;
+  openNcModal();
+};
+
+function renderInTable(){
+  const arr = Object.entries(incoming).sort((a,b)=>b[1].dt.localeCompare(a[1].dt));
+  const tb = document.getElementById('in-tbody');
+  tb.innerHTML = arr.length ? arr.map(([id,r])=>`<tr><td>${fmtD(r.date)}</td><td style="font-size:11px">${r.num}</td><td>${r.name}</td><td>${r.qty||'-'}</td><td>${r.elapsed||'-'}</td><td><span class="badge ${badgeClass(r.judge)}">${r.judge}</span></td><td><span class="badge ${badgeClass(r.sap)}">${r.sap||'-'}</span></td><td style="font-size:11px;max-width:160px">${r.note||'-'}</td><td><button class="btn btn-outline btn-sm" onclick="delItem('/ims/incoming','${id}')">삭제</button></td></tr>`).join('') : '<tr><td colspan="9" style="text-align:center;color:var(--slate);padding:20px">이력 없음</td></tr>';
+  renderReport(Object.values(incoming));
+}
+
+// ── SAP
+window.sapCheck = (sel, key) => {
+  const item = sel.closest('.sap-item');
+  item.className = 'sap-item' + (sel.value==='ok'?' ok':sel.value==='ng'?' ng':'');
+};
+window.clearSap = () => ['sap-num','sap-name','sap-rev','sap-user','sap-note'].forEach(id=>document.getElementById(id).value='');
+window.saveSap = async () => {
+  const num = document.getElementById('sap-num').value.trim();
+  if(!num){ toast('⚠️ 품목번호는 필수입니다.'); return; }
+  const items = {};
+  document.querySelectorAll('#sap-checks .sap-item').forEach(el=>{ items[el.dataset.key]=el.querySelector('select').value; });
+  const rec = {
+    dt: new Date().toISOString(),
+    date: document.getElementById('sap-date').value,
+    num, name: document.getElementById('sap-name').value,
+    rev: document.getElementById('sap-rev').value,
+    user: document.getElementById('sap-user').value,
+    note: document.getElementById('sap-note').value,
+    overall: items.overall || '',
+    items,
+  };
+  await push(ref(db,'/ims/sap'), rec);
+  clearSap();
+  toast('✅ SAP 성적서 검토 결과가 저장되었습니다.');
+};
+function renderSapTable(){
+  const arr = Object.entries(sapRecs).sort((a,b)=>b[1].dt.localeCompare(a[1].dt));
+  const tb = document.getElementById('sap-tbody');
+  tb.innerHTML = arr.length ? arr.map(([id,r])=>`<tr><td>${fmtD(r.date)}</td><td style="font-size:11px">${r.num}</td><td>${r.rev||'-'}</td><td>${r.user||'-'}</td><td><span class="badge ${r.overall==='ok'?'badge-green':r.overall==='ng'?'badge-red':'badge-gray'}">${r.overall==='ok'?'이상없음':r.overall==='ng'?'이상있음':'-'}</span></td><td style="font-size:11px;max-width:160px">${r.note||'-'}</td><td><button class="btn btn-outline btn-sm" onclick="delItem('/ims/sap','${id}')">삭제</button></td></tr>`).join('') : '<tr><td colspan="7" style="text-align:center;color:var(--slate);padding:20px">이력 없음</td></tr>';
+}
+
+// ── MEASURE
+window.clearMeasure = () => ['ms-num','ms-name','ms-desc','ms-time','ms-user','ms-note'].forEach(id=>document.getElementById(id).value='');
+window.saveMeasure = async () => {
+  const desc = document.getElementById('ms-desc').value.trim();
+  if(!desc){ toast('⚠️ 의뢰 내용은 필수입니다.'); return; }
+  const rec = {
+    dt: new Date().toISOString(),
+    date: document.getElementById('ms-date').value,
+    done: document.getElementById('ms-done').value,
+    num:  document.getElementById('ms-num').value,
+    name: document.getElementById('ms-name').value,
+    desc, time: document.getElementById('ms-time').value,
+    result: document.getElementById('ms-result').value,
+    user: document.getElementById('ms-user').value,
+    note: document.getElementById('ms-note').value,
+  };
+  await push(ref(db,'/ims/measures'), rec);
+  clearMeasure();
+  toast('✅ 측정의뢰가 등록되었습니다.');
+};
+window.completeMeasure = async (id) => {
+  const rec = measures[id]; if(!rec) return;
+  rec.result = '완료';
+  await set(ref(db,'/ims/measures/'+id), rec);
+  toast('완료 처리되었습니다.');
+};
+function renderMsTable(){
+  const arr = Object.entries(measures).sort((a,b)=>b[1].dt.localeCompare(a[1].dt));
+  const tb = document.getElementById('ms-tbody');
+  tb.innerHTML = arr.length ? arr.map(([id,r])=>`<tr><td>${fmtD(r.date)}</td><td>${fmtD(r.done)||'-'}</td><td style="font-size:11px">${r.num||'-'}</td><td>${r.name||'-'}</td><td style="font-size:11px;max-width:140px">${r.desc}</td><td>${r.time||'-'}</td><td><span class="badge ${badgeClass(r.result)}">${r.result||'-'}</span></td><td>${r.user||'-'}</td><td><button class="btn btn-green btn-sm" onclick="completeMeasure('${id}')">완료</button> <button class="btn btn-outline btn-sm" onclick="delItem('/ims/measures','${id}')">삭제</button></td></tr>`).join('') : '<tr><td colspan="9" style="text-align:center;color:var(--slate);padding:20px">이력 없음</td></tr>';
+}
+
+// ── NC
+window.saveNc = async () => {
+  const num = document.getElementById('nc-num').value.trim();
+  if(!num){ toast('⚠️ 품목번호는 필수입니다.'); return; }
+  const rec = {
+    dt: new Date().toISOString(),
+    date: document.getElementById('nc-date').value,
+    num, name: document.getElementById('nc-name').value,
+    qty:  document.getElementById('nc-qty').value,
+    ncType: document.getElementById('nc-type').value,
+    action: document.getElementById('nc-action').value,
+    user:   document.getElementById('nc-user').value,
+    loc:    document.getElementById('nc-loc').value,
+    desc:   document.getElementById('nc-desc').value,
+    status: '미처리',
+  };
+  await push(ref(db,'/ims/nc'), rec);
+  closeModal('nc-modal');
+  toast('✅ 부적합이 등록되었습니다.');
+};
+window.resolveNc = async (id) => {
+  const rec = ncRecs[id]; if(!rec) return;
+  rec.status = '완료'; rec.resolvedDt = new Date().toISOString().slice(0,10);
+  await set(ref(db,'/ims/nc/'+id), rec);
+  toast('완료 처리되었습니다.');
+};
+function renderNcTable(){
+  const arr = Object.entries(ncRecs).sort((a,b)=>b[1].dt.localeCompare(a[1].dt));
+  const tb = document.getElementById('nc-tbody');
+  tb.innerHTML = arr.length ? arr.map(([id,r])=>`<tr class="${r.status!=='완료'?'tbl-warn':''}"><td>${fmtD(r.date)}</td><td style="font-size:11px">${r.num}</td><td>${r.name||'-'}</td><td><span class="badge badge-red">${r.ncType}</span></td><td>${r.qty||'-'}</td><td><span class="badge ${r.status==='완료'?'badge-green':'badge-red'}">${r.status}</span></td><td>${r.action}</td><td>${r.user||'-'}</td><td>${r.status!=='완료'?`<button class="btn btn-green btn-sm" onclick="resolveNc('${id}')">완료</button>`:''} <button class="btn btn-outline btn-sm" onclick="delItem('/ims/nc','${id}')">삭제</button></td></tr>`).join('') : '<tr><td colspan="9" style="text-align:center;color:var(--slate);padding:20px">이력 없음</td></tr>';
+}
+
+// ── SUPPLY
+window.saveSupply = async () => {
+  const month = document.getElementById('sup-month').value;
+  const user  = document.getElementById('sup-user').value;
+  if(!month){ toast('⚠️ 신청 월을 선택해 주세요.'); return; }
+  const rec = {
+    dt: new Date().toISOString(), month, user,
+    urgent: document.getElementById('sup-urgent').value,
+    wish:   document.getElementById('sup-wish').value,
+    note:   document.getElementById('sup-note').value,
+    status: '신청 중',
+  };
+  await push(ref(db,'/ims/supply'), rec);
+  toast('✅ 소모품 신청이 제출되었습니다.');
+};
+window.printSupply = () => { window.print(); };
+function renderSupTable(){
+  const arr = Object.entries(supplyRecs).sort((a,b)=>b[1].dt.localeCompare(a[1].dt));
+  const tb = document.getElementById('sup-tbody');
+  tb.innerHTML = arr.length ? arr.map(([id,r])=>`<tr><td>${r.month}</td><td>${r.user||'-'}</td><td><span class="badge ${r.urgent==='긴급'?'badge-red':'badge-gray'}">${r.urgent}</span></td><td>${fmtD(r.dt.slice(0,10))}</td><td><span class="badge badge-blue">${r.status}</span></td><td style="font-size:11px">${r.note||'-'}</td></tr>`).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--slate);padding:20px">이력 없음</td></tr>';
+}
+
+// ── REPORT
+window.filterReport = () => {
+  const from = document.getElementById('rp-from').value;
+  const to   = document.getElementById('rp-to').value;
+  const num  = document.getElementById('rp-num').value.trim();
+  let arr = Object.values(incoming);
+  if(from) arr = arr.filter(r=>r.date>=from);
+  if(to)   arr = arr.filter(r=>r.date<=to);
+  if(num)  arr = arr.filter(r=>r.num.includes(num));
+  renderReport(arr);
+};
+window.resetReport = () => renderReport(Object.values(incoming));
+window.printReport = () => { window.print(); };
+
+function renderReport(arr){
+  const sorted = [...arr].sort((a,b)=>b.dt.localeCompare(a.dt));
+  const tb = document.getElementById('rp-tbody');
+  tb.innerHTML = sorted.length ? sorted.map(r=>`<tr><td>${fmtD(r.date)}</td><td style="font-size:11px">${r.num}</td><td>${r.name}</td><td>${r.qty||'-'}</td><td>${r.elapsed||'-'}</td><td><span class="badge ${badgeClass(r.judge)}">${r.judge}</span></td><td><span class="badge ${badgeClass(r.sap)}">${r.sap||'-'}</span></td><td style="font-size:11px;max-width:160px">${r.note||'-'}</td></tr>`).join('') : '<tr><td colspan="8" style="text-align:center;color:var(--slate);padding:20px">이력 없음</td></tr>';
+}
+
+// ── DELETE
+window.delItem = async (path, id) => {
+  if(!confirm('삭제하시겠습니까?')) return;
+  await remove(ref(db, path+'/'+id));
+  toast('삭제되었습니다.');
+};
+</script>
+</body>
+</html>
