@@ -1000,17 +1000,18 @@ textarea{resize:vertical;min-height:64px}
 const FB_URL = 'https://insys-work-default-rtdb.firebaseio.com';
 
 async function fbGet(path){
-  try{
-    const r = await fetch(`${FB_URL}${path}.json`);
-    return r.ok ? r.json() : null;
-  } catch(e){ return null; }
+  const r = await fetch(`${FB_URL}${path}.json`);
+  if(r.status === 404 || r.status === 204) return null; // 데이터 없음 = 정상
+  if(!r.ok) return null;
+  const d = await r.json();
+  return d; // null이면 빈 경로
 }
 async function fbPush(path, data){
   const r = await fetch(`${FB_URL}${path}.json`, {
     method:'POST', body:JSON.stringify(data),
     headers:{'Content-Type':'application/json'}
   });
-  if(!r.ok) throw new Error('저장 실패 ('+r.status+')');
+  if(!r.ok){ const t=await r.text(); throw new Error(t); }
   return (await r.json()).name;
 }
 async function fbSet(path, data){
@@ -1018,36 +1019,35 @@ async function fbSet(path, data){
     method:'PUT', body:JSON.stringify(data),
     headers:{'Content-Type':'application/json'}
   });
-  if(!r.ok) throw new Error('수정 실패 ('+r.status+')');
+  if(!r.ok){ const t=await r.text(); throw new Error(t); }
 }
 async function fbRemove(path){
-  const r = await fetch(`${FB_URL}${path}.json`, {method:'DELETE'});
-  if(!r.ok) throw new Error('삭제 실패 ('+r.status+')');
+  await fetch(`${FB_URL}${path}.json`, {method:'DELETE'});
 }
 
-// ── 실시간 폴링 (3초마다 갱신) ───────────────────
-let _polling = null;
-async function startPolling(){
-  await loadAllData();
-  _polling = setInterval(loadAllData, 3000);
-}
+// 저장·삭제 후 수동 갱신 (폴링 없음)
 async function loadAllData(){
-  const [inc, sap, meas, nc, sup, act] = await Promise.all([
-    fbGet('/ims/incoming'), fbGet('/ims/sap'),
-    fbGet('/ims/measures'), fbGet('/ims/nc'),
-    fbGet('/ims/supply'),   fbGet('/ims/actions'),
-  ]);
-  incoming    = inc  || {};
-  sapRecs     = sap  || {};
-  measures    = meas || {};
-  ncRecs      = nc   || {};
-  supplyRecs  = sup  || {};
-  actions     = act  || {};
-  renderAll();
-  // 연결 상태 표시
-  const s=document.getElementById('fb-status');
-  if(s){ s.textContent='🟢 DB 연결됨'; s.style.background='rgba(26,122,74,0.3)'; s.style.color='#6EE7B7'; }
+  try {
+    const [inc,sap,meas,nc,sup,act] = await Promise.all([
+      fbGet('/ims/incoming'), fbGet('/ims/sap'),
+      fbGet('/ims/measures'), fbGet('/ims/nc'),
+      fbGet('/ims/supply'),   fbGet('/ims/actions'),
+    ]);
+    incoming   = inc  || {};
+    sapRecs    = sap  || {};
+    measures   = meas || {};
+    ncRecs     = nc   || {};
+    supplyRecs = sup  || {};
+    actions    = act  || {};
+    renderAll();
+    const s=document.getElementById('fb-status');
+    if(s){ s.textContent='🟢 DB 연결됨'; s.style.background='rgba(26,122,74,0.3)'; s.style.color='#6EE7B7'; }
+  } catch(e){
+    const s=document.getElementById('fb-status');
+    if(s){ s.textContent='🔴 연결 실패'; s.style.background='rgba(192,57,43,0.3)'; s.style.color='#FCA5A5'; }
+  }
 }
+async function startPolling(){ await loadAllData(); } // 최초 1회만 로드
 
 
 // ── State ──────────────────────────────────────────
