@@ -682,6 +682,25 @@ textarea{resize:vertical;min-height:64px}
 </div>
 
 <!-- Firebase -->
+<script>
+// ── 전역 함수 (module 밖에 선언해야 onclick에서 동작) ──
+function showPage(p) {
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(el=>el.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  ['dash','incoming','sap','measure','nonconf','supply','action','report'].forEach((n,i)=>{
+    if(n===p) document.querySelectorAll('.nav-tab')[i].classList.add('active');
+  });
+}
+function toast(msg,dur=2200){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),dur);
+}
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+function openNcModal(){ document.getElementById('nc-modal').classList.add('open'); }
+</script>
+
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import { getDatabase, ref, push, set, get, remove, onValue }
@@ -720,15 +739,6 @@ window.addEventListener('load', () => {
 function renderAll(){ renderDash(); renderInTable(); renderSapTable(); renderMsTable(); renderNcTable(); renderSupTable(); renderReport(Object.values(incoming)); renderActionPage(); }
 
 // ── UTILS
-window.showPage = p => {
-  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
-  document.querySelectorAll('.nav-tab').forEach(el=>el.classList.remove('active'));
-  document.getElementById('page-'+p).classList.add('active');
-  ['dash','incoming','sap','measure','nonconf','supply','action','report'].forEach((n,i)=>{ if(n===p) document.querySelectorAll('.nav-tab')[i].classList.add('active'); });
-};
-window.toast = (msg,dur=2200) => { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),dur); };
-window.closeModal = id => document.getElementById(id).classList.remove('open');
-window.openNcModal = () => document.getElementById('nc-modal').classList.add('open');
 const fmtD = iso => iso?iso.replace(/-/g,'.'):'';
 const fmtDt = iso => { const d=new Date(iso); return `${(d.getMonth()+1).toString().padStart(2,'0')}.${d.getDate().toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`; };
 const badgeClass = v => v==='합격'||v==='정상'||v==='완료'?'badge-green': v==='불합격'||v==='불량'||v==='미처리'?'badge-red': v==='보류'||v==='진행 중'?'badge-amber':'badge-gray';
