@@ -201,7 +201,7 @@ textarea{resize:vertical;min-height:64px}
       <div class="dot"></div>
       <div>
         <div class="nav-title">셰플러 이천공장 수입검사 업무관리 시스템</div>
-        <div class="nav-sub">Schaeffler Icheon  ·  (주)인시스</div>
+        <div class="nav-sub">Schaeffler Icheon  ·  (주)인시스  <span id="fb-status" style="margin-left:8px;font-size:10px;padding:2px 7px;border-radius:10px;background:rgba(255,255,255,0.1);color:#94A3B8">⏳ 연결 중...</span></div>
       </div>
     </div>
     <div class="nav-tabs">
@@ -516,6 +516,13 @@ textarea{resize:vertical;min-height:64px}
 
   <!-- ══ 현황 통계 ══ -->
   <div id="dash-alerts"></div>
+  <div id="fb-rules-notice" style="display:none" class="alert alert-red">
+    ⛔ <b>Firebase 저장이 안 될 경우</b> — Firebase Console에서 보안 규칙을 아래와 같이 설정하세요:<br>
+    <code style="background:rgba(0,0,0,0.1);padding:4px 8px;border-radius:4px;font-size:11px;display:block;margin-top:6px">
+    { "rules": { ".read": true, ".write": true } }
+    </code>
+    <span style="font-size:11px">설정 경로: Firebase Console → insys-work → Realtime Database → 규칙(Rules)</span>
+  </div>
   <div class="stat-grid">
     <div class="stat-card teal"><div class="stat-label">오늘 입고 검사</div><div class="stat-val" id="d-today">0</div><div class="stat-sub">건</div></div>
     <div class="stat-card green"><div class="stat-label">이번 달 합격</div><div class="stat-val" id="d-pass">0</div><div class="stat-sub">건</div></div>
@@ -1000,6 +1007,22 @@ firebase.initializeApp({
 });
 const db = firebase.database();
 
+// ── Firebase 연결 상태 모니터링 ──────────────────
+const connRef = db.ref('.info/connected');
+connRef.on('value', snap => {
+  const el = document.getElementById('fb-status');
+  if(!el) return;
+  if(snap.val() === true){
+    el.textContent = '🟢 DB 연결됨';
+    el.style.background = 'rgba(26,122,74,0.3)';
+    el.style.color = '#6EE7B7';
+  } else {
+    el.textContent = '🔴 DB 연결 안됨';
+    el.style.background = 'rgba(192,57,43,0.3)';
+    el.style.color = '#FCA5A5';
+  }
+});
+
 // ── State ──────────────────────────────────────────
 let incoming={}, sapRecs={}, measures={}, ncRecs={}, supplyRecs={}, actions={};
 let supTempItems = [];
@@ -1025,13 +1048,26 @@ const fmtDt = iso => { const d=new Date(iso); return `${String(d.getMonth()+1).p
 const badgeClass = v => v==='합격'||v==='정상'||v==='완료'?'badge-green':v==='불합격'||v==='불량'||v==='미처리'?'badge-red':v==='보류'||v==='진행 중'||v==='이상있음'?'badge-amber':'badge-gray';
 
 function fbPush(path, data){
-  return db.ref(path).push(data);
+  return db.ref(path).push(data)
+    .catch(e=>{
+      if(e.code==='PERMISSION_DENIED'){
+        toast('⛔ 저장 권한 없음 — Firebase 보안 규칙을 확인하세요', 6000);
+        const n=document.getElementById('fb-rules-notice'); if(n) n.style.display='flex';
+        const s=document.getElementById('fb-status');
+        if(s){ s.textContent='⛔ 권한 없음'; s.style.background='rgba(192,57,43,0.4)'; s.style.color='#FCA5A5'; }
+      } else {
+        toast('❌ 저장 실패: '+e.message, 5000);
+      }
+      throw e;
+    });
 }
 function fbSet(path, data){
-  return db.ref(path).set(data);
+  return db.ref(path).set(data)
+    .catch(e=>{ toast('❌ 수정 실패: '+e.message, 4000); throw e; });
 }
 function fbRemove(path){
-  return db.ref(path).remove();
+  return db.ref(path).remove()
+    .catch(e=>{ toast('❌ 삭제 실패: '+e.message, 4000); throw e; });
 }
 
 // ── Delete any item ────────────────────────────────
