@@ -984,9 +984,28 @@ textarea{resize:vertical;min-height:64px}
 </div>
 
 <!-- Firebase -->
+<!-- ═══════════════════════════════════════════════════════
+     GLOBAL SCRIPT — Firebase CDN (non-module) + All Functions
+════════════════════════════════════════════════════════ -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 <script>
-// ── 전역 함수 (module 밖에 선언해야 onclick에서 동작) ──
-function showPage(p) {
+// ── Firebase Init ──────────────────────────────────
+firebase.initializeApp({
+  apiKey:      'AIzaSyBYqd2uRr1ZvFLDCWuS15h9qFkT-Dvg5Es',
+  authDomain:  'insys-work.firebaseapp.com',
+  databaseURL: 'https://insys-work-default-rtdb.firebaseio.com',
+  projectId:   'insys-work',
+  storageBucket:'insys-work.appspot.com',
+});
+const db = firebase.database();
+
+// ── State ──────────────────────────────────────────
+let incoming={}, sapRecs={}, measures={}, ncRecs={}, supplyRecs={}, actions={};
+let supTempItems = [];
+
+// ── Utils ──────────────────────────────────────────
+function showPage(p){
   document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(el=>el.classList.remove('active'));
   document.getElementById('page-'+p).classList.add('active');
@@ -994,318 +1013,406 @@ function showPage(p) {
     if(n===p) document.querySelectorAll('.nav-tab')[i].classList.add('active');
   });
 }
-function toast(msg,dur=2200){
+function toast(msg,dur=2400){
   const t=document.getElementById('toast');
   t.textContent=msg; t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),dur);
 }
 function closeModal(id){ document.getElementById(id).classList.remove('open'); }
 function openNcModal(){ document.getElementById('nc-modal').classList.add('open'); }
-</script>
+const fmtD  = iso => iso?iso.replace(/-/g,'.'):'-';
+const fmtDt = iso => { const d=new Date(iso); return `${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
+const badgeClass = v => v==='합격'||v==='정상'||v==='완료'?'badge-green':v==='불합격'||v==='불량'||v==='미처리'?'badge-red':v==='보류'||v==='진행 중'||v==='이상있음'?'badge-amber':'badge-gray';
 
-<script type="module">
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-import { getDatabase, ref, push, set, get, remove, onValue }
-  from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+function fbPush(path, data){
+  return db.ref(path).push(data);
+}
+function fbSet(path, data){
+  return db.ref(path).set(data);
+}
+function fbRemove(path){
+  return db.ref(path).remove();
+}
 
-const app = initializeApp({
-  apiKey:    'AIzaSyBYqd2uRr1ZvFLDCWuS15h9qFkT-Dvg5Es',
-  authDomain:'insys-work.firebaseapp.com',
-  databaseURL:'https://insys-work-default-rtdb.firebaseio.com',
-  projectId: 'insys-work',
-  storageBucket:'insys-work.appspot.com',
-  messagingSenderId:'942952823146',
-  appId:     '1:942952823146:web:abc123',
-});
-const db = getDatabase(app);
+// ── Delete any item ────────────────────────────────
+function delItem(path, id){
+  if(!confirm('삭제하시겠습니까?')) return;
+  fbRemove(path+'/'+id).then(()=>toast('삭제되었습니다.')).catch(e=>toast('오류: '+e.message));
+}
 
-// ── state
-let incoming = {}, sapRecs = {}, measures = {}, ncRecs = {}, supplyRecs = {};
-
-// ── init
+// ── Init ──────────────────────────────────────────
 window.addEventListener('load', () => {
   const today = new Date().toISOString().slice(0,10);
-  ['in-date','sap-date','ms-date','nc-date','ap-start'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=today; });
-  document.getElementById('sup-month').value = today.slice(0,7);
-  document.getElementById('today-str').textContent =
-    '기준일: ' + new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'});
-
-  // 플로우차트·메뉴가이드 — DOM 준비 후 즉시 렌더
-  renderFlowchart();
-  renderMenuGuide();
+  ['in-date','sap-date','ms-date','nc-date','ap-start'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value=today;
+  });
+  const el=document.getElementById('sup-month'); if(el) el.value=today.slice(0,7);
+  const ts=document.getElementById('today-str');
+  if(ts) ts.textContent='기준일: '+new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'});
 
   // Firebase 실시간 리스닝
-  onValue(ref(db,'/ims/incoming'),  snap=>{ incoming  = snap.val()||{}; renderAll(); });
-  onValue(ref(db,'/ims/sap'),       snap=>{ sapRecs   = snap.val()||{}; renderAll(); });
-  onValue(ref(db,'/ims/measures'),  snap=>{ measures  = snap.val()||{}; renderAll(); });
-  onValue(ref(db,'/ims/nc'),        snap=>{ ncRecs    = snap.val()||{}; renderAll(); });
-  onValue(ref(db,'/ims/supply'),    snap=>{ supplyRecs= snap.val()||{}; renderAll(); });
+  db.ref('/ims/incoming').on('value', snap=>{ incoming=snap.val()||{};   renderAll(); });
+  db.ref('/ims/sap').on('value',      snap=>{ sapRecs=snap.val()||{};    renderAll(); });
+  db.ref('/ims/measures').on('value', snap=>{ measures=snap.val()||{};   renderAll(); });
+  db.ref('/ims/nc').on('value',       snap=>{ ncRecs=snap.val()||{};     renderAll(); });
+  db.ref('/ims/supply').on('value',   snap=>{ supplyRecs=snap.val()||{}; renderAll(); });
+  db.ref('/ims/actions').on('value',  snap=>{ actions=snap.val()||{};    renderAll(); });
 });
 
-function renderAll(){ renderDash(); renderInTable(); renderSapTable(); renderMsTable(); renderNcTable(); renderSupTable(); renderReport(Object.values(incoming)); renderActionPage(); }
-
-// ── UTILS
-const fmtD = iso => iso?iso.replace(/-/g,'.'):'';
-const fmtDt = iso => { const d=new Date(iso); return `${(d.getMonth()+1).toString().padStart(2,'0')}.${d.getDate().toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`; };
-const badgeClass = v => v==='합격'||v==='정상'||v==='완료'?'badge-green': v==='불합격'||v==='불량'||v==='미처리'?'badge-red': v==='보류'||v==='진행 중'?'badge-amber':'badge-gray';
-
-// ── DASH
-function renderDash(){
-  const arr = Object.values(incoming);
-  const today = new Date().toISOString().slice(0,10);
-  const thisMonth = today.slice(0,7);
-  const todayCnt = arr.filter(r=>r.date===today).length;
-  const passCnt  = arr.filter(r=>r.month===thisMonth && r.judge==='합격').length;
-  const ncOpen   = Object.values(ncRecs).filter(r=>r.status!=='완료').length;
-  const sapPend  = Object.values(sapRecs).filter(r=>r.overall==='ng').length;
-  const measProg = Object.values(measures).filter(r=>r.result==='진행 중').length;
-
-  document.getElementById('d-today').textContent = todayCnt;
-  document.getElementById('d-pass').textContent  = passCnt;
-  document.getElementById('d-nc').textContent    = ncOpen;
-  document.getElementById('d-sap').textContent   = sapPend;
-  document.getElementById('d-meas').textContent  = measProg;
-  document.getElementById('nc-badge').textContent= ncOpen;
-
-  const alerts = document.getElementById('dash-alerts');
-  alerts.innerHTML = '';
-  if(ncOpen>0) alerts.innerHTML += `<div class="alert alert-red">⚠️ 미처리 부적합 <b>${ncOpen}건</b>이 있습니다.</div>`;
-  if(sapPend>0) alerts.innerHTML += `<div class="alert alert-amber">📋 SAP 성적서 이상 <b>${sapPend}건</b> 확인 필요</div>`;
-
-  const recent = arr.sort((a,b)=>b.dt.localeCompare(a.dt)).slice(0,5);
-  const tb = document.getElementById('dash-recent');
-  tb.innerHTML = recent.length ? recent.map(r=>`<tr><td>${fmtD(r.date)}</td><td style="font-size:11px">${r.num}</td><td>${r.name}</td><td><span class="badge ${badgeClass(r.judge)}">${r.judge}</span></td></tr>`).join('') : '<tr><td colspan="4" style="text-align:center;color:var(--slate)">이력 없음</td></tr>';
-
-  const ncList = Object.values(ncRecs).filter(r=>r.status!=='완료');
-  const ncDiv = document.getElementById('dash-nc-list');
-  ncDiv.innerHTML = ncList.length ? ncList.map(r=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:12px"><div><b>${r.num}</b> <span style="color:var(--slate)">${r.ncType}</span><br><span style="font-size:10px;color:var(--slate)">${fmtD(r.date)}</span></div><span class="badge badge-red">${r.action}</span></div>`).join('') : '<p style="color:var(--slate);font-size:12px;padding:8px 0">부적합 없음 ✅</p>';
+function renderAll(){
+  renderDash();
+  renderInTable();
+  renderSapTable();
+  renderMsTable();
+  renderNcTable();
+  renderSupTable();
+  renderReport(Object.values(incoming));
+  renderActionPage();
 }
 
-// ── INCOMING
-window.toggleCheck = el => {
-  const cb = el.querySelector('input[type=checkbox]');
-  cb.checked = !cb.checked;
-  el.classList.toggle('checked', cb.checked);
-  el.querySelector('.check-row-result').textContent = cb.checked ? '✅ 확인' : '';
-};
-window.clearIncoming = () => ['in-num','in-name','in-user','in-note'].forEach(id=>document.getElementById(id).value='');
+// ══════════════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════════════
+function renderDash(){
+  const arr=Object.values(incoming);
+  const today=new Date().toISOString().slice(0,10);
+  const thisMonth=today.slice(0,7);
+  document.getElementById('d-today').textContent=arr.filter(r=>r.date===today).length;
+  document.getElementById('d-pass').textContent =arr.filter(r=>r.month===thisMonth&&r.judge==='합격').length;
+  const ncOpen=Object.values(ncRecs).filter(r=>r.status!=='완료').length;
+  const sapNg =Object.values(sapRecs).filter(r=>r.overall==='ng').length;
+  const mProg =Object.values(measures).filter(r=>r.result==='진행 중').length;
+  document.getElementById('d-nc').textContent  =ncOpen;
+  document.getElementById('d-sap').textContent =sapNg;
+  document.getElementById('d-meas').textContent=mProg;
+  document.getElementById('nc-badge').textContent=ncOpen;
 
-window.saveIncoming = async () => {
-  const num = document.getElementById('in-num').value.trim();
-  const name = document.getElementById('in-name').value.trim();
-  const judge = document.getElementById('in-judge').value;
-  if(!num||!name||!judge){ toast('⚠️ 품목번호·품목명·판정은 필수입니다.'); return; }
-  const date = document.getElementById('in-date').value;
-  const rec = {
-    dt: new Date().toISOString(), date, month: date.slice(0,7),
-    time: document.getElementById('in-time').value,
-    user: document.getElementById('in-user').value,
+  const alerts=document.getElementById('dash-alerts');
+  alerts.innerHTML='';
+  if(ncOpen>0) alerts.innerHTML+=`<div class="alert alert-red">⚠️ 미처리 부적합 <b>${ncOpen}건</b>이 있습니다.</div>`;
+  if(sapNg>0)  alerts.innerHTML+=`<div class="alert alert-amber">📋 SAP 성적서 이상 <b>${sapNg}건</b> 확인 필요</div>`;
+
+  const recent=[...arr].sort((a,b)=>b.dt.localeCompare(a.dt)).slice(0,5);
+  const tb=document.getElementById('dash-recent');
+  if(tb) tb.innerHTML=recent.length?recent.map(r=>`<tr><td>${fmtD(r.date)}</td><td style="font-size:11px">${r.num}</td><td>${r.name}</td><td><span class="badge ${badgeClass(r.judge)}">${r.judge}</span></td></tr>`).join(''):'<tr><td colspan="4" style="text-align:center;color:var(--slate);padding:12px">이력 없음</td></tr>';
+
+  const ncList=Object.values(ncRecs).filter(r=>r.status!=='완료');
+  const ncDiv=document.getElementById('dash-nc-list');
+  if(ncDiv) ncDiv.innerHTML=ncList.length?ncList.map(r=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:12px"><div><b>${r.num}</b> <span style="color:var(--slate)">${r.ncType}</span><br><span style="font-size:10px;color:var(--slate)">${fmtD(r.date)}</span></div><span class="badge badge-red">${r.action}</span></div>`).join(''):'<p style="color:var(--slate);font-size:12px;padding:8px 0">부적합 없음 ✅</p>';
+}
+
+// ══════════════════════════════════════════════════
+// 입고검사
+// ══════════════════════════════════════════════════
+function toggleCheck(el){
+  const cb=el.querySelector('input[type=checkbox]');
+  cb.checked=!cb.checked;
+  el.classList.toggle('checked',cb.checked);
+  const rs=el.querySelector('.check-row-result');
+  if(rs){ rs.textContent=cb.checked?'✅ 확인':''; rs.style.color='var(--green)'; }
+}
+
+function clearIncoming(){
+  ['in-num','in-name','in-user','in-note','in-qty','in-sample','in-time2'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  ['in-visual','in-dim','in-judge','in-sap'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  document.querySelectorAll('#checklist .check-row').forEach(el=>{
+    el.classList.remove('checked');
+    el.querySelector('input').checked=false;
+    const rs=el.querySelector('.check-row-result'); if(rs) rs.textContent='';
+  });
+}
+
+function saveIncoming(){
+  const num=document.getElementById('in-num').value.trim();
+  const name=document.getElementById('in-name').value.trim();
+  const judge=document.getElementById('in-judge').value;
+  if(!num){ toast('⚠️ 품목번호를 입력하세요.'); return; }
+  if(!name){ toast('⚠️ 품목명을 입력하세요.'); return; }
+  if(!judge){ toast('⚠️ 최종 판정을 선택하세요.'); return; }
+  const date=document.getElementById('in-date').value;
+  const rec={
+    dt:new Date().toISOString(), date, month:date.slice(0,7),
+    time:document.getElementById('in-time').value,
+    user:document.getElementById('in-user').value,
     num, name,
-    qty:    document.getElementById('in-qty').value,
-    sample: document.getElementById('in-sample').value,
-    elapsed:document.getElementById('in-time2').value,
+    qty:    document.getElementById('in-qty').value||'0',
+    sample: document.getElementById('in-sample').value||'0',
+    elapsed:document.getElementById('in-time2').value||'0',
     visual: document.getElementById('in-visual').value,
     dim:    document.getElementById('in-dim').value,
-    judge, sap: document.getElementById('in-sap').value,
+    judge,
+    sap:    document.getElementById('in-sap').value,
     note:   document.getElementById('in-note').value,
   };
-  await push(ref(db,'/ims/incoming'), rec);
-  clearIncoming();
-  toast('✅ 검사 결과가 저장되었습니다.');
-};
+  fbPush('/ims/incoming', rec)
+    .then(()=>{ clearIncoming(); toast('✅ 검사 결과가 저장되었습니다.'); })
+    .catch(e=>toast('저장 오류: '+e.message));
+}
 
-window.saveIncomingNc = () => {
-  const num = document.getElementById('in-num').value.trim();
-  if(num) document.getElementById('nc-num').value = num;
-  const name = document.getElementById('in-name').value.trim();
-  if(name) document.getElementById('nc-name').value = name;
+function saveIncomingNc(){
+  const num=document.getElementById('in-num').value.trim();
+  const name=document.getElementById('in-name').value.trim();
+  if(num) document.getElementById('nc-num').value=num;
+  if(name) document.getElementById('nc-name').value=name;
   openNcModal();
-};
+}
 
 function renderInTable(){
-  const arr = Object.entries(incoming).sort((a,b)=>b[1].dt.localeCompare(a[1].dt));
-  const tb = document.getElementById('in-tbody');
-  tb.innerHTML = arr.length ? arr.map(([id,r])=>`<tr><td>${fmtD(r.date)}</td><td style="font-size:11px">${r.num}</td><td>${r.name}</td><td>${r.qty||'-'}</td><td>${r.elapsed||'-'}</td><td><span class="badge ${badgeClass(r.judge)}">${r.judge}</span></td><td><span class="badge ${badgeClass(r.sap)}">${r.sap||'-'}</span></td><td style="font-size:11px;max-width:160px">${r.note||'-'}</td><td><button class="btn btn-outline btn-sm" onclick="delItem('/ims/incoming','${id}')">삭제</button></td></tr>`).join('') : '<tr><td colspan="9" style="text-align:center;color:var(--slate);padding:20px">이력 없음</td></tr>';
-  renderReport(Object.values(incoming));
+  const arr=Object.entries(incoming).sort((a,b)=>b[1].dt.localeCompare(a[1].dt));
+  const tb=document.getElementById('in-tbody'); if(!tb) return;
+  tb.innerHTML=arr.length?arr.map(([id,r])=>`<tr>
+    <td>${fmtD(r.date)}</td>
+    <td style="font-size:11px">${r.num}</td>
+    <td>${r.name}</td>
+    <td>${r.qty||'-'}</td>
+    <td>${r.elapsed||'-'}</td>
+    <td><span class="badge ${badgeClass(r.judge)}">${r.judge}</span></td>
+    <td><span class="badge ${badgeClass(r.sap)}">${r.sap||'-'}</span></td>
+    <td style="font-size:11px;max-width:140px">${r.note||'-'}</td>
+    <td><button class="btn btn-red btn-sm" onclick="delItem('/ims/incoming','${id}')">삭제</button></td>
+  </tr>`).join(''):'<tr><td colspan="9" style="text-align:center;color:var(--slate);padding:16px">이력 없음</td></tr>';
 }
 
-// ── SAP
-window.sapCheck = (sel, key) => {
-  const item = sel.closest('.sap-item');
-  item.className = 'sap-item' + (sel.value==='ok'?' ok':sel.value==='ng'?' ng':'');
-};
-window.clearSap = () => ['sap-num','sap-name','sap-rev','sap-user','sap-note'].forEach(id=>document.getElementById(id).value='');
-window.saveSap = async () => {
-  const num = document.getElementById('sap-num').value.trim();
-  if(!num){ toast('⚠️ 품목번호는 필수입니다.'); return; }
-  const items = {};
-  document.querySelectorAll('#sap-checks .sap-item').forEach(el=>{ items[el.dataset.key]=el.querySelector('select').value; });
-  const rec = {
-    dt: new Date().toISOString(),
-    date: document.getElementById('sap-date').value,
-    num, name: document.getElementById('sap-name').value,
-    rev: document.getElementById('sap-rev').value,
-    user: document.getElementById('sap-user').value,
-    note: document.getElementById('sap-note').value,
-    overall: items.overall || '',
-    items,
-  };
-  await push(ref(db,'/ims/sap'), rec);
-  clearSap();
-  toast('✅ SAP 성적서 검토 결과가 저장되었습니다.');
-};
-function renderSapTable(){
-  const arr = Object.entries(sapRecs).sort((a,b)=>b[1].dt.localeCompare(a[1].dt));
-  const tb = document.getElementById('sap-tbody');
-  tb.innerHTML = arr.length ? arr.map(([id,r])=>`<tr><td>${fmtD(r.date)}</td><td style="font-size:11px">${r.num}</td><td>${r.rev||'-'}</td><td>${r.user||'-'}</td><td><span class="badge ${r.overall==='ok'?'badge-green':r.overall==='ng'?'badge-red':'badge-gray'}">${r.overall==='ok'?'이상없음':r.overall==='ng'?'이상있음':'-'}</span></td><td style="font-size:11px;max-width:160px">${r.note||'-'}</td><td><button class="btn btn-outline btn-sm" onclick="delItem('/ims/sap','${id}')">삭제</button></td></tr>`).join('') : '<tr><td colspan="7" style="text-align:center;color:var(--slate);padding:20px">이력 없음</td></tr>';
+// ══════════════════════════════════════════════════
+// SAP 성적서 검토
+// ══════════════════════════════════════════════════
+function sapCheck(sel, key){
+  const item=sel.closest('.sap-item');
+  item.className='sap-item'+(sel.value==='ok'?' ok':sel.value==='ng'?' ng':'');
 }
 
-// ── MEASURE
-window.clearMeasure = () => ['ms-num','ms-name','ms-desc','ms-time','ms-user','ms-note'].forEach(id=>document.getElementById(id).value='');
-window.saveMeasure = async () => {
-  const desc = document.getElementById('ms-desc').value.trim();
-  if(!desc){ toast('⚠️ 의뢰 내용은 필수입니다.'); return; }
-  const rec = {
-    dt: new Date().toISOString(),
-    date: document.getElementById('ms-date').value,
-    done: document.getElementById('ms-done').value,
-    num:  document.getElementById('ms-num').value,
-    name: document.getElementById('ms-name').value,
-    desc, time: document.getElementById('ms-time').value,
-    result: document.getElementById('ms-result').value,
-    user: document.getElementById('ms-user').value,
-    note: document.getElementById('ms-note').value,
-  };
-  await push(ref(db,'/ims/measures'), rec);
-  clearMeasure();
-  toast('✅ 측정의뢰가 등록되었습니다.');
-};
-window.completeMeasure = async (id) => {
-  const rec = measures[id]; if(!rec) return;
-  rec.result = '완료';
-  await set(ref(db,'/ims/measures/'+id), rec);
-  toast('완료 처리되었습니다.');
-};
-function renderMsTable(){
-  const arr = Object.entries(measures).sort((a,b)=>b[1].dt.localeCompare(a[1].dt));
-  const tb = document.getElementById('ms-tbody');
-  tb.innerHTML = arr.length ? arr.map(([id,r])=>`<tr><td>${fmtD(r.date)}</td><td>${fmtD(r.done)||'-'}</td><td style="font-size:11px">${r.num||'-'}</td><td>${r.name||'-'}</td><td style="font-size:11px;max-width:140px">${r.desc}</td><td>${r.time||'-'}</td><td><span class="badge ${badgeClass(r.result)}">${r.result||'-'}</span></td><td>${r.user||'-'}</td><td><button class="btn btn-green btn-sm" onclick="completeMeasure('${id}')">완료</button> <button class="btn btn-outline btn-sm" onclick="delItem('/ims/measures','${id}')">삭제</button></td></tr>`).join('') : '<tr><td colspan="9" style="text-align:center;color:var(--slate);padding:20px">이력 없음</td></tr>';
-}
-
-// ── NC
-window.saveNc = async () => {
-  const num = document.getElementById('nc-num').value.trim();
-  if(!num){ toast('⚠️ 품목번호는 필수입니다.'); return; }
-  const rec = {
-    dt: new Date().toISOString(),
-    date: document.getElementById('nc-date').value,
-    num, name: document.getElementById('nc-name').value,
-    qty:  document.getElementById('nc-qty').value,
-    ncType: document.getElementById('nc-type').value,
-    action: document.getElementById('nc-action').value,
-    user:   document.getElementById('nc-user').value,
-    loc:    document.getElementById('nc-loc').value,
-    desc:   document.getElementById('nc-desc').value,
-    status: '미처리',
-  };
-  await push(ref(db,'/ims/nc'), rec);
-  closeModal('nc-modal');
-  toast('✅ 부적합이 등록되었습니다.');
-};
-window.resolveNc = async (id) => {
-  const rec = ncRecs[id]; if(!rec) return;
-  rec.status = '완료'; rec.resolvedDt = new Date().toISOString().slice(0,10);
-  await set(ref(db,'/ims/nc/'+id), rec);
-  toast('완료 처리되었습니다.');
-};
-function renderNcTable(){
-  const arr = Object.entries(ncRecs).sort((a,b)=>b[1].dt.localeCompare(a[1].dt));
-  const tb = document.getElementById('nc-tbody');
-  tb.innerHTML = arr.length ? arr.map(([id,r])=>`<tr class="${r.status!=='완료'?'tbl-warn':''}"><td>${fmtD(r.date)}</td><td style="font-size:11px">${r.num}</td><td>${r.name||'-'}</td><td><span class="badge badge-red">${r.ncType}</span></td><td>${r.qty||'-'}</td><td><span class="badge ${r.status==='완료'?'badge-green':'badge-red'}">${r.status}</span></td><td>${r.action}</td><td>${r.user||'-'}</td><td>${r.status!=='완료'?`<button class="btn btn-green btn-sm" onclick="resolveNc('${id}')">완료</button>`:''} <button class="btn btn-outline btn-sm" onclick="delItem('/ims/nc','${id}')">삭제</button></td></tr>`).join('') : '<tr><td colspan="9" style="text-align:center;color:var(--slate);padding:20px">이력 없음</td></tr>';
-}
-
-// ── SUPPLY
-// ── SUPPLY (품목 단위 저장·삭제·수정) ──────────────
-let supTempItems = [];
-
-window.addSupItem = () => {
-  const name = document.getElementById('sup-item-name').value.trim();
-  const qty  = document.getElementById('sup-qty').value;
-  if(!name||!qty){ toast('⚠️ 품목명과 신청수량은 필수입니다.'); return; }
-  supTempItems.push({
-    cat:    document.getElementById('sup-cat').value,
-    name,
-    spec:   document.getElementById('sup-spec').value,
-    unit:   document.getElementById('sup-unit').value,
-    stock:  document.getElementById('sup-stock').value,
-    qty,
-    reason: document.getElementById('sup-reason').value,
+function clearSap(){
+  ['sap-num','sap-name','sap-rev','sap-user','sap-note'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  document.querySelectorAll('#sap-checks .sap-item').forEach(el=>{
+    el.className='sap-item';
+    el.querySelector('select').value='';
   });
-  ['sup-item-name','sup-spec','sup-unit','sup-stock','sup-qty','sup-reason'].forEach(id=>document.getElementById(id).value='');
+}
+
+function saveSap(){
+  const num=document.getElementById('sap-num').value.trim();
+  if(!num){ toast('⚠️ 품목번호를 입력하세요.'); return; }
+  const items={};
+  document.querySelectorAll('#sap-checks .sap-item').forEach(el=>{
+    items[el.dataset.key]=el.querySelector('select').value;
+  });
+  const overall=items.overall||'';
+  const rec={
+    dt:new Date().toISOString(),
+    date:document.getElementById('sap-date').value,
+    num, name:document.getElementById('sap-name').value,
+    rev: document.getElementById('sap-rev').value,
+    user:document.getElementById('sap-user').value,
+    note:document.getElementById('sap-note').value,
+    overall, items,
+  };
+  fbPush('/ims/sap', rec)
+    .then(()=>{ clearSap(); toast('✅ SAP 성적서 검토 결과가 저장되었습니다.'); })
+    .catch(e=>toast('저장 오류: '+e.message));
+}
+
+function renderSapTable(){
+  const arr=Object.entries(sapRecs).sort((a,b)=>b[1].dt.localeCompare(a[1].dt));
+  const tb=document.getElementById('sap-tbody'); if(!tb) return;
+  tb.innerHTML=arr.length?arr.map(([id,r])=>`<tr>
+    <td>${fmtD(r.date)}</td>
+    <td style="font-size:11px">${r.num}</td>
+    <td>${r.rev||'-'}</td>
+    <td>${r.user||'-'}</td>
+    <td><span class="badge ${r.overall==='ok'?'badge-green':r.overall==='ng'?'badge-red':'badge-gray'}">${r.overall==='ok'?'이상없음':r.overall==='ng'?'이상있음':'-'}</span></td>
+    <td style="font-size:11px;max-width:140px">${r.note||'-'}</td>
+    <td><button class="btn btn-red btn-sm" onclick="delItem('/ims/sap','${id}')">삭제</button></td>
+  </tr>`).join(''):'<tr><td colspan="7" style="text-align:center;color:var(--slate);padding:16px">이력 없음</td></tr>';
+}
+
+// ══════════════════════════════════════════════════
+// 측정의뢰
+// ══════════════════════════════════════════════════
+function clearMeasure(){
+  ['ms-num','ms-name','ms-desc','ms-time','ms-user','ms-note','ms-done'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  const e=document.getElementById('ms-result'); if(e) e.value='';
+}
+
+function saveMeasure(){
+  const desc=document.getElementById('ms-desc').value.trim();
+  if(!desc){ toast('⚠️ 의뢰 내용을 입력하세요.'); return; }
+  const rec={
+    dt:new Date().toISOString(),
+    date:document.getElementById('ms-date').value,
+    done:document.getElementById('ms-done').value,
+    num: document.getElementById('ms-num').value,
+    name:document.getElementById('ms-name').value,
+    desc,
+    time:document.getElementById('ms-time').value||'0',
+    result:document.getElementById('ms-result').value||'진행 중',
+    user:document.getElementById('ms-user').value,
+    note:document.getElementById('ms-note').value,
+  };
+  fbPush('/ims/measures', rec)
+    .then(()=>{ clearMeasure(); toast('✅ 측정의뢰가 등록되었습니다.'); })
+    .catch(e=>toast('저장 오류: '+e.message));
+}
+
+function completeMeasure(id){
+  const rec=measures[id]; if(!rec) return;
+  rec.result='완료'; rec.doneDt=new Date().toISOString().slice(0,10);
+  fbSet('/ims/measures/'+id, rec).then(()=>toast('완료 처리되었습니다.'));
+}
+
+function renderMsTable(){
+  const arr=Object.entries(measures).sort((a,b)=>b[1].dt.localeCompare(a[1].dt));
+  const tb=document.getElementById('ms-tbody'); if(!tb) return;
+  tb.innerHTML=arr.length?arr.map(([id,r])=>`<tr>
+    <td>${fmtD(r.date)}</td>
+    <td>${fmtD(r.done)||'-'}</td>
+    <td style="font-size:11px">${r.num||'-'}</td>
+    <td>${r.name||'-'}</td>
+    <td style="font-size:11px;max-width:130px">${r.desc}</td>
+    <td>${r.time||'-'}</td>
+    <td><span class="badge ${badgeClass(r.result)}">${r.result||'-'}</span></td>
+    <td>${r.user||'-'}</td>
+    <td>
+      ${r.result!=='완료'?`<button class="btn btn-green btn-sm" onclick="completeMeasure('${id}')">완료</button> `:''}
+      <button class="btn btn-red btn-sm" onclick="delItem('/ims/measures','${id}')">삭제</button>
+    </td>
+  </tr>`).join(''):'<tr><td colspan="9" style="text-align:center;color:var(--slate);padding:16px">이력 없음</td></tr>';
+}
+
+// ══════════════════════════════════════════════════
+// 부적합 관리
+// ══════════════════════════════════════════════════
+function saveNc(){
+  const num=document.getElementById('nc-num').value.trim();
+  if(!num){ toast('⚠️ 품목번호를 입력하세요.'); return; }
+  const rec={
+    dt:new Date().toISOString(),
+    date:document.getElementById('nc-date').value,
+    num, name:document.getElementById('nc-name').value,
+    qty: document.getElementById('nc-qty').value||'0',
+    ncType:document.getElementById('nc-type').value,
+    action:document.getElementById('nc-action').value,
+    user:  document.getElementById('nc-user').value,
+    loc:   document.getElementById('nc-loc').value,
+    desc:  document.getElementById('nc-desc').value,
+    status:'미처리',
+  };
+  fbPush('/ims/nc', rec)
+    .then(()=>{ closeModal('nc-modal'); toast('✅ 부적합이 등록되었습니다.'); })
+    .catch(e=>toast('저장 오류: '+e.message));
+}
+
+function resolveNc(id){
+  const rec=ncRecs[id]; if(!rec) return;
+  rec.status='완료'; rec.resolvedDt=new Date().toISOString().slice(0,10);
+  fbSet('/ims/nc/'+id, rec).then(()=>toast('완료 처리되었습니다.'));
+}
+
+function renderNcTable(){
+  const arr=Object.entries(ncRecs).sort((a,b)=>b[1].dt.localeCompare(a[1].dt));
+  const tb=document.getElementById('nc-tbody'); if(!tb) return;
+  tb.innerHTML=arr.length?arr.map(([id,r])=>`<tr class="${r.status!=='완료'?'tbl-warn':''}">
+    <td>${fmtD(r.date)}</td>
+    <td style="font-size:11px">${r.num}</td>
+    <td>${r.name||'-'}</td>
+    <td><span class="badge badge-red">${r.ncType}</span></td>
+    <td>${r.qty||'-'}</td>
+    <td><span class="badge ${r.status==='완료'?'badge-green':'badge-red'}">${r.status}</span></td>
+    <td>${r.action}</td>
+    <td>${r.user||'-'}</td>
+    <td>
+      ${r.status!=='완료'?`<button class="btn btn-green btn-sm" onclick="resolveNc('${id}')">완료</button> `:''}
+      <button class="btn btn-red btn-sm" onclick="delItem('/ims/nc','${id}')">삭제</button>
+    </td>
+  </tr>`).join(''):'<tr><td colspan="9" style="text-align:center;color:var(--slate);padding:16px">이력 없음</td></tr>';
+}
+
+// ══════════════════════════════════════════════════
+// 소모품 신청
+// ══════════════════════════════════════════════════
+function addSupItem(){
+  const name=document.getElementById('sup-item-name').value.trim();
+  const qty =document.getElementById('sup-qty').value;
+  if(!name){ toast('⚠️ 품목명을 입력하세요.'); return; }
+  if(!qty||qty==='0'){ toast('⚠️ 신청수량을 입력하세요.'); return; }
+  supTempItems.push({
+    cat:   document.getElementById('sup-cat').value,
+    name,
+    spec:  document.getElementById('sup-spec').value,
+    unit:  document.getElementById('sup-unit').value,
+    stock: document.getElementById('sup-stock').value||'0',
+    qty,
+    reason:document.getElementById('sup-reason').value,
+  });
+  ['sup-item-name','sup-spec','sup-unit','sup-stock','sup-qty','sup-reason'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   renderTempList();
-  toast('품목이 추가되었습니다. 추가 입력하거나 "신청서 저장" 하세요.');
-};
+  toast(`"${name}" 추가됨 — 추가 입력하거나 "신청서 저장" 하세요.`);
+}
+
+function removeTempItem(i){ supTempItems.splice(i,1); renderTempList(); }
 
 function renderTempList(){
-  const el = document.getElementById('sup-temp-list');
+  const el=document.getElementById('sup-temp-list'); if(!el) return;
   if(!supTempItems.length){ el.innerHTML=''; return; }
-  el.innerHTML = `<div style="font-size:11px;font-weight:600;color:var(--slate);margin-bottom:6px">입력된 품목 (${supTempItems.length}건) — 저장 전 확인</div>
+  const catBadge=c=>c==='안전용품'?'badge-amber':c==='근무복'?'badge-green':c==='기타'?'badge-gray':'badge-blue';
+  el.innerHTML=`<div style="font-size:11px;font-weight:600;color:var(--tealD);margin-bottom:6px;padding:6px 10px;background:var(--tealL);border-radius:6px">
+    📋 입력된 품목 ${supTempItems.length}건 — "신청서 저장" 버튼을 눌러야 최종 저장됩니다
+  </div>
   <div class="tbl-wrap"><table class="tbl"><thead><tr><th>분류</th><th>품목명</th><th>규격</th><th>단위</th><th>재고</th><th>신청수량</th><th>사유</th><th>삭제</th></tr></thead>
   <tbody>${supTempItems.map((it,i)=>`<tr>
-    <td><span class="badge badge-blue">${it.cat}</span></td>
-    <td>${it.name}</td><td>${it.spec||'-'}</td><td>${it.unit||'-'}</td>
-    <td>${it.stock||'0'}</td><td><b>${it.qty}</b></td><td style="font-size:11px">${it.reason||'-'}</td>
+    <td><span class="badge ${catBadge(it.cat)}">${it.cat}</span></td>
+    <td><b>${it.name}</b></td><td>${it.spec||'-'}</td><td>${it.unit||'-'}</td>
+    <td>${it.stock}</td><td><b style="color:var(--teal)">${it.qty}</b></td>
+    <td style="font-size:11px">${it.reason||'-'}</td>
     <td><button class="btn btn-red btn-sm" onclick="removeTempItem(${i})">삭제</button></td>
   </tr>`).join('')}</tbody></table></div>`;
 }
 
-window.removeTempItem = (i) => { supTempItems.splice(i,1); renderTempList(); };
-
-window.saveSupply = async () => {
-  const month = document.getElementById('sup-month').value;
-  const user  = document.getElementById('sup-user').value.trim();
-  if(!month||!user){ toast('⚠️ 신청월과 신청자는 필수입니다.'); return; }
+function saveSupply(){
+  const month=document.getElementById('sup-month').value;
+  const user =document.getElementById('sup-user').value.trim();
+  if(!month){ toast('⚠️ 신청월을 선택하세요.'); return; }
+  if(!user){  toast('⚠️ 신청자를 입력하세요.'); return; }
   if(!supTempItems.length){ toast('⚠️ 품목을 1건 이상 추가하세요.'); return; }
-  const base = {
+  const base={
     month, user,
-    urgent: document.getElementById('sup-urgent').value,
-    wish:   document.getElementById('sup-wish').value,
-    note:   document.getElementById('sup-note').value,
+    urgent:document.getElementById('sup-urgent').value,
+    wish:  document.getElementById('sup-wish').value,
+    note:  document.getElementById('sup-note').value,
+    status:'신청 중',
   };
-  for(const it of supTempItems){
-    await push(ref(db,'/ims/supply'), { ...base, ...it, dt: new Date().toISOString(), status:'신청 중' });
-  }
-  supTempItems = [];
-  renderTempList();
-  ['sup-month','sup-user','sup-wish','sup-note'].forEach(id=>document.getElementById(id).value='');
-  toast('✅ 신청서가 저장되었습니다.');
-};
+  const promises=supTempItems.map(it=>fbPush('/ims/supply',{...base,...it,dt:new Date().toISOString()}));
+  Promise.all(promises).then(()=>{
+    supTempItems=[];
+    renderTempList();
+    ['sup-month','sup-user','sup-wish','sup-note'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+    toast('✅ 신청서가 저장되었습니다.');
+  }).catch(e=>toast('저장 오류: '+e.message));
+}
 
-window.clearSupply = () => {
-  supTempItems = [];
+function clearSupply(){
+  supTempItems=[];
   renderTempList();
-  ['sup-item-name','sup-spec','sup-unit','sup-stock','sup-qty','sup-reason'].forEach(id=>document.getElementById(id).value='');
-};
+  ['sup-item-name','sup-spec','sup-unit','sup-stock','sup-qty','sup-reason'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+}
 
-window.editSupItem = async (id) => {
-  const r = supplyRecs[id]; if(!r) return;
-  const newQty = prompt('신청수량 수정:', r.qty);
+function editSupItem(id){
+  const r=supplyRecs[id]; if(!r) return;
+  const newQty=prompt('신청수량 수정 (현재: '+r.qty+')', r.qty);
   if(newQty===null) return;
-  const newReason = prompt('사유 수정:', r.reason||'');
+  const newReason=prompt('사유 수정 (현재: '+(r.reason||'없음')+')', r.reason||'');
   if(newReason===null) return;
-  r.qty = newQty; r.reason = newReason;
-  await set(ref(db,'/ims/supply/'+id), r);
-  toast('수정되었습니다.');
-};
+  r.qty=newQty; r.reason=newReason;
+  fbSet('/ims/supply/'+id, r).then(()=>toast('수정되었습니다.'));
+}
 
-window.printSupply = () => { window.print(); };
+function printSupply(){ window.print(); }
 
 function renderSupTable(){
-  const arr = Object.entries(supplyRecs).sort((a,b)=>b[1].dt.localeCompare(a[1].dt));
-  const tb = document.getElementById('sup-tbody');
-  const catBadge = c => c==='안전용품'?'badge-amber':c==='근무복'?'badge-green':c==='기타'?'badge-gray':'badge-blue';
-  tb.innerHTML = arr.length ? arr.map(([id,r])=>`<tr>
-    <td>${r.month}</td>
+  const arr=Object.entries(supplyRecs).sort((a,b)=>b[1].dt.localeCompare(a[1].dt));
+  const tb=document.getElementById('sup-tbody'); if(!tb) return;
+  const catBadge=c=>c==='안전용품'?'badge-amber':c==='근무복'?'badge-green':c==='기타'?'badge-gray':'badge-blue';
+  tb.innerHTML=arr.length?arr.map(([id,r])=>`<tr>
+    <td>${r.month||'-'}</td>
     <td>${r.user||'-'}</td>
     <td><span class="badge ${catBadge(r.cat)}">${r.cat||'기타'}</span></td>
     <td><b>${r.name||'-'}</b></td>
@@ -1313,394 +1420,158 @@ function renderSupTable(){
     <td>${r.unit||'-'}</td>
     <td>${r.stock||'0'}</td>
     <td><b>${r.qty||'-'}</b></td>
-    <td style="font-size:11px;max-width:100px">${r.reason||'-'}</td>
+    <td style="font-size:11px">${r.reason||'-'}</td>
     <td><span class="badge ${r.urgent==='긴급'?'badge-red':'badge-gray'}">${r.urgent||'일반'}</span></td>
-    <td style="font-size:11px">${fmtD(r.dt?r.dt.slice(0,10):'')}</td>
+    <td style="font-size:11px">${fmtD(r.dt?r.dt.slice(0,10):'-')}</td>
     <td>
       <button class="btn btn-outline btn-sm" onclick="editSupItem('${id}')">수정</button>
       <button class="btn btn-red btn-sm" onclick="delItem('/ims/supply','${id}')">삭제</button>
     </td>
-  </tr>`).join('') : '<tr><td colspan="12" style="text-align:center;color:var(--slate);padding:20px">신청 이력 없음</td></tr>';
+  </tr>`).join(''):'<tr><td colspan="12" style="text-align:center;color:var(--slate);padding:16px">신청 이력 없음</td></tr>';
 }
 
-// ── REPORT
-window.filterReport = () => {
-  const from = document.getElementById('rp-from').value;
-  const to   = document.getElementById('rp-to').value;
-  const num  = document.getElementById('rp-num').value.trim();
-  let arr = Object.values(incoming);
-  if(from) arr = arr.filter(r=>r.date>=from);
-  if(to)   arr = arr.filter(r=>r.date<=to);
-  if(num)  arr = arr.filter(r=>r.num.includes(num));
-  renderReport(arr);
-};
-window.resetReport = () => renderReport(Object.values(incoming));
-window.printReport = () => { window.print(); };
-
-function renderReport(arr){
-  const sorted = [...arr].sort((a,b)=>b.dt.localeCompare(a.dt));
-  const tb = document.getElementById('rp-tbody');
-  tb.innerHTML = sorted.length ? sorted.map(r=>`<tr><td>${fmtD(r.date)}</td><td style="font-size:11px">${r.num}</td><td>${r.name}</td><td>${r.qty||'-'}</td><td>${r.elapsed||'-'}</td><td><span class="badge ${badgeClass(r.judge)}">${r.judge}</span></td><td><span class="badge ${badgeClass(r.sap)}">${r.sap||'-'}</span></td><td style="font-size:11px;max-width:160px">${r.note||'-'}</td></tr>`).join('') : '<tr><td colspan="8" style="text-align:center;color:var(--slate);padding:20px">이력 없음</td></tr>';
-}
-
-// ── FLOWCHART ─────────────────────────────────────
-function renderFlowchart(){
-  const steps = [
-    { id:'s1', label:'입고 접수', sub:'납품서·성적서·수량 확인\nSAP 입고전표 확인', color:'#0096B4', icon:'📥', menu:'incoming' },
-    { id:'s2', label:'SAP 성적서 검토', sub:'기종별 성적서 유무 확인\n최신 Rev. · 항목 완전성 · 품목번호 일치', color:'#2563EB', icon:'📋', menu:'sap' },
-    { id:'s3', label:'기준서 확인', sub:'검사기준서 버전 확인\n외관·치수 항목 누락 여부', color:'#0096B4', icon:'📄', menu:'sap' },
-    { id:'s4', label:'AQL 샘플 추출', sub:'KS Q ISO 2859-1 기준\n고객사 기준서 우선 적용', color:'#7C3AED', icon:'🎲', menu:'incoming' },
-    { id:'s5', label:'외관 검사', sub:'기준서 사진 대비\n표면·색상·마킹·포장 전수', color:'#0096B4', icon:'👁', menu:'incoming' },
-    { id:'s6', label:'치수 검사', sub:'샘플 치수 측정\n측정값 vs 규격값 비교', color:'#0096B4', icon:'📐', menu:'incoming' },
-    { id:'s7', label:'최종 판정', sub:'고객사 기준서 기준\n합격 / 불합격 / 보류', color:'#059669', icon:'⚖️', menu:'incoming' },
-  ];
-
-  const branches = [
-    { label:'성적서 없음', color:'#C0392B', steps:[
-      { label:'SQM팀 서면 요청', sub:'성적서 요청 + 검사 보류', color:'#C0392B', icon:'📨', menu:'sap' },
-    ]},
-    { label:'불합격', color:'#C0392B', steps:[
-      { label:'부적합 등록', sub:'격리 구역 이송\n식별 태그 부착', color:'#C0392B', icon:'🚫', menu:'nonconf' },
-      { label:'처리 결정', sub:'반품 / 특채 / 재작업 / 폐기\nSQM팀 통보', color:'#B45309', icon:'🔄', menu:'nonconf' },
-    ]},
-    { label:'합격', color:'#059669', steps:[
-      { label:'입고 승인', sub:'SAP 결과 입력\n지정 보관 위치 이송', color:'#059669', icon:'✅', menu:'incoming' },
-    ]},
-  ];
-
-  const BSTEP_W = 140, BSTEP_H = 72, BSTEP_GAP = 14;
-  const STEP_W = 148, STEP_H = 80, STEP_GAP = 10;
-  const ARROW = 28;
-  const totalMainW = steps.length * STEP_W + (steps.length-1) * (STEP_GAP + ARROW);
-  const SVG_W = Math.max(totalMainW + 40, 1100);
-  const SVG_H = 500;
-
-  let svg = `<svg viewBox="0 0 ${SVG_W} ${SVG_H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;min-width:900px;font-family:'Noto Sans KR',sans-serif">
-  <defs>
-    <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-      <path d="M0,0 L0,6 L8,3 z" fill="#94A3B8"/>
-    </marker>
-    <marker id="arr-red" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-      <path d="M0,0 L0,6 L8,3 z" fill="#C0392B"/>
-    </marker>
-    <marker id="arr-green" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-      <path d="M0,0 L0,6 L8,3 z" fill="#059669"/>
-    </marker>
-    <filter id="sh"><feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity="0.10"/></filter>
-  </defs>`;
-
-  // ── 메인 스텝
-  const mainY = 40;
-  steps.forEach((s, i) => {
-    const x = 20 + i * (STEP_W + STEP_GAP + ARROW);
-    const cx = x + STEP_W/2;
-    // 박스
-    svg += `<rect x="${x}" y="${mainY}" width="${STEP_W}" height="${STEP_H}" rx="8" fill="${s.color}" filter="url(#sh)" style="cursor:pointer" onclick="showPage('${s.menu}')"/>`;
-    // 아이콘
-    svg += `<text x="${cx}" y="${mainY+22}" text-anchor="middle" font-size="16">${s.icon}</text>`;
-    // 라벨
-    svg += `<text x="${cx}" y="${mainY+42}" text-anchor="middle" fill="white" font-size="12" font-weight="700">${s.label}</text>`;
-    // 서브 (2줄)
-    s.sub.split('\n').forEach((line, li) => {
-      svg += `<text x="${cx}" y="${mainY+56+li*13}" text-anchor="middle" fill="rgba(255,255,255,0.85)" font-size="9.5">${line}</text>`;
-    });
-    // 화살표
-    if(i < steps.length-1){
-      const ax = x + STEP_W + 2;
-      const ay = mainY + STEP_H/2;
-      svg += `<line x1="${ax}" y1="${ay}" x2="${ax+ARROW-4}" y2="${ay}" stroke="#94A3B8" stroke-width="1.8" marker-end="url(#arr)"/>`;
-    }
-    // 단계번호
-    svg += `<text x="${x+6}" y="${mainY+12}" fill="rgba(255,255,255,0.6)" font-size="9" font-weight="700">STEP ${i+1}</text>`;
-  });
-
-  // ── 분기 노드 (마름모) — STEP 2 아래: 성적서 유무
-  const s2x = 20 + 1*(STEP_W+STEP_GAP+ARROW);
-  const s2cx = s2x + STEP_W/2;
-  const diaY = mainY + STEP_H + 28;
-  const diaH = 36; const diaW = 100;
-  svg += `<polygon points="${s2cx},${diaY} ${s2cx+diaW/2},${diaY+diaH/2} ${s2cx},${diaY+diaH} ${s2cx-diaW/2},${diaY+diaH/2}" fill="#FEE2E2" stroke="#C0392B" stroke-width="1.5"/>`;
-  svg += `<text x="${s2cx}" y="${diaY+diaH/2+4}" text-anchor="middle" fill="#C0392B" font-size="10" font-weight="700">성적서 有?</text>`;
-  // 위→마름모 화살표
-  svg += `<line x1="${s2cx}" y1="${mainY+STEP_H}" x2="${s2cx}" y2="${diaY}" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arr)"/>`;
-  // 마름모→없음 분기 (왼쪽)
-  const noX = s2cx - diaW/2 - 10;
-  const noBoxX = s2cx - diaW/2 - 10 - BSTEP_W;
-  svg += `<line x1="${s2cx-diaW/2}" y1="${diaY+diaH/2}" x2="${noBoxX+BSTEP_W}" y2="${diaY+diaH/2}" stroke="#C0392B" stroke-width="1.5" marker-end="url(#arr-red)" stroke-dasharray="5,3"/>`;
-  svg += `<text x="${s2cx-diaW/2-5}" y="${diaY+diaH/2-5}" text-anchor="end" fill="#C0392B" font-size="9" font-weight="700">없음</text>`;
-  svg += `<rect x="${noBoxX}" y="${diaY+diaH/2-BSTEP_H/2}" width="${BSTEP_W}" height="${BSTEP_H}" rx="7" fill="#FDECEA" stroke="#C0392B" stroke-width="1.2" style="cursor:pointer" onclick="showPage('sap')"/>`;
-  svg += `<text x="${noBoxX+BSTEP_W/2}" y="${diaY+diaH/2-8}" text-anchor="middle" fill="#C0392B" font-size="11" font-weight="700">SQM팀 서면요청</text>`;
-  svg += `<text x="${noBoxX+BSTEP_W/2}" y="${diaY+diaH/2+6}" text-anchor="middle" fill="#C0392B" font-size="9">성적서 요청 + 검사 보류</text>`;
-  // 마름모→있음 (아래 계속)
-  svg += `<line x1="${s2cx}" y1="${diaY+diaH}" x2="${s2cx}" y2="${diaY+diaH+16}" stroke="#0096B4" stroke-width="1.5"/>`;
-  svg += `<text x="${s2cx+5}" y="${diaY+diaH+10}" fill="#0096B4" font-size="9" font-weight="700">있음→계속</text>`;
-
-  // ── 판정 분기 노드 (STEP 7 아래)
-  const s7x = 20 + 6*(STEP_W+STEP_GAP+ARROW);
-  const s7cx = s7x + STEP_W/2;
-  const jdiaY = mainY + STEP_H + 28;
-  svg += `<polygon points="${s7cx},${jdiaY} ${s7cx+55},${jdiaY+20} ${s7cx},${jdiaY+40} ${s7cx-55},${jdiaY+20}" fill="#F0FDF4" stroke="#059669" stroke-width="1.5"/>`;
-  svg += `<text x="${s7cx}" y="${jdiaY+24}" text-anchor="middle" fill="#059669" font-size="10" font-weight="700">판 정</text>`;
-  svg += `<line x1="${s7cx}" y1="${mainY+STEP_H}" x2="${s7cx}" y2="${jdiaY}" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arr)"/>`;
-
-  // 합격 (아래)
-  const passY = jdiaY + 40 + 16;
-  svg += `<line x1="${s7cx}" y1="${jdiaY+40}" x2="${s7cx}" y2="${passY}" stroke="#059669" stroke-width="1.5" marker-end="url(#arr-green)"/>`;
-  svg += `<text x="${s7cx+5}" y="${passY-4}" fill="#059669" font-size="9" font-weight="700">합격</text>`;
-  svg += `<rect x="${s7cx-BSTEP_W/2}" y="${passY}" width="${BSTEP_W}" height="${BSTEP_H}" rx="7" fill="#E8F5EE" stroke="#059669" stroke-width="1.2" style="cursor:pointer" onclick="showPage('incoming')"/>`;
-  svg += `<text x="${s7cx}" y="${passY+24}" text-anchor="middle" fill="#059669" font-size="11" font-weight="700">✅ 입고 승인</text>`;
-  svg += `<text x="${s7cx}" y="${passY+38}" text-anchor="middle" fill="#059669" font-size="9">SAP 입력 · 보관 이송</text>`;
-  svg += `<text x="${s7cx}" y="${passY+52}" text-anchor="middle" fill="#059669" font-size="9">일일보고서 업데이트</text>`;
-
-  // 불합격 (오른쪽)
-  const ncX1 = s7cx + 55 + 14;
-  const ncY  = jdiaY + 20;
-  svg += `<line x1="${s7cx+55}" y1="${ncY}" x2="${ncX1}" y2="${ncY}" stroke="#C0392B" stroke-width="1.5"/>`;
-  svg += `<text x="${ncX1-4}" y="${ncY-5}" fill="#C0392B" font-size="9" font-weight="700">불합격</text>`;
-  svg += `<rect x="${ncX1}" y="${ncY-BSTEP_H/2}" width="${BSTEP_W}" height="${BSTEP_H}" rx="7" fill="#FDECEA" stroke="#C0392B" stroke-width="1.2" style="cursor:pointer" onclick="showPage('nonconf')"/>`;
-  svg += `<text x="${ncX1+BSTEP_W/2}" y="${ncY-8}" text-anchor="middle" fill="#C0392B" font-size="11" font-weight="700">🚫 부적합 등록</text>`;
-  svg += `<text x="${ncX1+BSTEP_W/2}" y="${ncY+6}" text-anchor="middle" fill="#C0392B" font-size="9">격리 구역 이송</text>`;
-  svg += `<text x="${ncX1+BSTEP_W/2}" y="${ncY+19}" text-anchor="middle" fill="#C0392B" font-size="9">반품·특채·재작업·폐기</text>`;
-  // nc → 화살표 아래
-  svg += `<line x1="${ncX1+BSTEP_W/2}" y1="${ncY+BSTEP_H/2}" x2="${ncX1+BSTEP_W/2}" y2="${ncY+BSTEP_H/2+18}" stroke="#C0392B" stroke-width="1.2" marker-end="url(#arr-red)"/>`;
-  svg += `<text x="${ncX1+BSTEP_W/2}" y="${ncY+BSTEP_H/2+32}" text-anchor="middle" fill="#C0392B" font-size="9">SQM팀 통보</text>`;
-
-  // 범례
-  const legY = SVG_H - 32;
-  svg += `<rect x="20" y="${legY}" width="10" height="10" rx="2" fill="#0096B4"/>`;
-  svg += `<text x="34" y="${legY+9}" fill="#4B5563" font-size="10">수입검사 주요 단계</text>`;
-  svg += `<rect x="180" y="${legY}" width="10" height="10" rx="2" fill="#C0392B"/>`;
-  svg += `<text x="194" y="${legY+9}" fill="#4B5563" font-size="10">불합격·이슈 분기</text>`;
-  svg += `<rect x="340" y="${legY}" width="10" height="10" rx="2" fill="#059669"/>`;
-  svg += `<text x="354" y="${legY+9}" fill="#4B5563" font-size="10">합격 처리</text>`;
-  svg += `<rect x="450" y="${legY}" width="10" height="10" rx="2" fill="#7C3AED"/>`;
-  svg += `<text x="464" y="${legY+9}" fill="#4B5563" font-size="10">샘플링 (AQL)</text>`;
-  svg += `<text x="${SVG_W-20}" y="${legY+9}" text-anchor="end" fill="#94A3B8" font-size="9">※ 클릭 시 해당 메뉴로 이동 · IATF 16949 / VDA 기반</text>`;
-
-  svg += '</svg>';
-  document.getElementById('flowchart-area').innerHTML = svg;
-}
-
-// ── MENU GUIDE ────────────────────────────────────
-function renderMenuGuide(){
-  const menus = [
-    { icon:'📦', name:'입고검사', color:'#0096B4', page:'incoming',
-      steps:['검사 일자·품목번호·품목명 입력','기준서 체크리스트 6항목 확인 (체크박스 클릭)','외관·치수 검사 결과 선택','최종 판정 선택 (합격/불합격/보류)','SAP 입력 여부 선택 후 "검사 결과 저장"','불합격 시 "부적합 등록" 버튼 클릭'] },
-    { icon:'📋', name:'SAP 성적서', color:'#2563EB', page:'sap',
-      steps:['품목번호·Rev. 번호·담당자 입력','7개 항목 각각 드롭다운 선택 (유/무, 최신/구버전 등)','이상 항목 특기사항란에 구체 기재','"검토 결과 저장" 클릭 → Firebase 저장','이상 발견 시 → SQM팀 서면 요청 진행'] },
-    { icon:'🔬', name:'측정의뢰', color:'#7C3AED', page:'measure',
-      steps:['의뢰일·완료(예정)일 입력','품목번호·의뢰 내용 기재','소요시간·결과·담당자 입력 후 "의뢰 등록"','진행 완료 시 현황 테이블에서 "완료" 클릭','결과는 일일보고서와 연동'] },
-    { icon:'⚠️', name:'부적합 관리', color:'#C0392B', page:'nonconf',
-      steps:['상단 "+ 부적합 등록" 또는 입고검사에서 연동','품목·수량·유형·처리방법·격리위치 입력','SQM팀 통보 후 처리 방법 결정','처리 완료 시 테이블에서 "완료" 클릭','미처리 건은 대시보드 알림에 자동 표시'] },
-    { icon:'📦', name:'소모품 신청', color:'#B45309', page:'supply',
-      steps:['신청 월·신청자 입력 (매월 말일까지)','각 품목별 재고·신청수량·사유 기입','안전화·근무복은 사이즈 반드시 기재','긴급 시 긴급 선택 → 수령 희망일 입력','"신청서 제출" 클릭 또는 "출력" 후 경영지원실 제출'] },
-    { icon:'🎯', name:'실행 계획', color:'#059669', page:'action',
-      steps:['5대 항목 중 해당 항목 선택','태스크명·담당자·목표일·진행률 입력','공유 방법 선택 (주간보고·월간회의 등)','진행 완료 시 "완료" 클릭 → 진행률 자동 갱신','"현황 공유" 버튼 → 클립보드 복사 후 이메일·메신저 공유'] },
-    { icon:'📁', name:'보고서', color:'#0F2244', page:'report',
-      steps:['시작일·종료일 입력 후 "조회"','품목번호 입력 시 해당 품목만 필터','"전체" 버튼으로 전체 이력 복원','"일일 보고서 출력" → 브라우저 인쇄 활용','이력은 Firebase에 영구 보관'] },
-  ];
-
-  const html = `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
-    ${menus.map(m=>`
-    <div style="border:1px solid var(--line);border-radius:9px;overflow:hidden;cursor:pointer" onclick="showPage('${m.page}')">
-      <div style="background:${m.color};padding:10px 12px;display:flex;align-items:center;gap:8px">
-        <span style="font-size:18px">${m.icon}</span>
-        <span style="color:#fff;font-weight:700;font-size:13px">${m.name}</span>
-      </div>
-      <div style="padding:10px 12px;background:#fff">
-        <ol style="margin:0;padding-left:16px;display:flex;flex-direction:column;gap:5px">
-          ${m.steps.map(s=>`<li style="font-size:11px;color:var(--slate);line-height:1.4">${s}</li>`).join('')}
-        </ol>
-      </div>
-    </div>`).join('')}
-  </div>
-  <div style="margin-top:10px;padding:8px 12px;background:var(--tealL);border-radius:7px;border:1px solid var(--teal);font-size:11px;color:var(--tealD)">
-    💡 <b>모든 데이터는 Firebase 실시간 저장</b>됩니다. 여러 기기에서 동시 접속해도 데이터가 자동 동기화됩니다. 플로우차트의 각 단계를 클릭하면 해당 메뉴로 이동합니다.
-  </div>`;
-
-  document.getElementById('menu-guide-area').innerHTML = html;
-}
-
-const AP_CATS = {
-  rr:      { label:'1) 업무 Scope · R&R 명확화',   color:'teal',  num:'01',
-    desc:'검사원별 담당 업무·권한·책임 명확히 정의. 각 담당자가 역할과 의무를 충분히 인지할 수 있도록 체계 구축.',
-    defaults:['검사원별 R&R 정의서 작성','담당 업무 범위 매핑 표 작성','R&R 공유 및 서명 확인'] },
-  process: { label:'2) 업무 프로세스 표준화',       color:'blue',  num:'02',
-    desc:'업무가 전달·수행되는 전 과정을 확인할 수 있는 Flow Chart 작성. 업무 수행 절차 표준화 및 문서화.',
-    defaults:['수입검사 Flow Chart 작성','기준서 확인 절차 표준화','업무 매뉴얼(SOP) 문서화'] },
-  quality: { label:'3) 품질 마인드 강화',           color:'red',   num:'03',
-    desc:'품질 이슈 발생 시 즉각 보고·대응 문화 정착. 품질 기준·절차 준수에 대한 인식 개선 활동 추진.',
-    defaults:['품질 이슈 즉각 보고 체계 수립','불합격 처리 절차 교육 실시','월간 품질 현황 공유회 운영'] },
-  log:     { label:'4) 업무일지 운영',              color:'green', num:'04',
-    desc:'일일 업무 수행 내역·특이사항 기록. 업무 이력 추적·관리가 가능하도록 운영 체계 수립.',
-    defaults:['일일 입고검사 보고서 운영','측정의뢰 현황 데일리 업데이트','부적합 이력 관리 체계 구축'] },
-  erp:     { label:'5) ERP 기반 모니터링 구축',     color:'amber', num:'05',
-    desc:'인시스 및 검사원들의 업무 진행 현황을 관리할 수 있는 ERP 구축 검토. 업무 실적·운영 현황 모니터링 체계 추가.',
-    defaults:['SAP 검사 결과 입력 체계 정비','본 웹 시스템 활용한 실시간 현황 모니터링','분기 실적 보고 체계 수립'] },
+// ══════════════════════════════════════════════════
+// 실행계획 (Action Plan)
+// ══════════════════════════════════════════════════
+const AP_CATS={
+  rr:     {label:'1) 업무 Scope · R&R 명확화',  color:'teal', num:'01', desc:'검사원별 담당 업무·권한·책임 명확히 정의', defaults:['검사원별 R&R 정의서 작성','담당 업무 범위 매핑 표','R&R 공유 및 서명 확인']},
+  process:{label:'2) 업무 프로세스 표준화',      color:'blue', num:'02', desc:'Flow Chart 작성 및 SOP 문서화', defaults:['수입검사 Flow Chart 작성','기준서 확인 절차 표준화','SOP 문서화']},
+  quality:{label:'3) 품질 마인드 강화',           color:'red',  num:'03', desc:'즉각 보고·대응 문화 정착', defaults:['품질 이슈 즉각 보고 체계','월간 품질 현황 공유','불합격 처리 절차 교육']},
+  log:    {label:'4) 업무일지 운영',              color:'green',num:'04', desc:'일일 업무 수행 내역·특이사항 기록', defaults:['일일 입고검사 보고서','측정의뢰 현황 업데이트','부적합 이력 관리']},
+  erp:    {label:'5) ERP 기반 모니터링',          color:'amber',num:'05', desc:'ERP 구축 검토·모니터링 체계 수립', defaults:['SAP 검사 결과 입력 정비','웹 시스템 실시간 현황','분기 실적 보고 체계']},
 };
 
-let actions = {};
+function clearAction(){
+  ['ap-task','ap-owner','ap-note'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  const pe=document.getElementById('ap-pct'); if(pe) pe.value='';
+  const se=document.getElementById('ap-status'); if(se) se.value='미착수';
+}
 
-window.clearAction = () => {
-  ['ap-task','ap-owner','ap-note'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('ap-pct').value='';
-};
-
-window.saveAction = async () => {
-  const task  = document.getElementById('ap-task').value.trim();
-  const owner = document.getElementById('ap-owner').value.trim();
-  const due   = document.getElementById('ap-due').value;
-  if(!task||!owner||!due){ toast('⚠️ 태스크명·담당자·목표일은 필수입니다.'); return; }
-  const rec = {
-    dt:     new Date().toISOString(),
-    cat:    document.getElementById('ap-cat').value,
+function saveAction(){
+  const task =document.getElementById('ap-task').value.trim();
+  const owner=document.getElementById('ap-owner').value.trim();
+  const due  =document.getElementById('ap-due').value;
+  if(!task){  toast('⚠️ 태스크명을 입력하세요.'); return; }
+  if(!owner){ toast('⚠️ 담당자를 입력하세요.'); return; }
+  if(!due){   toast('⚠️ 목표 완료일을 선택하세요.'); return; }
+  const rec={
+    dt:    new Date().toISOString(),
+    cat:   document.getElementById('ap-cat').value,
     task, owner, due,
-    start:  document.getElementById('ap-start').value,
-    status: document.getElementById('ap-status').value,
-    pct:    parseInt(document.getElementById('ap-pct').value)||0,
-    share:  document.getElementById('ap-share').value,
-    note:   document.getElementById('ap-note').value,
+    start: document.getElementById('ap-start').value,
+    status:document.getElementById('ap-status').value||'미착수',
+    pct:   parseInt(document.getElementById('ap-pct').value)||0,
+    share: document.getElementById('ap-share').value,
+    note:  document.getElementById('ap-note').value,
   };
-  await push(ref(db,'/ims/actions'), rec);
-  window.clearAction();
-  toast('✅ 태스크가 등록되었습니다.');
-};
+  fbPush('/ims/actions', rec)
+    .then(()=>{ clearAction(); toast('✅ 태스크가 등록되었습니다.'); })
+    .catch(e=>toast('저장 오류: '+e.message));
+}
 
-window.updateActionStatus = async (id, status, pct) => {
-  const rec = actions[id]; if(!rec) return;
-  rec.status = status; rec.pct = pct;
-  if(status==='완료') rec.doneDt = new Date().toISOString().slice(0,10);
-  await set(ref(db,'/ims/actions/'+id), rec);
-  toast('업데이트되었습니다.');
-};
+function updateActionStatus(id, status, pct){
+  const rec=actions[id]; if(!rec) return;
+  rec.status=status; rec.pct=pct;
+  if(status==='완료') rec.doneDt=new Date().toISOString().slice(0,10);
+  fbSet('/ims/actions/'+id, rec).then(()=>toast('업데이트되었습니다.'));
+}
 
-window.shareReport = () => {
-  const arr = Object.values(actions);
-  const total = arr.length;
-  const done  = arr.filter(r=>r.status==='완료').length;
-  const pct   = total ? Math.round(done/total*100) : 0;
-  const lines = Object.entries(AP_CATS).map(([key,cat])=>{
-    const tasks = arr.filter(r=>r.cat===key);
-    const catDone = tasks.filter(r=>r.status==='완료').length;
-    return `${cat.label}: ${catDone}/${tasks.length} 완료`;
+function shareReport(){
+  const arr=Object.values(actions);
+  const done=arr.filter(r=>r.status==='완료').length;
+  const pct=arr.length?Math.round(done/arr.length*100):0;
+  const lines=Object.entries(AP_CATS).map(([key,cat])=>{
+    const tasks=arr.filter(r=>r.cat===key);
+    return `${cat.label}: ${tasks.filter(r=>r.status==='완료').length}/${tasks.length} 완료`;
   }).join('\n');
-  const msg = `[수입검사 Action Plan 현황]\n전체 진행률: ${pct}% (${done}/${total})\n\n${lines}\n\n기준일: ${new Date().toLocaleDateString('ko-KR')}`;
-  navigator.clipboard.writeText(msg).then(()=>toast('📋 현황 복사 완료 — 메일/메신저에 붙여넣기 하세요.'));
-};
+  const msg=`[수입검사 Action Plan 현황]\n전체 진행률: ${pct}% (${done}/${arr.length})\n\n${lines}\n\n기준일: ${new Date().toLocaleDateString('ko-KR')}`;
+  if(navigator.clipboard) navigator.clipboard.writeText(msg).then(()=>toast('📋 현황 복사 완료 — 메일·메신저에 붙여넣기 하세요.'));
+  else { alert(msg); }
+}
 
 function renderActionPage(){
-  const arr = Object.values(actions);
-  const total = arr.length;
-  const done  = arr.filter(r=>r.status==='완료').length;
-  const pct   = total ? Math.round(done/total*100) : 0;
-  const open  = arr.filter(r=>r.status!=='완료'&&r.status!=='보류').length;
-  document.getElementById('ap-badge').textContent = open;
+  const arr=Object.values(actions);
+  const done=arr.filter(r=>r.status==='완료').length;
+  const pct=arr.length?Math.round(done/arr.length*100):0;
+  const open=arr.filter(r=>r.status!=='완료'&&r.status!=='보류').length;
+  const badge=document.getElementById('ap-badge'); if(badge) badge.textContent=open;
 
-  // 전체 진행률 바
-  const pb = document.getElementById('ap-overall-bar');
-  pb.innerHTML = `
-    <div class="prog-wrap">
-      <div class="prog-label"><span>전체 진행률</span><span style="font-weight:700;font-size:14px;color:var(--ink)">${pct}%  (${done} / ${total} 완료)</span></div>
-      <div class="prog-bar"><div class="prog-fill ${pct===100?'green':'teal'}" style="width:${pct}%"></div></div>
-    </div>`;
+  const pb=document.getElementById('ap-overall-bar'); if(!pb) return;
+  pb.innerHTML=`<div class="prog-wrap">
+    <div class="prog-label"><span>전체 진행률</span><span style="font-weight:700;font-size:14px;color:var(--ink)">${pct}%  (${done} / ${arr.length} 완료)</span></div>
+    <div class="prog-bar"><div class="prog-fill ${pct===100?'green':'teal'}" style="width:${pct}%"></div></div>
+  </div>`;
 
-  // 카테고리별 통계
-  const catStats = document.getElementById('ap-cat-stats');
-  catStats.innerHTML = Object.entries(AP_CATS).map(([key,cat])=>{
-    const tasks = arr.filter(r=>r.cat===key);
-    const catDone = tasks.filter(r=>r.status==='완료').length;
-    const catPct  = tasks.length ? Math.round(catDone/tasks.length*100) : 0;
-    return `<div class="ap-cat-card">
-      <div class="ap-cat-title">${cat.num}</div>
-      <div class="ap-cat-num">${catPct}%</div>
-      <div class="ap-cat-sub">${catDone}/${tasks.length} 완료</div>
-      <div class="prog-bar" style="margin-top:6px"><div class="prog-fill ${cat.color}" style="width:${catPct}%"></div></div>
-    </div>`;
+  const cs=document.getElementById('ap-cat-stats'); if(!cs) return;
+  cs.innerHTML=Object.entries(AP_CATS).map(([key,cat])=>{
+    const tasks=arr.filter(r=>r.cat===key);
+    const cp=tasks.length?Math.round(tasks.filter(r=>r.status==='완료').length/tasks.length*100):0;
+    return `<div class="ap-cat-card"><div class="ap-cat-title">${cat.num}</div><div class="ap-cat-num">${cp}%</div><div class="ap-cat-sub">${tasks.filter(r=>r.status==='완료').length}/${tasks.length} 완료</div><div class="prog-bar" style="margin-top:6px"><div class="prog-fill ${cat.color}" style="width:${cp}%"></div></div></div>`;
   }).join('');
 
-  // 5대 항목 카드
-  const area = document.getElementById('ap-items-area');
-  area.innerHTML = Object.entries(AP_CATS).map(([key,cat])=>{
-    const tasks = arr.filter(r=>r.cat===key);
-    const taskRows = tasks.length
-      ? tasks.map(t=>`
-          <tr>
-            <td style="font-size:12px">${t.task}</td>
-            <td>${t.owner}</td>
-            <td>${fmtD(t.due)}</td>
-            <td>
-              <div class="prog-bar" style="width:80px;display:inline-block;vertical-align:middle;margin-right:4px">
-                <div class="prog-fill ${cat.color}" style="width:${t.pct||0}%"></div>
-              </div>
-              <span style="font-size:10px">${t.pct||0}%</span>
-            </td>
-            <td><span class="badge ${t.status==='완료'?'badge-green':t.status==='진행 중'?'badge-teal':t.status==='보류'?'badge-amber':'badge-gray'}">${t.status}</span></td>
-            <td style="font-size:10px;color:var(--slate)">${t.share||'-'}</td>
-            <td>
-              ${t.status!=='완료'?`<button class="btn btn-green btn-sm" onclick="updateActionStatus('${Object.keys(actions).find(k=>actions[k]===t)}','완료',100)">완료</button>`:''}
-            </td>
-          </tr>`)
-      .join('')
-      : `<tr><td colspan="7" style="color:var(--slate);font-size:11px;padding:8px">등록된 태스크 없음</td></tr>`;
-
-    const defRows = cat.defaults.map(d=>`<div class="ap-default-task"><div class="dot"></div>${d}</div>`).join('');
-
-    return `<div class="ap-item-card">
-      <div class="ap-item-hdr">
-        <div class="ap-item-num">${cat.num}</div>
-        <div>
-          <div class="ap-item-title">${cat.label}</div>
-          <div class="ap-item-desc">${cat.desc}</div>
-        </div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div>
-          <div style="font-size:11px;font-weight:600;color:var(--slate);margin-bottom:6px">주요 실행 내용</div>
-          <div class="ap-default-tasks">${defRows}</div>
-        </div>
-        <div>
-          <div style="font-size:11px;font-weight:600;color:var(--slate);margin-bottom:6px">등록된 태스크</div>
-          <div class="tbl-wrap">
-            <table class="tbl" style="font-size:11px">
-              <thead><tr><th>태스크</th><th>담당</th><th>목표일</th><th>진행률</th><th>상태</th><th>공유</th><th></th></tr></thead>
-              <tbody>${taskRows}</tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
-
-  // 전체 태스크 테이블
-  const tb = document.getElementById('ap-tbody');
-  const allArr = Object.entries(actions).sort((a,b)=>b[1].dt.localeCompare(a[1].dt));
-  tb.innerHTML = allArr.length
-    ? allArr.map(([id,t])=>`<tr>
-        <td><span style="font-size:10px;font-weight:700;color:var(--teal)">${AP_CATS[t.cat]?.num||''}</span> <span style="font-size:10px">${AP_CATS[t.cat]?.label.replace(/^\d\) /,'')||t.cat}</span></td>
-        <td>${t.task}</td><td>${t.owner}</td><td>${fmtD(t.due)}</td>
-        <td>
-          <div class="prog-bar" style="width:70px;display:inline-block;vertical-align:middle;margin-right:4px">
-            <div class="prog-fill teal" style="width:${t.pct||0}%"></div>
-          </div><span style="font-size:10px">${t.pct||0}%</span>
-        </td>
+  const area=document.getElementById('ap-items-area'); if(!area) return;
+  area.innerHTML=Object.entries(AP_CATS).map(([key,cat])=>{
+    const tasks=arr.filter(r=>r.cat===key);
+    const taskRows=tasks.length?tasks.map(t=>{
+      const tid=Object.keys(actions).find(k=>actions[k]===t)||'';
+      return `<tr>
+        <td style="font-size:11px">${t.task}</td><td>${t.owner}</td><td>${fmtD(t.due)}</td>
+        <td><div class="prog-bar" style="width:70px;display:inline-block;vertical-align:middle"><div class="prog-fill ${cat.color}" style="width:${t.pct||0}%"></div></div> <span style="font-size:10px">${t.pct||0}%</span></td>
         <td><span class="badge ${t.status==='완료'?'badge-green':t.status==='진행 중'?'badge-teal':t.status==='보류'?'badge-amber':'badge-gray'}">${t.status}</span></td>
-        <td style="font-size:10px">${t.share||'-'}</td>
-        <td style="font-size:10px;max-width:120px">${t.note||'-'}</td>
-        <td>
-          ${t.status!=='완료'?`<button class="btn btn-green btn-sm" onclick="updateActionStatus('${id}','완료',100)">완료</button>`:''}
-          <button class="btn btn-outline btn-sm" onclick="delItem('/ims/actions','${id}')">삭제</button>
-        </td>
-      </tr>`)
-    .join('')
-    : '<tr><td colspan="9" style="text-align:center;color:var(--slate);padding:20px">등록된 태스크 없음</td></tr>';
+        <td>${t.status!=='완료'?`<button class="btn btn-green btn-sm" onclick="updateActionStatus('${tid}','완료',100)">완료</button>`:''} <button class="btn btn-red btn-sm" onclick="delItem('/ims/actions','${tid}')">삭제</button></td>
+      </tr>`;}).join(''):'<tr><td colspan="6" style="color:var(--slate);font-size:11px;padding:8px">등록된 태스크 없음</td></tr>';
+    return `<div class="ap-item-card">
+      <div class="ap-item-hdr"><div class="ap-item-num">${cat.num}</div><div><div class="ap-item-title">${cat.label}</div><div class="ap-item-desc">${cat.desc}</div></div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><div style="font-size:11px;font-weight:600;color:var(--slate);margin-bottom:6px">주요 실행 내용</div>${cat.defaults.map(d=>`<div class="ap-default-task"><div class="dot"></div>${d}</div>`).join('')}</div>
+        <div><div style="font-size:11px;font-weight:600;color:var(--slate);margin-bottom:6px">등록된 태스크</div><div class="tbl-wrap"><table class="tbl" style="font-size:11px"><thead><tr><th>태스크</th><th>담당</th><th>목표일</th><th>진행률</th><th>상태</th><th>관리</th></tr></thead><tbody>${taskRows}</tbody></table></div></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const tb=document.getElementById('ap-tbody'); if(!tb) return;
+  const allArr=Object.entries(actions).sort((a,b)=>b[1].dt.localeCompare(a[1].dt));
+  tb.innerHTML=allArr.length?allArr.map(([id,t])=>`<tr>
+    <td><span style="font-size:10px;font-weight:700;color:var(--teal)">${AP_CATS[t.cat]?.num||''}</span> <span style="font-size:10px">${(AP_CATS[t.cat]?.label||t.cat).replace(/^\d\) /,'')}</span></td>
+    <td>${t.task}</td><td>${t.owner}</td><td>${fmtD(t.due)}</td>
+    <td><div class="prog-bar" style="width:60px;display:inline-block;vertical-align:middle"><div class="prog-fill teal" style="width:${t.pct||0}%"></div></div> <span style="font-size:10px">${t.pct||0}%</span></td>
+    <td><span class="badge ${t.status==='완료'?'badge-green':t.status==='진행 중'?'badge-teal':t.status==='보류'?'badge-amber':'badge-gray'}">${t.status}</span></td>
+    <td style="font-size:10px">${t.share||'-'}</td>
+    <td style="font-size:10px;max-width:100px">${t.note||'-'}</td>
+    <td>${t.status!=='완료'?`<button class="btn btn-green btn-sm" onclick="updateActionStatus('${id}','완료',100)">완료</button> `:''}<button class="btn btn-red btn-sm" onclick="delItem('/ims/actions','${id}')">삭제</button></td>
+  </tr>`).join(''):'<tr><td colspan="9" style="text-align:center;color:var(--slate);padding:16px">등록된 태스크 없음</td></tr>';
 }
 
-// Firebase 리스닝 추가
-onValue(ref(db,'/ims/actions'), snap=>{ actions=snap.val()||{}; renderActionPage(); });
-  if(!confirm('삭제하시겠습니까?')) return;
-  await remove(ref(db, path+'/'+id));
-  toast('삭제되었습니다.');
-};
+// ══════════════════════════════════════════════════
+// 보고서
+// ══════════════════════════════════════════════════
+function filterReport(){
+  const from=document.getElementById('rp-from').value;
+  const to  =document.getElementById('rp-to').value;
+  const num =document.getElementById('rp-num').value.trim();
+  let arr=Object.values(incoming);
+  if(from) arr=arr.filter(r=>r.date>=from);
+  if(to)   arr=arr.filter(r=>r.date<=to);
+  if(num)  arr=arr.filter(r=>r.num&&r.num.includes(num));
+  renderReport(arr);
+}
+function resetReport(){ renderReport(Object.values(incoming)); }
+function printReport(){ window.print(); }
+
+function renderReport(arr){
+  const sorted=[...arr].sort((a,b)=>b.dt.localeCompare(a.dt));
+  const tb=document.getElementById('rp-tbody'); if(!tb) return;
+  tb.innerHTML=sorted.length?sorted.map(r=>`<tr>
+    <td>${fmtD(r.date)}</td>
+    <td style="font-size:11px">${r.num}</td>
+    <td>${r.name}</td>
+    <td>${r.qty||'-'}</td>
+    <td>${r.elapsed||'-'}</td>
+    <td><span class="badge ${badgeClass(r.judge)}">${r.judge}</span></td>
+    <td><span class="badge ${badgeClass(r.sap)}">${r.sap||'-'}</span></td>
+    <td style="font-size:11px;max-width:140px">${r.note||'-'}</td>
+  </tr>`).join(''):'<tr><td colspan="8" style="text-align:center;color:var(--slate);padding:16px">이력 없음</td></tr>';
+}
 </script>
 </body>
 </html>
