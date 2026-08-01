@@ -1006,6 +1006,15 @@ async function fbGet(path){
   const d = await r.json();
   return d; // null이면 빈 경로
 }
+async function fbInitPath(path){
+  // 경로가 비어있으면(null) 빈 객체로 초기화 — 이후 404 없이 깨끗하게 조회됨
+  const cur = await fbGet(path);
+  if(cur === null){
+    await fetch(`${FB_URL}${path}.json`, {
+      method:'PUT', body:JSON.stringify({}), headers:{'Content-Type':'application/json'}
+    });
+  }
+}
 async function fbPush(path, data){
   const r = await fetch(`${FB_URL}${path}.json`, {
     method:'POST', body:JSON.stringify(data),
@@ -1047,7 +1056,15 @@ async function loadAllData(){
     if(s){ s.textContent='🔴 연결 실패'; s.style.background='rgba(192,57,43,0.3)'; s.style.color='#FCA5A5'; }
   }
 }
-async function startPolling(){ await loadAllData(); } // 최초 1회만 로드
+async function startPolling(){
+  // 최초 1회: 빈 경로 초기화 (404 콘솔 노이즈 제거) 후 데이터 로드
+  await Promise.all([
+    fbInitPath('/ims/incoming'), fbInitPath('/ims/sap'),
+    fbInitPath('/ims/measures'), fbInitPath('/ims/nc'),
+    fbInitPath('/ims/supply'),   fbInitPath('/ims/actions'),
+  ]);
+  await loadAllData();
+}
 
 
 // ── State ──────────────────────────────────────────
