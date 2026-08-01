@@ -256,6 +256,21 @@ textarea{resize:vertical;min-height:64px}
       <div id="dash-nc-list"><p style="color:var(--slate);font-size:12px;padding:8px 0">부적합 없음 ✅</p></div>
     </div>
   </div>
+
+  <!-- 플로우차트 -->
+  <div class="card">
+    <div class="card-title"><span class="bar"></span>셰플러 자동차 부품 수입검사 표준 프로세스 Flow Chart
+      <span style="font-size:10px;color:var(--slate);font-weight:400;margin-left:8px">IATF 16949 / VDA 기준 · AQL 샘플링 적용</span>
+    </div>
+    <div id="flowchart-area" style="overflow-x:auto;padding:4px 0"></div>
+  </div>
+
+  <!-- 메뉴 사용 가이드 -->
+  <div class="card">
+    <div class="card-title"><span class="bar"></span>시스템 메뉴 사용 방법</div>
+    <div id="menu-guide-area"></div>
+  </div>
+
 </div>
 
 <!-- ══ 입고검사 ═══════════════════════════════════ -->
@@ -738,6 +753,9 @@ window.addEventListener('load', () => {
 
 function renderAll(){ renderDash(); renderInTable(); renderSapTable(); renderMsTable(); renderNcTable(); renderSupTable(); renderReport(Object.values(incoming)); renderActionPage(); }
 
+  // 최초 1회 플로우차트·메뉴가이드 렌더
+  renderFlowchart();
+  renderMenuGuide();
 // ── UTILS
 const fmtD = iso => iso?iso.replace(/-/g,'.'):'';
 const fmtDt = iso => { const d=new Date(iso); return `${(d.getMonth()+1).toString().padStart(2,'0')}.${d.getDate().toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`; };
@@ -960,7 +978,184 @@ function renderReport(arr){
   tb.innerHTML = sorted.length ? sorted.map(r=>`<tr><td>${fmtD(r.date)}</td><td style="font-size:11px">${r.num}</td><td>${r.name}</td><td>${r.qty||'-'}</td><td>${r.elapsed||'-'}</td><td><span class="badge ${badgeClass(r.judge)}">${r.judge}</span></td><td><span class="badge ${badgeClass(r.sap)}">${r.sap||'-'}</span></td><td style="font-size:11px;max-width:160px">${r.note||'-'}</td></tr>`).join('') : '<tr><td colspan="8" style="text-align:center;color:var(--slate);padding:20px">이력 없음</td></tr>';
 }
 
-// ── ACTION PLAN ──────────────────────────────────
+// ── FLOWCHART ─────────────────────────────────────
+function renderFlowchart(){
+  const steps = [
+    { id:'s1', label:'입고 접수', sub:'납품서·성적서·수량 확인\nSAP 입고전표 확인', color:'#0096B4', icon:'📥', menu:'incoming' },
+    { id:'s2', label:'SAP 성적서 검토', sub:'기종별 성적서 유무 확인\n최신 Rev. · 항목 완전성 · 품목번호 일치', color:'#2563EB', icon:'📋', menu:'sap' },
+    { id:'s3', label:'기준서 확인', sub:'검사기준서 버전 확인\n외관·치수 항목 누락 여부', color:'#0096B4', icon:'📄', menu:'sap' },
+    { id:'s4', label:'AQL 샘플 추출', sub:'KS Q ISO 2859-1 기준\n고객사 기준서 우선 적용', color:'#7C3AED', icon:'🎲', menu:'incoming' },
+    { id:'s5', label:'외관 검사', sub:'기준서 사진 대비\n표면·색상·마킹·포장 전수', color:'#0096B4', icon:'👁', menu:'incoming' },
+    { id:'s6', label:'치수 검사', sub:'샘플 치수 측정\n측정값 vs 규격값 비교', color:'#0096B4', icon:'📐', menu:'incoming' },
+    { id:'s7', label:'최종 판정', sub:'고객사 기준서 기준\n합격 / 불합격 / 보류', color:'#059669', icon:'⚖️', menu:'incoming' },
+  ];
+
+  const branches = [
+    { label:'성적서 없음', color:'#C0392B', steps:[
+      { label:'SQM팀 서면 요청', sub:'성적서 요청 + 검사 보류', color:'#C0392B', icon:'📨', menu:'sap' },
+    ]},
+    { label:'불합격', color:'#C0392B', steps:[
+      { label:'부적합 등록', sub:'격리 구역 이송\n식별 태그 부착', color:'#C0392B', icon:'🚫', menu:'nonconf' },
+      { label:'처리 결정', sub:'반품 / 특채 / 재작업 / 폐기\nSQM팀 통보', color:'#B45309', icon:'🔄', menu:'nonconf' },
+    ]},
+    { label:'합격', color:'#059669', steps:[
+      { label:'입고 승인', sub:'SAP 결과 입력\n지정 보관 위치 이송', color:'#059669', icon:'✅', menu:'incoming' },
+    ]},
+  ];
+
+  const BSTEP_W = 140, BSTEP_H = 72, BSTEP_GAP = 14;
+  const STEP_W = 148, STEP_H = 80, STEP_GAP = 10;
+  const ARROW = 28;
+  const totalMainW = steps.length * STEP_W + (steps.length-1) * (STEP_GAP + ARROW);
+  const SVG_W = Math.max(totalMainW + 40, 1100);
+  const SVG_H = 500;
+
+  let svg = `<svg viewBox="0 0 ${SVG_W} ${SVG_H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;min-width:900px;font-family:'Noto Sans KR',sans-serif">
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#94A3B8"/>
+    </marker>
+    <marker id="arr-red" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#C0392B"/>
+    </marker>
+    <marker id="arr-green" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#059669"/>
+    </marker>
+    <filter id="sh"><feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity="0.10"/></filter>
+  </defs>`;
+
+  // ── 메인 스텝
+  const mainY = 40;
+  steps.forEach((s, i) => {
+    const x = 20 + i * (STEP_W + STEP_GAP + ARROW);
+    const cx = x + STEP_W/2;
+    // 박스
+    svg += `<rect x="${x}" y="${mainY}" width="${STEP_W}" height="${STEP_H}" rx="8" fill="${s.color}" filter="url(#sh)" style="cursor:pointer" onclick="showPage('${s.menu}')"/>`;
+    // 아이콘
+    svg += `<text x="${cx}" y="${mainY+22}" text-anchor="middle" font-size="16">${s.icon}</text>`;
+    // 라벨
+    svg += `<text x="${cx}" y="${mainY+42}" text-anchor="middle" fill="white" font-size="12" font-weight="700">${s.label}</text>`;
+    // 서브 (2줄)
+    s.sub.split('\n').forEach((line, li) => {
+      svg += `<text x="${cx}" y="${mainY+56+li*13}" text-anchor="middle" fill="rgba(255,255,255,0.85)" font-size="9.5">${line}</text>`;
+    });
+    // 화살표
+    if(i < steps.length-1){
+      const ax = x + STEP_W + 2;
+      const ay = mainY + STEP_H/2;
+      svg += `<line x1="${ax}" y1="${ay}" x2="${ax+ARROW-4}" y2="${ay}" stroke="#94A3B8" stroke-width="1.8" marker-end="url(#arr)"/>`;
+    }
+    // 단계번호
+    svg += `<text x="${x+6}" y="${mainY+12}" fill="rgba(255,255,255,0.6)" font-size="9" font-weight="700">STEP ${i+1}</text>`;
+  });
+
+  // ── 분기 노드 (마름모) — STEP 2 아래: 성적서 유무
+  const s2x = 20 + 1*(STEP_W+STEP_GAP+ARROW);
+  const s2cx = s2x + STEP_W/2;
+  const diaY = mainY + STEP_H + 28;
+  const diaH = 36; const diaW = 100;
+  svg += `<polygon points="${s2cx},${diaY} ${s2cx+diaW/2},${diaY+diaH/2} ${s2cx},${diaY+diaH} ${s2cx-diaW/2},${diaY+diaH/2}" fill="#FEE2E2" stroke="#C0392B" stroke-width="1.5"/>`;
+  svg += `<text x="${s2cx}" y="${diaY+diaH/2+4}" text-anchor="middle" fill="#C0392B" font-size="10" font-weight="700">성적서 有?</text>`;
+  // 위→마름모 화살표
+  svg += `<line x1="${s2cx}" y1="${mainY+STEP_H}" x2="${s2cx}" y2="${diaY}" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arr)"/>`;
+  // 마름모→없음 분기 (왼쪽)
+  const noX = s2cx - diaW/2 - 10;
+  const noBoxX = s2cx - diaW/2 - 10 - BSTEP_W;
+  svg += `<line x1="${s2cx-diaW/2}" y1="${diaY+diaH/2}" x2="${noBoxX+BSTEP_W}" y2="${diaY+diaH/2}" stroke="#C0392B" stroke-width="1.5" marker-end="url(#arr-red)" stroke-dasharray="5,3"/>`;
+  svg += `<text x="${s2cx-diaW/2-5}" y="${diaY+diaH/2-5}" text-anchor="end" fill="#C0392B" font-size="9" font-weight="700">없음</text>`;
+  svg += `<rect x="${noBoxX}" y="${diaY+diaH/2-BSTEP_H/2}" width="${BSTEP_W}" height="${BSTEP_H}" rx="7" fill="#FDECEA" stroke="#C0392B" stroke-width="1.2" style="cursor:pointer" onclick="showPage('sap')"/>`;
+  svg += `<text x="${noBoxX+BSTEP_W/2}" y="${diaY+diaH/2-8}" text-anchor="middle" fill="#C0392B" font-size="11" font-weight="700">SQM팀 서면요청</text>`;
+  svg += `<text x="${noBoxX+BSTEP_W/2}" y="${diaY+diaH/2+6}" text-anchor="middle" fill="#C0392B" font-size="9">성적서 요청 + 검사 보류</text>`;
+  // 마름모→있음 (아래 계속)
+  svg += `<line x1="${s2cx}" y1="${diaY+diaH}" x2="${s2cx}" y2="${diaY+diaH+16}" stroke="#0096B4" stroke-width="1.5"/>`;
+  svg += `<text x="${s2cx+5}" y="${diaY+diaH+10}" fill="#0096B4" font-size="9" font-weight="700">있음→계속</text>`;
+
+  // ── 판정 분기 노드 (STEP 7 아래)
+  const s7x = 20 + 6*(STEP_W+STEP_GAP+ARROW);
+  const s7cx = s7x + STEP_W/2;
+  const jdiaY = mainY + STEP_H + 28;
+  svg += `<polygon points="${s7cx},${jdiaY} ${s7cx+55},${jdiaY+20} ${s7cx},${jdiaY+40} ${s7cx-55},${jdiaY+20}" fill="#F0FDF4" stroke="#059669" stroke-width="1.5"/>`;
+  svg += `<text x="${s7cx}" y="${jdiaY+24}" text-anchor="middle" fill="#059669" font-size="10" font-weight="700">판 정</text>`;
+  svg += `<line x1="${s7cx}" y1="${mainY+STEP_H}" x2="${s7cx}" y2="${jdiaY}" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arr)"/>`;
+
+  // 합격 (아래)
+  const passY = jdiaY + 40 + 16;
+  svg += `<line x1="${s7cx}" y1="${jdiaY+40}" x2="${s7cx}" y2="${passY}" stroke="#059669" stroke-width="1.5" marker-end="url(#arr-green)"/>`;
+  svg += `<text x="${s7cx+5}" y="${passY-4}" fill="#059669" font-size="9" font-weight="700">합격</text>`;
+  svg += `<rect x="${s7cx-BSTEP_W/2}" y="${passY}" width="${BSTEP_W}" height="${BSTEP_H}" rx="7" fill="#E8F5EE" stroke="#059669" stroke-width="1.2" style="cursor:pointer" onclick="showPage('incoming')"/>`;
+  svg += `<text x="${s7cx}" y="${passY+24}" text-anchor="middle" fill="#059669" font-size="11" font-weight="700">✅ 입고 승인</text>`;
+  svg += `<text x="${s7cx}" y="${passY+38}" text-anchor="middle" fill="#059669" font-size="9">SAP 입력 · 보관 이송</text>`;
+  svg += `<text x="${s7cx}" y="${passY+52}" text-anchor="middle" fill="#059669" font-size="9">일일보고서 업데이트</text>`;
+
+  // 불합격 (오른쪽)
+  const ncX1 = s7cx + 55 + 14;
+  const ncY  = jdiaY + 20;
+  svg += `<line x1="${s7cx+55}" y1="${ncY}" x2="${ncX1}" y2="${ncY}" stroke="#C0392B" stroke-width="1.5"/>`;
+  svg += `<text x="${ncX1-4}" y="${ncY-5}" fill="#C0392B" font-size="9" font-weight="700">불합격</text>`;
+  svg += `<rect x="${ncX1}" y="${ncY-BSTEP_H/2}" width="${BSTEP_W}" height="${BSTEP_H}" rx="7" fill="#FDECEA" stroke="#C0392B" stroke-width="1.2" style="cursor:pointer" onclick="showPage('nonconf')"/>`;
+  svg += `<text x="${ncX1+BSTEP_W/2}" y="${ncY-8}" text-anchor="middle" fill="#C0392B" font-size="11" font-weight="700">🚫 부적합 등록</text>`;
+  svg += `<text x="${ncX1+BSTEP_W/2}" y="${ncY+6}" text-anchor="middle" fill="#C0392B" font-size="9">격리 구역 이송</text>`;
+  svg += `<text x="${ncX1+BSTEP_W/2}" y="${ncY+19}" text-anchor="middle" fill="#C0392B" font-size="9">반품·특채·재작업·폐기</text>`;
+  // nc → 화살표 아래
+  svg += `<line x1="${ncX1+BSTEP_W/2}" y1="${ncY+BSTEP_H/2}" x2="${ncX1+BSTEP_W/2}" y2="${ncY+BSTEP_H/2+18}" stroke="#C0392B" stroke-width="1.2" marker-end="url(#arr-red)"/>`;
+  svg += `<text x="${ncX1+BSTEP_W/2}" y="${ncY+BSTEP_H/2+32}" text-anchor="middle" fill="#C0392B" font-size="9">SQM팀 통보</text>`;
+
+  // 범례
+  const legY = SVG_H - 32;
+  svg += `<rect x="20" y="${legY}" width="10" height="10" rx="2" fill="#0096B4"/>`;
+  svg += `<text x="34" y="${legY+9}" fill="#4B5563" font-size="10">수입검사 주요 단계</text>`;
+  svg += `<rect x="180" y="${legY}" width="10" height="10" rx="2" fill="#C0392B"/>`;
+  svg += `<text x="194" y="${legY+9}" fill="#4B5563" font-size="10">불합격·이슈 분기</text>`;
+  svg += `<rect x="340" y="${legY}" width="10" height="10" rx="2" fill="#059669"/>`;
+  svg += `<text x="354" y="${legY+9}" fill="#4B5563" font-size="10">합격 처리</text>`;
+  svg += `<rect x="450" y="${legY}" width="10" height="10" rx="2" fill="#7C3AED"/>`;
+  svg += `<text x="464" y="${legY+9}" fill="#4B5563" font-size="10">샘플링 (AQL)</text>`;
+  svg += `<text x="${SVG_W-20}" y="${legY+9}" text-anchor="end" fill="#94A3B8" font-size="9">※ 클릭 시 해당 메뉴로 이동 · IATF 16949 / VDA 기반</text>`;
+
+  svg += '</svg>';
+  document.getElementById('flowchart-area').innerHTML = svg;
+}
+
+// ── MENU GUIDE ────────────────────────────────────
+function renderMenuGuide(){
+  const menus = [
+    { icon:'📦', name:'입고검사', color:'#0096B4', page:'incoming',
+      steps:['검사 일자·품목번호·품목명 입력','기준서 체크리스트 6항목 확인 (체크박스 클릭)','외관·치수 검사 결과 선택','최종 판정 선택 (합격/불합격/보류)','SAP 입력 여부 선택 후 "검사 결과 저장"','불합격 시 "부적합 등록" 버튼 클릭'] },
+    { icon:'📋', name:'SAP 성적서', color:'#2563EB', page:'sap',
+      steps:['품목번호·Rev. 번호·담당자 입력','7개 항목 각각 드롭다운 선택 (유/무, 최신/구버전 등)','이상 항목 특기사항란에 구체 기재','"검토 결과 저장" 클릭 → Firebase 저장','이상 발견 시 → SQM팀 서면 요청 진행'] },
+    { icon:'🔬', name:'측정의뢰', color:'#7C3AED', page:'measure',
+      steps:['의뢰일·완료(예정)일 입력','품목번호·의뢰 내용 기재','소요시간·결과·담당자 입력 후 "의뢰 등록"','진행 완료 시 현황 테이블에서 "완료" 클릭','결과는 일일보고서와 연동'] },
+    { icon:'⚠️', name:'부적합 관리', color:'#C0392B', page:'nonconf',
+      steps:['상단 "+ 부적합 등록" 또는 입고검사에서 연동','품목·수량·유형·처리방법·격리위치 입력','SQM팀 통보 후 처리 방법 결정','처리 완료 시 테이블에서 "완료" 클릭','미처리 건은 대시보드 알림에 자동 표시'] },
+    { icon:'📦', name:'소모품 신청', color:'#B45309', page:'supply',
+      steps:['신청 월·신청자 입력 (매월 말일까지)','각 품목별 재고·신청수량·사유 기입','안전화·근무복은 사이즈 반드시 기재','긴급 시 긴급 선택 → 수령 희망일 입력','"신청서 제출" 클릭 또는 "출력" 후 경영지원실 제출'] },
+    { icon:'🎯', name:'실행 계획', color:'#059669', page:'action',
+      steps:['5대 항목 중 해당 항목 선택','태스크명·담당자·목표일·진행률 입력','공유 방법 선택 (주간보고·월간회의 등)','진행 완료 시 "완료" 클릭 → 진행률 자동 갱신','"현황 공유" 버튼 → 클립보드 복사 후 이메일·메신저 공유'] },
+    { icon:'📁', name:'보고서', color:'#0F2244', page:'report',
+      steps:['시작일·종료일 입력 후 "조회"','품목번호 입력 시 해당 품목만 필터','"전체" 버튼으로 전체 이력 복원','"일일 보고서 출력" → 브라우저 인쇄 활용','이력은 Firebase에 영구 보관'] },
+  ];
+
+  const html = `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+    ${menus.map(m=>`
+    <div style="border:1px solid var(--line);border-radius:9px;overflow:hidden;cursor:pointer" onclick="showPage('${m.page}')">
+      <div style="background:${m.color};padding:10px 12px;display:flex;align-items:center;gap:8px">
+        <span style="font-size:18px">${m.icon}</span>
+        <span style="color:#fff;font-weight:700;font-size:13px">${m.name}</span>
+      </div>
+      <div style="padding:10px 12px;background:#fff">
+        <ol style="margin:0;padding-left:16px;display:flex;flex-direction:column;gap:5px">
+          ${m.steps.map(s=>`<li style="font-size:11px;color:var(--slate);line-height:1.4">${s}</li>`).join('')}
+        </ol>
+      </div>
+    </div>`).join('')}
+  </div>
+  <div style="margin-top:10px;padding:8px 12px;background:var(--tealL);border-radius:7px;border:1px solid var(--teal);font-size:11px;color:var(--tealD)">
+    💡 <b>모든 데이터는 Firebase 실시간 저장</b>됩니다. 여러 기기에서 동시 접속해도 데이터가 자동 동기화됩니다. 플로우차트의 각 단계를 클릭하면 해당 메뉴로 이동합니다.
+  </div>`;
+
+  document.getElementById('menu-guide-area').innerHTML = html;
+}
+
 const AP_CATS = {
   rr:      { label:'1) 업무 Scope · R&R 명확화',   color:'teal',  num:'01',
     desc:'검사원별 담당 업무·권한·책임 명확히 정의. 각 담당자가 역할과 의무를 충분히 인지할 수 있도록 체계 구축.',
