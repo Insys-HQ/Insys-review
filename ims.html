@@ -994,34 +994,61 @@ textarea{resize:vertical;min-height:64px}
 <!-- ═══════════════════════════════════════════════════════
      GLOBAL SCRIPT — Firebase CDN (non-module) + All Functions
 ════════════════════════════════════════════════════════ -->
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<!-- Firebase REST API 방식 (SDK 없이 직접 통신 — sqms.html과 동일) -->
 <script>
-// ── Firebase Init ──────────────────────────────────
-firebase.initializeApp({
-  apiKey:      'AIzaSyBYqd2uRr1ZvFLDCWuS15h9qFkT-Dvg5Es',
-  authDomain:  'insys-work.firebaseapp.com',
-  databaseURL: 'https://insys-work-default-rtdb.firebaseio.com',
-  projectId:   'insys-work',
-  storageBucket:'insys-work.appspot.com',
-});
-const db = firebase.database();
+// ── Firebase REST API ──────────────────────────────
+const FB_URL = 'https://insys-work-default-rtdb.firebaseio.com';
 
-// ── Firebase 연결 상태 모니터링 ──────────────────
-const connRef = db.ref('.info/connected');
-connRef.on('value', snap => {
-  const el = document.getElementById('fb-status');
-  if(!el) return;
-  if(snap.val() === true){
-    el.textContent = '🟢 DB 연결됨';
-    el.style.background = 'rgba(26,122,74,0.3)';
-    el.style.color = '#6EE7B7';
-  } else {
-    el.textContent = '🔴 DB 연결 안됨';
-    el.style.background = 'rgba(192,57,43,0.3)';
-    el.style.color = '#FCA5A5';
-  }
-});
+async function fbGet(path){
+  try{
+    const r = await fetch(`${FB_URL}${path}.json`);
+    return r.ok ? r.json() : null;
+  } catch(e){ return null; }
+}
+async function fbPush(path, data){
+  const r = await fetch(`${FB_URL}${path}.json`, {
+    method:'POST', body:JSON.stringify(data),
+    headers:{'Content-Type':'application/json'}
+  });
+  if(!r.ok) throw new Error('저장 실패 ('+r.status+')');
+  return (await r.json()).name;
+}
+async function fbSet(path, data){
+  const r = await fetch(`${FB_URL}${path}.json`, {
+    method:'PUT', body:JSON.stringify(data),
+    headers:{'Content-Type':'application/json'}
+  });
+  if(!r.ok) throw new Error('수정 실패 ('+r.status+')');
+}
+async function fbRemove(path){
+  const r = await fetch(`${FB_URL}${path}.json`, {method:'DELETE'});
+  if(!r.ok) throw new Error('삭제 실패 ('+r.status+')');
+}
+
+// ── 실시간 폴링 (3초마다 갱신) ───────────────────
+let _polling = null;
+async function startPolling(){
+  await loadAllData();
+  _polling = setInterval(loadAllData, 3000);
+}
+async function loadAllData(){
+  const [inc, sap, meas, nc, sup, act] = await Promise.all([
+    fbGet('/ims/incoming'), fbGet('/ims/sap'),
+    fbGet('/ims/measures'), fbGet('/ims/nc'),
+    fbGet('/ims/supply'),   fbGet('/ims/actions'),
+  ]);
+  incoming    = inc  || {};
+  sapRecs     = sap  || {};
+  measures    = meas || {};
+  ncRecs      = nc   || {};
+  supplyRecs  = sup  || {};
+  actions     = act  || {};
+  renderAll();
+  // 연결 상태 표시
+  const s=document.getElementById('fb-status');
+  if(s){ s.textContent='🟢 DB 연결됨'; s.style.background='rgba(26,122,74,0.3)'; s.style.color='#6EE7B7'; }
+}
+
 
 // ── State ──────────────────────────────────────────
 let incoming={}, sapRecs={}, measures={}, ncRecs={}, supplyRecs={}, actions={};
@@ -1073,7 +1100,7 @@ function fbRemove(path){
 // ── Delete any item ────────────────────────────────
 function delItem(path, id){
   if(!confirm('삭제하시겠습니까?')) return;
-  fbRemove(path+'/'+id).then(()=>toast('삭제되었습니다.')).catch(e=>toast('오류: '+e.message));
+  fbRemove(path+'/'+id).then(()=>{ toast('삭제되었습니다.'); loadAllData(); }).catch(e=>toast('오류: '+e.message));
 }
 
 // ── Init ──────────────────────────────────────────
@@ -1086,13 +1113,11 @@ window.addEventListener('load', () => {
   const ts=document.getElementById('today-str');
   if(ts) ts.textContent='기준일: '+new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'});
 
-  // Firebase 실시간 리스닝
-  db.ref('/ims/incoming').on('value', snap=>{ incoming=snap.val()||{};   renderAll(); });
-  db.ref('/ims/sap').on('value',      snap=>{ sapRecs=snap.val()||{};    renderAll(); });
-  db.ref('/ims/measures').on('value', snap=>{ measures=snap.val()||{};   renderAll(); });
-  db.ref('/ims/nc').on('value',       snap=>{ ncRecs=snap.val()||{};     renderAll(); });
-  db.ref('/ims/supply').on('value',   snap=>{ supplyRecs=snap.val()||{}; renderAll(); });
-  db.ref('/ims/actions').on('value',  snap=>{ actions=snap.val()||{};    renderAll(); });
+  // Firebase REST API 폴링 시작
+  startPolling().catch(e=>{
+    const s=document.getElementById('fb-status');
+    if(s){ s.textContent='🔴 DB 연결 안됨'; s.style.background='rgba(192,57,43,0.3)'; s.style.color='#FCA5A5'; }
+  });
 });
 
 function renderAll(){
@@ -1181,8 +1206,8 @@ function saveIncoming(){
     note:   document.getElementById('in-note').value,
   };
   fbPush('/ims/incoming', rec)
-    .then(()=>{ clearIncoming(); toast('✅ 검사 결과가 저장되었습니다.'); })
-    .catch(e=>toast('저장 오류: '+e.message));
+    .then(()=>{ clearIncoming(); toast('✅ 검사 결과가 저장되었습니다.'); loadAllData(); })
+    .catch(e=>toast('❌ 저장 실패: '+e.message));
 }
 
 function saveIncomingNc(){
@@ -1243,7 +1268,7 @@ function saveSap(){
     overall, items,
   };
   fbPush('/ims/sap', rec)
-    .then(()=>{ clearSap(); toast('✅ SAP 성적서 검토 결과가 저장되었습니다.'); })
+    .then(()=>{ clearSap(); toast('✅ SAP 성적서 검토 결과가 저장되었습니다.'); loadAllData(); })
     .catch(e=>toast('저장 오류: '+e.message));
 }
 
@@ -1285,14 +1310,14 @@ function saveMeasure(){
     note:document.getElementById('ms-note').value,
   };
   fbPush('/ims/measures', rec)
-    .then(()=>{ clearMeasure(); toast('✅ 측정의뢰가 등록되었습니다.'); })
+    .then(()=>{ clearMeasure(); toast('✅ 측정의뢰가 등록되었습니다.'); loadAllData(); })
     .catch(e=>toast('저장 오류: '+e.message));
 }
 
 function completeMeasure(id){
   const rec=measures[id]; if(!rec) return;
   rec.result='완료'; rec.doneDt=new Date().toISOString().slice(0,10);
-  fbSet('/ims/measures/'+id, rec).then(()=>toast('완료 처리되었습니다.'));
+  fbSet('/ims/measures/'+id, rec).then(()=>{ toast('완료 처리되었습니다.'); loadAllData(); });
 }
 
 function renderMsTable(){
@@ -1333,14 +1358,14 @@ function saveNc(){
     status:'미처리',
   };
   fbPush('/ims/nc', rec)
-    .then(()=>{ closeModal('nc-modal'); toast('✅ 부적합이 등록되었습니다.'); })
+    .then(()=>{ closeModal('nc-modal'); toast('✅ 부적합이 등록되었습니다.'); loadAllData(); })
     .catch(e=>toast('저장 오류: '+e.message));
 }
 
 function resolveNc(id){
   const rec=ncRecs[id]; if(!rec) return;
   rec.status='완료'; rec.resolvedDt=new Date().toISOString().slice(0,10);
-  fbSet('/ims/nc/'+id, rec).then(()=>toast('완료 처리되었습니다.'));
+  fbSet('/ims/nc/'+id, rec).then(()=>{ toast('완료 처리되었습니다.'); loadAllData(); });
 }
 
 function renderNcTable(){
@@ -1421,8 +1446,8 @@ function saveSupply(){
     supTempItems=[];
     renderTempList();
     ['sup-month','sup-user','sup-wish','sup-note'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
-    toast('✅ 신청서가 저장되었습니다.');
-  }).catch(e=>toast('저장 오류: '+e.message));
+    toast('✅ 신청서가 저장되었습니다.'); loadAllData();
+  }).catch(e=>toast('❌ 저장 실패: '+e.message));
 }
 
 function clearSupply(){
@@ -1438,7 +1463,7 @@ function editSupItem(id){
   const newReason=prompt('사유 수정 (현재: '+(r.reason||'없음')+')', r.reason||'');
   if(newReason===null) return;
   r.qty=newQty; r.reason=newReason;
-  fbSet('/ims/supply/'+id, r).then(()=>toast('수정되었습니다.'));
+  fbSet('/ims/supply/'+id, r).then(()=>{ toast('수정되었습니다.'); loadAllData(); });
 }
 
 function printSupply(){ window.print(); }
@@ -1501,7 +1526,7 @@ function saveAction(){
     note:  document.getElementById('ap-note').value,
   };
   fbPush('/ims/actions', rec)
-    .then(()=>{ clearAction(); toast('✅ 태스크가 등록되었습니다.'); })
+    .then(()=>{ clearAction(); toast('✅ 태스크가 등록되었습니다.'); loadAllData(); })
     .catch(e=>toast('저장 오류: '+e.message));
 }
 
@@ -1509,7 +1534,7 @@ function updateActionStatus(id, status, pct){
   const rec=actions[id]; if(!rec) return;
   rec.status=status; rec.pct=pct;
   if(status==='완료') rec.doneDt=new Date().toISOString().slice(0,10);
-  fbSet('/ims/actions/'+id, rec).then(()=>toast('업데이트되었습니다.'));
+  fbSet('/ims/actions/'+id, rec).then(()=>{ toast('업데이트되었습니다.'); loadAllData(); });
 }
 
 function shareReport(){
