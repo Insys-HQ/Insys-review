@@ -158,7 +158,31 @@ textarea{resize:vertical;min-height:64px}
 .sap-item-val{font-size:12px;font-weight:700}
 .sap-item select{margin-top:4px;padding:4px 6px;font-size:11px}
 
-/* ── MOBILE ───────────────────────────────────── */
+/* ── PROGRESS BAR ─────────────────────────────── */
+.prog-wrap{margin-bottom:6px}
+.prog-label{display:flex;justify-content:space-between;font-size:11px;color:var(--slate);margin-bottom:3px}
+.prog-bar{background:var(--line);border-radius:99px;height:10px;overflow:hidden}
+.prog-fill{height:100%;border-radius:99px;transition:width .6s}
+.prog-fill.green{background:var(--green)}
+.prog-fill.teal{background:var(--teal)}
+.prog-fill.amber{background:var(--amber)}
+.prog-fill.red{background:var(--red)}
+.prog-fill.blue{background:var(--blue)}
+/* ── AP CATEGORY CARD ─────────────────────────── */
+.ap-cat-card{background:#fff;border-radius:10px;border:1px solid var(--line);padding:14px}
+.ap-cat-title{font-size:11px;font-weight:700;color:var(--ink);margin-bottom:6px}
+.ap-cat-num{font-size:22px;font-weight:900;color:var(--ink)}
+.ap-cat-sub{font-size:10px;color:var(--slate);margin-top:2px}
+/* ── AP ITEM CARD ─────────────────────────────── */
+.ap-item-card{background:#fff;border-radius:10px;border:1px solid var(--line);padding:16px;margin-bottom:10px}
+.ap-item-hdr{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.ap-item-num{width:28px;height:28px;border-radius:50%;background:var(--teal);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ap-item-title{font-size:14px;font-weight:700;color:var(--ink)}
+.ap-item-desc{font-size:11px;color:var(--slate);margin-top:2px}
+.ap-default-tasks{padding:6px 0}
+.ap-default-task{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--silver);font-size:11px;color:var(--slate)}
+.ap-default-task:last-child{border-bottom:none}
+.ap-default-task .dot{width:6px;height:6px;border-radius:50%;background:var(--teal);flex-shrink:0}
 @media(max-width:768px){
   .stat-grid{grid-template-columns:repeat(2,1fr)}
   .grid2,.grid3,.form-grid,.form-grid.g3{grid-template-columns:1fr}
@@ -187,6 +211,7 @@ textarea{resize:vertical;min-height:64px}
       <button class="nav-tab" onclick="showPage('measure')">측정의뢰</button>
       <button class="nav-tab" onclick="showPage('nonconf')">부적합<span class="nav-badge" id="nc-badge">0</span></button>
       <button class="nav-tab" onclick="showPage('supply')">소모품 신청</button>
+      <button class="nav-tab" onclick="showPage('action')">실행계획 <span class="nav-badge" id="ap-badge">0</span></button>
       <button class="nav-tab" onclick="showPage('report')">보고서</button>
     </div>
   </div>
@@ -505,6 +530,96 @@ textarea{resize:vertical;min-height:64px}
   </div>
 </div>
 
+<!-- ══ 실행 계획 (Action Plan) ════════════════════ -->
+<div class="page" id="page-action">
+  <div class="page-hdr">
+    <div class="page-hdr-left">
+      <h2>🎯 실행 계획 (Action Plan)</h2>
+      <p>수입검사 업무 효율화 · 품질 향상 · 프로세스 표준화 추진 현황</p>
+    </div>
+    <div class="page-hdr-right">
+      <button class="btn btn-teal btn-sm" onclick="shareReport()">📤 현황 공유</button>
+    </div>
+  </div>
+
+  <!-- 전체 진행률 -->
+  <div class="card" id="ap-progress-card">
+    <div class="card-title"><span class="bar"></span>전체 추진 진행률</div>
+    <div id="ap-overall-bar"></div>
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:12px" id="ap-cat-stats"></div>
+  </div>
+
+  <!-- 5대 항목 카드 -->
+  <div id="ap-items-area"></div>
+
+  <!-- 세부 태스크 등록 -->
+  <div class="card">
+    <div class="card-title"><span class="bar"></span>세부 태스크 등록</div>
+    <div class="form-grid g3">
+      <div class="form-group">
+        <label>주요 항목 *</label>
+        <select id="ap-cat">
+          <option value="rr">1) 업무 Scope · R&R 명확화</option>
+          <option value="process">2) 업무 프로세스 표준화</option>
+          <option value="quality">3) 품질 마인드 강화</option>
+          <option value="log">4) 업무일지 운영</option>
+          <option value="erp">5) ERP 기반 모니터링</option>
+        </select>
+      </div>
+      <div class="form-group"><label>태스크명 *</label><input id="ap-task" placeholder="예: 검사원별 R&R 정의서 작성"></div>
+      <div class="form-group"><label>담당자 *</label><input id="ap-owner" placeholder="성명"></div>
+    </div>
+    <div class="form-grid g3">
+      <div class="form-group"><label>시작일</label><input type="date" id="ap-start"></div>
+      <div class="form-group"><label>목표 완료일 *</label><input type="date" id="ap-due"></div>
+      <div class="form-group">
+        <label>진행 상태</label>
+        <select id="ap-status">
+          <option value="미착수">미착수</option>
+          <option value="진행 중">진행 중</option>
+          <option value="완료">완료</option>
+          <option value="보류">보류</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>진행률 (%)</label><input id="ap-pct" type="number" min="0" max="100" placeholder="0~100"></div>
+      <div class="form-group"><label>공유 방법</label>
+        <select id="ap-share">
+          <option>주간 현황 보고 (매주 월요일)</option>
+          <option>월간 정기 회의</option>
+          <option>이메일 보고</option>
+          <option>대면 브리핑</option>
+          <option>시스템 내 현황판</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-grid g1">
+      <div class="form-group"><label>비고 / 이슈</label><textarea id="ap-note" placeholder="진행 중 이슈, 지연 사유 등"></textarea></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-teal" onclick="saveAction()">+ 태스크 등록</button>
+      <button class="btn btn-outline btn-sm" onclick="clearAction()">초기화</button>
+    </div>
+  </div>
+
+  <!-- 태스크 목록 -->
+  <div class="card">
+    <div class="card-title"><span class="bar"></span>전체 태스크 현황</div>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>항목</th><th>태스크</th><th>담당자</th>
+            <th>목표일</th><th>진행률</th><th>상태</th><th>공유방법</th><th>비고</th><th>관리</th>
+          </tr>
+        </thead>
+        <tbody id="ap-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <!-- ══ 보고서 ══════════════════════════════════════ -->
 <div class="page" id="page-report">
   <div class="page-hdr">
@@ -589,7 +704,7 @@ let incoming = {}, sapRecs = {}, measures = {}, ncRecs = {}, supplyRecs = {};
 // ── init
 window.addEventListener('load', () => {
   const today = new Date().toISOString().slice(0,10);
-  ['in-date','sap-date','ms-date','nc-date'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=today; });
+  ['in-date','sap-date','ms-date','nc-date','ap-start'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=today; });
   document.getElementById('sup-month').value = today.slice(0,7);
   document.getElementById('today-str').textContent =
     '기준일: ' + new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'});
@@ -602,14 +717,14 @@ window.addEventListener('load', () => {
   onValue(ref(db,'/ims/supply'),    snap=>{ supplyRecs= snap.val()||{}; renderAll(); });
 });
 
-function renderAll(){ renderDash(); renderInTable(); renderSapTable(); renderMsTable(); renderNcTable(); renderSupTable(); renderReport(Object.values(incoming)); }
+function renderAll(){ renderDash(); renderInTable(); renderSapTable(); renderMsTable(); renderNcTable(); renderSupTable(); renderReport(Object.values(incoming)); renderActionPage(); }
 
 // ── UTILS
 window.showPage = p => {
   document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(el=>el.classList.remove('active'));
   document.getElementById('page-'+p).classList.add('active');
-  ['dash','incoming','sap','measure','nonconf','supply','report'].forEach((n,i)=>{ if(n===p) document.querySelectorAll('.nav-tab')[i].classList.add('active'); });
+  ['dash','incoming','sap','measure','nonconf','supply','action','report'].forEach((n,i)=>{ if(n===p) document.querySelectorAll('.nav-tab')[i].classList.add('active'); });
 };
 window.toast = (msg,dur=2200) => { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),dur); };
 window.closeModal = id => document.getElementById(id).classList.remove('open');
@@ -835,8 +950,183 @@ function renderReport(arr){
   tb.innerHTML = sorted.length ? sorted.map(r=>`<tr><td>${fmtD(r.date)}</td><td style="font-size:11px">${r.num}</td><td>${r.name}</td><td>${r.qty||'-'}</td><td>${r.elapsed||'-'}</td><td><span class="badge ${badgeClass(r.judge)}">${r.judge}</span></td><td><span class="badge ${badgeClass(r.sap)}">${r.sap||'-'}</span></td><td style="font-size:11px;max-width:160px">${r.note||'-'}</td></tr>`).join('') : '<tr><td colspan="8" style="text-align:center;color:var(--slate);padding:20px">이력 없음</td></tr>';
 }
 
-// ── DELETE
-window.delItem = async (path, id) => {
+// ── ACTION PLAN ──────────────────────────────────
+const AP_CATS = {
+  rr:      { label:'1) 업무 Scope · R&R 명확화',   color:'teal',  num:'01',
+    desc:'검사원별 담당 업무·권한·책임 명확히 정의. 각 담당자가 역할과 의무를 충분히 인지할 수 있도록 체계 구축.',
+    defaults:['검사원별 R&R 정의서 작성','담당 업무 범위 매핑 표 작성','R&R 공유 및 서명 확인'] },
+  process: { label:'2) 업무 프로세스 표준화',       color:'blue',  num:'02',
+    desc:'업무가 전달·수행되는 전 과정을 확인할 수 있는 Flow Chart 작성. 업무 수행 절차 표준화 및 문서화.',
+    defaults:['수입검사 Flow Chart 작성','기준서 확인 절차 표준화','업무 매뉴얼(SOP) 문서화'] },
+  quality: { label:'3) 품질 마인드 강화',           color:'red',   num:'03',
+    desc:'품질 이슈 발생 시 즉각 보고·대응 문화 정착. 품질 기준·절차 준수에 대한 인식 개선 활동 추진.',
+    defaults:['품질 이슈 즉각 보고 체계 수립','불합격 처리 절차 교육 실시','월간 품질 현황 공유회 운영'] },
+  log:     { label:'4) 업무일지 운영',              color:'green', num:'04',
+    desc:'일일 업무 수행 내역·특이사항 기록. 업무 이력 추적·관리가 가능하도록 운영 체계 수립.',
+    defaults:['일일 입고검사 보고서 운영','측정의뢰 현황 데일리 업데이트','부적합 이력 관리 체계 구축'] },
+  erp:     { label:'5) ERP 기반 모니터링 구축',     color:'amber', num:'05',
+    desc:'인시스 및 검사원들의 업무 진행 현황을 관리할 수 있는 ERP 구축 검토. 업무 실적·운영 현황 모니터링 체계 추가.',
+    defaults:['SAP 검사 결과 입력 체계 정비','본 웹 시스템 활용한 실시간 현황 모니터링','분기 실적 보고 체계 수립'] },
+};
+
+let actions = {};
+
+window.clearAction = () => {
+  ['ap-task','ap-owner','ap-note'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('ap-pct').value='';
+};
+
+window.saveAction = async () => {
+  const task  = document.getElementById('ap-task').value.trim();
+  const owner = document.getElementById('ap-owner').value.trim();
+  const due   = document.getElementById('ap-due').value;
+  if(!task||!owner||!due){ toast('⚠️ 태스크명·담당자·목표일은 필수입니다.'); return; }
+  const rec = {
+    dt:     new Date().toISOString(),
+    cat:    document.getElementById('ap-cat').value,
+    task, owner, due,
+    start:  document.getElementById('ap-start').value,
+    status: document.getElementById('ap-status').value,
+    pct:    parseInt(document.getElementById('ap-pct').value)||0,
+    share:  document.getElementById('ap-share').value,
+    note:   document.getElementById('ap-note').value,
+  };
+  await push(ref(db,'/ims/actions'), rec);
+  clearAction();
+  toast('✅ 태스크가 등록되었습니다.');
+};
+
+window.updateActionStatus = async (id, status, pct) => {
+  const rec = actions[id]; if(!rec) return;
+  rec.status = status; rec.pct = pct;
+  if(status==='완료') rec.doneDt = new Date().toISOString().slice(0,10);
+  await set(ref(db,'/ims/actions/'+id), rec);
+  toast('업데이트되었습니다.');
+};
+
+window.shareReport = () => {
+  const arr = Object.values(actions);
+  const total = arr.length;
+  const done  = arr.filter(r=>r.status==='완료').length;
+  const pct   = total ? Math.round(done/total*100) : 0;
+  const lines = Object.entries(AP_CATS).map(([key,cat])=>{
+    const tasks = arr.filter(r=>r.cat===key);
+    const catDone = tasks.filter(r=>r.status==='완료').length;
+    return `${cat.label}: ${catDone}/${tasks.length} 완료`;
+  }).join('\n');
+  const msg = `[수입검사 Action Plan 현황]\n전체 진행률: ${pct}% (${done}/${total})\n\n${lines}\n\n기준일: ${new Date().toLocaleDateString('ko-KR')}`;
+  navigator.clipboard.writeText(msg).then(()=>toast('📋 현황 복사 완료 — 메일/메신저에 붙여넣기 하세요.'));
+};
+
+function renderActionPage(){
+  const arr = Object.values(actions);
+  const total = arr.length;
+  const done  = arr.filter(r=>r.status==='완료').length;
+  const pct   = total ? Math.round(done/total*100) : 0;
+  const open  = arr.filter(r=>r.status!=='완료'&&r.status!=='보류').length;
+  document.getElementById('ap-badge').textContent = open;
+
+  // 전체 진행률 바
+  const pb = document.getElementById('ap-overall-bar');
+  pb.innerHTML = `
+    <div class="prog-wrap">
+      <div class="prog-label"><span>전체 진행률</span><span style="font-weight:700;font-size:14px;color:var(--ink)">${pct}%  (${done} / ${total} 완료)</span></div>
+      <div class="prog-bar"><div class="prog-fill ${pct===100?'green':'teal'}" style="width:${pct}%"></div></div>
+    </div>`;
+
+  // 카테고리별 통계
+  const catStats = document.getElementById('ap-cat-stats');
+  catStats.innerHTML = Object.entries(AP_CATS).map(([key,cat])=>{
+    const tasks = arr.filter(r=>r.cat===key);
+    const catDone = tasks.filter(r=>r.status==='완료').length;
+    const catPct  = tasks.length ? Math.round(catDone/tasks.length*100) : 0;
+    return `<div class="ap-cat-card">
+      <div class="ap-cat-title">${cat.num}</div>
+      <div class="ap-cat-num">${catPct}%</div>
+      <div class="ap-cat-sub">${catDone}/${tasks.length} 완료</div>
+      <div class="prog-bar" style="margin-top:6px"><div class="prog-fill ${cat.color}" style="width:${catPct}%"></div></div>
+    </div>`;
+  }).join('');
+
+  // 5대 항목 카드
+  const area = document.getElementById('ap-items-area');
+  area.innerHTML = Object.entries(AP_CATS).map(([key,cat])=>{
+    const tasks = arr.filter(r=>r.cat===key);
+    const taskRows = tasks.length
+      ? tasks.map(t=>`
+          <tr>
+            <td style="font-size:12px">${t.task}</td>
+            <td>${t.owner}</td>
+            <td>${fmtD(t.due)}</td>
+            <td>
+              <div class="prog-bar" style="width:80px;display:inline-block;vertical-align:middle;margin-right:4px">
+                <div class="prog-fill ${cat.color}" style="width:${t.pct||0}%"></div>
+              </div>
+              <span style="font-size:10px">${t.pct||0}%</span>
+            </td>
+            <td><span class="badge ${t.status==='완료'?'badge-green':t.status==='진행 중'?'badge-teal':t.status==='보류'?'badge-amber':'badge-gray'}">${t.status}</span></td>
+            <td style="font-size:10px;color:var(--slate)">${t.share||'-'}</td>
+            <td>
+              ${t.status!=='완료'?`<button class="btn btn-green btn-sm" onclick="updateActionStatus('${Object.keys(actions).find(k=>actions[k]===t)}','완료',100)">완료</button>`:''}
+            </td>
+          </tr>`)
+      .join('')
+      : `<tr><td colspan="7" style="color:var(--slate);font-size:11px;padding:8px">등록된 태스크 없음</td></tr>`;
+
+    const defRows = cat.defaults.map(d=>`<div class="ap-default-task"><div class="dot"></div>${d}</div>`).join('');
+
+    return `<div class="ap-item-card">
+      <div class="ap-item-hdr">
+        <div class="ap-item-num">${cat.num}</div>
+        <div>
+          <div class="ap-item-title">${cat.label}</div>
+          <div class="ap-item-desc">${cat.desc}</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--slate);margin-bottom:6px">주요 실행 내용</div>
+          <div class="ap-default-tasks">${defRows}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--slate);margin-bottom:6px">등록된 태스크</div>
+          <div class="tbl-wrap">
+            <table class="tbl" style="font-size:11px">
+              <thead><tr><th>태스크</th><th>담당</th><th>목표일</th><th>진행률</th><th>상태</th><th>공유</th><th></th></tr></thead>
+              <tbody>${taskRows}</tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // 전체 태스크 테이블
+  const tb = document.getElementById('ap-tbody');
+  const allArr = Object.entries(actions).sort((a,b)=>b[1].dt.localeCompare(a[1].dt));
+  tb.innerHTML = allArr.length
+    ? allArr.map(([id,t])=>`<tr>
+        <td><span style="font-size:10px;font-weight:700;color:var(--teal)">${AP_CATS[t.cat]?.num||''}</span> <span style="font-size:10px">${AP_CATS[t.cat]?.label.replace(/^\d\) /,'')||t.cat}</span></td>
+        <td>${t.task}</td><td>${t.owner}</td><td>${fmtD(t.due)}</td>
+        <td>
+          <div class="prog-bar" style="width:70px;display:inline-block;vertical-align:middle;margin-right:4px">
+            <div class="prog-fill teal" style="width:${t.pct||0}%"></div>
+          </div><span style="font-size:10px">${t.pct||0}%</span>
+        </td>
+        <td><span class="badge ${t.status==='완료'?'badge-green':t.status==='진행 중'?'badge-teal':t.status==='보류'?'badge-amber':'badge-gray'}">${t.status}</span></td>
+        <td style="font-size:10px">${t.share||'-'}</td>
+        <td style="font-size:10px;max-width:120px">${t.note||'-'}</td>
+        <td>
+          ${t.status!=='완료'?`<button class="btn btn-green btn-sm" onclick="updateActionStatus('${id}','완료',100)">완료</button>`:''}
+          <button class="btn btn-outline btn-sm" onclick="delItem('/ims/actions','${id}')">삭제</button>
+        </td>
+      </tr>`)
+    .join('')
+    : '<tr><td colspan="9" style="text-align:center;color:var(--slate);padding:20px">등록된 태스크 없음</td></tr>';
+}
+
+// Firebase 리스닝 추가
+onValue(ref(db,'/ims/actions'), snap=>{ actions=snap.val()||{}; renderActionPage(); });
   if(!confirm('삭제하시겠습니까?')) return;
   await remove(ref(db, path+'/'+id));
   toast('삭제되었습니다.');
