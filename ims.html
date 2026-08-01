@@ -37,6 +37,15 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--silver);color:var(--
 .nav-title{color:#fff;font-size:15px;font-weight:700;letter-spacing:-.3px}
 .nav-sub{color:#90CAD8;font-size:11px;font-weight:400}
 .nav-tabs{display:flex;gap:2px}
+.view-toggle{display:flex;gap:2px;background:rgba(255,255,255,0.08);padding:2px;border-radius:7px;margin:0 12px}
+.view-btn{padding:5px 10px;border-radius:5px;border:none;background:none;color:#94A3B8;font-size:11px;font-weight:600;cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:all .2s}
+.view-btn.active{background:var(--teal);color:#fff}
+/* PC 모드일 때 컨테이너 확장 */
+body.pc-mode .page{max-width:1600px}
+body.pc-mode .stat-grid{grid-template-columns:repeat(5,1fr)}
+body.pc-mode .grid2{grid-template-columns:1.2fr 1fr}
+/* 모바일 모드 강제 (기본) */
+body.mobile-mode .page{max-width:1200px}
 .nav-tab{padding:6px 13px;border-radius:6px;color:#94A3B8;font-size:12px;font-weight:500;cursor:pointer;border:none;background:none;transition:all .2s;font-family:'Noto Sans KR',sans-serif}
 .nav-tab:hover{background:rgba(255,255,255,.08);color:#fff}
 .nav-tab.active{background:var(--teal);color:#fff;font-weight:700}
@@ -200,9 +209,13 @@ textarea{resize:vertical;min-height:64px}
     <div class="nav-brand">
       <div class="dot"></div>
       <div>
-        <div class="nav-title">셰플러 이천공장 수입검사 업무관리 시스템</div>
-        <div class="nav-sub">Schaeffler Icheon  ·  (주)인시스  <span id="fb-status" style="margin-left:8px;font-size:10px;padding:2px 7px;border-radius:10px;background:rgba(255,255,255,0.1);color:#94A3B8">⏳ 연결 중...</span></div>
+        <div class="nav-title">셰플러 이천공장 수입검사 업무관리 시스템 <span style="font-size:10px;font-weight:400;color:#94A3B8">v1.0</span></div>
+        <div class="nav-sub">인시스 AI혁신 R&D센터  ·  Schaeffler Icheon  <span id="fb-status" style="margin-left:8px;font-size:10px;padding:2px 7px;border-radius:10px;background:rgba(255,255,255,0.1);color:#94A3B8">⏳ 연결 중...</span></div>
       </div>
+    </div>
+    <div class="view-toggle">
+      <button class="view-btn active" id="btn-mobile" onclick="setViewMode('mobile')">📱 모바일</button>
+      <button class="view-btn" id="btn-pc" onclick="setViewMode('pc')">🖥️ PC</button>
     </div>
     <div class="nav-tabs">
       <button class="nav-tab active" onclick="showPage('dash')">대시보드</button>
@@ -990,6 +1003,10 @@ textarea{resize:vertical;min-height:64px}
   </div>
 </div>
 
+<footer style="max-width:1200px;margin:20px auto 0;padding:12px 20px;text-align:center;font-size:10px;color:var(--slate);border-top:1px solid var(--line)">
+  인시스 AI혁신 R&D센터  ·  셰플러 이천공장 수입검사 업무관리 시스템 v1.0  ·  © (주)인시스
+</footer>
+
 <!-- Firebase -->
 <!-- ═══════════════════════════════════════════════════════
      GLOBAL SCRIPT — Firebase CDN (non-module) + All Functions
@@ -1080,6 +1097,13 @@ function showPage(p){
     if(n===p) document.querySelectorAll('.nav-tab')[i].classList.add('active');
   });
 }
+function setViewMode(mode){
+  document.body.classList.remove('mobile-mode','pc-mode');
+  document.body.classList.add(mode+'-mode');
+  document.getElementById('btn-mobile').classList.toggle('active', mode==='mobile');
+  document.getElementById('btn-pc').classList.toggle('active', mode==='pc');
+  localStorage.setItem('ims-view-mode', mode);
+}
 function toast(msg,dur=2400){
   const t=document.getElementById('toast');
   t.textContent=msg; t.classList.add('show');
@@ -1099,6 +1123,10 @@ function delItem(path, id){
 
 // ── Init ──────────────────────────────────────────
 window.addEventListener('load', () => {
+  // 기본값: 모바일 레이아웃으로 로드 (지침 준수)
+  const savedMode = localStorage.getItem('ims-view-mode') || 'mobile';
+  setViewMode(savedMode);
+
   const today = new Date().toISOString().slice(0,10);
   ['in-date','sap-date','ms-date','nc-date','ap-start'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value=today;
