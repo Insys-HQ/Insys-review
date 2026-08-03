@@ -1351,7 +1351,28 @@ textarea{resize:vertical;min-height:64px}
 <!-- ═══════════════════════════════════════════════════════
      GLOBAL SCRIPT — Firebase CDN (non-module) + All Functions
 ════════════════════════════════════════════════════════ -->
-<!-- Firebase REST API 방식 (SDK 없이 직접 통신 — sqms.html과 동일) -->
+<!-- Firebase Firestore 모듈 로드 (lunch.html과 동일) -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, doc, setDoc, getDoc, deleteDoc }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey:            "AIzaSyBYqd2uRr1ZvFLDCWuS15h9qFkT-Dvg5Es",
+  authDomain:        "insys-work.firebaseapp.com",
+  projectId:         "insys-work",
+  storageBucket:     "insys-work.firebasestorage.app",
+  messagingSenderId: "225275784859",
+  appId:             "1:225275784859:web:bd12815c6dc47c0c49e03e"
+};
+
+const db = getFirestore(initializeApp(firebaseConfig));
+
+// 전역에 Firestore API 노출
+window.__FS = { db, collection, addDoc, getDocs, doc, setDoc, getDoc, deleteDoc };
+window.dispatchEvent(new Event('fs-ready'));
+</script>
+
 <script>
 // ── State (전역 상태 변수) ─────────────────────────
 let incoming={}, sapRecs={}, measures={}, ncRecs={}, supplyRecs={};
@@ -1361,78 +1382,104 @@ let supTempItems = [];
 let currentApTab='rr';
 let currentLogData=null;
 
-// ── Firebase REST API ──────────────────────────────
-const FB_URL = 'https://insys-work-default-rtdb.firebaseio.com';
+// ── Firebase Firestore ─────────────────────────────
+let _db = null;
+let _fs = null;
 
-async function fbGet(path){
-  const r = await fetch(`${FB_URL}${path}.json`);
-  if(r.status === 404 || r.status === 204) return null; // 데이터 없음 = 정상
-  if(!r.ok) return null;
-  const d = await r.json();
-  return d; // null이면 빈 경로
+// module script가 로드한 Firestore API를 가져옴 (최대 10초 대기)
+function initFirestore(){
+  return new Promise((resolve, reject) => {
+    if(window.__FS){ _fs = window.__FS; _db = window.__FS.db; return resolve(); }
+    let waited = 0;
+    const t = setInterval(() => {
+      if(window.__FS){
+        clearInterval(t);
+        _fs = window.__FS; _db = window.__FS.db;
+        resolve();
+      } else if((waited += 100) > 10000){
+        clearInterval(t);
+        reject(new Error('Firestore 로드 시간 초과'));
+      }
+    }, 100);
+  });
 }
-async function fbInitRoot(){
-  // /ims 루트를 1회 조회 — 없으면 전체 구조를 한 번에 생성 (404 최소화)
-  const r = await fetch(`${FB_URL}/ims.json`);
-  if(r.status === 404 || (r.ok && (await r.clone().json()) === null)){
-    await fetch(`${FB_URL}/ims.json`, {
-      method:'PUT',
-      body: JSON.stringify({
-        incoming:{}, sap:{}, measures:{}, nc:{}, supply:{},
-        rr:{}, raci:{}, signs:{}, sop:{}, qedu:{}, dailylogs:{}, rptlogs:{}, infra:{}, infrachecks:{}
-      }),
-      headers:{'Content-Type':'application/json'}
-    });
+
+// path 예: '/ims/incoming' → 컬렉션명 'ims_incoming'
+function colName(path){
+  return path.replace(/^\//,'').replace(/\//g,'_');
+}
+
+async function fbGetCol(path){
+  if(!_db) return {};
+  const snap = await _fs.getDocs(_fs.collection(_db, colName(path)));
+  const out = {};
+  snap.forEach(d => { out[d.id] = d.data(); });
+  return out;
+}
+
+async function fbPush(path, data){
+  if(!_db) throw new Error('DB 미초기화');
+  const r = await _fs.addDoc(_fs.collection(_db, colName(path)), data);
+  return r.id;
+}
+
+async function fbSet(path, data){
+  if(!_db) throw new Error('DB 미초기화');
+  const parts = path.replace(/^\//,'').split('/');
+  if(parts.length >= 3){
+    // '/ims/incoming/{id}' 형태 → 문서 업데이트
+    const id = parts.pop();
+    await _fs.setDoc(_fs.doc(_db, parts.join('_'), id), data);
+  } else {
+    // '/ims/raci' 형태 → 단일 설정 문서
+    await _fs.setDoc(_fs.doc(_db, colName(path), '_data'), data);
   }
 }
-async function fbPush(path, data){
-  const r = await fetch(`${FB_URL}${path}.json`, {
-    method:'POST', body:JSON.stringify(data),
-    headers:{'Content-Type':'application/json'}
-  });
-  if(!r.ok){ const t=await r.text(); throw new Error(t); }
-  return (await r.json()).name;
-}
-async function fbSet(path, data){
-  const r = await fetch(`${FB_URL}${path}.json`, {
-    method:'PUT', body:JSON.stringify(data),
-    headers:{'Content-Type':'application/json'}
-  });
-  if(!r.ok){ const t=await r.text(); throw new Error(t); }
-}
-async function fbRemove(path){
-  await fetch(`${FB_URL}${path}.json`, {method:'DELETE'});
+
+async function fbGetDoc(path){
+  if(!_db) return {};
+  const snap = await _fs.getDoc(_fs.doc(_db, colName(path), '_data'));
+  return snap.exists() ? snap.data() : {};
 }
 
-// 저장·삭제 후 수동 갱신 (폴링 없음)
+async function fbRemove(path){
+  if(!_db) throw new Error('DB 미초기화');
+  const parts = path.replace(/^\//,'').split('/');
+  const id = parts.pop();
+  await _fs.deleteDoc(_fs.doc(_db, parts.join('_'), id));
+}
+
 async function loadAllData(){
   try {
-    // /ims 전체를 1회 조회 (개별 경로 GET 제거 → 404 없음)
-    const root = await fbGet('/ims') || {};
-    incoming   = root.incoming  || {};
-    sapRecs    = root.sap       || {};
-    measures   = root.measures  || {};
-    ncRecs     = root.nc        || {};
-    supplyRecs = root.supply    || {};
-    rrList     = root.rr        || {};
-    raciData   = root.raci      || {};
-    signList   = root.signs     || {};
-    sopList    = root.sop       || {};
-    qeList     = root.qedu      || {};
-    dailyLogs  = root.dailylogs || {};
-    rptLogs    = root.rptlogs   || {};
-    infraList  = root.infra     || {};
-    infraChecks= root.infrachecks || {};
+    if(!_db) await initFirestore();
+    const [inc,sap,meas,nc,sup,rr,sign,sop,qe,dlog,rpt,inf] = await Promise.all([
+      fbGetCol('/ims/incoming'), fbGetCol('/ims/sap'),
+      fbGetCol('/ims/measures'), fbGetCol('/ims/nc'),
+      fbGetCol('/ims/supply'),   fbGetCol('/ims/rr'),
+      fbGetCol('/ims/signs'),    fbGetCol('/ims/sop'),
+      fbGetCol('/ims/qedu'),     fbGetCol('/ims/dailylogs'),
+      fbGetCol('/ims/rptlogs'),  fbGetCol('/ims/infra'),
+    ]);
+    const [raci, ichk] = await Promise.all([
+      fbGetDoc('/ims/raci'), fbGetDoc('/ims/infrachecks'),
+    ]);
+    incoming   = inc;  sapRecs   = sap;  measures  = meas;
+    ncRecs     = nc;   supplyRecs= sup;  rrList    = rr;
+    signList   = sign; sopList   = sop;  qeList    = qe;
+    dailyLogs  = dlog; rptLogs   = rpt;  infraList = inf;
+    raciData   = raci; infraChecks = ichk;
     renderAll();
     const s=document.getElementById('fb-status');
     if(s){ s.textContent='🟢 DB 연결됨'; s.style.background='rgba(26,122,74,0.3)'; s.style.color='#6EE7B7'; }
   } catch(e){
+    console.error('DB 오류:', e);
     const s=document.getElementById('fb-status');
     if(s){ s.textContent='🔴 연결 실패'; s.style.background='rgba(192,57,43,0.3)'; s.style.color='#FCA5A5'; }
   }
 }
+
 async function startPolling(){
-  await fbInitRoot();
+  await initFirestore();
   await loadAllData();
 }
 
