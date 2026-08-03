@@ -1207,6 +1207,13 @@ textarea{resize:vertical;min-height:64px}
 ════════════════════════════════════════════════════════ -->
 <!-- Firebase REST API 방식 (SDK 없이 직접 통신 — sqms.html과 동일) -->
 <script>
+// ── State (전역 상태 변수) ─────────────────────────
+let incoming={}, sapRecs={}, measures={}, ncRecs={}, supplyRecs={};
+let rrList={}, raciData={}, signList={}, sopList={}, qeList={}, dailyLogs={}, rptLogs={};
+let supTempItems = [];
+let currentApTab='rr';
+let currentLogData=null;
+
 // ── Firebase REST API ──────────────────────────────
 const FB_URL = 'https://insys-work-default-rtdb.firebaseio.com';
 
@@ -1217,12 +1224,17 @@ async function fbGet(path){
   const d = await r.json();
   return d; // null이면 빈 경로
 }
-async function fbInitPath(path){
-  // 경로가 비어있으면(null) 빈 객체로 초기화 — 이후 404 없이 깨끗하게 조회됨
-  const cur = await fbGet(path);
-  if(cur === null){
-    await fetch(`${FB_URL}${path}.json`, {
-      method:'PUT', body:JSON.stringify({}), headers:{'Content-Type':'application/json'}
+async function fbInitRoot(){
+  // /ims 루트를 1회 조회 — 없으면 전체 구조를 한 번에 생성 (404 최소화)
+  const r = await fetch(`${FB_URL}/ims.json`);
+  if(r.status === 404 || (r.ok && (await r.clone().json()) === null)){
+    await fetch(`${FB_URL}/ims.json`, {
+      method:'PUT',
+      body: JSON.stringify({
+        incoming:{}, sap:{}, measures:{}, nc:{}, supply:{},
+        rr:{}, raci:{}, signs:{}, sop:{}, qedu:{}, dailylogs:{}, rptlogs:{}
+      }),
+      headers:{'Content-Type':'application/json'}
     });
   }
 }
@@ -1248,26 +1260,20 @@ async function fbRemove(path){
 // 저장·삭제 후 수동 갱신 (폴링 없음)
 async function loadAllData(){
   try {
-    const [inc,sap,meas,nc,sup,rr,raci,sign,sop,qe,dlog,rpt] = await Promise.all([
-      fbGet('/ims/incoming'), fbGet('/ims/sap'),
-      fbGet('/ims/measures'), fbGet('/ims/nc'),
-      fbGet('/ims/supply'),   fbGet('/ims/rr'),
-      fbGet('/ims/raci'),     fbGet('/ims/signs'),
-      fbGet('/ims/sop'),      fbGet('/ims/qedu'),
-      fbGet('/ims/dailylogs'),fbGet('/ims/rptlogs'),
-    ]);
-    incoming   = inc  || {};
-    sapRecs    = sap  || {};
-    measures   = meas || {};
-    ncRecs     = nc   || {};
-    supplyRecs = sup  || {};
-    rrList     = rr   || {};
-    raciData   = raci || {};
-    signList   = sign || {};
-    sopList    = sop  || {};
-    qeList     = qe   || {};
-    dailyLogs  = dlog || {};
-    rptLogs    = rpt  || {};
+    // /ims 전체를 1회 조회 (개별 경로 GET 제거 → 404 없음)
+    const root = await fbGet('/ims') || {};
+    incoming   = root.incoming  || {};
+    sapRecs    = root.sap       || {};
+    measures   = root.measures  || {};
+    ncRecs     = root.nc        || {};
+    supplyRecs = root.supply    || {};
+    rrList     = root.rr        || {};
+    raciData   = root.raci      || {};
+    signList   = root.signs     || {};
+    sopList    = root.sop       || {};
+    qeList     = root.qedu      || {};
+    dailyLogs  = root.dailylogs || {};
+    rptLogs    = root.rptlogs   || {};
     renderAll();
     const s=document.getElementById('fb-status');
     if(s){ s.textContent='🟢 DB 연결됨'; s.style.background='rgba(26,122,74,0.3)'; s.style.color='#6EE7B7'; }
@@ -1277,22 +1283,9 @@ async function loadAllData(){
   }
 }
 async function startPolling(){
-  // 최초 1회: 빈 경로 초기화 (404 콘솔 노이즈 제거) 후 데이터 로드
-  await Promise.all([
-    fbInitPath('/ims/incoming'), fbInitPath('/ims/sap'),
-    fbInitPath('/ims/measures'), fbInitPath('/ims/nc'),
-    fbInitPath('/ims/supply'),   fbInitPath('/ims/rr'),
-    fbInitPath('/ims/signs'),    fbInitPath('/ims/sop'),
-    fbInitPath('/ims/qedu'),     fbInitPath('/ims/dailylogs'),
-    fbInitPath('/ims/rptlogs'),
-  ]);
+  await fbInitRoot();
   await loadAllData();
 }
-
-
-// ── State ──────────────────────────────────────────
-let incoming={}, sapRecs={}, measures={}, ncRecs={}, supplyRecs={};
-let supTempItems = [];
 
 // ── Utils ──────────────────────────────────────────
 function showPage(p){
@@ -1306,17 +1299,19 @@ function showPage(p){
 function setViewMode(mode){
   document.body.classList.remove('mobile-mode','pc-mode');
   document.body.classList.add(mode+'-mode');
-  document.getElementById('btn-mobile').classList.toggle('active', mode==='mobile');
-  document.getElementById('btn-pc').classList.toggle('active', mode==='pc');
+  const bm=document.getElementById('btn-mobile'), bp=document.getElementById('btn-pc');
+  if(bm) bm.classList.toggle('active', mode==='mobile');
+  if(bp) bp.classList.toggle('active', mode==='pc');
   localStorage.setItem('ims-view-mode', mode);
 }
 function toast(msg,dur=2400){
   const t=document.getElementById('toast');
+  if(!t) return;
   t.textContent=msg; t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),dur);
 }
-function closeModal(id){ document.getElementById(id).classList.remove('open'); }
-function openNcModal(){ document.getElementById('nc-modal').classList.add('open'); }
+function closeModal(id){ const e=document.getElementById(id); if(e) e.classList.remove('open'); }
+function openNcModal(){ const e=document.getElementById('nc-modal'); if(e) e.classList.add('open'); }
 const fmtD  = iso => iso?iso.replace(/-/g,'.'):'-';
 const fmtDt = iso => { const d=new Date(iso); return `${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
 const badgeClass = v => v==='합격'||v==='정상'||v==='완료'?'badge-green':v==='불합격'||v==='불량'||v==='미처리'?'badge-red':v==='보류'||v==='진행 중'||v==='이상있음'?'badge-amber':'badge-gray';
@@ -1722,9 +1717,6 @@ function renderSupTable(){
 // ══════════════════════════════════════════════════
 // 실행계획 (Action Plan) — 5대 항목 실행 도구
 // ══════════════════════════════════════════════════
-let rrList={}, raciData={}, signList={}, sopList={}, qeList={}, dailyLogs={}, rptLogs={};
-let currentApTab='rr';
-let currentLogData=null;
 
 function showApTab(tab){
   currentApTab=tab;
