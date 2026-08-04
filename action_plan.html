@@ -290,40 +290,84 @@ textarea{resize:vertical;min-height:64px}
   </div>
 
   <div class="card" style="margin-bottom:12px">
-    <div class="card-title"><span class="bar"></span>실행 항목별 담당자 및 완료 일정</div>
-    <div class="tbl-wrap">
+    <div class="card-title"><span class="bar"></span>실행 항목별 담당자 및 완료 일정
+      <span style="font-size:10px;color:var(--slate);font-weight:400;margin-left:8px">항목 추가·수정·삭제 가능 · Firestore 저장</span>
+    </div>
+
+    <div class="form-grid g3">
+      <div class="form-group"><label>실행 항목 *</label><input id="pl-title" placeholder="예: 업무 Scope · R&R 명확화"></div>
+      <div class="form-group"><label>주요 산출물</label><input id="pl-output" placeholder="예: R&R 정의서 · RACI 매트릭스"></div>
+      <div class="form-group"><label>담당자 *</label><input id="pl-owner" placeholder="예: 김양섭 이사"></div>
+    </div>
+    <div class="form-grid g3">
+      <div class="form-group"><label>완료 목표일 *</label><input type="date" id="pl-due"></div>
+      <div class="form-group">
+        <label>구분</label>
+        <select id="pl-cat">
+          <option value="sqm">SQM 요청 항목</option>
+          <option value="insys">인시스 추가 항목</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>진행 상태</label>
+        <select id="pl-status">
+          <option>신규 착수</option>
+          <option>진행 중</option>
+          <option>구축 중</option>
+          <option>완료</option>
+          <option>보류</option>
+        </select>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-teal btn-sm" onclick="savePlan()">+ 항목 추가</button>
+      <button class="btn btn-outline btn-sm" onclick="clearPlan()">초기화</button>
+      <button class="btn btn-primary btn-sm" onclick="seedPlans()">📋 기본 항목 불러오기</button>
+    </div>
+
+    <div class="tbl-wrap" style="margin-top:12px">
       <table class="tbl">
-        <thead><tr><th>No.</th><th>실행 항목</th><th>주요 산출물</th><th>담당자</th><th>완료 목표</th><th>상태</th></tr></thead>
-        <tbody>
-          <tr><td>01</td><td><b>업무 Scope · R&R 명확화</b></td><td>R&R 정의서 · RACI 매트릭스 · 전자서명</td><td>김양섭 이사</td><td>2026.08.15</td><td><span class="badge badge-teal">진행 중</span></td></tr>
-          <tr><td>02</td><td><b>업무 프로세스 표준화</b></td><td>Flow Chart · 기준서 확인 절차서 · SOP</td><td>김양섭 이사</td><td>2026.08.15</td><td><span class="badge badge-green">완료</span></td></tr>
-          <tr><td>03</td><td><b>품질 마인드 강화</b></td><td>행동 지침서 · 부품 취급 지침 · 교육 이력</td><td>김종선 대리</td><td>2026.08.31</td><td><span class="badge badge-teal">진행 중</span></td></tr>
-          <tr><td>04</td><td><b>업무일지 운영</b></td><td>일일 업무일지 자동생성 · 보고서 발송</td><td>김종선 대리</td><td>2026.08.08</td><td><span class="badge badge-green">완료</span></td></tr>
-          <tr><td>05</td><td><b>ERP 기반 모니터링</b></td><td>업무관리 시스템 · 실시간 현황 모니터링</td><td>김양섭 이사</td><td>2026.08.08</td><td><span class="badge badge-green">완료</span></td></tr>
-          <tr><td>06</td><td><b>시스템 환경 구축</b></td><td>USIM 라우터 · 전용 노트북 설치</td><td>김양섭 이사</td><td>2026.08.15</td><td><span class="badge badge-amber">구축 중</span></td></tr>
-          <tr style="background:var(--redL)"><td>07</td><td><b>교육·면담 체계 운영</b></td><td>월 1회 방문 면담 · 전달교육 · 역량평가</td><td>김양섭 이사</td><td>2026.08.31</td><td><span class="badge badge-amber">신규 착수</span></td></tr>
-        </tbody>
+        <thead><tr><th>No.</th><th>구분</th><th>실행 항목</th><th>주요 산출물</th><th>담당자</th><th>완료 목표</th><th>상태</th><th>관리</th></tr></thead>
+        <tbody id="pl-tbody"></tbody>
       </table>
     </div>
     <div style="margin-top:10px;padding:9px 12px;background:var(--tealL);border:1px solid var(--teal);border-radius:7px;font-size:11px;color:var(--tealD)">
-      📅 <b>진행 현황 공유 방식</b> — 주간: 매주 금요일 이메일 보고 / 월간: 월말 방문 면담 시 대면 보고 / 수시: 시스템 실시간 조회 (SQM팀장·관련자 열람 권한 부여 예정)
+      📅 <b>진행 현황 공유 방식</b> — 주간: 매주 금요일 이메일 보고 / 월간: 월말 방문 면담 시 대면 보고 / 수시: 시스템 실시간 조회
     </div>
   </div>
 
   <div class="card" style="border-left:4px solid var(--amber);margin-bottom:12px">
-    <div class="card-title"><span class="bar" style="background:var(--amber)"></span>인시스 내부 의사결정 필요 사항 <span style="font-size:10px;color:var(--slate);font-weight:400;margin-left:8px">SQM 미언급 · 사내 검토 대상</span></div>
-    <div class="tbl-wrap">
+    <div class="card-title"><span class="bar" style="background:var(--amber)"></span>인시스 내부 의사결정 필요 사항
+      <span style="font-size:10px;color:var(--slate);font-weight:400;margin-left:8px">SQM 미언급 · 사내 검토 대상 · 추가·수정·삭제 가능</span>
+    </div>
+
+    <div class="form-grid g3">
+      <div class="form-group"><label>항목명 *</label><input id="dc-title" placeholder="예: 중식 비용 처리"></div>
+      <div class="form-group"><label>현황</label><input id="dc-status" placeholder="예: 셰플러 식당 계약 만료"></div>
+      <div class="form-group">
+        <label>구분</label>
+        <select id="dc-cat">
+          <option value="완료">완료</option>
+          <option value="미결">미결</option>
+          <option value="검토">검토</option>
+          <option value="진행">진행</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>결정 필요 사항 *</label><input id="dc-need" placeholder="예: 식대의 견적 포함 여부 확인 후 회신"></div>
+      <div class="form-group"><label>담당자</label><input id="dc-owner" placeholder="성명"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-teal btn-sm" onclick="saveDecision()">+ 항목 추가</button>
+      <button class="btn btn-outline btn-sm" onclick="clearDecision()">초기화</button>
+      <button class="btn btn-primary btn-sm" onclick="seedDecisions()">📋 기본 항목 불러오기</button>
+    </div>
+
+    <div class="tbl-wrap" style="margin-top:12px">
       <table class="tbl">
-        <thead><tr><th>구분</th><th>내용</th><th>현황</th><th>결정 필요 사항</th></tr></thead>
-        <tbody>
-          <tr><td><span class="badge badge-green">완료</span></td><td>안전화 지급</td><td>이천공장 도착 (2켤레)</td><td>김종선 대리에게 전달</td></tr>
-          <tr><td><span class="badge badge-red">미결</span></td><td>작업복 하복</td><td>동복만 지급, 반팔 미지급</td><td><b>XL 2벌 준비 후 전달</b></td></tr>
-          <tr><td><span class="badge badge-red">미결</span></td><td><b>중식 비용 처리</b></td><td>6월 셰플러 식당 계약 만료 → 외부 이용<br>현재 SQM팀장 승인 하에 셰플러 비용 처리</td><td><b>식대의 견적 포함 여부 확인 후 손책임 회신</b></td></tr>
-          <tr><td><span class="badge badge-amber">검토</span></td><td>ERP 연동 방식</td><td>WMS 방식(신촌 이창옥 기사) 참조</td><td>ERP 메뉴 추가 vs 별도 시스템</td></tr>
-          <tr><td><span class="badge badge-amber">검토</span></td><td>그룹웨어 메일 계정</td><td>미등록</td><td>검사원 계정 발급 여부 결정</td></tr>
-          <tr><td><span class="badge badge-teal">진행</span></td><td>승인·열람 권한</td><td>시스템 구축 중</td><td>작성·승인: <b>이천공장 송지원 대표</b><br>열람: 셰플러 SQM팀장·관련자, 인시스 일부</td></tr>
-          <tr><td><span class="badge badge-teal">진행</span></td><td>인터넷 환경</td><td>인트라넷만 사용 가능</td><td>유심라우터 + 노트북 설치<br>(이천공장 환경모니터링용 노트북 이동)</td></tr>
-        </tbody>
+        <thead><tr><th>구분</th><th>항목</th><th>현황</th><th>결정 필요 사항</th><th>담당</th><th>관리</th></tr></thead>
+        <tbody id="dc-tbody"></tbody>
       </table>
     </div>
   </div>
@@ -769,6 +813,7 @@ window.__FS = { db, collection, addDoc, getDocs, doc, setDoc, getDoc, deleteDoc 
 let incoming={}, sapRecs={}, measures={}, ncRecs={}, supplyRecs={};
 let rrList={}, raciData={}, signList={}, sopList={}, qeList={}, dailyLogs={}, rptLogs={};
 let infraList={}, infraChecks={};
+let planList={}, decisionList={};
 let currentApTab='rr';
 let currentLogData=null;
 
@@ -829,18 +874,22 @@ function showPage(){} // 문서 모드에서는 미사용
 async function loadAllData(){
   try{
     if(!_db) await initFirestore();
-    const [inc,sap,meas,nc,sup,rr,sign,sop,qe,dlog,rpt,inf]=await Promise.all([
+    const [inc,sap,meas,nc,sup,rr,sign,sop,qe,dlog,rpt,inf,pl,dc]=await Promise.all([
       fbGetCol('/ims/incoming'),fbGetCol('/ims/sap'),fbGetCol('/ims/measures'),
       fbGetCol('/ims/nc'),fbGetCol('/ims/supply'),fbGetCol('/ims/rr'),
       fbGetCol('/ims/signs'),fbGetCol('/ims/sop'),fbGetCol('/ims/qedu'),
       fbGetCol('/ims/dailylogs'),fbGetCol('/ims/rptlogs'),fbGetCol('/ims/infra'),
+      fbGetCol('/ims/plans'),fbGetCol('/ims/decisions'),
     ]);
     const [raci,ichk]=await Promise.all([fbGetDoc('/ims/raci'),fbGetDoc('/ims/infrachecks')]);
     incoming=inc; sapRecs=sap; measures=meas; ncRecs=nc; supplyRecs=sup;
     rrList=rr; signList=sign; sopList=sop; qeList=qe;
     dailyLogs=dlog; rptLogs=rpt; infraList=inf;
     raciData=raci; infraChecks=ichk;
+    planList=pl; decisionList=dc;
     renderActionPage();
+    renderPlanTable();
+    renderDecisionTable();
   } catch(e){ console.error('DB 오류:',e); }
 }
 
@@ -1583,6 +1632,171 @@ function renderInfraTable(){
   </tr>`).join(''):'<tr><td colspan="9" style="text-align:center;color:var(--slate);padding:16px">등록된 장비 없음</td></tr>';
 }
 
+
+// ══════════════════════════════════════════════════
+// 실행 항목 관리 (추가·수정·삭제)
+// ══════════════════════════════════════════════════
+function clearPlan(){
+  ['pl-title','pl-output','pl-owner'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+}
+
+function savePlan(){
+  const title=document.getElementById('pl-title').value.trim();
+  const owner=document.getElementById('pl-owner').value.trim();
+  const due  =document.getElementById('pl-due').value;
+  if(!title){ toast('⚠️ 실행 항목을 입력하세요.'); return; }
+  if(!owner){ toast('⚠️ 담당자를 입력하세요.'); return; }
+  if(!due){   toast('⚠️ 완료 목표일을 선택하세요.'); return; }
+  const rec={
+    dt:new Date().toISOString(),
+    title, owner, due,
+    output:document.getElementById('pl-output').value,
+    cat:   document.getElementById('pl-cat').value,
+    status:document.getElementById('pl-status').value,
+  };
+  fbPush('/ims/plans', rec).then(()=>{
+    clearPlan(); toast('✅ 실행 항목이 추가되었습니다.'); loadAllData();
+  }).catch(e=>toast('❌ 저장 실패: '+e.message));
+}
+
+function updatePlanStatus(id, status){
+  const rec=planList[id]; if(!rec) return;
+  rec.status=status;
+  fbSet('/ims/plans/'+id, rec).then(()=>{ toast('상태가 변경되었습니다.'); loadAllData(); });
+}
+
+function editPlan(id){
+  const r=planList[id]; if(!r) return;
+  const t=prompt('실행 항목:', r.title); if(t===null) return;
+  const o=prompt('담당자:', r.owner); if(o===null) return;
+  const d=prompt('완료 목표일 (YYYY-MM-DD):', r.due); if(d===null) return;
+  const out=prompt('주요 산출물:', r.output||''); if(out===null) return;
+  r.title=t; r.owner=o; r.due=d; r.output=out;
+  fbSet('/ims/plans/'+id, r).then(()=>{ toast('✅ 수정되었습니다.'); loadAllData(); });
+}
+
+const DEFAULT_PLANS=[
+  {title:'업무 Scope · R&R 명확화', output:'R&R 정의서 · RACI 매트릭스 · 전자서명', owner:'김양섭 이사', due:'2026-08-15', cat:'sqm', status:'진행 중'},
+  {title:'업무 프로세스 표준화',     output:'Flow Chart · 기준서 확인 절차서 · SOP', owner:'김양섭 이사', due:'2026-08-15', cat:'sqm', status:'완료'},
+  {title:'품질 마인드 강화',         output:'행동 지침서 · 부품 취급 지침 · 교육 이력', owner:'김종선 대리', due:'2026-08-31', cat:'sqm', status:'진행 중'},
+  {title:'업무일지 운영',            output:'일일 업무일지 자동생성 · 보고서 발송', owner:'김종선 대리', due:'2026-08-08', cat:'sqm', status:'완료'},
+  {title:'ERP 기반 모니터링',        output:'업무관리 시스템 · 실시간 현황 모니터링', owner:'김양섭 이사', due:'2026-08-08', cat:'sqm', status:'완료'},
+  {title:'시스템 환경 구축',         output:'USIM 라우터 · 전용 노트북 설치', owner:'김양섭 이사', due:'2026-08-15', cat:'insys', status:'구축 중'},
+  {title:'교육·면담 체계 운영',      output:'월 1회 방문 면담 · 전달교육 · 역량평가', owner:'김양섭 이사', due:'2026-08-31', cat:'insys', status:'신규 착수'},
+];
+
+function seedPlans(){
+  if(Object.keys(planList).length>0){
+    if(!confirm('이미 등록된 항목이 있습니다. 기본 항목을 추가로 불러오시겠습니까?')) return;
+  }
+  const tasks=DEFAULT_PLANS.map(p=>fbPush('/ims/plans', {...p, dt:new Date().toISOString()}));
+  Promise.all(tasks).then(()=>{ toast('✅ 기본 항목 '+DEFAULT_PLANS.length+'건이 등록되었습니다.'); loadAllData(); })
+    .catch(e=>toast('❌ 오류: '+e.message));
+}
+
+function renderPlanTable(){
+  const tb=document.getElementById('pl-tbody'); if(!tb) return;
+  const arr=Object.entries(planList).sort((a,b)=>(a[1].due||'').localeCompare(b[1].due||''));
+  const sBadge=s=>s==='완료'?'badge-green':s==='진행 중'?'badge-teal':s==='구축 중'?'badge-amber':s==='보류'?'badge-gray':'badge-amber';
+  tb.innerHTML=arr.length?arr.map(([id,r],i)=>`<tr${r.cat==='insys'?' style="background:var(--redL)"':''}>
+    <td>${String(i+1).padStart(2,'0')}</td>
+    <td><span class="badge ${r.cat==='sqm'?'badge-blue':'badge-red'}">${r.cat==='sqm'?'SQM 요청':'인시스'}</span></td>
+    <td><b>${r.title}</b></td>
+    <td style="font-size:11px">${r.output||'-'}</td>
+    <td>${r.owner}</td>
+    <td>${fmtD(r.due)}</td>
+    <td>
+      <select onchange="updatePlanStatus('${id}',this.value)" style="padding:3px 6px;font-size:10px;width:auto">
+        ${['신규 착수','진행 중','구축 중','완료','보류'].map(s=>`<option ${r.status===s?'selected':''}>${s}</option>`).join('')}
+      </select>
+    </td>
+    <td>
+      <button class="btn btn-outline btn-sm" onclick="editPlan('${id}')">수정</button>
+      <button class="btn btn-red btn-sm" onclick="delItem('/ims/plans','${id}')">삭제</button>
+    </td>
+  </tr>`).join(''):'<tr><td colspan="8" style="text-align:center;color:var(--slate);padding:16px">등록된 항목이 없습니다. "기본 항목 불러오기"를 클릭하세요.</td></tr>';
+}
+
+// ══════════════════════════════════════════════════
+// 내부 의사결정 항목 관리
+// ══════════════════════════════════════════════════
+function clearDecision(){
+  ['dc-title','dc-status','dc-need','dc-owner'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+}
+
+function saveDecision(){
+  const title=document.getElementById('dc-title').value.trim();
+  const need =document.getElementById('dc-need').value.trim();
+  if(!title){ toast('⚠️ 항목명을 입력하세요.'); return; }
+  if(!need){  toast('⚠️ 결정 필요 사항을 입력하세요.'); return; }
+  const rec={
+    dt:new Date().toISOString(),
+    title, need,
+    status:document.getElementById('dc-status').value,
+    cat:   document.getElementById('dc-cat').value,
+    owner: document.getElementById('dc-owner').value,
+  };
+  fbPush('/ims/decisions', rec).then(()=>{
+    clearDecision(); toast('✅ 의사결정 항목이 추가되었습니다.'); loadAllData();
+  }).catch(e=>toast('❌ 저장 실패: '+e.message));
+}
+
+function updateDecisionCat(id, cat){
+  const rec=decisionList[id]; if(!rec) return;
+  rec.cat=cat;
+  fbSet('/ims/decisions/'+id, rec).then(()=>{ toast('구분이 변경되었습니다.'); loadAllData(); });
+}
+
+function editDecision(id){
+  const r=decisionList[id]; if(!r) return;
+  const t=prompt('항목명:', r.title); if(t===null) return;
+  const s=prompt('현황:', r.status||''); if(s===null) return;
+  const n=prompt('결정 필요 사항:', r.need); if(n===null) return;
+  r.title=t; r.status=s; r.need=n;
+  fbSet('/ims/decisions/'+id, r).then(()=>{ toast('✅ 수정되었습니다.'); loadAllData(); });
+}
+
+const DEFAULT_DECISIONS=[
+  {cat:'완료', title:'안전화 지급', status:'이천공장 도착 (2켤레)', need:'김종선 대리에게 전달', owner:'경영지원실'},
+  {cat:'미결', title:'작업복 하복', status:'동복만 지급, 반팔 미지급', need:'XL 2벌 준비 후 전달', owner:'경영지원실'},
+  {cat:'미결', title:'중식 비용 처리', status:'6월 셰플러 식당 계약 만료 → 외부 이용 / SQM팀장 승인 하 셰플러 비용 처리 중', need:'식대의 견적 포함 여부 확인 후 손책임 회신', owner:'경영지원실'},
+  {cat:'검토', title:'ERP 연동 방식', status:'WMS 방식(신촌 이창옥 기사) 참조', need:'ERP 메뉴 추가 vs 별도 시스템 결정', owner:'김양섭 이사'},
+  {cat:'검토', title:'그룹웨어 메일 계정', status:'미등록', need:'검사원 계정 발급 여부 결정', owner:'경영지원실'},
+  {cat:'진행', title:'승인·열람 권한', status:'시스템 구축 중', need:'작성·승인: 이천공장 송지원 대표 / 열람: 셰플러 SQM팀장·관련자, 인시스 일부', owner:'김양섭 이사'},
+  {cat:'진행', title:'인터넷 환경', status:'인트라넷만 사용 가능', need:'유심라우터 + 노트북 설치 (이천공장 환경모니터링용 노트북 이동)', owner:'김양섭 이사'},
+];
+
+function seedDecisions(){
+  if(Object.keys(decisionList).length>0){
+    if(!confirm('이미 등록된 항목이 있습니다. 기본 항목을 추가로 불러오시겠습니까?')) return;
+  }
+  const tasks=DEFAULT_DECISIONS.map(d=>fbPush('/ims/decisions', {...d, dt:new Date().toISOString()}));
+  Promise.all(tasks).then(()=>{ toast('✅ 기본 항목 '+DEFAULT_DECISIONS.length+'건이 등록되었습니다.'); loadAllData(); })
+    .catch(e=>toast('❌ 오류: '+e.message));
+}
+
+function renderDecisionTable(){
+  const tb=document.getElementById('dc-tbody'); if(!tb) return;
+  const order={'미결':0,'검토':1,'진행':2,'완료':3};
+  const arr=Object.entries(decisionList).sort((a,b)=>(order[a[1].cat]??9)-(order[b[1].cat]??9));
+  const cBadge=c=>c==='완료'?'badge-green':c==='미결'?'badge-red':c==='검토'?'badge-amber':'badge-teal';
+  tb.innerHTML=arr.length?arr.map(([id,r])=>`<tr${r.cat==='미결'?' style="background:var(--redL)"':''}>
+    <td>
+      <select onchange="updateDecisionCat('${id}',this.value)" style="padding:3px 6px;font-size:10px;width:auto">
+        ${['완료','미결','검토','진행'].map(c=>`<option ${r.cat===c?'selected':''}>${c}</option>`).join('')}
+      </select>
+    </td>
+    <td><b>${r.title}</b></td>
+    <td style="font-size:11px;max-width:180px">${r.status||'-'}</td>
+    <td style="font-size:11px;max-width:200px">${r.need}</td>
+    <td>${r.owner||'-'}</td>
+    <td>
+      <button class="btn btn-outline btn-sm" onclick="editDecision('${id}')">수정</button>
+      <button class="btn btn-red btn-sm" onclick="delItem('/ims/decisions','${id}')">삭제</button>
+    </td>
+  </tr>`).join(''):'<tr><td colspan="6" style="text-align:center;color:var(--slate);padding:16px">등록된 항목이 없습니다. "기본 항목 불러오기"를 클릭하세요.</td></tr>';
+}
+
 function renderActionPage(){
   renderRRTable();
   renderRaciTable();
@@ -1607,7 +1821,7 @@ function renderActionPage(){
 
 window.addEventListener('load', async ()=>{
   const today=new Date().toISOString().slice(0,10);
-  ['sign-date','sop-date','qe-date','log-date','rpt-date','inf-due'].forEach(id=>{
+  ['sign-date','sop-date','qe-date','log-date','rpt-date','inf-due','pl-due'].forEach(id=>{
     const e=document.getElementById(id); if(e) e.value=today;
   });
   await initFirestore();
