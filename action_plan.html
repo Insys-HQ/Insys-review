@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>셰플러 이천공장 수입검사 실행계획서 v1.0</title>
+<title>셰플러 이천공장 수입검사 실행계획서 v3.0</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 
@@ -242,7 +242,7 @@ textarea{resize:vertical;min-height:64px}
 <div class="doc-hdr">
   <div class="doc-hdr-inner">
     <div>
-      <div class="doc-title">셰플러 이천공장 수입검사 실행계획서 <span style="font-size:10px;font-weight:400;color:#94A3B8">v1.0</span></div>
+      <div class="doc-title">셰플러 이천공장 수입검사 실행계획서 <span style="font-size:10px;font-weight:400;color:#94A3B8">v3.0</span></div>
       <div class="doc-sub">Schaeffler Icheon · insys — SQM 요청 5개 항목 + 인시스 추가 2개 항목  |  회신: 2026.08.08(금)</div>
     </div>
     <div style="display:flex;gap:8px">
@@ -789,8 +789,20 @@ textarea{resize:vertical;min-height:64px}
 
 
 <footer style="max-width:1200px;margin:20px auto 0;padding:12px 20px;text-align:center;font-size:10px;color:var(--slate);border-top:1px solid var(--line)">
-  인시스 AI혁신 연구개발실 · 셰플러 이천공장 수입검사 실행계획서 v1.0 · © (주)인시스
+  인시스 AI혁신 연구개발실 · 셰플러 이천공장 수입검사 실행계획서 v3.0 · 최종 수정 2026.08.04 · © (주)인시스
 </footer>
+
+<!-- 편집 모달 -->
+<div class="modal-bg" id="edit-modal">
+  <div class="modal" style="max-width:620px">
+    <div class="modal-title" id="edit-modal-title">✏️ 수정</div>
+    <div id="edit-modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-teal" onclick="saveEdit()">💾 저장</button>
+      <button class="btn btn-outline" onclick="closeModal('edit-modal')">취소</button>
+    </div>
+  </div>
+</div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -936,7 +948,10 @@ function renderRRTable(){
     <td><b>${r.name}</b></td><td>${r.rank||'-'}</td><td>${r.line||'-'}</td>
     <td style="font-size:11px">${r.items||'-'}</td><td>${r.backup||'-'}</td>
     <td><span class="badge ${signedNames.includes(r.name)?'badge-green':'badge-gray'}">${signedNames.includes(r.name)?'✍️ 서명완료':'미서명'}</span></td>
-    <td><button class="btn btn-red btn-sm" onclick="delItem('/ims/rr','${id}')">삭제</button></td>
+    <td>
+      <button class="btn btn-outline btn-sm" onclick="openEdit('rr','${id}')">수정</button>
+      <button class="btn btn-red btn-sm" onclick="delItem('/ims/rr','${id}')">삭제</button>
+    </td>
   </tr>`).join(''):'<tr><td colspan="7" style="text-align:center;color:var(--slate);padding:16px">등록된 검사원 없음</td></tr>';
 }
 
@@ -1093,7 +1108,10 @@ function renderSopTable(){
   tb.innerHTML=arr.length?arr.map(([id,r])=>`<tr>
     <td><b>${r.title}</b></td><td>${r.no||'-'}</td><td>${r.rev||'-'}</td><td>${fmtD(r.date)}</td>
     <td>${r.url?`<a href="${r.url}" target="_blank" style="color:var(--teal);font-size:11px">📄 열기</a>`:'-'}</td>
-    <td><button class="btn btn-red btn-sm" onclick="delItem('/ims/sop','${id}')">삭제</button></td>
+    <td>
+      <button class="btn btn-outline btn-sm" onclick="openEdit('sop','${id}')">수정</button>
+      <button class="btn btn-red btn-sm" onclick="delItem('/ims/sop','${id}')">삭제</button>
+    </td>
   </tr>`).join(''):'<tr><td colspan="6" style="text-align:center;color:var(--slate);padding:16px">등록된 SOP 문서 없음</td></tr>';
 }
 
@@ -1627,11 +1645,107 @@ function renderInfraTable(){
     <td><span class="badge ${stBadge(r.status)}">${r.status}</span></td>
     <td>
       ${r.status!=='운영 중'?`<button class="btn btn-green btn-sm" onclick="updateInfraStatus('${id}','운영 중')">완료</button> `:''}
+      <button class="btn btn-outline btn-sm" onclick="openEdit('infra','${id}')">수정</button>
       <button class="btn btn-red btn-sm" onclick="delItem('/ims/infra','${id}')">삭제</button>
     </td>
   </tr>`).join(''):'<tr><td colspan="9" style="text-align:center;color:var(--slate);padding:16px">등록된 장비 없음</td></tr>';
 }
 
+
+
+// ══════════════════════════════════════════════════
+// 편집 모달
+// ══════════════════════════════════════════════════
+let _editCtx = null;
+const EDIT_FIELDS = {
+  plans: [
+    {k:'title',  label:'실행 항목',   type:'text', req:true},
+    {k:'output', label:'주요 산출물', type:'text'},
+    {k:'owner',  label:'담당자',      type:'text', req:true},
+    {k:'due',    label:'완료 목표일', type:'date', req:true},
+    {k:'cat',    label:'구분',        type:'select', opts:[['sqm','SQM 요청 항목'],['insys','인시스 추가 항목']]},
+    {k:'status', label:'진행 상태',   type:'select', opts:[['신규 착수','신규 착수'],['진행 중','진행 중'],['구축 중','구축 중'],['완료','완료'],['보류','보류']]},
+  ],
+  decisions: [
+    {k:'title',  label:'항목명',        type:'text', req:true},
+    {k:'status', label:'현황',          type:'textarea'},
+    {k:'need',   label:'결정 필요 사항', type:'textarea', req:true},
+    {k:'cat',    label:'구분',          type:'select', opts:[['완료','완료'],['미결','미결'],['검토','검토'],['진행','진행']]},
+    {k:'owner',  label:'담당자',        type:'text'},
+  ],
+  rr: [
+    {k:'name',   label:'검사원 성명', type:'text', req:true},
+    {k:'rank',   label:'직급',        type:'text'},
+    {k:'line',   label:'담당 라인',   type:'text'},
+    {k:'items',  label:'담당 품목군', type:'text'},
+    {k:'backup', label:'백업 담당자', type:'text'},
+  ],
+  sop: [
+    {k:'title', label:'문서명',     type:'text', req:true},
+    {k:'no',    label:'문서번호',   type:'text'},
+    {k:'rev',   label:'개정 번호',  type:'text'},
+    {k:'url',   label:'문서 링크',  type:'text'},
+    {k:'date',  label:'제정/개정일', type:'date'},
+  ],
+  infra: [
+    {k:'type',   label:'장비 구분', type:'select', opts:[['USIM 라우터','USIM 라우터'],['전용 노트북','전용 노트북'],['USIM 요금제','USIM 요금제'],['주변기기','주변기기'],['기타','기타']]},
+    {k:'model',  label:'모델/사양', type:'text', req:true},
+    {k:'loc',    label:'설치 위치', type:'text'},
+    {k:'qty',    label:'수량',      type:'number'},
+    {k:'cost',   label:'월 비용',   type:'number'},
+    {k:'owner',  label:'담당자',    type:'text'},
+    {k:'due',    label:'목표 완료일', type:'date'},
+    {k:'status', label:'진행 상태', type:'select', opts:[['검토 중','검토 중'],['구매 요청','구매 요청'],['구매 완료','구매 완료'],['설치 완료','설치 완료'],['운영 중','운영 중']]},
+    {k:'note',   label:'비고',      type:'text'},
+  ],
+};
+const EDIT_TITLES = {plans:'실행 항목 수정', decisions:'의사결정 항목 수정', rr:'검사원 R&R 수정', sop:'문서 수정', infra:'장비 정보 수정'};
+
+function getStore(coll){
+  return {plans:planList, decisions:decisionList, rr:rrList, sop:sopList, infra:infraList}[coll] || {};
+}
+
+function openEdit(coll, id){
+  const rec = getStore(coll)[id];
+  if(!rec){ toast('데이터를 찾을 수 없습니다.'); return; }
+  const fields = EDIT_FIELDS[coll];
+  if(!fields){ toast('편집 정의가 없습니다.'); return; }
+  _editCtx = {coll, id, fields};
+  document.getElementById('edit-modal-title').textContent = '✏️ ' + (EDIT_TITLES[coll]||'수정');
+  document.getElementById('edit-modal-body').innerHTML = fields.map(f=>{
+    const v = rec[f.k] ?? '';
+    if(f.type==='select'){
+      return `<div class="form-group" style="margin-bottom:9px"><label>${f.label}${f.req?' *':''}</label>
+        <select id="ed-${f.k}">${f.opts.map(([val,lbl])=>`<option value="${val}" ${String(v)===String(val)?'selected':''}>${lbl}</option>`).join('')}</select></div>`;
+    }
+    if(f.type==='textarea'){
+      return `<div class="form-group" style="margin-bottom:9px"><label>${f.label}${f.req?' *':''}</label>
+        <textarea id="ed-${f.k}" style="min-height:52px">${v}</textarea></div>`;
+    }
+    return `<div class="form-group" style="margin-bottom:9px"><label>${f.label}${f.req?' *':''}</label>
+      <input type="${f.type}" id="ed-${f.k}" value="${String(v).replace(/"/g,'&quot;')}"></div>`;
+  }).join('');
+  document.getElementById('edit-modal').classList.add('open');
+}
+
+function saveEdit(){
+  if(!_editCtx) return;
+  const {coll, id, fields} = _editCtx;
+  const rec = {...getStore(coll)[id]};
+  for(const f of fields){
+    const el = document.getElementById('ed-'+f.k);
+    if(!el) continue;
+    const val = el.value.trim();
+    if(f.req && !val){ toast(`⚠️ ${f.label}은(는) 필수입니다.`); return; }
+    rec[f.k] = val;
+  }
+  rec.editedAt = new Date().toISOString();
+  fbSet(`/ims/${coll}/${id}`, rec).then(()=>{
+    closeModal('edit-modal'); toast('✅ 수정되었습니다.'); loadAllData();
+  }).catch(e=>toast('❌ 수정 실패: '+e.message));
+}
+
+function closeModal(id){ const e=document.getElementById(id); if(e) e.classList.remove('open'); }
 
 // ══════════════════════════════════════════════════
 // 실행 항목 관리 (추가·수정·삭제)
@@ -1711,7 +1825,7 @@ function renderPlanTable(){
       </select>
     </td>
     <td>
-      <button class="btn btn-outline btn-sm" onclick="editPlan('${id}')">수정</button>
+      <button class="btn btn-outline btn-sm" onclick="openEdit('plans','${id}')">수정</button>
       <button class="btn btn-red btn-sm" onclick="delItem('/ims/plans','${id}')">삭제</button>
     </td>
   </tr>`).join(''):'<tr><td colspan="8" style="text-align:center;color:var(--slate);padding:16px">등록된 항목이 없습니다. "기본 항목 불러오기"를 클릭하세요.</td></tr>';
@@ -1791,7 +1905,7 @@ function renderDecisionTable(){
     <td style="font-size:11px;max-width:200px">${r.need}</td>
     <td>${r.owner||'-'}</td>
     <td>
-      <button class="btn btn-outline btn-sm" onclick="editDecision('${id}')">수정</button>
+      <button class="btn btn-outline btn-sm" onclick="openEdit('decisions','${id}')">수정</button>
       <button class="btn btn-red btn-sm" onclick="delItem('/ims/decisions','${id}')">삭제</button>
     </td>
   </tr>`).join(''):'<tr><td colspan="6" style="text-align:center;color:var(--slate);padding:16px">등록된 항목이 없습니다. "기본 항목 불러오기"를 클릭하세요.</td></tr>';
