@@ -233,7 +233,7 @@ textarea{resize:vertical;min-height:64px}
     <div class="nav-brand">
       <div class="dot"></div>
       <div>
-        <div class="nav-title">셰플러 이천공장 수입검사 업무관리 시스템 <span style="font-size:10px;font-weight:400;color:#94A3B8">v1.0</span></div>
+        <div class="nav-title">셰플러 이천공장 수입검사 업무관리 시스템 <span style="font-size:10px;font-weight:400;color:#94A3B8">v7.0</span></div>
         <div class="nav-sub">Schaeffler Icheon  ·  insys  <span id="fb-status" style="margin-left:8px;font-size:10px;padding:2px 7px;border-radius:10px;background:rgba(255,255,255,0.1);color:#94A3B8">⏳ 연결 중...</span></div>
       </div>
     </div>
@@ -731,7 +731,7 @@ textarea{resize:vertical;min-height:64px}
     <div class="card-title"><span class="bar"></span>수입검사 이력</div>
     <div class="tbl-wrap">
       <table class="tbl">
-        <thead><tr><th>일자</th><th>품목번호</th><th>품목명</th><th>수량</th><th>소요(분)</th><th>성적서</th><th>판정</th><th>SAP</th><th>특이사항</th><th>삭제</th></tr></thead>
+        <thead><tr><th>일자</th><th>품목번호</th><th>품목명</th><th>수량</th><th>소요(분)</th><th>성적서</th><th>판정</th><th>SAP</th><th>특이사항</th><th>관리</th></tr></thead>
         <tbody id="in-tbody"></tbody>
       </table>
     </div>
@@ -1090,13 +1090,25 @@ textarea{resize:vertical;min-height:64px}
 </div>
 
 <footer style="max-width:1200px;margin:20px auto 0;padding:12px 20px;text-align:center;font-size:10px;color:var(--slate);border-top:1px solid var(--line)">
-  인시스 AI혁신 연구개발실  ·  셰플러 이천공장 수입검사 업무관리 시스템 v1.0  ·  © (주)인시스
+  인시스 AI혁신 연구개발실  ·  셰플러 이천공장 수입검사 업무관리 시스템 v7.0  ·  최종 수정 2026.08.04  ·  © (주)인시스
 </footer>
 
 <!-- Firebase -->
 <!-- ═══════════════════════════════════════════════════════
      GLOBAL SCRIPT — Firebase CDN (non-module) + All Functions
 ════════════════════════════════════════════════════════ -->
+<!-- 편집 모달 (전 메뉴 공통) -->
+<div class="modal-bg" id="edit-modal">
+  <div class="modal" style="max-width:620px">
+    <div class="modal-title" id="edit-modal-title">✏️ 수정</div>
+    <div id="edit-modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-teal" onclick="saveEdit()">💾 저장</button>
+      <button class="btn btn-outline" onclick="closeModal('edit-modal')">취소</button>
+    </div>
+  </div>
+</div>
+
 <!-- Firebase Firestore 모듈 로드 (lunch.html과 동일) -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -1458,7 +1470,10 @@ function renderInTable(){
     <td><span class="badge ${badgeClass(r.judge)}">${r.judge}</span></td>
     <td><span class="badge ${badgeClass(r.sap)}">${r.sap||'-'}</span></td>
     <td style="font-size:11px;max-width:120px">${r.note||'-'}</td>
-    <td><button class="btn btn-red btn-sm" onclick="delItem('/ims/incoming','${id}')">삭제</button></td>
+    <td>
+      <button class="btn btn-outline btn-sm" onclick="openEdit('incoming','${id}')">수정</button>
+      <button class="btn btn-red btn-sm" onclick="delItem('/ims/incoming','${id}')">삭제</button>
+    </td>
   </tr>`).join(''):'<tr><td colspan="10" style="text-align:center;color:var(--slate);padding:16px">이력 없음</td></tr>';
 }
 
@@ -1532,6 +1547,7 @@ function renderMsTable(){
     <td>${r.user||'-'}</td>
     <td>
       ${r.result!=='완료'?`<button class="btn btn-green btn-sm" onclick="completeMeasure('${id}')">완료</button> `:''}
+      <button class="btn btn-outline btn-sm" onclick="openEdit('measures','${id}')">수정</button>
       <button class="btn btn-red btn-sm" onclick="delItem('/ims/measures','${id}')">삭제</button>
     </td>
   </tr>`).join(''):'<tr><td colspan="9" style="text-align:center;color:var(--slate);padding:16px">이력 없음</td></tr>';
@@ -1580,6 +1596,7 @@ function renderNcTable(){
     <td>${r.user||'-'}</td>
     <td>
       ${r.status!=='완료'?`<button class="btn btn-green btn-sm" onclick="resolveNc('${id}')">완료</button> `:''}
+      <button class="btn btn-outline btn-sm" onclick="openEdit('nc','${id}')">수정</button>
       <button class="btn btn-red btn-sm" onclick="delItem('/ims/nc','${id}')">삭제</button>
     </td>
   </tr>`).join(''):'<tr><td colspan="9" style="text-align:center;color:var(--slate);padding:16px">이력 없음</td></tr>';
@@ -1683,7 +1700,7 @@ function renderSupTable(){
     <td><span class="badge ${r.urgent==='긴급'?'badge-red':'badge-gray'}">${r.urgent||'일반'}</span></td>
     <td style="font-size:11px">${fmtD(r.dt?r.dt.slice(0,10):'-')}</td>
     <td>
-      <button class="btn btn-outline btn-sm" onclick="editSupItem('${id}')">수정</button>
+      <button class="btn btn-outline btn-sm" onclick="openEdit('supply','${id}')">수정</button>
       <button class="btn btn-red btn-sm" onclick="delItem('/ims/supply','${id}')">삭제</button>
     </td>
   </tr>`).join(''):'<tr><td colspan="12" style="text-align:center;color:var(--slate);padding:16px">신청 이력 없음</td></tr>';
@@ -1749,7 +1766,10 @@ function renderQeTable(){
     <td><b>${r.topic}</b></td><td>${r.host||'-'}</td>
     <td style="font-size:11px">${r.members||'-'}</td>
     <td style="font-size:11px;max-width:160px">${r.content||'-'}</td>
-    <td><button class="btn btn-red btn-sm" onclick="delItem('/ims/qedu','${id}')">삭제</button></td>
+    <td>
+      <button class="btn btn-outline btn-sm" onclick="openEdit('qedu','${id}')">수정</button>
+      <button class="btn btn-red btn-sm" onclick="delItem('/ims/qedu','${id}')">삭제</button>
+    </td>
   </tr>`).join(''):'<tr><td colspan="7" style="text-align:center;color:var(--slate);padding:16px">교육 이력 없음</td></tr>';
 }
 
@@ -1782,7 +1802,10 @@ function renderVisitTable(){
     <td style="font-size:11px;max-width:130px">${r.check||'-'}</td>
     <td style="font-size:11px;max-width:130px">${r.issue||'-'}</td>
     <td style="font-size:11px;max-width:130px">${r.action||'-'}</td>
-    <td><button class="btn btn-red btn-sm" onclick="delItem('/ims/visits','${id}')">삭제</button></td>
+    <td>
+      <button class="btn btn-outline btn-sm" onclick="openEdit('visits','${id}')">수정</button>
+      <button class="btn btn-red btn-sm" onclick="delItem('/ims/visits','${id}')">삭제</button>
+    </td>
   </tr>`).join(''):'<tr><td colspan="8" style="text-align:center;color:var(--slate);padding:16px">면담 기록 없음</td></tr>';
 }
 
@@ -1816,8 +1839,171 @@ function renderEvalTable(){
     <td>${r.handle||'-'}</td><td>${r.report||'-'}</td>
     <td><b style="color:var(--teal)">${r.avg}</b></td>
     <td><span class="badge ${rBadge(r.result)}">${r.result||'-'}</span></td>
-    <td><button class="btn btn-red btn-sm" onclick="delItem('/ims/evals','${id}')">삭제</button></td>
+    <td>
+      <button class="btn btn-outline btn-sm" onclick="openEdit('evals','${id}')">수정</button>
+      <button class="btn btn-red btn-sm" onclick="delItem('/ims/evals','${id}')">삭제</button>
+    </td>
   </tr>`).join(''):'<tr><td colspan="10" style="text-align:center;color:var(--slate);padding:16px">평가 이력 없음</td></tr>';
+}
+
+
+// ══════════════════════════════════════════════════
+// 편집 모달 (전 메뉴 공통)
+// ══════════════════════════════════════════════════
+let _editCtx = null;   // {path, id, fields}
+
+// 필드 정의 — 메뉴별 편집 항목
+const EDIT_FIELDS = {
+  incoming: [
+    {k:'date',    label:'검사 일자',      type:'date'},
+    {k:'time',    label:'입고 시간',      type:'time'},
+    {k:'user',    label:'검사 담당자',    type:'text'},
+    {k:'num',     label:'품목번호',       type:'text', req:true},
+    {k:'name',    label:'품목명',         type:'text', req:true},
+    {k:'qty',     label:'입고 수량',      type:'number'},
+    {k:'sample',  label:'샘플 수량',      type:'number'},
+    {k:'elapsed', label:'검사 소요시간(분)', type:'number'},
+    {k:'sapRev',  label:'성적서 Rev.',    type:'text'},
+    {k:'sapOverall', label:'성적서 검토', type:'select', opts:[['','미검토'],['ok','이상 없음'],['ng','이상 있음']]},
+    {k:'sapNote', label:'성적서 특기사항', type:'textarea'},
+    {k:'visual',  label:'외관 검사 결과', type:'select', opts:[['','선택'],['정상','정상'],['불량','불량'],['보류','보류']]},
+    {k:'dim',     label:'치수 검사 결과', type:'select', opts:[['','선택'],['정상','정상'],['불량','불량'],['해당없음','해당없음']]},
+    {k:'judge',   label:'최종 판정',      type:'select', req:true, opts:[['합격','합격'],['불합격','불합격'],['보류','보류 (SQM 판단 요청)']]},
+    {k:'sap',     label:'SAP 입력 여부',  type:'select', opts:[['','선택'],['완료','완료'],['미입력','미입력']]},
+    {k:'note',    label:'특이사항',       type:'textarea'},
+  ],
+  measures: [
+    {k:'date',   label:'의뢰일',       type:'date'},
+    {k:'done',   label:'완료(예정)일', type:'date'},
+    {k:'num',    label:'품목번호',     type:'text'},
+    {k:'name',   label:'품목명',       type:'text'},
+    {k:'desc',   label:'의뢰 내용',    type:'textarea', req:true},
+    {k:'time',   label:'소요시간(분)', type:'number'},
+    {k:'result', label:'측정 결과',    type:'select', opts:[['','선택'],['정상','정상'],['불량','불량'],['진행 중','진행 중'],['완료','완료']]},
+    {k:'user',   label:'담당자',       type:'text'},
+    {k:'note',   label:'비고',         type:'text'},
+  ],
+  nc: [
+    {k:'date',   label:'발생일',   type:'date'},
+    {k:'num',    label:'품목번호', type:'text', req:true},
+    {k:'name',   label:'품목명',   type:'text'},
+    {k:'qty',    label:'부적합 수량', type:'number'},
+    {k:'ncType', label:'유형',     type:'select', opts:[['외관 불량','외관 불량'],['치수 불량','치수 불량'],['성적서 누락','성적서 누락'],['기준서 미갱신','기준서 미갱신'],['기타','기타']]},
+    {k:'action', label:'처리 방법', type:'select', opts:[['반품','반품'],['특채','특채'],['재작업','재작업'],['폐기','폐기'],['보류','보류']]},
+    {k:'user',   label:'담당자',   type:'text'},
+    {k:'loc',    label:'격리 구역', type:'text'},
+    {k:'desc',   label:'상세 내용', type:'textarea'},
+    {k:'status', label:'처리 상태', type:'select', opts:[['미처리','미처리'],['완료','완료']]},
+  ],
+  supply: [
+    {k:'month',  label:'신청 월',   type:'month'},
+    {k:'user',   label:'신청자',    type:'text'},
+    {k:'cat',    label:'분류',      type:'select', opts:[['사무용품','사무용품'],['안전용품','안전용품'],['근무복','근무복'],['측정공구','측정공구'],['기타','기타']]},
+    {k:'name',   label:'품목명',    type:'text', req:true},
+    {k:'spec',   label:'규격/사이즈', type:'text'},
+    {k:'unit',   label:'단위',      type:'text'},
+    {k:'stock',  label:'재고 수량', type:'number'},
+    {k:'qty',    label:'신청 수량', type:'number', req:true},
+    {k:'reason', label:'신청 사유', type:'text'},
+    {k:'urgent', label:'긴급 여부', type:'select', opts:[['일반','일반'],['긴급','긴급']]},
+    {k:'note',   label:'특이사항',  type:'text'},
+  ],
+  qedu: [
+    {k:'date',    label:'실시일',   type:'date'},
+    {k:'eduType', label:'교육 구분', type:'select', opts:[['정기교육 (월 1회)','정기교육 (월 1회)'],['전달교육 (선임→후임)','전달교육 (선임→후임)'],['수시교육 (기준서 개정 등)','수시교육 (기준서 개정 등)'],['신규자 기본교육','신규자 기본교육'],['OJT 실습','OJT 실습'],['보완 교육','보완 교육']]},
+    {k:'host',    label:'진행자',   type:'text', req:true},
+    {k:'members', label:'참석자',   type:'text', req:true},
+    {k:'topic',   label:'주제',     type:'text', req:true},
+    {k:'content', label:'교육 내용', type:'textarea'},
+  ],
+  visits: [
+    {k:'date',    label:'방문일',       type:'date'},
+    {k:'visitor', label:'방문자(인시스)', type:'text', req:true},
+    {k:'target',  label:'면담 대상',    type:'text', req:true},
+    {k:'check',   label:'현장 점검 사항', type:'text'},
+    {k:'sqm',     label:'SQM 면담',     type:'select', opts:[['미실시','미실시'],['실시','실시']]},
+    {k:'issue',   label:'애로/요청사항', type:'textarea'},
+    {k:'action',  label:'조치 사항',    type:'textarea'},
+  ],
+  evals: [
+    {k:'date',   label:'평가일',       type:'date'},
+    {k:'name',   label:'대상 검사원',  type:'text', req:true},
+    {k:'rater',  label:'평가자',       type:'text'},
+    {k:'detect', label:'검사 검출력(1~5)', type:'number'},
+    {k:'proc',   label:'절차 준수도(1~5)', type:'number'},
+    {k:'record', label:'기록 충실도(1~5)', type:'number'},
+    {k:'handle', label:'부품 취급(1~5)',   type:'number'},
+    {k:'report', label:'보고 적시성(1~5)', type:'number'},
+    {k:'result', label:'종합 판정',    type:'select', opts:[['','선택'],['우수','우수'],['양호','양호'],['보통','보통'],['보완 필요','보완 필요']]},
+    {k:'note',   label:'평가 의견',    type:'textarea'},
+  ],
+};
+
+const EDIT_TITLES = {
+  incoming:'수입검사 기록 수정', measures:'측정의뢰 수정', nc:'부적합 기록 수정',
+  supply:'소모품 신청 수정', qedu:'교육 이력 수정', visits:'방문 면담 수정', evals:'역량 평가 수정',
+};
+
+function getStore(coll){
+  return {incoming, measures, nc:ncRecs, supply:supplyRecs, qedu:qeList, visits:visitList, evals:evalList}[coll] || {};
+}
+
+function openEdit(coll, id){
+  const rec = getStore(coll)[id];
+  if(!rec){ toast('데이터를 찾을 수 없습니다.'); return; }
+  const fields = EDIT_FIELDS[coll];
+  if(!fields){ toast('편집 정의가 없습니다.'); return; }
+  _editCtx = {coll, id, fields};
+
+  document.getElementById('edit-modal-title').textContent = '✏️ ' + (EDIT_TITLES[coll]||'수정');
+  document.getElementById('edit-modal-body').innerHTML = fields.map(f=>{
+    const v = rec[f.k] ?? '';
+    if(f.type==='select'){
+      return `<div class="form-group" style="margin-bottom:9px">
+        <label>${f.label}${f.req?' *':''}</label>
+        <select id="ed-${f.k}">${f.opts.map(([val,lbl])=>`<option value="${val}" ${String(v)===String(val)?'selected':''}>${lbl}</option>`).join('')}</select>
+      </div>`;
+    }
+    if(f.type==='textarea'){
+      return `<div class="form-group" style="margin-bottom:9px">
+        <label>${f.label}${f.req?' *':''}</label>
+        <textarea id="ed-${f.k}" style="min-height:52px">${v}</textarea>
+      </div>`;
+    }
+    return `<div class="form-group" style="margin-bottom:9px">
+      <label>${f.label}${f.req?' *':''}</label>
+      <input type="${f.type}" id="ed-${f.k}" value="${String(v).replace(/"/g,'&quot;')}">
+    </div>`;
+  }).join('');
+
+  document.getElementById('edit-modal').classList.add('open');
+}
+
+function saveEdit(){
+  if(!_editCtx) return;
+  const {coll, id, fields} = _editCtx;
+  const rec = {...getStore(coll)[id]};
+
+  for(const f of fields){
+    const el = document.getElementById('ed-'+f.k);
+    if(!el) continue;
+    const val = el.value.trim();
+    if(f.req && !val){ toast(`⚠️ ${f.label}은(는) 필수입니다.`); return; }
+    rec[f.k] = val;
+  }
+  // 파생 필드 갱신
+  if(coll==='incoming' && rec.date) rec.month = rec.date.slice(0,7);
+  if(coll==='evals'){
+    const sc=[rec.detect,rec.proc,rec.record,rec.handle,rec.report].map(x=>parseInt(x)||0).filter(x=>x>0);
+    rec.avg = sc.length ? (sc.reduce((a,b)=>a+b,0)/sc.length).toFixed(1) : '0';
+  }
+  rec.editedAt = new Date().toISOString();
+
+  fbSet(`/ims/${coll}/${id}`, rec).then(()=>{
+    closeModal('edit-modal');
+    toast('✅ 수정되었습니다.');
+    loadAllData();
+  }).catch(e=>toast('❌ 수정 실패: '+e.message));
 }
 
 // ══════════════════════════════════════════════════
