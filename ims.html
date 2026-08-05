@@ -216,6 +216,15 @@ textarea{resize:vertical;min-height:64px}
 .log-sec{margin-bottom:10px;border:1px solid var(--line);border-radius:7px;overflow:hidden}
 .log-sec-hdr{background:var(--silver);padding:7px 12px;font-size:12px;font-weight:700;color:var(--ink);display:flex;justify-content:space-between}
 .log-sec-body{padding:8px 12px}
+@media print{
+  .nav,.page-hdr,.view-toggle,.btn,footer,.toast{display:none!important}
+  .page{max-width:100%!important;padding:0!important}
+  .page:not(.active){display:none!important}
+  #page-report .card:first-of-type{display:none!important}
+  #report-print-area{border:none!important;box-shadow:none!important;padding:0!important}
+  body{background:#fff!important}
+  .log-sec{page-break-inside:avoid}
+}
 @media(max-width:768px){
   .stat-grid{grid-template-columns:repeat(2,1fr)}
   .grid2,.grid3,.form-grid,.form-grid.g3{grid-template-columns:1fr}
@@ -233,7 +242,7 @@ textarea{resize:vertical;min-height:64px}
     <div class="nav-brand">
       <div class="dot"></div>
       <div>
-        <div class="nav-title">셰플러 이천공장 수입검사 업무관리 시스템 <span style="font-size:10px;font-weight:400;color:#94A3B8">v8.1</span></div>
+        <div class="nav-title">셰플러 이천공장 수입검사 업무관리 시스템 <span style="font-size:10px;font-weight:400;color:#94A3B8">v8.2</span></div>
         <div class="nav-sub">Schaeffler Icheon  ·  insys  <span id="fb-status" style="margin-left:8px;font-size:10px;padding:2px 7px;border-radius:10px;background:rgba(255,255,255,0.1);color:#94A3B8">⏳ 연결 중...</span></div>
       </div>
     </div>
@@ -247,7 +256,7 @@ textarea{resize:vertical;min-height:64px}
       <button class="nav-tab" onclick="showPage('measure')">① 측정의뢰</button>
       <button class="nav-tab" onclick="showPage('incoming')">② 수입검사</button>
       <button class="nav-tab" onclick="showPage('nonconf')">③ 부적합<span class="nav-badge" id="nc-badge">0</span></button>
-      <button class="nav-tab" onclick="showPage('report')">④ 보고서</button>
+      <button class="nav-tab" onclick="showPage('report')">④ 일일보고</button>
       <button class="nav-tab" onclick="showPage('edu')">교육·면담</button>
       <button class="nav-tab" onclick="showPage('supply')">업무지원</button>
     </div>
@@ -487,15 +496,15 @@ textarea{resize:vertical;min-height:64px}
       <!-- ④ 보고서 -->
       <div style="border:1px solid var(--line);border-radius:9px;overflow:hidden;cursor:pointer" onclick="showPage('report')">
         <div style="background:#0F2244;padding:10px 12px;display:flex;align-items:center;gap:6px">
-          <span style="font-size:18px">📁</span><span style="color:#fff;font-weight:700;font-size:13px">④ 보고서</span>
+          <span style="font-size:18px">📋</span><span style="color:#fff;font-weight:700;font-size:13px">④ 일일 업무보고</span>
         </div>
         <div style="padding:10px 12px;background:#fff">
           <ol style="margin:0;padding-left:16px;display:flex;flex-direction:column;gap:4px">
-            <li style="font-size:11px;color:var(--slate)">시작일·종료일 선택 후 "조회"</li>
-            <li style="font-size:11px;color:var(--slate)">품목번호 입력 시 필터</li>
-            <li style="font-size:11px;color:var(--slate)">"일일 보고서 출력" → 인쇄</li>
-            <li style="font-size:11px;color:var(--slate)">"전체" 버튼으로 이력 복원</li>
-            <li style="font-size:11px;color:var(--slate)">모든 이력 Firestore 영구 보관</li>
+            <li style="font-size:11px;color:var(--slate)">보고 일자 자동 (당일)</li>
+            <li style="font-size:11px;color:var(--slate)">검사·측정·부적합 자동 취합</li>
+            <li style="font-size:11px;color:var(--slate)">특기사항만 직접 입력</li>
+            <li style="font-size:11px;color:var(--slate)">"인쇄" 클릭 → 보고서 출력</li>
+            <li style="font-size:11px;color:var(--slate)">셰플러 SQM 요청사항 자동 표시</li>
           </ol>
         </div>
       </div>
@@ -1133,33 +1142,33 @@ textarea{resize:vertical;min-height:64px}
 <!-- ══ 보고서 ══════════════════════════════════════ -->
 <div class="page" id="page-report">
   <div class="page-hdr">
-    <div class="page-hdr-left"><h2>📁 보고서 · 이력</h2>
-      <p>① 시작일·종료일 선택 → ② 품목번호 입력 시 해당 품목만 필터 → ③ "조회" 클릭 → ④ "일일 보고서 출력" 클릭 → 브라우저 인쇄 사용 | "전체" 버튼으로 전체 이력 복원 · 모든 이력은 Firebase에 영구 보관</p></div>
+    <div class="page-hdr-left"><h2>📋 수입검사 일일 업무 보고</h2>
+      <p>보고일자를 선택하면 해당일 검사·측정의뢰·부적합 내역이 자동 취합됩니다  |  기본값은 당일이며 필요 시 변경하세요</p></div>
   </div>
 
   <div class="card">
-    <div class="card-title"><span class="bar"></span>기간 조회</div>
+    <div class="card-title"><span class="bar"></span>보고 정보</div>
     <div class="form-grid g3">
-      <div class="form-group"><label>시작일</label><input type="date" id="rp-from"></div>
-      <div class="form-group"><label>종료일</label><input type="date" id="rp-to"></div>
-      <div class="form-group"><label>품목번호 (선택)</label><input id="rp-num" placeholder="전체"></div>
+      <div class="form-group"><label>보고 일자 *</label><input type="date" id="rp-date" onchange="buildDailyReport()"></div>
+      <div class="form-group">
+        <label>작성자</label>
+        <select id="rp-writer" onchange="buildDailyReport()">
+          <option value="김종선">김종선</option>
+          <option value="이석봉">이석봉</option>
+        </select>
+      </div>
+      <div class="form-group" style="display:flex;align-items:flex-end;gap:6px">
+        <button class="btn btn-teal" style="flex:1" onclick="buildDailyReport()">🔄 새로고침</button>
+        <button class="btn btn-primary" style="flex:1" onclick="printDailyReport()">🖨️ 인쇄</button>
+      </div>
     </div>
-    <div class="btn-row">
-      <button class="btn btn-primary btn-sm" onclick="filterReport()">조회</button>
-      <button class="btn btn-outline btn-sm" onclick="resetReport()">전체</button>
-      <button class="btn btn-teal btn-sm" onclick="printReport()">🖨️ 일일 보고서 출력</button>
+    <div class="form-grid g1">
+      <div class="form-group"><label>특기사항 · 전달사항</label><textarea id="rp-note" placeholder="당일 특이사항, 셰플러 SQM 요청 사항 등" style="min-height:56px"></textarea></div>
     </div>
   </div>
 
-  <div class="card">
-    <div class="card-title"><span class="bar"></span>검사 이력</div>
-    <div class="tbl-wrap">
-      <table class="tbl">
-        <thead><tr><th>일자</th><th>품목번호</th><th>품목명</th><th>소요(분)</th><th>판정</th><th>SAP</th><th>특이사항</th></tr></thead>
-        <tbody id="rp-tbody"></tbody>
-      </table>
-    </div>
-  </div>
+  <!-- 보고서 본문 -->
+  <div id="daily-report-body"></div>
 </div>
 
 <!-- 부적합 Modal -->
@@ -1197,7 +1206,7 @@ textarea{resize:vertical;min-height:64px}
 </div>
 
 <footer style="max-width:1200px;margin:20px auto 0;padding:12px 20px;text-align:center;font-size:10px;color:var(--slate);border-top:1px solid var(--line)">
-  인시스 AI혁신 연구개발실  ·  셰플러 이천공장 수입검사 업무관리 시스템 v8.1  ·  최종 수정 2026.08.05  ·  © (주)인시스
+  인시스 AI혁신 연구개발실  ·  셰플러 이천공장 수입검사 업무관리 시스템 v8.2  ·  최종 수정 2026.08.05  ·  © (주)인시스
 </footer>
 
 <!-- Firebase -->
@@ -1381,14 +1390,14 @@ window.addEventListener('load', () => {
   setViewMode(savedMode);
 
   const today = new Date().toISOString().slice(0,10);
-  ['in-date','ms-date','nc-date','qe-date','vs-date','ev-date','log-date','rpt-date','it-lastchk'].forEach(id=>{
+  ['in-date','ms-date','nc-date','qe-date','vs-date','ev-date','log-date','rp-date','it-lastchk'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value=today;
   });
   const el=document.getElementById('sup-month'); if(el) el.value=today.slice(0,7);
   const ts=document.getElementById('today-str');
   if(ts) ts.textContent='기준일: '+new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'});
 
-  // Firebase REST API 폴링 시작
+  // Firebase 로드 시작
   startPolling().catch(e=>{
     const s=document.getElementById('fb-status');
     if(s){ s.textContent='🔴 DB 연결 안됨'; s.style.background='rgba(192,57,43,0.3)'; s.style.color='#FCA5A5'; }
@@ -1407,7 +1416,7 @@ function renderAll(){
   renderVisitTable();
   renderEvalTable();
   renderHandlingGuide();
-  renderReport(Object.values(incoming));
+  buildDailyReport();
 }
 
 
@@ -2048,7 +2057,7 @@ function onNcItemSelect(){
 // 전 메뉴 날짜 필드를 당일로 초기화
 function resetAllDates(){
   const today=new Date().toISOString().slice(0,10);
-  ['in-date','ms-date','nc-date','qe-date','vs-date','ev-date','log-date','rpt-date','it-lastchk']
+  ['in-date','ms-date','nc-date','qe-date','vs-date','ev-date','log-date','rp-date','it-lastchk']
     .forEach(id=>{ const e=document.getElementById(id); if(e && !e.value) e.value=today; });
   const sm=document.getElementById('sup-month');
   if(sm && !sm.value) sm.value=today.slice(0,7);
@@ -2366,34 +2375,118 @@ function saveEdit(){
 }
 
 // ══════════════════════════════════════════════════
-// 보고서
+// 수입검사 일일 업무 보고
 // ══════════════════════════════════════════════════
-function filterReport(){
-  const from=document.getElementById('rp-from').value;
-  const to  =document.getElementById('rp-to').value;
-  const num =document.getElementById('rp-num').value.trim();
-  let arr=Object.values(incoming);
-  if(from) arr=arr.filter(r=>r.date>=from);
-  if(to)   arr=arr.filter(r=>r.date<=to);
-  if(num)  arr=arr.filter(r=>r.num&&r.num.includes(num));
-  renderReport(arr);
-}
-function resetReport(){ renderReport(Object.values(incoming)); }
-function printReport(){ window.print(); }
+function buildDailyReport(){
+  const el=document.getElementById('daily-report-body'); if(!el) return;
+  const date=document.getElementById('rp-date').value;
+  if(!date){ el.innerHTML=''; return; }
+  const writer=document.getElementById('rp-writer').value;
 
-function renderReport(arr){
-  const sorted=[...arr].sort((a,b)=>b.dt.localeCompare(a.dt));
-  const tb=document.getElementById('rp-tbody'); if(!tb) return;
-  tb.innerHTML=sorted.length?sorted.map(r=>`<tr>
-    <td>${fmtD(r.date)}</td>
-    <td style="font-size:11px">${r.num}</td>
-    <td>${r.name}</td>
-    <td>${r.elapsed||'-'}</td>
-    <td><span class="badge ${badgeClass(r.judge)}">${r.judge}</span></td>
-    <td><span class="badge ${badgeClass(r.sap)}">${r.sap||'-'}</span></td>
-    <td style="font-size:11px;max-width:140px">${r.note||'-'}</td>
-  </tr>`).join(''):'<tr><td colspan="7" style="text-align:center;color:var(--slate);padding:16px">이력 없음</td></tr>';
+  const inc =Object.values(incoming).filter(r=>r.date===date);
+  const sap =Object.values(sapRecs).filter(r=>r.date===date);
+  const ms  =Object.values(measures).filter(r=>r.date===date);
+  const nc  =Object.values(ncRecs).filter(r=>r.date===date);
+
+  const totTime=inc.reduce((s,r)=>s+(parseInt(r.elapsed)||0),0);
+  const msTime =ms.reduce((s,r)=>s+(parseInt(r.time)||0),0);
+  const pass=inc.filter(r=>r.judge==='합격').length;
+  const fail=inc.filter(r=>r.judge==='불합격').length;
+  const hold=inc.filter(r=>r.judge==='보류').length;
+  const sapNg=sap.filter(r=>r.overall==='ng').length;
+
+  const d=new Date(date);
+  const wd=['일','월','화','수','목','금','토'][d.getDay()];
+  const dateLabel=`${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 (${wd})`;
+
+  el.innerHTML=`
+  <div class="card" id="report-print-area">
+    <div style="text-align:center;padding:10px 0 14px;border-bottom:2px solid var(--ink);margin-bottom:14px">
+      <div style="font-size:19px;font-weight:700;color:var(--ink)">수입검사 일일 업무 보고</div>
+      <div style="font-size:11px;color:var(--slate);margin-top:4px">셰플러 이천공장 · ㈜인시스</div>
+    </div>
+
+    <div class="tbl-wrap" style="margin-bottom:14px">
+      <table class="tbl">
+        <tbody>
+          <tr>
+            <td style="background:var(--silver);font-weight:700;width:100px">보고 일자</td><td>${dateLabel}</td>
+            <td style="background:var(--silver);font-weight:700;width:100px">작성자</td><td>${writer}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">
+      <div class="stat-card teal"><div class="stat-label">검사 건수</div><div class="stat-val">${inc.length}</div><div class="stat-sub">총 ${totTime}분</div></div>
+      <div class="stat-card green"><div class="stat-label">합격</div><div class="stat-val">${pass}</div><div class="stat-sub">건</div></div>
+      <div class="stat-card ${(fail+hold)>0?'red':'blue'}"><div class="stat-label">불합격 · 보류</div><div class="stat-val">${fail+hold}</div><div class="stat-sub">불합격 ${fail} · 보류 ${hold}</div></div>
+      <div class="stat-card ${nc.length>0?'red':'blue'}"><div class="stat-label">부적합 발생</div><div class="stat-val">${nc.length}</div><div class="stat-sub">건</div></div>
+    </div>
+
+    <div class="log-sec">
+      <div class="log-sec-hdr"><span>① 수입검사 내역</span><span>${inc.length}건 · 총 ${totTime}분</span></div>
+      <div class="log-sec-body">${inc.length?`<div class="tbl-wrap"><table class="tbl">
+        <thead><tr><th>품목번호</th><th>품목명</th><th>소요(분)</th><th>성적서</th><th>판정</th><th>SAP</th><th>특이사항</th></tr></thead>
+        <tbody>${inc.map(r=>`<tr>
+          <td style="font-size:11px">${r.num}</td><td>${r.name}</td><td>${r.elapsed||'-'}</td>
+          <td><span class="badge ${r.sapOverall==='ok'?'badge-green':r.sapOverall==='ng'?'badge-red':'badge-gray'}">${r.sapOverall==='ok'?'정상':r.sapOverall==='ng'?'이상':'-'}</span></td>
+          <td><span class="badge ${badgeClass(r.judge)}">${r.judge}</span></td>
+          <td><span class="badge ${badgeClass(r.sap)}">${r.sap||'-'}</span></td>
+          <td style="font-size:11px">${r.note||'-'}</td></tr>`).join('')}</tbody></table></div>`
+        :'<p style="font-size:12px;color:var(--slate);padding:4px 0">해당일 수입검사 없음</p>'}</div>
+    </div>
+
+    <div class="log-sec">
+      <div class="log-sec-hdr"><span>② 측정의뢰</span><span>${ms.length}건 · 총 ${msTime}분</span></div>
+      <div class="log-sec-body">${ms.length?`<div class="tbl-wrap"><table class="tbl">
+        <thead><tr><th>품목번호</th><th>의뢰 내용</th><th>소요(분)</th><th>결과</th><th>담당</th></tr></thead>
+        <tbody>${ms.map(r=>`<tr><td style="font-size:11px">${r.num||'-'}</td>
+          <td style="font-size:11px">${r.desc}</td><td>${r.time||'-'}</td>
+          <td><span class="badge ${badgeClass(r.result)}">${r.result||'-'}</span></td>
+          <td>${r.user||'-'}</td></tr>`).join('')}</tbody></table></div>`
+        :'<p style="font-size:12px;color:var(--slate);padding:4px 0">해당일 측정의뢰 없음</p>'}</div>
+    </div>
+
+    <div class="log-sec">
+      <div class="log-sec-hdr"><span>③ 부적합 발생</span><span>${nc.length}건</span></div>
+      <div class="log-sec-body">${nc.length?`<div class="tbl-wrap"><table class="tbl">
+        <thead><tr><th>품목번호</th><th>유형</th><th>수량</th><th>처리 방법</th><th>상태</th><th>담당</th></tr></thead>
+        <tbody>${nc.map(r=>`<tr><td style="font-size:11px">${r.num}</td>
+          <td><span class="badge badge-red">${r.ncType}</span></td><td>${r.qty||'-'}</td>
+          <td>${r.action}</td>
+          <td><span class="badge ${r.status==='완료'?'badge-green':'badge-red'}">${r.status}</span></td>
+          <td>${r.user||'-'}</td></tr>`).join('')}</tbody></table></div>`
+        :'<p style="font-size:12px;color:var(--green);padding:4px 0">해당일 부적합 없음 ✅</p>'}</div>
+    </div>
+
+    ${sapNg>0?`<div class="alert alert-red" style="margin-top:12px">
+      ⚠️ <b>셰플러 SQM 처리 요청</b> — 검사기준서 이상 ${sapNg}건이 확인되었습니다. SQM 담당자 회신 대기 중입니다.
+    </div>`:''}
+    ${nc.filter(r=>r.status!=='완료').length>0?`<div class="alert alert-amber" style="margin-top:8px">
+      ⏳ <b>부적합 처리 대기</b> — ${nc.filter(r=>r.status!=='완료').length}건에 대한 셰플러 SQM 승인(반품·특채·폐기)을 대기 중입니다.
+    </div>`:''}
+
+    <div class="log-sec" style="margin-top:12px">
+      <div class="log-sec-hdr"><span>④ 특기사항 · 전달사항</span></div>
+      <div class="log-sec-body">
+        <p id="rp-note-print" style="font-size:12px;color:var(--ink);line-height:1.7;white-space:pre-wrap;min-height:32px">${document.getElementById('rp-note').value||'특이사항 없음'}</p>
+      </div>
+    </div>
+
+    <div style="margin-top:16px;padding-top:10px;border-top:1px solid var(--line);text-align:right;font-size:10px;color:var(--slate)">
+      본 보고서는 수입검사 업무관리 시스템에서 자동 생성되었습니다. · ㈜인시스
+    </div>
+  </div>`;
 }
+
+function printDailyReport(){
+  const note=document.getElementById('rp-note').value;
+  const el=document.getElementById('rp-note-print');
+  if(el) el.textContent = note||'특이사항 없음';
+  window.print();
+}
+
 </script>
 </body>
 </html>
