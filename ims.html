@@ -235,6 +235,38 @@ textarea{resize:vertical;min-height:64px}
 .vm-btn-close{background:rgba(255,255,255,.14);color:#E2E8F0;border:none;padding:10px 20px;border-radius:8px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:all .2s}
 .vm-btn-close:hover{background:rgba(255,255,255,.24)}
 @media print{.ver-modal-bg{display:none!important}}
+
+/* ── 로그인 화면 ─────────────────────────────── */
+.auth-wrap{position:fixed;inset:0;background:linear-gradient(135deg,#0F2244 0%,#1C7293 100%);display:flex;align-items:center;justify-content:center;z-index:800;padding:20px}
+.auth-wrap.hidden{display:none}
+.auth-box{background:#fff;border-radius:14px;padding:30px 32px;width:100%;max-width:420px;box-shadow:0 16px 48px rgba(0,0,0,.3)}
+.auth-brand{display:flex;align-items:center;gap:11px;margin-bottom:22px;padding-bottom:16px;border-bottom:1px solid var(--line)}
+.auth-dot{width:10px;height:10px;border-radius:50%;background:var(--teal);flex-shrink:0}
+.auth-title{font-size:14px;font-weight:700;color:var(--ink);line-height:1.4}
+.auth-sub{font-size:11px;color:var(--slate);margin-top:2px}
+.auth-tabs{display:flex;gap:2px;margin-bottom:16px;background:var(--silver);padding:3px;border-radius:8px}
+.auth-tab{flex:1;padding:8px;border:none;background:none;border-radius:6px;font-size:12.5px;font-weight:600;color:var(--slate);cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:all .2s}
+.auth-tab.active{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.auth-msg{margin-top:12px;font-size:12px;padding:9px 12px;border-radius:7px;display:none;line-height:1.6}
+.auth-msg.show{display:block}
+.auth-msg.err{background:var(--redL);color:var(--red);border:1px solid var(--red)}
+.auth-msg.ok{background:var(--greenL);color:var(--green);border:1px solid #38A169}
+.auth-foot{margin-top:20px;padding-top:14px;border-top:1px solid var(--line);text-align:center;font-size:10px;color:var(--slate)}
+/* 사용자 배지 */
+.user-badge{display:flex;align-items:center;gap:7px;margin-right:8px}
+.user-chip{background:rgba(255,255,255,.14);color:#fff;padding:5px 10px;border-radius:16px;font-size:11px;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap}
+.user-chip:hover{background:rgba(255,255,255,.24)}
+.user-chip .org{font-size:10px;opacity:.75;margin-left:4px}
+.btn-logout{background:rgba(255,255,255,.1);border:none;color:#CBD5E1;padding:5px 9px;border-radius:6px;font-size:11px;cursor:pointer;font-family:'Noto Sans KR',sans-serif}
+.btn-logout:hover{background:rgba(192,57,43,.4);color:#fff}
+/* 읽기전용 모드 */
+.readonly-note{background:var(--amberL);border:1px solid #D69E2E;color:var(--amber);padding:9px 13px;border-radius:8px;font-size:11.5px;margin-bottom:12px;display:flex;align-items:center;gap:7px}
+body.ro-mode .ro-hide{display:none!important}
+@media print{.auth-wrap,.user-badge{display:none!important}}
+@media(max-width:768px){
+  .auth-box{padding:24px 22px}
+  .user-chip{font-size:10px;padding:4px 8px}
+}
 @media print{
   .nav,.page-hdr,.view-toggle,.btn,footer,.toast{display:none!important}
   .page{max-width:100%!important;padding:0!important}
@@ -269,14 +301,72 @@ textarea{resize:vertical;min-height:64px}
   </div>
 </div>
 
+<!-- ══ 로그인 화면 ══════════════════════════════════ -->
+<div class="auth-wrap" id="auth-wrap">
+  <div class="auth-box">
+    <div class="auth-brand">
+      <div class="auth-dot"></div>
+      <div>
+        <div class="auth-title">셰플러 이천공장 수입검사 업무관리 시스템</div>
+        <div class="auth-sub">Schaeffler Icheon · insys</div>
+      </div>
+    </div>
+
+    <!-- 로그인 폼 -->
+    <div id="auth-login">
+      <div class="auth-tabs">
+        <button class="auth-tab active" onclick="showAuthTab('login')">로그인</button>
+        <button class="auth-tab" onclick="showAuthTab('signup')">계정 등록 요청</button>
+      </div>
+      <div class="form-group" style="margin-bottom:10px">
+        <label>이메일</label>
+        <input type="email" id="lg-email" placeholder="name@in-sys.co.kr" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <div class="form-group" style="margin-bottom:14px">
+        <label>비밀번호</label>
+        <input type="password" id="lg-pw" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <button class="btn btn-teal" style="width:100%;padding:11px" onclick="doLogin()">로그인</button>
+      <div id="lg-msg" class="auth-msg"></div>
+    </div>
+
+    <!-- 계정 등록 -->
+    <div id="auth-signup" style="display:none">
+      <div class="auth-tabs">
+        <button class="auth-tab" onclick="showAuthTab('login')">로그인</button>
+        <button class="auth-tab active" onclick="showAuthTab('signup')">계정 등록 요청</button>
+      </div>
+      <div class="alert alert-teal" style="margin-bottom:12px;font-size:11px">
+        ℹ️ 이메일을 입력하고 요청하면 <b>기본 비밀번호가 담긴 메일</b>이 발송됩니다. 로그인 후 프로필에서 비밀번호를 변경하세요.
+      </div>
+      <div class="form-group" style="margin-bottom:10px">
+        <label>이메일 *</label>
+        <input type="email" id="su-email" placeholder="name@in-sys.co.kr" onkeydown="if(event.key==='Enter')requestAccount()">
+      </div>
+      <div class="form-group" style="margin-bottom:14px">
+        <label>성명 *</label>
+        <input id="su-name" placeholder="홍길동" onkeydown="if(event.key==='Enter')requestAccount()">
+      </div>
+      <button class="btn btn-primary" style="width:100%;padding:11px" onclick="requestAccount()">📧 계정 등록 요청</button>
+      <div id="su-msg" class="auth-msg"></div>
+    </div>
+
+    <div class="auth-foot">인시스 AI혁신 연구개발실 · © (주)인시스</div>
+  </div>
+</div>
+
 <nav class="nav">
   <div class="nav-inner">
     <div class="nav-brand">
       <div class="dot"></div>
       <div>
-        <div class="nav-title">셰플러 이천공장 수입검사 업무관리 시스템 <span style="font-size:10px;font-weight:400;color:#94A3B8">v8.5</span></div>
+        <div class="nav-title">셰플러 이천공장 수입검사 업무관리 시스템 <span style="font-size:10px;font-weight:400;color:#94A3B8">v9.0</span></div>
         <div class="nav-sub">Schaeffler Icheon  ·  insys  <span id="fb-status" style="margin-left:8px;font-size:10px;padding:2px 7px;border-radius:10px;background:rgba(255,255,255,0.1);color:#94A3B8">⏳ 연결 중...</span></div>
       </div>
+    </div>
+    <div class="user-badge">
+      <span class="user-chip" id="user-chip" onclick="showPage('profile')">-</span>
+      <button class="btn-logout" onclick="doLogout()">로그아웃</button>
     </div>
     <button class="btn-nav-refresh" onclick="hardRefresh()" title="새로고침">↻</button>
     <div class="view-toggle">
@@ -299,6 +389,64 @@ textarea{resize:vertical;min-height:64px}
 <div class="toast" id="toast"></div>
 
 <!-- ══ 대시보드 ══════════════════════════════════ -->
+<!-- ══ 내 프로필 ══════════════════════════════════ -->
+<div class="page" id="page-profile">
+  <div class="page-hdr">
+    <div class="page-hdr-left"><h2>👤 내 프로필</h2>
+      <p>소속을 선택하고 저장하면 메뉴 접근 권한이 적용됩니다  |  비밀번호는 최초 로그인 후 반드시 변경하세요</p></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="bar"></span>계정 정보</div>
+    <div class="form-grid g3">
+      <div class="form-group"><label>이메일</label><input id="pf-email" readonly style="background:var(--silver)"></div>
+      <div class="form-group"><label>성명</label><input id="pf-name" placeholder="성명"></div>
+      <div class="form-group">
+        <label>소속 *</label>
+        <select id="pf-org" onchange="updateOrgInfo()">
+          <option value="">— 소속을 선택하세요 —</option>
+          <option value="insys">㈜인시스</option>
+          <option value="schaeffler">셰플러 (Schaeffler)</option>
+        </select>
+      </div>
+    </div>
+    <div id="pf-org-info"></div>
+    <div class="btn-row">
+      <button class="btn btn-teal" onclick="saveProfile()">💾 프로필 저장</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="bar"></span>비밀번호 변경</div>
+    <div class="form-grid g3">
+      <div class="form-group"><label>현재 비밀번호 *</label><input type="password" id="pf-pw-old" placeholder="현재 비밀번호"></div>
+      <div class="form-group"><label>새 비밀번호 *</label><input type="password" id="pf-pw-new" placeholder="6자 이상"></div>
+      <div class="form-group"><label>새 비밀번호 확인 *</label><input type="password" id="pf-pw-chk" placeholder="다시 입력"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="changePassword()">🔒 비밀번호 변경</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="bar"></span>권한 안내</div>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>메뉴</th><th>㈜인시스</th><th>셰플러</th></tr></thead>
+        <tbody>
+          <tr><td>품목 관리</td><td><span class="badge badge-green">전체 권한</span></td><td><span class="badge badge-green">전체 권한</span></td></tr>
+          <tr><td>측정의뢰</td><td><span class="badge badge-green">전체 권한</span></td><td><span class="badge badge-green">전체 권한</span></td></tr>
+          <tr><td>수입검사</td><td><span class="badge badge-green">전체 권한</span></td><td><span class="badge badge-gray">열람만</span></td></tr>
+          <tr><td>부적합 관리</td><td><span class="badge badge-green">전체 권한</span></td><td><span class="badge badge-gray">열람만</span></td></tr>
+          <tr><td>일일 업무보고</td><td><span class="badge badge-green">전체 권한</span></td><td><span class="badge badge-gray">열람만</span></td></tr>
+          <tr><td>교육 · 면담</td><td><span class="badge badge-green">전체 권한</span></td><td><span class="badge badge-gray">열람만</span></td></tr>
+          <tr><td>업무지원</td><td><span class="badge badge-green">전체 권한</span></td><td><span class="badge badge-gray">열람만</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <div class="page active" id="page-dash">
   <div class="page-hdr">
     <div class="page-hdr-left"><h2>📊 대시보드</h2><p id="today-str"></p></div>
@@ -1239,7 +1387,7 @@ textarea{resize:vertical;min-height:64px}
 </div>
 
 <footer style="max-width:1200px;margin:20px auto 0;padding:12px 20px;text-align:center;font-size:10px;color:var(--slate);border-top:1px solid var(--line)">
-  인시스 AI혁신 연구개발실  ·  셰플러 이천공장 수입검사 업무관리 시스템 v8.5  ·  최종 수정 2026.08.05  ·  © (주)인시스
+  인시스 AI혁신 연구개발실  ·  셰플러 이천공장 수입검사 업무관리 시스템 v9.0  ·  최종 수정 2026.08.05  ·  © (주)인시스
 </footer>
 
 <!-- Firebase -->
@@ -1387,7 +1535,7 @@ async function startPolling(){
 // ══════════════════════════════════════════════════
 // 버전 업데이트 알림 모달
 // ══════════════════════════════════════════════════
-const APP_VERSION = 'v8.5';
+const APP_VERSION = 'v9.0';
 const APP_VER_DATE = '2026-08-05';
 const VER_KEY = 'ims-seen-version';
 
@@ -1436,7 +1584,10 @@ function hardRefresh(){
 function showPage(p){
   document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(el=>el.classList.remove('active'));
-  document.getElementById('page-'+p).classList.add('active');
+  const pg=document.getElementById('page-'+p);
+  if(!pg) return;
+  pg.classList.add('active');
+  if(p==='profile') renderProfile();
   ['dash','items','measure','incoming','nonconf','report','edu','supply'].forEach((n,i)=>{
     if(n===p) document.querySelectorAll('.nav-tab')[i].classList.add('active');
   });
@@ -1481,6 +1632,15 @@ window.addEventListener('load', () => {
   const el=document.getElementById('sup-month'); if(el) el.value=today.slice(0,7);
   const ts=document.getElementById('today-str');
   if(ts) ts.textContent='기준일: '+new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'});
+
+  // 인증 초기화
+  (async ()=>{
+    try{ await initFirestore(); }catch(e){}
+    const ok = await restoreSession();
+    if(!ok){
+      document.getElementById('auth-wrap').classList.remove('hidden');
+    }
+  })();
 
   // Firebase 로드 시작
   startPolling().catch(e=>{
@@ -1916,6 +2076,275 @@ function renderSupTable(){
 }
 
 
+
+
+// ══════════════════════════════════════════════════
+// 인증 · 권한 관리
+// ══════════════════════════════════════════════════
+let currentUser = null;     // {email, name, org, pw}
+let userList = {};
+
+// 외부(테스트) 접근용
+function setCurrentUser(u){ currentUser = u; }
+function getCurrentUser(){ return currentUser; }
+function setUserOrg(org){ if(currentUser) currentUser.org = org; }
+
+const ORG_LABEL = {insys:'㈜인시스', schaeffler:'셰플러'};
+// 셰플러 전체 권한 메뉴
+const SCHAEFFLER_FULL = ['items','measure'];
+// 전체 메뉴
+const ALL_PAGES = ['dash','profile','items','measure','incoming','nonconf','report','edu','supply'];
+
+function simpleHash(str){
+  let h = 0;
+  for(let i=0;i<str.length;i++){ h = ((h<<5)-h) + str.charCodeAt(i); h |= 0; }
+  return 'h' + Math.abs(h).toString(36);
+}
+function genPassword(){
+  const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let p = 'INS';
+  for(let i=0;i<5;i++) p += c[Math.floor(Math.random()*c.length)];
+  return p;
+}
+
+function showAuthTab(tab){
+  document.getElementById('auth-login').style.display  = tab==='login' ? 'block':'none';
+  document.getElementById('auth-signup').style.display = tab==='signup'? 'block':'none';
+  ['lg-msg','su-msg'].forEach(id=>{
+    const e=document.getElementById(id); if(e) e.className='auth-msg';
+  });
+}
+
+function authMsg(id, text, type){
+  const e=document.getElementById(id); if(!e) return;
+  e.textContent=text;
+  e.className='auth-msg show '+(type||'err');
+}
+
+// ── 계정 등록 요청 ──────────────────────────────
+async function requestAccount(){
+  const email=document.getElementById('su-email').value.trim().toLowerCase();
+  const name =document.getElementById('su-name').value.trim();
+  if(!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+    authMsg('su-msg','올바른 이메일 주소를 입력하세요.'); return;
+  }
+  if(!name){ authMsg('su-msg','성명을 입력하세요.'); return; }
+
+  // 중복 확인
+  const dup=Object.values(userList).find(u=>u.email===email);
+  if(dup){ authMsg('su-msg','이미 등록된 이메일입니다. 로그인해 주세요.'); return; }
+
+  const pw = genPassword();
+  const rec = {
+    email, name, org:'', pwHash:simpleHash(pw),
+    createdAt:new Date().toISOString(), pwChanged:false,
+  };
+
+  try{
+    await fbPush('/ims/users', rec);
+    const subject = '[인시스] 수입검사 업무관리 시스템 계정 등록 안내';
+    const body = `${name} 님, 안녕하세요.
+
+셰플러 이천공장 수입검사 업무관리 시스템 계정이 등록되었습니다.
+
+■ 접속 주소
+https://insys-hq.github.io/Insys-review/ims.html
+
+■ 로그인 정보
+  이메일   : ${email}
+  기본 비밀번호 : ${pw}
+
+■ 최초 로그인 후 반드시 아래 사항을 완료해 주세요.
+  1. 우측 상단 본인 이름 클릭 → 내 프로필
+  2. 소속 선택 (㈜인시스 / 셰플러) 후 저장
+  3. 비밀번호 변경
+
+■ 소속별 권한
+  ㈜인시스  : 전 메뉴 등록·수정·삭제 가능
+  셰플러    : 품목관리·측정의뢰 전체 권한, 그 외 메뉴는 열람만 가능
+
+문의: 인시스 AI혁신 연구개발실
+㈜인시스`;
+    window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    authMsg('su-msg', `✅ 계정이 등록되었습니다. 메일 앱이 실행됩니다.\n임시 비밀번호: ${pw}\n(메일 발송이 안 되면 위 비밀번호로 로그인하세요)`, 'ok');
+    document.getElementById('su-email').value='';
+    document.getElementById('su-name').value='';
+    await loadUsers();
+  }catch(e){
+    authMsg('su-msg','등록 실패: '+e.message);
+  }
+}
+
+// ── 로그인 ────────────────────────────────────
+async function doLogin(){
+  const email=document.getElementById('lg-email').value.trim().toLowerCase();
+  const pw   =document.getElementById('lg-pw').value;
+  if(!email || !pw){ authMsg('lg-msg','이메일과 비밀번호를 입력하세요.'); return; }
+
+  await loadUsers();
+  const entry=Object.entries(userList).find(([,u])=>u.email===email);
+  if(!entry){ authMsg('lg-msg','등록되지 않은 계정입니다. 계정 등록을 요청하세요.'); return; }
+
+  const [uid,u]=entry;
+  if(u.pwHash !== simpleHash(pw)){ authMsg('lg-msg','비밀번호가 일치하지 않습니다.'); return; }
+
+  currentUser={...u, uid};
+  try{ sessionStorage.setItem('ims-user', JSON.stringify({uid, email})); }catch(e){}
+
+  document.getElementById('lg-pw').value='';
+  enterSystem();
+}
+
+function doLogout(){
+  if(!confirm('로그아웃 하시겠습니까?')) return;
+  currentUser=null;
+  try{ sessionStorage.removeItem('ims-user'); }catch(e){}
+  document.getElementById('auth-wrap').classList.remove('hidden');
+  showAuthTab('login');
+}
+
+async function loadUsers(){
+  try{ userList = await fbGetCol('/ims/users') || {}; }catch(e){ userList={}; }
+}
+
+// ── 시스템 진입 ────────────────────────────────
+function enterSystem(){
+  document.getElementById('auth-wrap').classList.add('hidden');
+  applyPermissions();
+  updateUserChip();
+  // 소속 미설정 시 프로필로
+  if(!currentUser.org){
+    showPage('profile');
+    toast('소속을 선택하고 저장해 주세요.', 4000);
+  } else {
+    showPage('dash');
+  }
+  loadAllData();
+}
+
+function updateUserChip(){
+  const chip=document.getElementById('user-chip');
+  if(!chip || !currentUser) return;
+  const org=currentUser.org ? `<span class="org">${ORG_LABEL[currentUser.org]}</span>` : '<span class="org">소속 미설정</span>';
+  chip.innerHTML = (currentUser.name||currentUser.email) + org;
+}
+
+// ── 권한 적용 ──────────────────────────────────
+function canEdit(page){
+  if(!currentUser || !currentUser.org) return false;
+  if(currentUser.org==='insys') return true;
+  return SCHAEFFLER_FULL.includes(page);
+}
+
+function applyPermissions(){
+  if(!currentUser) return;
+  const ro = currentUser.org==='schaeffler';
+  document.body.classList.toggle('ro-mode', ro);
+
+  // 페이지별 편집 요소 제어
+  ALL_PAGES.forEach(p=>{
+    const pg=document.getElementById('page-'+p);
+    if(!pg) return;
+    const editable = canEdit(p) || p==='dash' || p==='profile';
+
+    // 기존 안내 제거
+    pg.querySelectorAll('.readonly-note').forEach(el=>el.remove());
+
+    if(!editable){
+      // 읽기 전용 안내 삽입
+      const note=document.createElement('div');
+      note.className='readonly-note';
+      note.innerHTML='🔒 <b>열람 전용</b> — 셰플러 소속 계정은 이 메뉴를 조회만 할 수 있습니다. 등록·수정·삭제는 인시스 담당자에게 요청하세요.';
+      const hdr=pg.querySelector('.page-hdr');
+      if(hdr) hdr.insertAdjacentElement('afterend', note);
+    }
+
+    // 입력·버튼 제어
+    pg.querySelectorAll('input,select,textarea').forEach(el=>{
+      if(el.closest('#page-profile')) return;
+      el.disabled = !editable;
+    });
+    pg.querySelectorAll('button').forEach(b=>{
+      const txt=(b.textContent||'').trim();
+      // 조회·인쇄·새로고침·탭 전환은 허용
+      if(/조회|인쇄|출력|새로고침|보기|전체|시스템에서/.test(txt)) return;
+      if(b.classList.contains('ap-tab')||b.classList.contains('nav-tab')||b.classList.contains('view-btn')) return;
+      b.disabled = !editable;
+      b.style.opacity = editable ? '' : '.45';
+      b.style.cursor  = editable ? '' : 'not-allowed';
+    });
+  });
+}
+
+// ── 프로필 ────────────────────────────────────
+function renderProfile(){
+  if(!currentUser) return;
+  const set=(id,v)=>{ const e=document.getElementById(id); if(e) e.value=v||''; };
+  set('pf-email', currentUser.email);
+  set('pf-name',  currentUser.name);
+  set('pf-org',   currentUser.org);
+  updateOrgInfo();
+}
+
+function updateOrgInfo(){
+  const org=document.getElementById('pf-org').value;
+  const el=document.getElementById('pf-org-info');
+  if(!el) return;
+  if(!org){ el.innerHTML=''; return; }
+  if(org==='insys'){
+    el.innerHTML='<div class="alert alert-green" style="margin-top:8px;margin-bottom:0">✅ <b>㈜인시스</b> — 시스템 전 메뉴에 대한 등록·수정·삭제 권한이 부여됩니다.</div>';
+  } else {
+    el.innerHTML='<div class="alert alert-teal" style="margin-top:8px;margin-bottom:0">ℹ️ <b>셰플러</b> — 품목관리·측정의뢰는 전체 권한, 그 외 메뉴는 열람만 가능합니다.</div>';
+  }
+}
+
+function saveProfile(){
+  if(!currentUser) return;
+  const name=document.getElementById('pf-name').value.trim();
+  const org =document.getElementById('pf-org').value;
+  if(!org){ toast('⚠️ 소속을 선택하세요.'); return; }
+
+  const rec={...userList[currentUser.uid], name, org};
+  fbSet('/ims/users/'+currentUser.uid, rec).then(()=>{
+    currentUser.name=name; currentUser.org=org;
+    applyPermissions();
+    updateUserChip();
+    toast('✅ 프로필이 저장되었습니다. 권한이 적용되었습니다.');
+    loadUsers();
+  }).catch(e=>toast('❌ 저장 실패: '+e.message));
+}
+
+function changePassword(){
+  if(!currentUser) return;
+  const oldPw=document.getElementById('pf-pw-old').value;
+  const newPw=document.getElementById('pf-pw-new').value;
+  const chkPw=document.getElementById('pf-pw-chk').value;
+  if(!oldPw){ toast('⚠️ 현재 비밀번호를 입력하세요.'); return; }
+  if(simpleHash(oldPw)!==currentUser.pwHash){ toast('⚠️ 현재 비밀번호가 일치하지 않습니다.'); return; }
+  if(!newPw || newPw.length<6){ toast('⚠️ 새 비밀번호는 6자 이상이어야 합니다.'); return; }
+  if(newPw!==chkPw){ toast('⚠️ 새 비밀번호가 서로 다릅니다.'); return; }
+
+  const rec={...userList[currentUser.uid], pwHash:simpleHash(newPw), pwChanged:true};
+  fbSet('/ims/users/'+currentUser.uid, rec).then(()=>{
+    currentUser.pwHash=rec.pwHash;
+    ['pf-pw-old','pf-pw-new','pf-pw-chk'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+    toast('✅ 비밀번호가 변경되었습니다.');
+    loadUsers();
+  }).catch(e=>toast('❌ 변경 실패: '+e.message));
+}
+
+// ── 세션 복원 ──────────────────────────────────
+async function restoreSession(){
+  let saved=null;
+  try{ saved=JSON.parse(sessionStorage.getItem('ims-user')||'null'); }catch(e){}
+  if(!saved) return false;
+  await loadUsers();
+  const u=userList[saved.uid];
+  if(!u || u.email!==saved.email) return false;
+  currentUser={...u, uid:saved.uid};
+  enterSystem();
+  return true;
+}
 
 // ══════════════════════════════════════════════════
 // 품목 마스터 관리
