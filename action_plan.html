@@ -232,21 +232,24 @@ textarea{resize:vertical;min-height:64px}
 .doc-title{color:#fff;font-size:15px;font-weight:700}
 .doc-sub{color:#90CAD8;font-size:11px}
 
-/* ── 새로고침 안내 배너 ─────────────────────────── */
-.refresh-bar{width:100%;background:linear-gradient(90deg,#FEF3C7,#FDE68A);border-bottom:1px solid #D4A017;padding:7px 20px;display:flex;align-items:center;justify-content:center;gap:12px;font-size:12px;color:#78350F;position:sticky;top:0;z-index:300}
-.refresh-bar.hidden{display:none}
-.refresh-bar b{font-weight:700}
-.btn-refresh{background:#0F2244;color:#fff;border:none;padding:5px 13px;border-radius:6px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:'Noto Sans KR',sans-serif;white-space:nowrap;transition:all .2s}
-.btn-refresh:hover{background:#1C7293}
-.btn-close-bar{background:none;border:none;color:#92400E;font-size:15px;cursor:pointer;padding:0 4px;line-height:1}
-/* 헤더 새로고침 아이콘 */
-.btn-nav-refresh{background:rgba(255,255,255,.12);border:none;color:#fff;width:30px;height:30px;border-radius:7px;font-size:14px;cursor:pointer;margin-right:8px;transition:all .2s}
-.btn-nav-refresh:hover{background:rgba(255,255,255,.25);transform:rotate(180deg)}
-@media print{.refresh-bar,.btn-nav-refresh{display:none!important}}
-@media(max-width:768px){
-  .refresh-bar{font-size:10.5px;padding:6px 10px;gap:7px}
-  .btn-refresh{padding:4px 9px;font-size:10.5px}
-}
+
+/* ── 버전 업데이트 모달 ─────────────────────────── */
+.ver-modal-bg{display:none;position:fixed;inset:0;background:rgba(15,34,68,.55);z-index:900;align-items:center;justify-content:center;backdrop-filter:blur(2px)}
+.ver-modal-bg.open{display:flex}
+.ver-modal{background:#0F2244;border-radius:14px;padding:26px 30px;max-width:400px;width:88%;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.35)}
+.ver-modal .vm-icon{font-size:24px;margin-bottom:4px}
+.ver-modal .vm-title{color:#fff;font-size:17px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:8px}
+.ver-modal .vm-ver{color:#CBD5E1;font-size:13.5px;margin-bottom:20px}
+.ver-modal .vm-ver .old{color:#94A3B8}
+.ver-modal .vm-ver .arrow{color:#94A3B8;margin:0 6px}
+.ver-modal .vm-ver .new{color:#4ADE80;font-weight:700}
+.ver-modal .vm-ver .date{color:#94A3B8;margin-left:5px}
+.ver-modal .vm-btns{display:flex;gap:9px;justify-content:center}
+.vm-btn-load{background:#F0B429;color:#0F2244;border:none;padding:10px 22px;border-radius:8px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:all .2s}
+.vm-btn-load:hover{background:#FACC15}
+.vm-btn-close{background:rgba(255,255,255,.14);color:#E2E8F0;border:none;padding:10px 20px;border-radius:8px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:all .2s}
+.vm-btn-close:hover{background:rgba(255,255,255,.24)}
+@media print{.ver-modal-bg{display:none!important}}
 @media print{
   .doc-hdr,.view-toggle,.btn{display:none!important}
   .page{max-width:100%!important}
@@ -257,10 +260,17 @@ textarea{resize:vertical;min-height:64px}
 </head>
 <body class="mobile-mode">
 
-<div class="refresh-bar" id="refresh-bar">
-  <span>🔄 <b>버전 업데이트 안내</b> — 시스템이 갱신되었을 수 있습니다. 화면이 이상하거나 기능이 동작하지 않으면 새로고침해 주세요.</span>
-  <button class="btn-refresh" onclick="hardRefresh()">새로고침</button>
-  <button class="btn-close-bar" onclick="closeRefreshBar()" title="닫기">✕</button>
+<div class="ver-modal-bg" id="ver-modal">
+  <div class="ver-modal">
+    <div class="vm-title"><span class="vm-icon">🔄</span> 실행계획서가 업데이트되었습니다</div>
+    <div class="vm-ver">
+      <span class="old" id="vm-old">-</span><span class="arrow">→</span><span class="new" id="vm-new">-</span><span class="date" id="vm-date"></span>
+    </div>
+    <div class="vm-btns">
+      <button class="vm-btn-load" onclick="loadLatestVersion()">최신 버전 로드</button>
+      <button class="vm-btn-close" onclick="closeVersionModal()">닫기</button>
+    </div>
+  </div>
 </div>
 
 <div class="doc-hdr">
@@ -905,9 +915,42 @@ async function fbRemove(p){
 }
 
 
+
+
 // ══════════════════════════════════════════════════
-// 새로고침 안내 · 강제 새로고침
+// 버전 업데이트 알림 모달
 // ══════════════════════════════════════════════════
+const APP_VERSION = 'v4.2';
+const APP_VER_DATE = '2026-08-05';
+const VER_KEY = 'action-plan-seen-version';
+
+function initVersionModal(){
+  let prev = null;
+  try{ prev = localStorage.getItem(VER_KEY); }catch(e){}
+  if(prev === APP_VERSION) return;
+
+  const oldEl = document.getElementById('vm-old');
+  const newEl = document.getElementById('vm-new');
+  const dtEl  = document.getElementById('vm-date');
+  if(oldEl) oldEl.textContent = prev || '이전 버전';
+  if(newEl) newEl.textContent = APP_VERSION;
+  if(dtEl)  dtEl.textContent  = '(' + APP_VER_DATE + ')';
+
+  const bg = document.getElementById('ver-modal');
+  if(bg) bg.classList.add('open');
+}
+
+function loadLatestVersion(){
+  try{ localStorage.setItem(VER_KEY, APP_VERSION); }catch(e){}
+  hardRefresh();
+}
+
+function closeVersionModal(){
+  try{ localStorage.setItem(VER_KEY, APP_VERSION); }catch(e){}
+  const bg = document.getElementById('ver-modal');
+  if(bg) bg.classList.remove('open');
+}
+
 function hardRefresh(){
   try{
     if(window.caches && caches.keys){
@@ -919,19 +962,6 @@ function hardRefresh(){
   }catch(e){
     location.reload(true);
   }
-}
-function closeRefreshBar(){
-  const b=document.getElementById('refresh-bar');
-  if(b) b.classList.add('hidden');
-  try{ sessionStorage.setItem('rbar-closed','1'); }catch(e){}
-}
-function initRefreshBar(){
-  try{
-    if(sessionStorage.getItem('rbar-closed')==='1'){
-      const b=document.getElementById('refresh-bar');
-      if(b) b.classList.add('hidden');
-    }
-  }catch(e){}
 }
 
 // ── Utils ─────────────────────────────
@@ -1661,7 +1691,7 @@ function renderActionPage(){
 
 
 window.addEventListener('load', async ()=>{
-  initRefreshBar();
+  initVersionModal();
   const today=new Date().toISOString().slice(0,10);
   ['sign-date','sop-date','qe-date','inf-due','pl-due'].forEach(id=>{
     const e=document.getElementById(id); if(e) e.value=today;
