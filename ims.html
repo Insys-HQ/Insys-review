@@ -279,6 +279,17 @@ body.pc-mode .page{max-width:1200px}
 .auth-tabs{display:flex;gap:2px;margin-bottom:16px;background:var(--silver);padding:3px;border-radius:8px}
 .auth-tab{flex:1;padding:8px;border:none;background:none;border-radius:6px;font-size:14px;font-weight:600;color:var(--slate);cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:all .2s}
 .auth-tab.active{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+
+/* 로그인 편의 */
+.pw-wrap{position:relative}
+.pw-wrap input{padding-right:40px}
+.pw-eye{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:15px;cursor:pointer;opacity:.5;padding:4px 6px;transition:opacity .2s}
+.pw-eye:hover{opacity:1}
+.pw-eye.on{opacity:1}
+.save-opts{display:flex;gap:16px;margin-bottom:14px}
+.save-chk{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--slate);cursor:pointer;font-weight:400;user-select:none}
+.save-chk input{width:16px;height:16px;accent-color:var(--teal);cursor:pointer;margin:0}
+.save-chk:hover span{color:var(--ink)}
 .auth-msg{margin-top:12px;font-size:13.5px;padding:9px 12px;border-radius:7px;display:none;line-height:1.6}
 .auth-msg.show{display:block}
 .auth-msg.err{background:var(--redL);color:var(--red);border:1px solid var(--red)}
@@ -405,9 +416,20 @@ body.ro-mode .ro-hide{display:none!important}
         <label>이메일</label>
         <input type="email" id="lg-email" placeholder="name@in-sys.co.kr" onkeydown="if(event.key==='Enter')doLogin()">
       </div>
-      <div class="form-group" style="margin-bottom:14px">
+      <div class="form-group" style="margin-bottom:12px">
         <label>비밀번호</label>
-        <input type="password" id="lg-pw" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter')doLogin()">
+        <div class="pw-wrap">
+          <input type="password" id="lg-pw" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter')doLogin()">
+          <button type="button" class="pw-eye" onclick="togglePw()" title="비밀번호 보기">👁</button>
+        </div>
+      </div>
+      <div class="save-opts">
+        <label class="save-chk">
+          <input type="checkbox" id="lg-save-id"> <span>아이디 저장</span>
+        </label>
+        <label class="save-chk">
+          <input type="checkbox" id="lg-save-pw"> <span>비밀번호 저장</span>
+        </label>
       </div>
       <button class="btn btn-teal" style="width:100%;padding:11px" onclick="doLogin()">로그인</button>
       <div id="lg-msg" class="auth-msg"></div>
@@ -447,7 +469,7 @@ body.ro-mode .ro-hide{display:none!important}
         <div class="nav-brand-txt">
           <div class="nav-title">셰플러 이천공장 수입검사 업무관리 시스템</div>
           <div class="nav-sub">
-            <span class="nav-ver">v9.3</span>
+            <span class="nav-ver">v9.4</span>
             <span class="nav-org">Schaeffler Icheon · insys</span>
             <span id="fb-status" class="fb-chip">⏳ 연결 중</span>
           </div>
@@ -1416,7 +1438,7 @@ body.ro-mode .ro-hide{display:none!important}
 </div>
 
 <footer style="max-width:1200px;margin:20px auto 0;padding:12px 20px;text-align:center;font-size:12px;color:var(--slate);border-top:1px solid var(--line)">
-  인시스 AI혁신 연구개발실  ·  셰플러 이천공장 수입검사 업무관리 시스템 v9.3  ·  최종 수정 2026.08.05  ·  © (주)인시스
+  인시스 AI혁신 연구개발실  ·  셰플러 이천공장 수입검사 업무관리 시스템 v9.4  ·  최종 수정 2026.08.05  ·  © (주)인시스
 </footer>
 
 <!-- Firebase -->
@@ -1564,7 +1586,7 @@ async function startPolling(){
 // ══════════════════════════════════════════════════
 // 버전 업데이트 알림 모달
 // ══════════════════════════════════════════════════
-const APP_VERSION = 'v9.3';
+const APP_VERSION = 'v9.4';
 const APP_VER_DATE = '2026-08-05';
 const VER_KEY = 'ims-seen-version';
 
@@ -1668,6 +1690,7 @@ window.addEventListener('load', () => {
     const ok = await restoreSession();
     if(!ok){
       document.getElementById('auth-wrap').classList.remove('hidden');
+      loadSavedLogin();
     }
   })();
 
@@ -2123,6 +2146,66 @@ function genPassword(){
   return p;
 }
 
+
+// ── 로그인 정보 저장 ────────────────────────────
+const LG_ID_KEY = 'ims-saved-email';
+const LG_PW_KEY = 'ims-saved-pw';
+
+function togglePw(){
+  const inp=document.getElementById('lg-pw');
+  const btn=document.querySelector('.pw-eye');
+  if(!inp) return;
+  const show = inp.type==='password';
+  inp.type = show ? 'text' : 'password';
+  if(btn) btn.classList.toggle('on', show);
+}
+
+// 간단 난독화 (평문 저장 방지)
+function obf(s){
+  try{ return btoa(unescape(encodeURIComponent(s))).split('').reverse().join(''); }catch(e){ return ''; }
+}
+function deobf(s){
+  try{ return decodeURIComponent(escape(atob(s.split('').reverse().join(''))));}catch(e){ return ''; }
+}
+
+function loadSavedLogin(){
+  try{
+    const email = localStorage.getItem(LG_ID_KEY);
+    const pwEnc = localStorage.getItem(LG_PW_KEY);
+    if(email){
+      const e=document.getElementById('lg-email');
+      if(e) e.value = email;
+      const c=document.getElementById('lg-save-id');
+      if(c) c.checked = true;
+    }
+    if(pwEnc){
+      const p=document.getElementById('lg-pw');
+      if(p) p.value = deobf(pwEnc);
+      const c=document.getElementById('lg-save-pw');
+      if(c) c.checked = true;
+    }
+    // 포커스 — 저장된 정보에 따라
+    setTimeout(()=>{
+      const e=document.getElementById('lg-email');
+      const p=document.getElementById('lg-pw');
+      if(!e||!p) return;
+      if(!e.value) e.focus();
+      else if(!p.value) p.focus();
+    }, 200);
+  }catch(e){}
+}
+
+function persistLogin(email, pw){
+  try{
+    const saveId = document.getElementById('lg-save-id')?.checked;
+    const savePw = document.getElementById('lg-save-pw')?.checked;
+    if(saveId) localStorage.setItem(LG_ID_KEY, email);
+    else localStorage.removeItem(LG_ID_KEY);
+    if(savePw) localStorage.setItem(LG_PW_KEY, obf(pw));
+    else localStorage.removeItem(LG_PW_KEY);
+  }catch(e){}
+}
+
 function showAuthTab(tab){
   document.getElementById('auth-login').style.display  = tab==='login' ? 'block':'none';
   document.getElementById('auth-signup').style.display = tab==='signup'? 'block':'none';
@@ -2207,7 +2290,11 @@ async function doLogin(){
   currentUser={...u, uid};
   try{ sessionStorage.setItem('ims-user', JSON.stringify({uid, email})); }catch(e){}
 
-  document.getElementById('lg-pw').value='';
+  persistLogin(email, pw);
+  // 비밀번호 저장 체크 안 했으면 입력값 지움
+  if(!document.getElementById('lg-save-pw')?.checked){
+    document.getElementById('lg-pw').value='';
+  }
   enterSystem();
 }
 
@@ -2217,6 +2304,7 @@ function doLogout(){
   try{ sessionStorage.removeItem('ims-user'); }catch(e){}
   document.getElementById('auth-wrap').classList.remove('hidden');
   showAuthTab('login');
+  loadSavedLogin();   // 저장된 계정 다시 채움
 }
 
 async function loadUsers(){
