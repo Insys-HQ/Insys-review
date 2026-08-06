@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>셰플러 이천공장 수입검사 실행계획서 v4.6</title>
+<title>셰플러 이천공장 수입검사 실행계획서 v4.7</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 
@@ -276,7 +276,7 @@ textarea{resize:vertical;min-height:64px}
 <div class="doc-hdr">
   <div class="doc-hdr-inner">
     <div>
-      <div class="doc-title">셰플러 이천공장 수입검사 실행계획서 <span style="font-size:12px;font-weight:400;color:#94A3B8">v4.6</span></div>
+      <div class="doc-title">셰플러 이천공장 수입검사 실행계획서 <span style="font-size:12px;font-weight:400;color:#94A3B8">v4.7</span></div>
       <div class="doc-sub">Schaeffler Icheon · insys — SQM 요청 5개 항목 + 인시스 추가 2개 항목  |  회신: 2026.08.08(금)</div>
     </div>
     <div style="display:flex;gap:8px">
@@ -429,6 +429,10 @@ textarea{resize:vertical;min-height:64px}
       <div class="card-title"><span class="bar"></span>② RACI 책임 매트릭스
         <span style="font-size:12px;color:var(--slate);font-weight:400;margin-left:8px">R=실행책임 · A=최종승인 · C=협의 · I=정보공유</span>
       </div>
+      <div class="alert alert-teal" style="margin-bottom:10px">
+        💡 역할 정의에 따른 <b>기본값이 미리 선택</b>되어 있습니다. 실무 기준에 맞게 수정한 후 <b>「RACI 매트릭스 저장」</b>을 클릭하세요.
+        같은 셀을 다시 클릭하면 선택이 해제됩니다.
+      </div>
       <div class="tbl-wrap">
         <table class="tbl" id="raci-table">
           <thead>
@@ -446,6 +450,7 @@ textarea{resize:vertical;min-height:64px}
       </div>
       <div class="btn-row">
         <button class="btn btn-primary btn-sm" onclick="saveRaci()">💾 RACI 매트릭스 저장</button>
+        <button class="btn btn-outline btn-sm" onclick="resetRaciToDefault()">↺ 기본값으로 되돌리기</button>
       </div>
     </div>
 
@@ -843,7 +848,7 @@ textarea{resize:vertical;min-height:64px}
 
 
 <footer style="max-width:1200px;margin:20px auto 0;padding:12px 20px;text-align:center;font-size:12px;color:var(--slate);border-top:1px solid var(--line)">
-  인시스 AI혁신 연구개발실 · 셰플러 이천공장 수입검사 실행계획서 v4.6 · 최종 수정 2026.08.05 · © (주)인시스
+  인시스 AI혁신 연구개발실 · 셰플러 이천공장 수입검사 실행계획서 v4.7 · 최종 수정 2026.08.07 · © (주)인시스
 </footer>
 
 <!-- 편집 모달 -->
@@ -928,7 +933,7 @@ async function fbRemove(p){
 // ══════════════════════════════════════════════════
 // 버전 업데이트 알림 모달
 // ══════════════════════════════════════════════════
-const APP_VERSION = 'v4.6';
+const APP_VERSION = 'v4.7';
 const APP_VER_DATE = '2026-08-05';
 const VER_KEY = 'action-plan-seen-version';
 
@@ -1003,6 +1008,7 @@ async function loadAllData(){
     infraList=inf;
     raciData=raci; infraChecks=ichk;
     planList=pl;
+    applyDefaultRaci();
     renderActionPage();
     renderPlanTable();
   } catch(e){ console.error('DB 오류:',e); }
@@ -1079,6 +1085,54 @@ const RACI_TASKS=[
   '월간 인력 운영 실적 보고',
 ];
 const RACI_ROLES=['insp','lead','admin','sqm','sqmLead'];
+
+// 역할 정의 기반 기본 RACI 매핑
+// 순서: [인시스 검사원, 인시스 현장책임자, 인시스 본사지원, 셰플러 SQM담당, 셰플러 SQM책임자]
+const DEFAULT_RACI = [
+  ['I','I','','R','A'],   // 00 검사기준서 발행·개정 — SQM 소관
+  ['I','I','','R','A'],   // 01 검사 판정 기준 결정 — SQM 소관
+  ['R','A','','I',''],    // 02 입고 자재 접수 및 수량 확인
+  ['R','A','','I',''],    // 03 SAP 검사성적서 유무 확인
+  ['R','A','','C',''],    // 04 검사성적서 내용 검토
+  ['R','A','','I',''],    // 05 AQL 샘플 추출 및 검사 수행
+  ['R','A','','I',''],    // 06 외관·치수 검사 결과 기록
+  ['R','C','','A',''],    // 07 합격/불합격 판정 — SQM 최종 책임
+  ['R','C','','A','I'],   // 08 판정 애매 건 판단 요청
+  ['R','A','','I',''],    // 09 부적합품 격리 및 통보
+  ['C','C','','R','A'],   // 10 반품·특채·재작업·폐기 승인 — SQM 승인
+  ['R','A','','I',''],    // 11 SAP 검사 결과 입력
+  ['R','A','','C','I'],   // 12 기준서 누락·이상 발견 시 보고
+  ['','C','R','','I'],    // 13 검사원 채용 및 배치 — 인시스 소관
+  ['C','R','A','','I'],   // 14 검사원 교육·훈련 계획 수립
+  ['','R','A','','I'],    // 15 검사원 역량 평가
+  ['','R','A','',''],     // 16 검사원 근태·인력 운영 관리
+  ['C','R','A','',''],    // 17 검사 소모품·장비 지원
+  ['R','A','','I',''],    // 18 일일 업무일지 작성·보고
+  ['','R','A','','I'],    // 19 월간 인력 운영 실적 보고
+];
+
+// 저장된 값이 없으면 기본값 적용
+function applyDefaultRaci(){
+  if(Object.keys(raciData).length > 0) return false;   // 이미 저장된 값 있음
+  DEFAULT_RACI.forEach((row, ti)=>{
+    RACI_ROLES.forEach((role, ri)=>{
+      if(row[ri]) raciData[ti + '_' + role] = row[ri];
+    });
+  });
+  return true;
+}
+
+function getRaciValue(key){ return raciData[key] || ''; }
+function getDefaultRaci(){ return DEFAULT_RACI; }
+
+function resetRaciToDefault(){
+  if(!confirm('RACI 매트릭스를 기본값으로 되돌립니다.\n현재 저장된 내용은 사라집니다. 계속하시겠습니까?')) return;
+  raciData = {};
+  applyDefaultRaci();
+  renderRaciTable();
+  toast('기본값으로 되돌렸습니다. 저장하려면 「RACI 매트릭스 저장」을 클릭하세요.', 4000);
+}
+
 
 function renderRaciTable(){
   const tb=document.getElementById('raci-tbody'); if(!tb) return;
