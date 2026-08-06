@@ -11,7 +11,7 @@
 // ═══ 자동 새로고침 시스템 ═══
 // GitHub Pages 캐시로 구버전이 뜨는 문제 방지
 (function(){
-  const CURRENT_VERSION = 'v4.8';
+  const CURRENT_VERSION = 'v4.9';
   const CHECK_URL = 'https://raw.githubusercontent.com/Insys-HQ/Insys-review/main/jeju.html?_=' + Date.now();
 
   // 이미 이 버전으로 강제 새로고침한 상태면 재체크 스킵 (무한루프 방지)
@@ -47,20 +47,28 @@
     });
 })();
 </script>
-<title>제주 아라이동 주택공사 현장사진일지 v4.8</title>
+<title>제주 아라이동 주택공사 현장사진일지 v4.9</title>
 
 <!-- 카톡·SNS 링크 미리보기 (Open Graph) -->
-<meta property="og:title" content="🏗 제주 아라이동 주택공사 v4.8">
+<meta property="og:title" content="🏗 제주 아라이동 주택공사 v4.9">
 <meta property="og:description" content="현장 사진일지 · 공사내용 · 건축허가 정보">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://insys-hq.github.io/Insys-review/jeju.html">
 <meta property="og:image" content="https://insys-hq.github.io/Insys-review/jeju-og.png">
 <meta property="og:site_name" content="인시스 AI혁신 R&D센터">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="🏗 제주 아라이동 주택공사 v4.8">
+<meta name="twitter:title" content="🏗 제주 아라이동 주택공사 v4.9">
 <meta name="twitter:description" content="현장 사진일지 · 공사내용 · 건축허가 정보">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<!-- PDF 처리 라이브러리 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+  if(window.pdfjsLib) {
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+</script>
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -489,6 +497,21 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:#eff2f7;color:#2c3e50
   outline:none;-webkit-appearance:none;color-scheme:dark;
 }
 .doc-up-fields input::placeholder{color:rgba(255,255,255,.6)}
+/* 드래그 앤 드롭 영역 */
+.doc-drop-zone{
+  border:2px dashed rgba(255,255,255,.5);
+  border-radius:10px;padding:20px 12px;
+  text-align:center;color:rgba(255,255,255,.9);
+  transition:.15s;cursor:pointer;background:rgba(255,255,255,.08);
+}
+.doc-drop-zone:hover{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.75)}
+.doc-drop-zone.dragover{
+  background:rgba(255,255,255,.25);border-color:#fff;
+  border-style:solid;transform:scale(1.02);
+}
+.doc-drop-zone i.big{font-size:26px;color:#fff;display:block;margin-bottom:6px}
+.doc-drop-zone .main-txt{font-size:13px;font-weight:700;margin-bottom:3px}
+.doc-drop-zone .sub-txt{font-size:10px;color:rgba(255,255,255,.7);line-height:1.5}
 .doc-up-btn{
   width:100%;padding:10px;border:none;border-radius:10px;
   background:#fff;color:#8a4baf;
@@ -581,7 +604,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:#eff2f7;color:#2c3e50
     <div class="appbar-top">
       <div class="appbar-t">
         <i class="fa fa-hard-hat"></i>
-        <div>제주 아라이동 주택공사 <small>v4.8</small></div>
+        <div>제주 아라이동 주택공사 <small>v4.9</small></div>
       </div>
       <span class="appbar-date" id="appDate">-</span>
     </div>
@@ -666,10 +689,16 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:#eff2f7;color:#2c3e50
         <input type="date" id="docUpDate">
         <input type="text" id="docUpTitle" placeholder="문서 제목 (예: 착공신고서)">
       </div>
-      <input type="file" id="docFileIn" accept=".pdf,.jpg,.png,.doc,.docx,.hwp,.xls,.xlsx" style="display:none" onchange="handleDocUpload(this.files)">
-      <button class="doc-up-btn" onclick="document.getElementById('docFileIn').click()">
-        <i class="fa fa-paperclip"></i> 파일 선택 (PDF/이미지/문서)
-      </button>
+      <input type="file" id="docFileIn" accept=".pdf,.jpg,.png,.doc,.docx,.hwp,.xls,.xlsx" multiple style="display:none" onchange="handleDocUpload(this.files)">
+      <div class="doc-drop-zone" id="docDropZone"
+        onclick="document.getElementById('docFileIn').click()"
+        ondragover="handleDragOver(event)"
+        ondragleave="handleDragLeave(event)"
+        ondrop="handleDrop(event)">
+        <i class="fa fa-cloud-upload-alt big"></i>
+        <div class="main-txt">파일을 여기에 드래그하거나 클릭</div>
+        <div class="sub-txt">PDF는 자동 압축 · 이미지·문서 지원<br>큰 파일도 자동으로 크기 조정됩니다</div>
+      </div>
       <div class="doc-up-progress" id="docUpProg">
         <div class="doc-up-track"><div class="doc-up-fill" id="docUpFill"></div></div>
         <div class="doc-up-text" id="docUpText">업로드 중...</div>
@@ -842,6 +871,13 @@ const fb  = ()=>window._firebase;
 
 // ═══ INIT ═══
 document.addEventListener('DOMContentLoaded', ()=>{
+  // 문서 외 영역 드래그 시 파일 열림 방지
+  ['dragover','drop'].forEach(evt=>{
+    window.addEventListener(evt, e=>{
+      if(e.target.closest('#docDropZone')) return;
+      e.preventDefault();
+    });
+  });
   updateAppDate();
   setInterval(updateAppDate, 60000);
   loadWeather();
@@ -1656,7 +1692,7 @@ function renderDocList(){
         <div class="doc-row-title">${d.title || d.filename}</div>
         <div class="doc-row-meta">
           <span><i class="fa fa-calendar"></i> ${d.date}</span>
-          <span>${formatSize(d.size||0)}</span>
+          <span>${formatSize(d.size||0)}${d.originalSize && d.originalSize > d.size ? ` <span style="color:#27ae60">(원본 ${formatSize(d.originalSize)}에서 압축)</span>` : ''}</span>
         </div>
       </div>
       <div class="doc-row-actions">
@@ -1669,69 +1705,181 @@ function renderDocList(){
   list.innerHTML = html;
 }
 
+// ═══ 드래그 앤 드롭 ═══
+function handleDragOver(e){
+  e.preventDefault();
+  e.stopPropagation();
+  document.getElementById('docDropZone').classList.add('dragover');
+}
+function handleDragLeave(e){
+  e.preventDefault();
+  e.stopPropagation();
+  document.getElementById('docDropZone').classList.remove('dragover');
+}
+function handleDrop(e){
+  e.preventDefault();
+  e.stopPropagation();
+  document.getElementById('docDropZone').classList.remove('dragover');
+  const files = e.dataTransfer.files;
+  if(files && files.length) handleDocUpload(files);
+}
+
+// ═══ PDF 자동 압축 ═══
+// 큰 PDF는 각 페이지를 이미지로 렌더링 후 재조립 (스캔 PDF 효과)
+async function compressPdf(file, targetBytes){
+  if(!window.pdfjsLib || !window.PDFLib){
+    console.warn('[PDF] 라이브러리 로드 안됨 - 원본 사용');
+    return file;
+  }
+  console.log(`[PDF] 압축 시작. 원본: ${(file.size/1024).toFixed(0)}KB, 목표: ${(targetBytes/1024).toFixed(0)}KB`);
+  const arrayBuffer = await file.arrayBuffer();
+
+  // 여러 품질 단계로 시도
+  const attempts = [
+    {scale: 1.5, quality: 0.75, label: '고품질'},
+    {scale: 1.2, quality: 0.65, label: '중품질'},
+    {scale: 1.0, quality: 0.55, label: '표준'},
+    {scale: 0.8, quality: 0.5,  label: '저품질'},
+    {scale: 0.6, quality: 0.4,  label: '최저품질'}
+  ];
+
+  for(const opt of attempts){
+    try{
+      const result = await renderPdfToPdf(arrayBuffer, opt.scale, opt.quality);
+      console.log(`[PDF] ${opt.label} (scale=${opt.scale}, q=${opt.quality}) → ${(result.size/1024).toFixed(0)}KB`);
+      if(result.size <= targetBytes){
+        const compressedFile = new File([result], file.name, {type: 'application/pdf'});
+        return compressedFile;
+      }
+    }catch(e){
+      console.warn('[PDF] 압축 시도 실패:', opt.label, e.message);
+    }
+  }
+  // 모든 시도 실패해도 최저품질로 강제 반환
+  const finalResult = await renderPdfToPdf(arrayBuffer, 0.5, 0.35);
+  return new File([finalResult], file.name, {type:'application/pdf'});
+}
+
+async function renderPdfToPdf(arrayBuffer, scale, quality){
+  const pdf = await pdfjsLib.getDocument({data: arrayBuffer.slice(0)}).promise;
+  const newPdf = await PDFLib.PDFDocument.create();
+
+  for(let i = 1; i <= pdf.numPages; i++){
+    const page = await pdf.getPage(i);
+    const viewport = page.getViewport({scale});
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const ctx = canvas.getContext('2d');
+    await page.render({canvasContext: ctx, viewport}).promise;
+
+    const jpgDataUrl = canvas.toDataURL('image/jpeg', quality);
+    const jpgBytes = base64ToUint8(jpgDataUrl.split(',')[1]);
+    const jpgImage = await newPdf.embedJpg(jpgBytes);
+    const newPage = newPdf.addPage([viewport.width, viewport.height]);
+    newPage.drawImage(jpgImage, {x:0, y:0, width:viewport.width, height:viewport.height});
+  }
+  const bytes = await newPdf.save();
+  return new Blob([bytes], {type:'application/pdf'});
+}
+
+function base64ToUint8(base64){
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for(let i=0; i<binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+// ═══ 문서 업로드 (자동 압축 + 여러 파일) ═══
 async function handleDocUpload(files){
   if(!files || !files.length) return;
   if(!window._firebaseReady){ showToast('Firebase 연결 안됨','error'); return; }
 
   const date  = document.getElementById('docUpDate').value || new Date().toISOString().split('T')[0];
-  const title = document.getElementById('docUpTitle').value.trim();
-  const file = files[0];
-
-  // Firestore 1MB 제한 - base64는 원본의 33%가 커지므로 700KB 이하 권장
-  if(file.size > 900*1024){
-    showToast(`파일이 너무 큽니다 (${formatSize(file.size)}). 900KB 이하만 가능`,'error');
-    return;
-  }
-  if(!title){
-    showToast('문서 제목을 입력하세요','error');
-    document.getElementById('docUpTitle').focus();
-    return;
-  }
+  const inputTitle = document.getElementById('docUpTitle').value.trim();
 
   const prog = document.getElementById('docUpProg');
   const fill = document.getElementById('docUpFill');
   const text = document.getElementById('docUpText');
   prog.style.display = 'block';
-  fill.style.width = '30%';
-  text.textContent = '파일 읽는 중...';
+  fill.style.width = '0%';
 
-  try{
-    const b64 = await new Promise((resolve,reject)=>{
-      const r = new FileReader();
-      r.onload = ()=>resolve(r.result);
-      r.onerror = ()=>reject(new Error('파일 읽기 실패'));
-      r.readAsDataURL(file);
-    });
-    fill.style.width = '70%';
-    text.textContent = '저장 중...';
+  const TARGET = 700 * 1024; // Firestore base64 오버헤드 고려해서 700KB 목표
+  const fileArr = Array.from(files);
+  let done = 0, failed = 0;
 
-    const {collection,addDoc,serverTimestamp} = fb();
-    const docRef = await addDoc(collection(db(),'jeju_docs'),{
-      date, title,
-      filename: file.name,
-      size: file.size,
-      mimeType: file.type || 'application/octet-stream',
-      data: b64,
-      createdAt: serverTimestamp()
-    });
-    docs.unshift({id:docRef.id, date, title, filename:file.name, size:file.size, mimeType:file.type, data:b64});
-    // 최신 날짜 정렬
-    docs.sort((a,b)=>b.date.localeCompare(a.date));
+  for(const rawFile of fileArr){
+    const idx = done + 1;
+    // 제목: 여러 파일이면 파일명 사용, 하나면 입력 제목 사용
+    const title = (fileArr.length === 1 && inputTitle)
+      ? inputTitle
+      : rawFile.name.replace(/\.[^.]+$/, '');
 
-    fill.style.width = '100%';
-    text.textContent = '완료';
-    setTimeout(()=>{ prog.style.display='none'; }, 1200);
+    try{
+      let file = rawFile;
+      const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+      const isImg = file.type.startsWith('image/');
 
-    document.getElementById('docFileIn').value = '';
-    document.getElementById('docUpTitle').value = '';
-    renderDocList();
-    showToast('문서가 저장되었습니다','success');
-  }catch(e){
-    console.error('handleDocUpload:',e);
-    text.textContent = '실패: '+e.message;
-    showToast('저장 실패: '+e.message,'error');
-    setTimeout(()=>{ prog.style.display='none'; }, 2000);
+      // 목표 크기 초과 시 자동 압축
+      if(file.size > TARGET){
+        if(isPdf){
+          text.textContent = `PDF 압축 중... (${idx}/${fileArr.length})`;
+          fill.style.width = Math.round(((done+0.1)/fileArr.length)*100) + '%';
+          file = await compressPdf(rawFile, TARGET);
+          console.log(`[Upload] PDF 압축: ${(rawFile.size/1024).toFixed(0)}KB → ${(file.size/1024).toFixed(0)}KB`);
+        } else if(isImg){
+          text.textContent = `이미지 압축 중... (${idx}/${fileArr.length})`;
+          file = await resizeImageToTarget(rawFile, TARGET);
+          console.log(`[Upload] 이미지 압축: ${(rawFile.size/1024).toFixed(0)}KB → ${(file.size/1024).toFixed(0)}KB`);
+        } else {
+          // 압축 불가 파일 형식
+          throw new Error(`${formatSize(rawFile.size)}는 너무 큽니다. PDF/이미지만 자동압축됩니다`);
+        }
+      }
+
+      // Firestore 최종 확인 (900KB)
+      if(file.size > 900*1024){
+        throw new Error(`압축했지만 여전히 크기 초과 (${formatSize(file.size)})`);
+      }
+
+      text.textContent = `저장 중... (${idx}/${fileArr.length})`;
+      fill.style.width = Math.round(((done+0.5)/fileArr.length)*100) + '%';
+
+      const b64 = await new Promise((resolve,reject)=>{
+        const r = new FileReader();
+        r.onload = ()=>resolve(r.result);
+        r.onerror = ()=>reject(new Error('파일 읽기 실패'));
+        r.readAsDataURL(file);
+      });
+
+      const {collection,addDoc,serverTimestamp} = fb();
+      const docRef = await addDoc(collection(db(),'jeju_docs'),{
+        date, title,
+        filename: rawFile.name,
+        size: file.size,
+        originalSize: rawFile.size,
+        mimeType: file.type || rawFile.type || 'application/octet-stream',
+        data: b64,
+        createdAt: serverTimestamp()
+      });
+      docs.unshift({id:docRef.id, date, title, filename:rawFile.name, size:file.size, originalSize:rawFile.size, mimeType:file.type, data:b64});
+    }catch(e){
+      console.error('업로드 실패:',rawFile.name,e);
+      failed++;
+      showToast(`${rawFile.name}: ${e.message}`,'error');
+    }
+    done++;
+    fill.style.width = Math.round((done/fileArr.length)*100) + '%';
   }
+
+  docs.sort((a,b)=>b.date.localeCompare(a.date));
+  text.textContent = `완료: ${done-failed}개 / 실패: ${failed}개`;
+  setTimeout(()=>{ prog.style.display='none'; }, 2000);
+
+  document.getElementById('docFileIn').value = '';
+  document.getElementById('docUpTitle').value = '';
+  renderDocList();
+  if(done-failed > 0) showToast(`${done-failed}개 저장되었습니다`,'success');
 }
 
 function downloadDoc(id){
