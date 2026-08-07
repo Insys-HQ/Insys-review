@@ -6,7 +6,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>인시스 점심주문관리 v6.9</title>
+<title>인시스 점심주문관리 v7.0</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -926,6 +926,36 @@ body.season-summer .chat-panel { border-color:#b2dfdb; }
   }
 })();
 </script>
+<script>
+// ── 자동 최신버전 새로고침 ──────────────────────────────
+(function(){
+  var APP_VER = '6.9';
+  var CHECK_URL = 'https://insys-hq.github.io/Insys-review/lunch.html?_t=' + Date.now();
+  var LAST_CHECK_KEY = 'insys_ver_checked';
+  var now = Date.now();
+
+  // 5분에 한 번만 체크 (너무 자주 체크하지 않도록)
+  var lastCheck = parseInt(localStorage.getItem(LAST_CHECK_KEY) || '0');
+  if(now - lastCheck < 5 * 60 * 1000) return;
+
+  fetch(CHECK_URL, {cache:'no-store'})
+    .then(function(r){ return r.text(); })
+    .then(function(text){
+      localStorage.setItem(LAST_CHECK_KEY, now);
+      var m = text.match(/ver-badge[^>]*>v([\d.]+)/);
+      if(!m) return;
+      var latestVer = m[1];
+      if(latestVer !== APP_VER){
+        console.log('새 버전 감지:', APP_VER, '→', latestVer);
+        // 사용자에게 알리고 새로고침
+        if(confirm('⬆️ 새 버전(v' + latestVer + ')이 있습니다.\n지금 업데이트 할까요?')){
+          location.href = location.href.split('?')[0] + '?v=' + latestVer;
+        }
+      }
+    })
+    .catch(function(){});
+})();
+</script>
 </head>
 <body>
 
@@ -933,7 +963,7 @@ body.season-summer .chat-panel { border-color:#b2dfdb; }
   <div class="hd-inner">
     <div class="hd-left" style="display:flex;align-items:center;gap:10px">
       <h1>인시스 점심주문관리</h1>
-      <span class="ver-badge">v6.9</span>
+      <span class="ver-badge">v7.0</span>
     </div>
     <div class="hd-right">
       <div id="weatherInfo"></div>
@@ -1192,7 +1222,7 @@ body.season-summer .chat-panel { border-color:#b2dfdb; }
     <div id="restaurantAdminList"></div>
   </div>
 
-  <div class="footer-info">점심주문관리 시스템 v6.9</div>
+  <div class="footer-info">점심주문관리 시스템 v7.0</div>
 
   <!-- ══ AI 추천 모달 ══ -->
   <div id="aiModal" class="modal-overlay hidden">
