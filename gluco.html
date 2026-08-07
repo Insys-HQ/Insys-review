@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>GlucoLog v1.8 — 혈당관리</title>
+<title>GlucoLog v1.9 — 혈당관리</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script type="module">
@@ -227,7 +227,7 @@ textarea.form-input{resize:none;height:70px;}
 <div class="safe-top"></div>
 <header class="app-header">
   <div class="logo-block">
-    <div class="logo">Gluco<span>Log</span> <span class="ver">v1.8</span></div>
+    <div class="logo">Gluco<span>Log</span> <span class="ver">v1.9</span></div>
     <div class="logo-sub">혈당·혈압·식단 통합 관리</div>
   </div>
   <div id="headerDate" class="date-badge">로딩중...</div>
@@ -676,6 +676,39 @@ textarea.form-input{resize:none;height:70px;}
     <div style="font-size:11px;color:var(--text3)">v1.1 · 참고용 (최종 판단은 담당의에게)</div>
   </div>
 
+  <!-- 종합 생활패턴 브리핑 -->
+  <div class="card" id="briefBtnRow">
+    <div class="card-title"><span class="dot" style="background:var(--primary)"></span>종합 생활패턴 브리핑 · 운동처방</div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:10px;line-height:1.6">
+      혈액검사·식사시간·활동량을 종합 분석해 실천사항과 맞춤 운동처방(시간·강도)을 제공합니다.
+    </p>
+    <div class="chart-tabs" id="briefPeriodTabs">
+      <button class="chart-tab active" onclick="setBriefPeriod('day',this)">일간</button>
+      <button class="chart-tab" onclick="setBriefPeriod('week',this)">주간</button>
+      <button class="chart-tab" onclick="setBriefPeriod('month',this)">월간</button>
+    </div>
+    <button class="btn btn-primary" onclick="generateBriefing()">
+      <span id="briefBtnTxt">🩺 브리핑 생성</span><span class="spinner" id="briefSp"></span>
+    </button>
+
+    <div id="briefOutput" style="display:none;margin-top:10px">
+      <div class="today-summary" id="briefStats" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:0"></div>
+
+      <div class="ai-result show" style="margin-top:10px">
+        <div class="ai-header">🩺 종합 브리핑 <span style="font-size:10px;font-weight:400;color:var(--text3)">(참고용)</span></div>
+        <div class="ai-body" id="briefBody"></div>
+      </div>
+
+      <div class="hba1c-result-box" id="exerciseRecBox" style="margin-top:10px">
+        <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:6px">🏃 추천 운동 시간</div>
+        <div class="hba1c-big" id="exerciseTimeVal" style="font-size:26px;color:var(--accent)">—</div>
+        <div class="hba1c-interp" id="exerciseDetailTxt"></div>
+        <button class="btn btn-accent" style="margin-top:10px" onclick="enableExerciseReminder()">🔔 이 시간에 알림 받기</button>
+        <div id="reminderStatus" style="font-size:11px;color:var(--accent);margin-top:6px;display:none;line-height:1.5"></div>
+      </div>
+    </div>
+  </div>
+
   <div class="card" id="reportBtnRow">
     <div class="card-title"><span class="dot" style="background:var(--warn)"></span>AI 건강 리포트</div>
     <p style="font-size:12px;color:var(--text3);margin-bottom:12px;line-height:1.6">
@@ -753,13 +786,16 @@ let db,col,addDoc,getDocs,q,orderBy;
 let gChart,bChart,mChart;
 let mealB64=null,labB64=null,quickB64=null;
 let calcMode=1;
-const VER='v1.8';
+const VER='v1.9';
 
 // ─ Firestore 문서 조작 함수 ─
 let fsDoc,updateDoc,deleteDoc;
 let todayRecordsCache=[];
 let editingId=null, editingType=null;
 let mealOptionsCache=[];
+let currentBriefPeriod='day';
+let exerciseRecCache={};
+let exerciseTimerId=null;
 
 // ─ 프로필 & 활동 감지 상태 ─
 let profileData={gender:'male',age:null,height:null,weight:null};
@@ -815,6 +851,7 @@ window.addEventListener('firebaseReady',async()=>{
   loadTodayActivity();
   loadMealOptions();
   await loadLastVitals();
+  loadExerciseReminder();
 });
 
 // ─ 탭 ─
@@ -1433,6 +1470,163 @@ async function calcAutoHbA1c(){
   showHbA1cResult(h,avg,'%','mg/dL');
   document.getElementById('hba1cInterp').innerHTML+=
     `<br><span style="color:var(--text3);font-size:11px">기준: 최근 ${days}일, ${glRecs.length}건 측정값</span>`;
+}
+
+// ══════════════════════════════════════════════
+// ─ 종합 생활패턴 브리핑 (일/주/월) + 운동처방 ─
+// ══════════════════════════════════════════════
+function setBriefPeriod(p,el){
+  currentBriefPeriod=p;
+  document.querySelectorAll('#briefPeriodTabs .chart-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function avgTimeStr(arr){
+  if(!arr.length) return null;
+  const mins=arr.map(t=>{const[h,m]=t.split(':').map(Number);return h*60+m;});
+  const avg=mins.reduce((a,b)=>a+b,0)/mins.length;
+  const h=Math.floor(avg/60), m=Math.round(avg%60);
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+}
+function stdDevMin(arr){
+  if(arr.length<2) return 0;
+  const mins=arr.map(t=>{const[h,m]=t.split(':').map(Number);return h*60+m;});
+  const avg=mins.reduce((a,b)=>a+b,0)/mins.length;
+  const v=mins.reduce((a,b)=>a+(b-avg)**2,0)/mins.length;
+  return Math.round(Math.sqrt(v));
+}
+
+async function generateBriefing(){
+  if(!db){showToast('⚠️ Firebase 연결 중');return;}
+  setBtnLoading('briefBtnTxt','briefSp',true,'');
+  try{
+    const days={'day':1,'week':7,'month':30}[currentBriefPeriod];
+    const cutoff=new Date(); cutoff.setDate(cutoff.getDate()-days);
+    const cutoffStr=cutoff.toISOString().slice(0,10);
+    const snap=await getDocs(q(col(db,'glucolog'),orderBy('createdAt','desc')));
+    const all=snap.docs.map(d=>d.data()).filter(r=>(r.date||'')>=cutoffStr);
+
+    const meals=all.filter(r=>r.type==='meal');
+    const glR=all.filter(r=>r.type==='glucose');
+    const bpR=all.filter(r=>r.type==='bp');
+    const actR=all.filter(r=>r.type==='activity');
+    const labR=all.filter(r=>r.type==='labResult');
+
+    const mealTimesByType={아침:[],점심:[],저녁:[]};
+    meals.forEach(m=>{ if(mealTimesByType[m.mealType]&&m.time) mealTimesByType[m.mealType].push(m.time); });
+    const breakfastAvg=avgTimeStr(mealTimesByType['아침']);
+    const lunchAvg=avgTimeStr(mealTimesByType['점심']);
+    const dinnerAvg=avgTimeStr(mealTimesByType['저녁']);
+    const dinnerVar=stdDevMin(mealTimesByType['저녁']);
+
+    const totalSteps=actR.reduce((a,b)=>a+(b.steps||0),0);
+    const totalActCal=actR.reduce((a,b)=>a+(b.calories||0),0);
+    const avgG=glR.length?(glR.reduce((a,b)=>a+b.value,0)/glR.length).toFixed(1):null;
+    const avgSys=bpR.length?(bpR.reduce((a,b)=>a+b.systolic,0)/bpR.length).toFixed(1):null;
+    const avgDia=bpR.length?(bpR.reduce((a,b)=>a+b.diastolic,0)/bpR.length).toFixed(1):null;
+
+    document.getElementById('briefStats').innerHTML=`
+      <div class="summary-item"><div class="val" style="color:var(--accent);font-size:13px">${breakfastAvg||'-'}·${lunchAvg||'-'}·${dinnerAvg||'-'}</div><div class="lbl">평균 아침·점심·저녁</div></div>
+      <div class="summary-item"><div class="val" style="color:var(--primary);font-size:16px">${totalSteps}</div><div class="lbl">총 걸음수</div></div>
+      <div class="summary-item"><div class="val" style="color:var(--yellow);font-size:16px">${avgG||'-'}</div><div class="lbl">평균혈당</div></div>`;
+
+    const periodLabel={'day':'오늘 하루','week':'최근 1주','month':'최근 1개월'}[currentBriefPeriod];
+    const profileStr=(profileData.age&&profileData.height&&profileData.weight)?
+      `${profileData.gender==='male'?'남':'여'} ${profileData.age}세, 키${profileData.height}cm 체중${profileData.weight}kg BMI${calcBMI(profileData.weight,profileData.height).toFixed(1)}`:'프로필 미입력';
+
+    const prompt=`[${periodLabel} 생활패턴 데이터]
+환자: ${profileStr}
+식사시간 패턴: 아침 평균 ${breakfastAvg||'기록없음'}, 점심 평균 ${lunchAvg||'기록없음'}, 저녁 평균 ${dinnerAvg||'기록없음'} (저녁시간 편차 ${dinnerVar}분)
+활동량: 총 걸음수 ${totalSteps}, 활동소모칼로리 ${Math.round(totalActCal)}kcal
+혈당: ${glR.length}건 측정, 평균 ${avgG||'측정없음'} mg/dL
+혈압: ${bpR.length}건 측정, 평균 ${avgSys||'측정없음'}/${avgDia||'측정없음'} mmHg
+최근 혈액검사 소견: ${labR.length?(labR[0].aiDiagnosis||'').slice(0,300):'검사기록 없음'}
+
+위 데이터를 바탕으로 ${periodLabel} 종합 브리핑을 작성해주세요:
+1. 혈액검사 기반 즉시 실천사항 (검사기록 없으면 "검사 기록 없음"이라고만 표기)
+2. 생활패턴 분석 (식사시간 규칙성, 식사간격의 혈당관리 적절성)
+3. 활동량 평가 및 개선점
+4. 맞춤 운동처방 — 구체적 운동종류 1가지, 강도(예: 중강도·최대심박수 60~70%), 운동시간(분)
+5. 종합 진단 및 ${periodLabel} 목표 3가지
+
+마지막 줄에는 반드시 아래 형식 그대로 추천 운동시각을 적어주세요(다른 설명 없이):
+운동시각: HH:MM
+운동내용: (한 줄 요약)
+강도: (한 줄 요약)
+
+내분비내과 전문의 겸 운동처방사 수준으로 구체적이고 실용적으로 작성해주세요.`;
+
+    const res=await callClaude([{role:'user',content:prompt}]);
+    document.getElementById('briefBody').textContent=res;
+    document.getElementById('briefOutput').style.display='block';
+
+    const timeMatch=res.match(/운동시각\s*[:：]\s*(\d{1,2}):(\d{2})/);
+    const contentMatch=res.match(/운동내용\s*[:：]\s*(.+)/);
+    const intensityMatch=res.match(/강도\s*[:：]\s*(.+)/);
+    if(timeMatch){
+      const hh=timeMatch[1].padStart(2,'0'), mm=timeMatch[2];
+      const timeStr=`${hh}:${mm}`;
+      exerciseRecCache={time:timeStr,content:contentMatch?contentMatch[1].trim():'',intensity:intensityMatch?intensityMatch[1].trim():''};
+      document.getElementById('exerciseTimeVal').textContent=timeStr;
+      document.getElementById('exerciseDetailTxt').innerHTML=
+        `${exerciseRecCache.content?('🏃 '+exerciseRecCache.content+'<br>'):''}${exerciseRecCache.intensity?('💪 '+exerciseRecCache.intensity):''}`;
+      document.getElementById('exerciseRecBox').style.display='block';
+    }else{
+      document.getElementById('exerciseRecBox').style.display='none';
+    }
+
+    if(db) await addDoc(col(db,'glucolog'),{type:'briefing',period:currentBriefPeriod,date:todayStr(),content:res,createdAt:new Date()});
+    showToast('✅ 브리핑 생성 완료');
+  }catch(e){showToast('❌ 브리핑 생성 오류');console.error(e);}
+  setBtnLoading('briefBtnTxt','briefSp',false,'🩺 브리핑 생성');
+}
+
+// ─ 운동 알림 (브라우저 알림, 앱이 열려있는 동안 작동) ─
+async function enableExerciseReminder(){
+  if(!('Notification' in window)){showToast('⚠️ 이 브라우저는 알림을 지원하지 않습니다');return;}
+  let perm=Notification.permission;
+  if(perm==='default') perm=await Notification.requestPermission();
+  if(perm!=='granted'){showToast('⚠️ 알림 권한이 거부되었습니다');return;}
+  const timeStr=exerciseRecCache.time||document.getElementById('exerciseTimeVal').textContent;
+  if(!timeStr||timeStr==='—'){showToast('⚠️ 먼저 브리핑을 생성하세요');return;}
+  if(db){
+    try{
+      await addDoc(col(db,'glucolog'),{
+        type:'exerciseReminder',time:timeStr,
+        content:exerciseRecCache.content||'',intensity:exerciseRecCache.intensity||'',
+        active:true,createdAt:new Date()
+      });
+    }catch(e){console.error(e);}
+  }
+  scheduleLocalReminder(timeStr,exerciseRecCache.content||'혈당관리를 위한 운동을 시작하세요');
+  const statusEl=document.getElementById('reminderStatus');
+  statusEl.style.display='block';
+  statusEl.textContent=`✅ 매일 ${timeStr}에 알림이 예약되었습니다. (이 브라우저 탭/앱이 열려있을 때 작동합니다 — iOS는 홈화면에 추가하면 더 안정적입니다)`;
+  showToast('🔔 알림 예약 완료');
+}
+
+function scheduleLocalReminder(timeStr,content){
+  const[h,m]=timeStr.split(':').map(Number);
+  const now=new Date();
+  let target=new Date(now.getFullYear(),now.getMonth(),now.getDate(),h,m,0);
+  if(target<=now) target.setDate(target.getDate()+1);
+  const delay=target-now;
+  if(exerciseTimerId) clearTimeout(exerciseTimerId);
+  exerciseTimerId=setTimeout(()=>{
+    if(Notification.permission==='granted'){
+      try{ new Notification('🏃 운동 시간입니다!',{body:content}); }catch(e){}
+    }
+    showToast('🏃 운동 시간입니다! '+content);
+    scheduleLocalReminder(timeStr,content);
+  },delay);
+}
+
+async function loadExerciseReminder(){
+  if(!db) return;
+  if(!('Notification' in window) || Notification.permission!=='granted') return;
+  const snap=await getDocs(q(col(db,'glucolog'),orderBy('createdAt','desc')));
+  const rec=snap.docs.map(d=>d.data()).find(r=>r.type==='exerciseReminder'&&r.active);
+  if(rec) scheduleLocalReminder(rec.time,rec.content||'혈당관리를 위한 운동을 시작하세요');
 }
 
 // ─ 종합 리포트 ─
