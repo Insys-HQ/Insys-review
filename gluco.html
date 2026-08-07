@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>GlucoLog v1.9 — 혈당관리</title>
+<title>GlucoLog v2.0 — 혈당관리</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script type="module">
@@ -227,7 +227,7 @@ textarea.form-input{resize:none;height:70px;}
 <div class="safe-top"></div>
 <header class="app-header">
   <div class="logo-block">
-    <div class="logo">Gluco<span>Log</span> <span class="ver">v1.9</span></div>
+    <div class="logo">Gluco<span>Log</span> <span class="ver">v2.0</span></div>
     <div class="logo-sub">혈당·혈압·식단 통합 관리</div>
   </div>
   <div id="headerDate" class="date-badge">로딩중...</div>
@@ -780,13 +780,24 @@ textarea.form-input{resize:none;height:70px;}
   </div>
 </div>
 
+<!-- 새 버전 업데이트 알림 모달 -->
+<div class="modal-overlay" id="updateOverlay" onclick="closeUpdateModal()">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-bar"></div>
+    <div class="modal-title">🎉 새 버전으로 업데이트됐어요</div>
+    <div style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:14px;white-space:pre-line" id="updateVerText"></div>
+    <button class="btn btn-primary" onclick="closeUpdateModal()">확인</button>
+  </div>
+</div>
+
 <script>
 // ─ 전역 상태 ─
 let db,col,addDoc,getDocs,q,orderBy;
 let gChart,bChart,mChart;
 let mealB64=null,labB64=null,quickB64=null;
 let calcMode=1;
-const VER='v1.9';
+const VER='v2.0';
+const UPDATE_NOTE='새 버전이 배포되면 접속 시 자동으로 업데이트 알림을 보여드립니다.';
 
 // ─ Firestore 문서 조작 함수 ─
 let fsDoc,updateDoc,deleteDoc;
@@ -827,7 +838,24 @@ window.addEventListener('DOMContentLoaded',()=>{
   restorePhotoState('mealPhotoInput','mealPrev','mealB64');
   restorePhotoState('labPhotoInput','labPrev','labB64');
   restorePhotoState('quickFoodInput','quickPrev','quickB64');
+  checkVersionUpdate();
 });
+
+// ─ 새 버전 배포 감지 & 알림 ─
+function checkVersionUpdate(){
+  try{
+    const lastVer=localStorage.getItem('gl_last_seen_ver');
+    if(lastVer && lastVer!==VER){
+      document.getElementById('updateVerText').textContent=
+        `${lastVer} → ${VER} 로 업데이트되었습니다.\n${UPDATE_NOTE}`;
+      document.getElementById('updateOverlay').classList.add('show');
+    }
+    localStorage.setItem('gl_last_seen_ver',VER);
+  }catch(e){}
+}
+function closeUpdateModal(){
+  document.getElementById('updateOverlay').classList.remove('show');
+}
 
 // 날짜를 오늘로 리셋
 function setToday(elId){
