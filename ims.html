@@ -268,6 +268,29 @@ body.mobile-mode .nav-tabs,body.mobile-mode .nav-top-inner{max-width:480px}
 /* PC 모드 */
 body.pc-mode .page{max-width:1200px}
 
+
+/* ── 결재 라인 ─────────────────────────────── */
+.approval-flow{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:8px;align-items:center}
+.appr-step{border:1.5px solid var(--line);border-radius:9px;padding:11px 13px;background:var(--silver);text-align:center;transition:all .25s}
+.appr-step.done{border-color:var(--green);background:var(--greenL)}
+.appr-step.active{border-color:var(--teal);background:var(--tealL);box-shadow:0 0 0 3px rgba(0,150,180,.12)}
+.appr-label{font-size:12px;font-weight:700;color:var(--slate);margin-bottom:4px}
+.appr-step.done .appr-label{color:var(--green)}
+.appr-step.active .appr-label{color:var(--tealD)}
+.appr-name{font-size:14px;font-weight:700;color:var(--ink)}
+.appr-time{font-size:12px;color:var(--slate);margin-top:3px;min-height:16px}
+.appr-arrow{font-size:18px;color:var(--line);font-weight:700}
+.appr-arrow.on{color:var(--teal)}
+.status-chip{display:block;text-align:center;padding:9px;border-radius:8px;font-size:13px;font-weight:700;border:1.5px solid}
+.status-draft{background:var(--silver);color:var(--slate);border-color:var(--line)}
+.status-review{background:var(--tealL);color:var(--tealD);border-color:var(--teal)}
+.status-approved{background:var(--greenL);color:var(--green);border-color:#38A169}
+.status-sent{background:var(--blueL);color:var(--blue);border-color:#60A5FA}
+@media(max-width:768px){
+  .approval-flow{grid-template-columns:1fr;gap:5px}
+  .appr-arrow{transform:rotate(90deg);text-align:center}
+}
+
 /* ── 로그인 화면 ─────────────────────────────── */
 .auth-wrap{position:fixed;inset:0;background:linear-gradient(135deg,#0F2244 0%,#1C7293 100%);display:flex;align-items:center;justify-content:center;z-index:800;padding:20px}
 .auth-wrap.hidden{display:none}
@@ -469,7 +492,7 @@ body.ro-mode .ro-hide{display:none!important}
         <div class="nav-brand-txt">
           <div class="nav-title">셰플러 이천공장 수입검사 업무관리 시스템</div>
           <div class="nav-sub">
-            <span class="nav-ver">v9.5</span>
+            <span class="nav-ver">v9.6</span>
             <span class="nav-org">Schaeffler Icheon · insys</span>
             <span id="fb-status" class="fb-chip">⏳ 연결 중</span>
           </div>
@@ -777,9 +800,9 @@ body.ro-mode .ro-hide{display:none!important}
           <ol style="margin:0;padding-left:16px;display:flex;flex-direction:column;gap:4px">
             <li style="font-size:13px;color:var(--slate)">보고 일자 자동 (당일)</li>
             <li style="font-size:13px;color:var(--slate)">검사·측정·부적합 자동 취합</li>
-            <li style="font-size:13px;color:var(--slate)">특기사항만 직접 입력</li>
-            <li style="font-size:13px;color:var(--slate)">"인쇄" 클릭 → 보고서 출력</li>
-            <li style="font-size:13px;color:var(--slate)">셰플러 SQM 요청사항 자동 표시</li>
+            <li style="font-size:13px;color:var(--slate)"><b>작성 → 검토 → 승인</b> 결재</li>
+            <li style="font-size:13px;color:var(--slate)">승인 후 메일 발송 (수신·참조)</li>
+            <li style="font-size:13px;color:var(--slate)">담당자 변경 가능</li>
           </ol>
         </div>
       </div>
@@ -1375,23 +1398,19 @@ body.ro-mode .ro-hide{display:none!important}
 <div class="page" id="page-report">
   <div class="page-hdr">
     <div class="page-hdr-left"><h2>📋 수입검사 일일 업무 보고</h2>
-      <p>보고일자를 선택하면 해당일 검사·측정의뢰·부적합 내역이 자동 취합됩니다  |  기본값은 당일이며 필요 시 변경하세요</p></div>
+      <p>보고일자 선택 → 자동 취합 → 특기사항 입력 → 결재 진행  |  작성(황석봉 대리) → 검토(김종선 대리) → 승인(송지원 대표)</p></div>
   </div>
 
   <div class="card">
     <div class="card-title"><span class="bar"></span>보고 정보</div>
     <div class="form-grid g3">
-      <div class="form-group"><label>보고 일자 *</label><input type="date" id="rp-date" onchange="buildDailyReport()"></div>
-      <div class="form-group">
-        <label>작성자</label>
-        <select id="rp-writer" onchange="buildDailyReport()">
-          <option value="김종선 대리">김종선 대리</option>
-          <option value="황석봉 대리">황석봉 대리</option>
-        </select>
-      </div>
+      <div class="form-group"><label>보고 일자 *</label><input type="date" id="rp-date" onchange="onReportDateChange()"></div>
       <div class="form-group" style="display:flex;align-items:flex-end;gap:6px">
         <button class="btn btn-teal" style="flex:1" onclick="buildDailyReport()">🔄 새로고침</button>
-        <button class="btn btn-primary" style="flex:1" onclick="printDailyReport()">🖨️ 인쇄</button>
+        <button class="btn btn-outline" style="flex:1" onclick="printDailyReport()">🖨️ 인쇄</button>
+      </div>
+      <div class="form-group" style="display:flex;align-items:flex-end">
+        <div id="rp-status-chip" style="width:100%"></div>
       </div>
     </div>
     <div class="form-grid g1">
@@ -1399,8 +1418,74 @@ body.ro-mode .ro-hide{display:none!important}
     </div>
   </div>
 
+  <!-- 결재 라인 -->
+  <div class="card" style="border-left:4px solid var(--blue)">
+    <div class="card-title"><span class="bar" style="background:var(--blue)"></span>결재 라인
+      <span style="font-size:12px;color:var(--slate);font-weight:400;margin-left:8px">담당자는 필요 시 변경할 수 있습니다</span>
+    </div>
+    <div class="approval-flow" id="approval-flow"></div>
+
+    <div class="form-grid g3" style="margin-top:12px">
+      <div class="form-group">
+        <label>작성자 *</label>
+        <select id="rp-writer" onchange="buildDailyReport()">
+          <option value="황석봉 대리">황석봉 대리</option>
+          <option value="김종선 대리">김종선 대리</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>검토자 *</label>
+        <select id="rp-reviewer">
+          <option value="김종선 대리">김종선 대리</option>
+          <option value="황석봉 대리">황석봉 대리</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>승인자 *</label>
+        <select id="rp-approver">
+          <option value="송지원 대표">송지원 대표</option>
+          <option value="김양섭 이사">김양섭 이사</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="btn-row" id="approval-btns"></div>
+  </div>
+
+  <!-- 발송 설정 -->
+  <div class="card" id="mail-card" style="display:none;border-left:4px solid var(--green)">
+    <div class="card-title"><span class="bar" style="background:var(--green)"></span>보고서 발송
+      <span style="font-size:12px;color:var(--slate);font-weight:400;margin-left:8px">승인 완료 후 지정 메일로 발송합니다</span>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>수신 <span style="font-weight:400;color:var(--slate)">— 쉼표로 구분</span></label>
+        <input id="rp-mail-to" placeholder="sqm@schaeffler.com">
+      </div>
+      <div class="form-group">
+        <label>참조 <span style="font-weight:400;color:var(--slate)">— 쉼표로 구분</span></label>
+        <input id="rp-mail-cc" placeholder="ys.kim@in-sys.co.kr">
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-green" onclick="sendReportMail()">📧 보고서 발송</button>
+      <button class="btn btn-outline btn-sm" onclick="saveMailPreset()">💾 수신자 기본값 저장</button>
+    </div>
+  </div>
+
   <!-- 보고서 본문 -->
   <div id="daily-report-body"></div>
+
+  <!-- 결재 이력 -->
+  <div class="card">
+    <div class="card-title"><span class="bar"></span>결재 이력</div>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>보고일</th><th>작성</th><th>검토</th><th>승인</th><th>상태</th><th>발송</th><th>관리</th></tr></thead>
+        <tbody id="rp-tbody"></tbody>
+      </table>
+    </div>
+  </div>
 </div>
 
 <!-- 부적합 Modal -->
@@ -1438,7 +1523,7 @@ body.ro-mode .ro-hide{display:none!important}
 </div>
 
 <footer style="max-width:1200px;margin:20px auto 0;padding:12px 20px;text-align:center;font-size:12px;color:var(--slate);border-top:1px solid var(--line)">
-  인시스 AI혁신 연구개발실  ·  셰플러 이천공장 수입검사 업무관리 시스템 v9.5  ·  최종 수정 2026.08.05  ·  © (주)인시스
+  인시스 AI혁신 연구개발실  ·  셰플러 이천공장 수입검사 업무관리 시스템 v9.6  ·  최종 수정 2026.08.07  ·  © (주)인시스
 </footer>
 
 <!-- Firebase -->
@@ -1556,15 +1641,16 @@ async function fbRemove(path){
 async function loadAllData(){
   try {
     if(!_db) await initFirestore();
-    const [inc,sap,meas,nc,sup,qe,vis,ev,rpt,itm] = await Promise.all([
+    const [inc,sap,meas,nc,sup,qe,vis,ev,rpt,itm,rdoc] = await Promise.all([
       fbGetCol('/ims/incoming'), fbGetCol('/ims/sap'),
       fbGetCol('/ims/measures'), fbGetCol('/ims/nc'),
       fbGetCol('/ims/supply'),   fbGetCol('/ims/qedu'),
       fbGetCol('/ims/visits'),   fbGetCol('/ims/evals'),
       fbGetCol('/ims/rptlogs'), fbGetCol('/ims/items'),
+      fbGetCol('/ims/reportdocs'),
     ]);
     incoming=inc; sapRecs=sap; measures=meas; ncRecs=nc;
-    supplyRecs=sup; qeList=qe; visitList=vis; evalList=ev; rptLogs=rpt; itemList=itm;
+    supplyRecs=sup; qeList=qe; visitList=vis; evalList=ev; rptLogs=rpt; itemList=itm; reportDocs=rdoc;
     renderAll();
     const s=document.getElementById('fb-status');
     if(s){ s.textContent='🟢 DB 연결됨'; s.style.background='rgba(26,122,74,0.3)'; s.style.color='#6EE7B7'; }
@@ -1586,7 +1672,7 @@ async function startPolling(){
 // ══════════════════════════════════════════════════
 // 버전 업데이트 알림 모달
 // ══════════════════════════════════════════════════
-const APP_VERSION = 'v9.5';
+const APP_VERSION = 'v9.6';
 const APP_VER_DATE = '2026-08-05';
 const VER_KEY = 'ims-seen-version';
 
@@ -1713,6 +1799,8 @@ function renderAll(){
   renderEvalTable();
   renderHandlingGuide();
   buildDailyReport();
+  renderApprovalFlow();
+  renderReportDocs();
 }
 
 
@@ -3027,6 +3115,293 @@ function saveEdit(){
 // ══════════════════════════════════════════════════
 // 수입검사 일일 업무 보고
 // ══════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════
+// 일일 보고 결재 · 발송
+// ══════════════════════════════════════════════════
+let reportDocs = {};           // 결재 문서 저장소
+const MAIL_PRESET_KEY = 'ims-mail-preset';
+
+function currentReportKey(){
+  return document.getElementById('rp-date')?.value || '';
+}
+function currentReportDoc(){
+  const k = currentReportKey();
+  return Object.entries(reportDocs).find(([,r])=>r.date===k) || null;
+}
+
+// 날짜 변경 시
+function onReportDateChange(){
+  const entry = currentReportDoc();
+  if(entry){
+    const r = entry[1];
+    const set=(id,v)=>{ const e=document.getElementById(id); if(e && v) e.value=v; };
+    set('rp-writer',   r.writer);
+    set('rp-reviewer', r.reviewer);
+    set('rp-approver', r.approver);
+    const n=document.getElementById('rp-note'); if(n) n.value = r.note||'';
+  }
+  buildDailyReport();
+  renderApprovalFlow();
+  renderReportDocs();
+  renderApprovalFlow();
+}
+
+// 결재 흐름 렌더링
+function renderApprovalFlow(){
+  const el = document.getElementById('approval-flow');
+  const btns = document.getElementById('approval-btns');
+  const chip = document.getElementById('rp-status-chip');
+  const mailCard = document.getElementById('mail-card');
+  if(!el || !btns) return;
+
+  const entry = currentReportDoc();
+  const doc = entry ? entry[1] : null;
+  const status = doc?.status || 'draft';   // draft → review → approved → sent
+
+  const writer   = document.getElementById('rp-writer').value;
+  const reviewer = document.getElementById('rp-reviewer').value;
+  const approver = document.getElementById('rp-approver').value;
+
+  const steps = [
+    {label:'작성', name:doc?.writer||writer,     at:doc?.writtenAt,  done:!!doc},
+    {label:'검토', name:doc?.reviewer||reviewer, at:doc?.reviewedAt, done:['review','approved','sent'].includes(status)},
+    {label:'승인', name:doc?.approver||approver, at:doc?.approvedAt, done:['approved','sent'].includes(status)},
+  ];
+  // 현재 진행 단계
+  const activeIdx = steps.findIndex(s=>!s.done);
+
+  el.innerHTML = steps.map((s,i)=>{
+    const cls = s.done ? 'done' : (i===activeIdx ? 'active' : '');
+    const card = `<div class="appr-step ${cls}">
+      <div class="appr-label">${s.done?'✓ ':''}${s.label}</div>
+      <div class="appr-name">${s.name}</div>
+      <div class="appr-time">${s.at ? fmtDt(s.at) : (i===activeIdx?'대기 중':'—')}</div>
+    </div>`;
+    const arrow = i<2 ? `<div class="appr-arrow ${steps[i].done?'on':''}">›</div>` : '';
+    return card + arrow;
+  }).join('');
+
+  // 상태 칩
+  const chipMap = {
+    draft:    ['status-draft','📝 작성 전'],
+    written:  ['status-draft','📝 작성 완료 — 검토 대기'],
+    review:   ['status-review','🔍 검토 완료 — 승인 대기'],
+    approved: ['status-approved','✅ 승인 완료 — 발송 가능'],
+    sent:     ['status-sent','📧 발송 완료'],
+  };
+  const [cls, txt] = chipMap[status] || chipMap.draft;
+  if(chip) chip.innerHTML = `<span class="status-chip ${cls}">${txt}</span>`;
+
+  // 버튼
+  let html = '';
+  if(!doc){
+    html = `<button class="btn btn-teal" onclick="submitReport()">📝 작성 완료 (검토 요청)</button>`;
+  } else if(status==='written'){
+    html = `<button class="btn btn-teal" onclick="reviewReport()">🔍 검토 완료 (승인 요청)</button>
+            <button class="btn btn-outline btn-sm" onclick="updateReportNote()">특기사항 수정</button>
+            <button class="btn btn-red btn-sm" onclick="cancelReport()">작성 취소</button>`;
+  } else if(status==='review'){
+    html = `<button class="btn btn-green" onclick="approveReport()">✅ 승인</button>
+            <button class="btn btn-red btn-sm" onclick="rejectReport()">↩ 반려</button>`;
+  } else if(status==='approved' || status==='sent'){
+    html = `<button class="btn btn-outline btn-sm" onclick="reopenReport()">↩ 결재 취소</button>`;
+  }
+  btns.innerHTML = html;
+
+  // 발송 카드
+  if(mailCard) mailCard.style.display = (status==='approved'||status==='sent') ? 'block' : 'none';
+  if(status==='approved'||status==='sent') loadMailPreset();
+}
+
+// 작성 완료
+function submitReport(){
+  const date = currentReportKey();
+  if(!date){ toast('⚠️ 보고 일자를 선택하세요.'); return; }
+  if(currentReportDoc()){ toast('⚠️ 이미 작성된 보고서입니다.'); return; }
+  const rec = {
+    dt:new Date().toISOString(), date,
+    writer:  document.getElementById('rp-writer').value,
+    reviewer:document.getElementById('rp-reviewer').value,
+    approver:document.getElementById('rp-approver').value,
+    note:    document.getElementById('rp-note').value,
+    status:'written',
+    writtenAt:new Date().toISOString(),
+  };
+  fbPush('/ims/reportdocs', rec).then(()=>{
+    toast('✅ 작성이 완료되었습니다. 검토자에게 전달됩니다.'); loadAllData();
+  }).catch(e=>toast('❌ 저장 실패: '+e.message));
+}
+
+function updateReportNote(){
+  const entry = currentReportDoc(); if(!entry) return;
+  const [id, r] = entry;
+  fbSet('/ims/reportdocs/'+id, {...r, note:document.getElementById('rp-note').value})
+    .then(()=>{ toast('✅ 특기사항이 수정되었습니다.'); loadAllData(); });
+}
+
+function reviewReport(){
+  const entry = currentReportDoc(); if(!entry) return;
+  const [id, r] = entry;
+  if(!confirm(`${r.reviewer} 명의로 검토 완료 처리합니다.`)) return;
+  fbSet('/ims/reportdocs/'+id, {
+    ...r, status:'review', reviewedAt:new Date().toISOString(),
+    reviewer:document.getElementById('rp-reviewer').value,
+    approver:document.getElementById('rp-approver').value,
+  }).then(()=>{ toast('✅ 검토 완료. 승인자에게 전달됩니다.'); loadAllData(); });
+}
+
+function approveReport(){
+  const entry = currentReportDoc(); if(!entry) return;
+  const [id, r] = entry;
+  const approver = document.getElementById('rp-approver').value;
+  if(!confirm(`${approver} 명의로 승인 처리합니다.\n승인 후 보고서를 발송할 수 있습니다.`)) return;
+  fbSet('/ims/reportdocs/'+id, {
+    ...r, status:'approved', approvedAt:new Date().toISOString(), approver,
+  }).then(()=>{ toast('✅ 승인 완료. 아래에서 보고서를 발송하세요.', 4000); loadAllData(); });
+}
+
+function rejectReport(){
+  const entry = currentReportDoc(); if(!entry) return;
+  const [id, r] = entry;
+  const reason = prompt('반려 사유를 입력하세요:', '');
+  if(reason===null) return;
+  fbSet('/ims/reportdocs/'+id, {
+    ...r, status:'written', reviewedAt:'', rejectReason:reason,
+  }).then(()=>{ toast('↩ 반려되었습니다. 작성자가 수정 후 재요청합니다.'); loadAllData(); });
+}
+
+function reopenReport(){
+  const entry = currentReportDoc(); if(!entry) return;
+  const [id, r] = entry;
+  if(!confirm('결재를 취소하고 작성 단계로 되돌립니다.')) return;
+  fbSet('/ims/reportdocs/'+id, {
+    ...r, status:'written', reviewedAt:'', approvedAt:'', sentAt:'',
+  }).then(()=>{ toast('결재가 취소되었습니다.'); loadAllData(); });
+}
+
+function cancelReport(){
+  const entry = currentReportDoc(); if(!entry) return;
+  if(!confirm('작성한 보고서를 삭제합니다.')) return;
+  fbRemove('/ims/reportdocs/'+entry[0]).then(()=>{ toast('삭제되었습니다.'); loadAllData(); });
+}
+
+// ── 메일 발송 ──────────────────────────────────
+function loadMailPreset(){
+  try{
+    const p = JSON.parse(localStorage.getItem(MAIL_PRESET_KEY)||'null');
+    if(!p) return;
+    const to=document.getElementById('rp-mail-to');
+    const cc=document.getElementById('rp-mail-cc');
+    if(to && !to.value) to.value = p.to||'';
+    if(cc && !cc.value) cc.value = p.cc||'';
+  }catch(e){}
+}
+function saveMailPreset(){
+  const to=document.getElementById('rp-mail-to').value.trim();
+  const cc=document.getElementById('rp-mail-cc').value.trim();
+  try{ localStorage.setItem(MAIL_PRESET_KEY, JSON.stringify({to,cc})); }catch(e){}
+  toast('✅ 수신자 기본값이 저장되었습니다.');
+}
+
+function sendReportMail(){
+  const entry = currentReportDoc();
+  if(!entry){ toast('⚠️ 승인된 보고서가 없습니다.'); return; }
+  const [id, r] = entry;
+  if(r.status!=='approved' && r.status!=='sent'){ toast('⚠️ 승인 완료 후 발송할 수 있습니다.'); return; }
+
+  const to = document.getElementById('rp-mail-to').value.trim();
+  const cc = document.getElementById('rp-mail-cc').value.trim();
+  if(!to){ toast('⚠️ 수신자를 입력하세요.'); return; }
+
+  const date = r.date;
+  const inc=Object.values(incoming).filter(x=>x.date===date);
+  const nc =Object.values(ncRecs).filter(x=>x.date===date);
+  const msNew=Object.values(measures).filter(x=>x.date===date);
+  const msDone=Object.values(measures).filter(x=>x.doneDt===date && x.date!==date);
+  const pass=inc.filter(x=>x.judge==='합격').length;
+  const fail=inc.filter(x=>x.judge==='불합격').length;
+  const hold=inc.filter(x=>x.judge==='보류').length;
+  const sapNg=inc.filter(x=>x.sapOverall==='ng').length;
+  const ncOpen=nc.filter(x=>x.status!=='완료').length;
+
+  const d=new Date(date);
+  const wd=['일','월','화','수','목','금','토'][d.getDay()];
+  const dateLabel=`${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 (${wd})`;
+
+  const subject = `[수입검사 일일 보고] ${date.replace(/-/g,'.')} — 셰플러 이천공장`;
+  const body = `수입검사 일일 업무 보고
+
+■ 보고 일자 : ${dateLabel}
+
+■ 결재
+  작성 : ${r.writer}
+  검토 : ${r.reviewer}
+  승인 : ${r.approver}
+
+────────────────────────────
+
+■ 검사 실적
+  - 총 검사 건수 : ${inc.length}건
+  - 합격 ${pass}건 / 불합격 ${fail}건 / 보류 ${hold}건
+${inc.length ? inc.map(x=>`  · ${x.num} ${x.name} — 외관 ${x.visual} / 치수 ${x.dim} → ${x.judge}${x.note?' ('+x.note+')':''}`).join('\n') : '  (해당일 검사 없음)'}
+
+■ 측정의뢰
+  - 신규 의뢰 ${msNew.length}건 / 결과 입력 ${msDone.length+msNew.filter(x=>x.result).length}건
+${[...msNew,...msDone].length ? [...msNew,...msDone].map(x=>`  · ${x.num||'-'} — ${x.desc} → ${x.result||'결과 대기'}`).join('\n') : '  (해당일 측정의뢰 없음)'}
+
+■ 부적합
+  - 발생 ${nc.length}건 / 미처리 ${ncOpen}건
+${nc.length ? nc.map(x=>`  · ${x.num} (${x.ncType}) ${x.qty||''}개 → ${x.action} [${x.status}]`).join('\n') : '  (해당일 부적합 없음)'}
+
+${sapNg>0 ? `■ 셰플러 SQM 처리 요청\n  - 검사기준서 이상 ${sapNg}건 — 확인 및 조치 요청드립니다.\n` : ''}${ncOpen>0 ? `  - 부적합 처리 승인 대기 ${ncOpen}건 — 반품·특채·폐기 판단 요청드립니다.\n` : ''}
+■ 특기사항
+${r.note || '  특이사항 없음'}
+
+────────────────────────────
+본 보고서는 수입검사 업무관리 시스템에서 자동 생성되었습니다.
+시스템: https://insys-hq.github.io/Insys-review/ims.html
+
+㈜인시스`;
+
+  let url = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  if(cc) url += `&cc=${encodeURIComponent(cc)}`;
+  window.location.href = url;
+
+  fbSet('/ims/reportdocs/'+id, {
+    ...r, status:'sent', sentAt:new Date().toISOString(), mailTo:to, mailCc:cc,
+  }).then(()=>{
+    toast('📧 메일 앱이 실행됩니다. 발송 이력이 기록되었습니다.', 4000);
+    loadAllData();
+  });
+}
+
+// ── 결재 이력 테이블 ────────────────────────────
+function renderReportDocs(){
+  const tb=document.getElementById('rp-tbody'); if(!tb) return;
+  const arr=Object.entries(reportDocs).sort((a,b)=>(b[1].date||'').localeCompare(a[1].date||''));
+  const stBadge=s=>s==='sent'?'badge-blue':s==='approved'?'badge-green':s==='review'?'badge-teal':'badge-gray';
+  const stText =s=>s==='sent'?'발송 완료':s==='approved'?'승인 완료':s==='review'?'승인 대기':'검토 대기';
+  tb.innerHTML=arr.length?arr.map(([id,r])=>`<tr>
+    <td><b>${fmtD(r.date)}</b></td>
+    <td>${r.writer}<br><span style="font-size:12px;color:var(--slate)">${r.writtenAt?fmtDt(r.writtenAt):'-'}</span></td>
+    <td>${r.reviewedAt?`${r.reviewer}<br><span style="font-size:12px;color:var(--green)">✓ ${fmtDt(r.reviewedAt)}</span>`:`<span style="color:var(--slate)">${r.reviewer}</span>`}</td>
+    <td>${r.approvedAt?`${r.approver}<br><span style="font-size:12px;color:var(--green)">✓ ${fmtDt(r.approvedAt)}</span>`:`<span style="color:var(--slate)">${r.approver}</span>`}</td>
+    <td><span class="badge ${stBadge(r.status)}">${stText(r.status)}</span></td>
+    <td style="font-size:12px">${r.sentAt?`📧 ${fmtDt(r.sentAt)}<br><span style="color:var(--slate)">${r.mailTo||''}</span>`:'-'}</td>
+    <td>
+      <button class="btn btn-outline btn-sm" onclick="openReportDoc('${r.date}')">열기</button>
+      <button class="btn btn-red btn-sm" onclick="delItem('/ims/reportdocs','${id}')">삭제</button>
+    </td>
+  </tr>`).join(''):'<tr><td colspan="7" style="text-align:center;color:var(--slate);padding:16px">결재 이력 없음</td></tr>';
+}
+
+function openReportDoc(date){
+  document.getElementById('rp-date').value = date;
+  onReportDateChange();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
 function buildDailyReport(){
   const el=document.getElementById('daily-report-body'); if(!el) return;
   const date=document.getElementById('rp-date').value;
