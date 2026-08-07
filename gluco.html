@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>GlucoLog v2.0 — 혈당관리</title>
+<title>GlucoLog v2.1 — 혈당관리</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script type="module">
@@ -227,7 +227,7 @@ textarea.form-input{resize:none;height:70px;}
 <div class="safe-top"></div>
 <header class="app-header">
   <div class="logo-block">
-    <div class="logo">Gluco<span>Log</span> <span class="ver">v2.0</span></div>
+    <div class="logo">Gluco<span>Log</span> <span class="ver">v2.1</span></div>
     <div class="logo-sub">혈당·혈압·식단 통합 관리</div>
   </div>
   <div id="headerDate" class="date-badge">로딩중...</div>
@@ -475,13 +475,13 @@ textarea.form-input{resize:none;height:70px;}
   <div class="card">
     <div class="card-title"><span class="dot" style="background:var(--warn)"></span>병원 혈액검사 결과 분석</div>
     <p style="font-size:12px;color:var(--text3);margin-bottom:10px;line-height:1.6">
-      검사결과지를 촬영하여 올리세요.<br>HbA1c, 공복혈당, 콜레스테롤 등을 AI가 종합 분석합니다.
+      검사결과지가 여러 장이면 한 장씩 추가하세요. 전부 추가한 뒤 저장 버튼을 누르면 한 번에 종합 분석합니다.
     </p>
-    <div class="photo-zone">
-      <input type="file" accept="image/*" id="labPhotoInput" onchange="prevPhoto(this,'labPrev','labB64')">
+    <div id="labPhotoThumbs" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px"></div>
+    <div class="photo-zone" id="labPhotoZone">
+      <input type="file" accept="image/*" multiple id="labPhotoInput" onchange="addLabPhotos(this)">
       <div class="ph-icon">🔬</div>
-      <div class="ph-txt">검사결과지 사진 업로드</div>
-      <img class="photo-preview" id="labPrev">
+      <div class="ph-txt" id="labPhotoZoneTxt">검사결과지 사진 추가 (여러 장 가능)</div>
     </div>
     <div class="input-row" style="margin-top:10px">
       <div class="form-group">
@@ -494,12 +494,18 @@ textarea.form-input{resize:none;height:70px;}
       <textarea class="form-input" id="labMemo" placeholder="예: 피로감, 다음증, 야간뇨 등"></textarea>
     </div>
     <button class="btn btn-warn" onclick="analyzeLabResult()">
-      <span id="labBtnTxt">🩺 AI 종합 진단 시작</span><span class="spinner" id="labSp"></span>
+      <span id="labBtnTxt">🩺 저장 + AI 종합진단</span><span class="spinner" id="labSp"></span>
     </button>
     <div class="ai-result" id="labAiResult">
       <div class="ai-header">🩺 AI 종합 진단 <span style="font-size:10px;font-weight:400;color:var(--text3)">(참고용 — 최종 판단은 담당의에게)</span></div>
       <div class="ai-body" id="labAiBody"></div>
     </div>
+  </div>
+
+  <!-- 저장된 검사 기록 -->
+  <div class="card">
+    <div class="card-title"><span class="dot" style="background:var(--text3)"></span>저장된 검사 기록</div>
+    <div id="labRecordsList"><div class="empty-state"><div class="e-icon">🔬</div><div class="e-txt">저장된 검사 기록이 없습니다</div></div></div>
   </div>
 
   <!-- 기록된 식단 선택 분석 -->
@@ -790,14 +796,30 @@ textarea.form-input{resize:none;height:70px;}
   </div>
 </div>
 
+<!-- 검사기록 열람 모달 -->
+<div class="modal-overlay" id="labViewOverlay" onclick="closeLabView()">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-bar"></div>
+    <div class="modal-title" id="labViewTitle">검사 기록</div>
+    <div id="labViewPhotos" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px"></div>
+    <div class="ai-result show" style="margin-top:0">
+      <div class="ai-header">🩺 AI 진단 결과</div>
+      <div class="ai-body" id="labViewBody"></div>
+    </div>
+    <button class="btn btn-outline" style="margin-top:12px" onclick="closeLabView()">닫기</button>
+  </div>
+</div>
+
 <script>
 // ─ 전역 상태 ─
 let db,col,addDoc,getDocs,q,orderBy;
 let gChart,bChart,mChart;
-let mealB64=null,labB64=null,quickB64=null;
+let mealB64=null,quickB64=null;
+let labPhotosArr=[];
+let labRecordsCache=[];
 let calcMode=1;
-const VER='v2.0';
-const UPDATE_NOTE='새 버전이 배포되면 접속 시 자동으로 업데이트 알림을 보여드립니다.';
+const VER='v2.1';
+const UPDATE_NOTE='혈액검사 결과지 여러 장 업로드, 검사기록 목록·삭제 기능이 추가되었습니다.';
 
 // ─ Firestore 문서 조작 함수 ─
 let fsDoc,updateDoc,deleteDoc;
@@ -836,8 +858,11 @@ window.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('mealDate').value=todayStr();
   document.getElementById('labDate').value=todayStr();
   restorePhotoState('mealPhotoInput','mealPrev','mealB64');
-  restorePhotoState('labPhotoInput','labPrev','labB64');
   restorePhotoState('quickFoodInput','quickPrev','quickB64');
+  try{
+    const savedLab=sessionStorage.getItem('gl_labPhotos');
+    if(savedLab){ labPhotosArr=JSON.parse(savedLab); renderLabThumbs(); }
+  }catch(e){}
   checkVersionUpdate();
 });
 
@@ -880,6 +905,7 @@ window.addEventListener('firebaseReady',async()=>{
   loadMealOptions();
   await loadLastVitals();
   loadExerciseReminder();
+  loadLabRecordsList();
 });
 
 // ─ 탭 ─
@@ -892,7 +918,7 @@ function switchTab(name){
   if(name==='graph') setTimeout(()=>{ loadGC(null,null); loadBC(null,null); loadMC(null,null); },60);
   if(name==='report') loadAllHistory();
   if(name==='profile') loadTodayActivity();
-  if(name==='analysis') loadMealOptions();
+  if(name==='analysis'){ loadMealOptions(); loadLabRecordsList(); }
 }
 
 // ─ 토스트 ─
@@ -1316,21 +1342,135 @@ async function saveMeal(){
 }
 
 // ─ 검사결과 분석 ─
+// ─ 검사결과지 다중 사진 추가/삭제/미리보기 ─
+async function addLabPhotos(input){
+  if(!input.files||!input.files.length) return;
+  const zoneTxt=document.getElementById('labPhotoZoneTxt');
+  const origTxt=zoneTxt.textContent;
+  zoneTxt.textContent='압축 중...';
+  for(const file of Array.from(input.files)){
+    const raw=await new Promise((resolve)=>{
+      const r=new FileReader();
+      r.onload=e=>resolve(e.target.result.split(',')[1]);
+      r.readAsDataURL(file);
+    });
+    let compressed=raw;
+    try{ compressed=await compressImage(raw,1000,0.65); }catch(err){}
+    labPhotosArr.push(compressed);
+  }
+  input.value='';
+  zoneTxt.textContent=origTxt;
+  renderLabThumbs();
+  try{ sessionStorage.setItem('gl_labPhotos',JSON.stringify(labPhotosArr)); }catch(e){}
+  showToast(`📷 ${labPhotosArr.length}장 추가됨`);
+}
+
+function renderLabThumbs(){
+  const el=document.getElementById('labPhotoThumbs');
+  if(!el) return;
+  if(!labPhotosArr.length){ el.innerHTML=''; return; }
+  el.innerHTML=labPhotosArr.map((b64,idx)=>`
+    <div style="position:relative;width:60px;height:60px">
+      <img src="data:image/jpeg;base64,${b64}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border)">
+      <button onclick="removeLabPhoto(${idx})" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:var(--warn);color:#fff;border:none;font-size:11px;line-height:1;cursor:pointer;-webkit-tap-highlight-color:transparent">✕</button>
+      <div style="position:absolute;bottom:2px;left:2px;background:rgba(0,0,0,0.6);color:#fff;font-size:9px;padding:1px 4px;border-radius:4px">${idx+1}</div>
+    </div>`).join('');
+}
+
+function removeLabPhoto(idx){
+  labPhotosArr.splice(idx,1);
+  renderLabThumbs();
+  try{ sessionStorage.setItem('gl_labPhotos',JSON.stringify(labPhotosArr)); }catch(e){}
+}
+
+// ─ 검사결과 저장 + AI 종합진단 (다중 사진) ─
 async function analyzeLabResult(){
-  if(!labB64){showToast('⚠️ 검사결과지 사진 먼저 업로드');return;}
+  if(!labPhotosArr.length){showToast('⚠️ 검사결과지 사진을 먼저 추가하세요');return;}
+  if(!db){showToast('⚠️ Firebase 연결 중');return;}
   setBtnLoading('labBtnTxt','labSp',true,'');
   const memo=document.getElementById('labMemo').value;
-  const labDate=document.getElementById('labDate').value;
+  const labDate=document.getElementById('labDate').value||todayStr();
   try{
-    const res=await callClaude([{role:'user',content:[
-      {type:'image',source:{type:'base64',media_type:'image/jpeg',data:labB64}},
-      {type:'text',text:`검사일:${labDate}, 증상:${memo||'없음'}\n\n위 혈액검사 결과를 아래 항목으로 진단:\n1. 각 항목 정상/이상 여부 (수치 포함)\n2. 당뇨 관련 지표 분석 (공복혈당,HbA1c,인슐린저항성)\n3. 심혈관 위험 인자 (콜레스테롤,중성지방,LDL/HDL)\n4. 간·신장 기능 이상 여부\n5. 종합 위험도 (낮음/보통/높음/매우높음)\n6. 즉시 병원 방문 필요 여부\n7. 생활습관 개선 권고\n8. 추가 검사 권고\n내과·내분비내과 전문의 수준으로 작성.`}
-    ]}]);
+    const content=[
+      ...labPhotosArr.map(b64=>({type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}})),
+      {type:'text',text:`검사일:${labDate}, 증상:${memo||'없음'} (검사결과지 총 ${labPhotosArr.length}장)\n\n위 혈액검사 결과지(여러 장이면 모두 종합)를 아래 항목으로 진단:\n1. 각 항목 정상/이상 여부 (수치 포함)\n2. 당뇨 관련 지표 분석 (공복혈당,HbA1c,인슐린저항성)\n3. 심혈관 위험 인자 (콜레스테롤,중성지방,LDL/HDL)\n4. 간·신장 기능 이상 여부\n5. 종합 위험도 (낮음/보통/높음/매우높음)\n6. 즉시 병원 방문 필요 여부\n7. 생활습관 개선 권고\n8. 추가 검사 권고\n내과·내분비내과 전문의 수준으로 작성.`}
+    ];
+    const res=await callClaude([{role:'user',content}]);
     document.getElementById('labAiBody').textContent=res;
     document.getElementById('labAiResult').classList.add('show');
-    if(db) await addDoc(col(db,'glucolog'),{type:'labResult',date:labDate||todayStr(),memo,aiDiagnosis:res,createdAt:new Date()});
+
+    const totalSize=labPhotosArr.reduce((s,b)=>s+b.length,0);
+    const photosToStore=totalSize<700000?labPhotosArr:[];
+    if(!photosToStore.length && labPhotosArr.length){
+      showToast('⚠️ 사진 용량이 커서 원본은 저장하지 않고 분석결과만 저장합니다',3500);
+    }
+    await addDoc(col(db,'glucolog'),{
+      type:'labResult',date:labDate,memo,aiDiagnosis:res,
+      photoCount:labPhotosArr.length,photos:photosToStore,
+      createdAt:new Date()
+    });
+    showToast(`✅ 검사결과 저장 완료 (${labPhotosArr.length}장)`);
+
+    labPhotosArr=[];
+    renderLabThumbs();
+    try{ sessionStorage.removeItem('gl_labPhotos'); }catch(e){}
+    document.getElementById('labMemo').value='';
+    loadLabRecordsList();
   }catch(e){showToast('❌ 분석 오류');console.error(e);}
-  setBtnLoading('labBtnTxt','labSp',false,'🩺 AI 종합 진단 시작');
+  setBtnLoading('labBtnTxt','labSp',false,'🩺 저장 + AI 종합진단');
+}
+
+// ─ 저장된 검사기록 리스트/열람/삭제 ─
+async function loadLabRecordsList(){
+  if(!db) return;
+  const snap=await getDocs(q(col(db,'glucolog'),orderBy('createdAt','desc')));
+  const recs=snap.docs.map(d=>({...d.data(),_id:d.id})).filter(r=>r.type==='labResult');
+  labRecordsCache=recs;
+  const el=document.getElementById('labRecordsList');
+  if(!el) return;
+  if(!recs.length){ el.innerHTML='<div class="empty-state"><div class="e-icon">🔬</div><div class="e-txt">저장된 검사 기록이 없습니다</div></div>'; return; }
+  el.innerHTML=recs.map(r=>{
+    const preview=(r.aiDiagnosis||'').slice(0,50).replace(/\n/g,' ');
+    return `<div class="meal-item">
+      <span class="meal-time-badge" style="background:var(--wl);color:var(--warn)">${r.date}</span>
+      <div class="meal-info">
+        <div class="meal-name" style="font-size:12px">${preview}${(r.aiDiagnosis||'').length>50?'...':''}</div>
+        ${r.photoCount?`<div class="meal-meta">📷 ${r.photoCount}장</div>`:''}
+      </div>
+      <div class="item-actions">
+        <button class="icon-btn" onclick="viewLabRecord('${r._id}')" aria-label="보기">👁️</button>
+        <button class="icon-btn del" onclick="deleteLabRecord('${r._id}')" aria-label="삭제">🗑️</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function viewLabRecord(id){
+  const r=labRecordsCache.find(x=>x._id===id);
+  if(!r) return;
+  document.getElementById('labViewTitle').textContent=`🔬 검사 기록 · ${r.date}`;
+  const photosEl=document.getElementById('labViewPhotos');
+  if(r.photos && r.photos.length){
+    photosEl.innerHTML=r.photos.map(b64=>`<img src="data:image/jpeg;base64,${b64}" style="width:76px;height:76px;object-fit:cover;border-radius:8px;border:1px solid var(--border)">`).join('');
+  }else{
+    photosEl.innerHTML='<div style="font-size:11px;color:var(--text3)">원본 사진은 저장되지 않았습니다 (분석결과만 보관)</div>';
+  }
+  document.getElementById('labViewBody').textContent=r.aiDiagnosis||'';
+  document.getElementById('labViewOverlay').classList.add('show');
+}
+
+function closeLabView(){
+  document.getElementById('labViewOverlay').classList.remove('show');
+}
+
+async function deleteLabRecord(id){
+  if(!confirm('이 검사 기록을 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.')) return;
+  if(!db) return;
+  try{
+    await deleteDoc(fsDoc(db,'glucolog',id));
+    showToast('🗑️ 검사기록 삭제 완료');
+    loadLabRecordsList();
+  }catch(e){showToast('❌ 삭제 실패');console.error(e);}
 }
 
 // ─ 최근 혈당/혈압 값 자동 채우기 (반복입력 방지) ─
