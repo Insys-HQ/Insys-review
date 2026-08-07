@@ -6,7 +6,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>인시스 점심주문관리 v7.0</title>
+<title>인시스 점심주문관리 v7.1</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -963,7 +963,7 @@ body.season-summer .chat-panel { border-color:#b2dfdb; }
   <div class="hd-inner">
     <div class="hd-left" style="display:flex;align-items:center;gap:10px">
       <h1>인시스 점심주문관리</h1>
-      <span class="ver-badge">v7.0</span>
+      <span class="ver-badge">v7.1</span>
     </div>
     <div class="hd-right">
       <div id="weatherInfo"></div>
@@ -1222,7 +1222,7 @@ body.season-summer .chat-panel { border-color:#b2dfdb; }
     <div id="restaurantAdminList"></div>
   </div>
 
-  <div class="footer-info">점심주문관리 시스템 v7.0</div>
+  <div class="footer-info">점심주문관리 시스템 v7.1</div>
 
   <!-- ══ AI 추천 모달 ══ -->
   <div id="aiModal" class="modal-overlay hidden">
@@ -1455,8 +1455,8 @@ function startApp() {
   subscribeToday();
   loadRestaurants();
   scheduleAutoReset();
-  // 채팅창 초기화 (로그인 후)
-  if(window._initFloatChat) window._initFloatChat();
+  setTimeout(startChat, 500); // 채팅 시작
+
 }
 
 // ══════════════════════════════════════════════════════
@@ -2594,7 +2594,7 @@ function bindEvents() {
       document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('hidden',p.dataset.panel!==btn.dataset.tab));
       if(btn.dataset.tab==='review')     renderReviewDateList();
       if(btn.dataset.tab==='dashboard')  loadDashboard();
-      if(btn.dataset.tab==='chat')        initChat();
+
     });
   });
   // 대시보드 기간 버튼
@@ -3030,279 +3030,154 @@ async function renderDashboard() {
 
 
 
-function renderChatMessages(msgs) {
-  const el = $('chatMessages'); if(!el) return;
-  let lastDate = '';
-  el.innerHTML = msgs.map(msg => {
-    const mine = msg.author === myName;
-    const ts   = msg.createdAt ? new Date(msg.createdAt.seconds*1000) : new Date();
-    const dateStr = ts.toLocaleDateString('ko-KR',{month:'numeric',day:'numeric',weekday:'short'});
-    const timeStr = ts.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
-    let divider = '';
-    if(dateStr !== lastDate) {
-      divider = `<div class="chat-date-divider"><span>${dateStr}</span></div>`;
-      lastDate = dateStr;
-    }
-    // 이모지 반응
-    const reactions = (msg.reactions||{});
-    const reactionHtml = CHAT_EMOJIS
-      .filter(e => reactions[e] && Object.keys(reactions[e]).length > 0)
-      .map(e => {
-        const cnt   = Object.keys(reactions[e]).length;
-        const acted = reactions[e][myName] ? ' reacted' : '';
-        return `<button class="chat-reaction-btn${acted}" data-id="${esc(msg.id)}" data-emoji="${e}">${e} ${cnt}</button>`;
-      }).join('');
 
-    const delBtn = mine && !msg.deleted
-      ? `<button class="chat-del-btn" data-id="${esc(msg.id)}" title="삭제">✕</button>` : '';
 
-    const bubbleText = msg.deleted
-      ? '<span style="opacity:.4;font-style:italic">삭제된 메시지</span>'
-      : esc(msg.text||'');
 
-    return `${divider}
-    <div class="chat-msg-wrap" style="display:flex;flex-direction:column;align-items:${mine?'flex-end':'flex-start'}">
-      <div style="display:flex;align-items:flex-end;gap:6px;flex-direction:${mine?'row-reverse':'row'}">
-        <div class="chat-msg ${mine?'mine':'other'}">
-          ${!mine?`<span class="chat-msg-author">${esc(msg.author)}</span>`:''}
-          <div class="chat-bubble">${bubbleText}</div>
-          <span class="chat-msg-time">${timeStr}</span>
-        </div>
-        ${!msg.deleted ? delBtn : ''}
-      </div>
-      ${reactionHtml ? `<div class="chat-reactions" style="justify-content:${mine?'flex-end':'flex-start'}">${reactionHtml}</div>` : ''}
-      ${!msg.deleted ? `
-      <div class="chat-react-add" style="display:flex;gap:3px;margin-top:2px">
-        ${CHAT_EMOJIS.map(e=>`<button class="chat-reaction-btn" data-id="${esc(msg.id)}" data-emoji="${e}" style="padding:1px 6px;font-size:11px">${e}</button>`).join('')}
-      </div>` : ''}
-    </div>`;
-  }).join('');
 
-  // 이벤트 바인딩
-  el.querySelectorAll('.chat-del-btn').forEach(btn=>{
-    btn.addEventListener('click', async ()=>{
-      if(!confirm('메시지를 삭제할까요?')) return;
-      await setDoc(doc(db,'lunch_chat',btn.dataset.id),{deleted:true},{merge:true});
-    });
-  });
-  el.querySelectorAll('[data-emoji]').forEach(btn=>{
-    btn.addEventListener('click', async ()=>{
-      const mid=btn.dataset.id, emoji=btn.dataset.emoji;
-      const ref=doc(db,'lunch_chat',mid);
-      const curSnap=await getDocs(query(collection(db,'lunch_chat'),limit(1)));
-      // 직접 문서 가져오기
-      const msgDoc=msgs.find(m=>m.id===mid);
-      if(!msgDoc) return;
-      const reactions={...(msgDoc.reactions||{})};
-      if(!reactions[emoji]) reactions[emoji]={};
-      if(reactions[emoji][myName]) delete reactions[emoji][myName];
-      else reactions[emoji][myName]=true;
-      await setDoc(ref,{reactions},{merge:true});
-    });
-  });
 
-  // 스크롤 하단 유지
-  el.scrollTop = el.scrollHeight;
-}
 
-async function sendChatMessage(text) {
-  if(!text.trim()) return;
-  await addDoc(collection(db,'lunch_chat'),{
-    author: myName,
-    text: text.trim(),
-    reactions: {},
-    deleted: false,
-    createdAt: serverTimestamp()
-  });
-}
 
 
 // ══════════════════════════════════════════════════════
-// 플로팅 채팅창
+// 플로팅 채팅창 v2
 // ══════════════════════════════════════════════════════
-(function(){
-  let chatInited = false;
-  let chatUnsub  = null;
+let chatUnsubscribe = null;
 
-  // 오늘 날짜 키
-  const chatDayKey = () => new Date().toISOString().slice(0,10);
+function startChat() {
+  if(chatUnsubscribe) return; // 이미 구독 중
 
-  // ── 채팅 초기화 ──────────────────────────────────────
-  function initFloatChat() {
-    if(chatInited) return;
-    chatInited = true;
+  // 날짜키 (대시 제거: 20260725)
+  const dk = new Date().toISOString().slice(0,10).replace(/-/g,'');
+  const COL = 'lunchat' + dk; // Firestore 컬렉션명 (특수문자 없음)
 
-    const panel   = document.getElementById('chatPanel');
-    const header  = document.getElementById('chatDragHandle');
-    const toggleBtn = document.getElementById('chatToggleBtn');
-    const sendBtn = document.getElementById('chatSendBtn');
-    const input   = document.getElementById('chatInput');
-    const resizeH = document.getElementById('chatResizeHandle');
-    const msgEl   = document.getElementById('chatMessages');
+  // ── Firebase 실시간 구독 ──────────────────────────────
+  // orderBy 인덱스 불필요하도록 createdAt 대신 클라이언트 정렬
+  chatUnsubscribe = onSnapshot(
+    collection(db, COL),
+    snap => {
+      const msgs = snap.docs
+        .map(d => ({id:d.id, ...d.data()}))
+        .sort((a,b) => (a.ts||0)-(b.ts||0));
+      renderChat(msgs);
+    },
+    err => console.warn('채팅 구독 오류:', err.message)
+  );
 
-    // ── 드래그 이동 ──────────────────────────────────
-    let dragX=0, dragY=0, panelX=0, panelY=0, dragging=false;
-    header.addEventListener('mousedown', e=>{
-      dragging=true;
+  // ── 메시지 전송 ──────────────────────────────────────
+  function doSend() {
+    const input = $('chatInput');
+    const text  = (input ? input.value : '').trim();
+    if(!text || !myName) { if(!myName) showToast('이름을 먼저 선택해 주세요'); return; }
+    addDoc(collection(db, COL), {
+      author: myName,
+      text:   text,
+      ts:     Date.now()
+    }).catch(e => console.warn('채팅 전송 오류:', e.message));
+    if(input) input.value = '';
+  }
+
+  const sendBtn = $('chatSendBtn');
+  const input   = $('chatInput');
+  if(sendBtn) sendBtn.onclick = doSend;
+  if(input)   input.onkeydown = e => { if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); doSend(); } };
+
+  // 이모지 퀵버튼
+  document.querySelectorAll('.chat-emoji-quick button').forEach(btn => {
+    btn.onclick = () => { if(input){ input.value += btn.dataset.e; input.focus(); } };
+  });
+
+  // ── 드래그 이동 ──────────────────────────────────────
+  const panel  = $('chatPanel');
+  const handle = $('chatDragHandle');
+  if(panel && handle) {
+    let dx=0, dy=0, ox=0, oy=0, drag=false;
+    handle.onmousedown = e => {
+      drag=true;
       const r=panel.getBoundingClientRect();
-      dragX=e.clientX; dragY=e.clientY;
-      panelX=r.left; panelY=r.top;
-      panel.style.right='auto';
-      panel.style.bottom='auto';
-      panel.style.left=panelX+'px';
-      panel.style.top=panelY+'px';
+      dx=e.clientX; dy=e.clientY; ox=r.left; oy=r.top;
+      panel.style.right='auto'; panel.style.bottom='auto';
+      panel.style.left=ox+'px'; panel.style.top=oy+'px';
       e.preventDefault();
-    });
-    document.addEventListener('mousemove', e=>{
-      if(!dragging) return;
-      const dx=e.clientX-dragX, dy=e.clientY-dragY;
-      panel.style.left=Math.max(0,Math.min(window.innerWidth-60,panelX+dx))+'px';
-      panel.style.top=Math.max(0,Math.min(window.innerHeight-60,panelY+dy))+'px';
-    });
-    document.addEventListener('mouseup', ()=>{ dragging=false; });
+    };
+    document.onmousemove = e => {
+      if(!drag) return;
+      panel.style.left = Math.max(0, ox+(e.clientX-dx)) + 'px';
+      panel.style.top  = Math.max(0, oy+(e.clientY-dy)) + 'px';
+    };
+    document.onmouseup = () => { drag=false; };
+  }
 
-    // ── 리사이즈 ─────────────────────────────────────
-    let resizing=false, rsx=0, rsy=0, rsw=0, rsh=0;
-    resizeH.addEventListener('mousedown', e=>{
-      resizing=true;
-      rsx=e.clientX; rsy=e.clientY;
-      rsw=panel.offsetWidth; rsh=panel.offsetHeight;
+  // ── 리사이즈 ─────────────────────────────────────────
+  const resizeH = $('chatResizeHandle');
+  if(panel && resizeH) {
+    let rs=false, rx=0, ry=0, rw=0, rh=0;
+    resizeH.onmousedown = e => {
+      rs=true; rx=e.clientX; ry=e.clientY;
+      rw=panel.offsetWidth; rh=panel.offsetHeight;
       e.preventDefault(); e.stopPropagation();
+    };
+    document.addEventListener('mousemove', e => {
+      if(!rs) return;
+      const nw = Math.max(220, rw-(e.clientX-rx));
+      const nh = Math.max(280, rh+(e.clientY-ry));
+      panel.style.width = nw+'px';
+      const body = $('chatBody');
+      if(body) body.style.height = (nh-50)+'px';
     });
-    document.addEventListener('mousemove', e=>{
-      if(!resizing) return;
-      const nw = Math.max(220, rsw-(e.clientX-rsx));
-      const nh = Math.max(200, rsh+(e.clientY-rsy));
-      panel.style.width=nw+'px';
-      const body=document.getElementById('chatBody');
-      if(body) body.style.height=(nh-46)+'px';
-    });
-    document.addEventListener('mouseup', ()=>{ resizing=false; });
+    document.addEventListener('mouseup', ()=>{ rs=false; });
+  }
 
-    // ── 최소화 토글 ──────────────────────────────────
-    toggleBtn.addEventListener('click', ()=>{
+  // ── 최소화 ───────────────────────────────────────────
+  const toggleBtn = $('chatToggleBtn');
+  if(toggleBtn && panel) {
+    toggleBtn.onclick = () => {
       panel.classList.toggle('minimized');
-      toggleBtn.textContent = panel.classList.contains('minimized') ? '+' : '─';
-    });
+      toggleBtn.textContent = panel.classList.contains('minimized') ? '＋' : '－';
+    };
+  }
+}
 
-    // ── 메시지 전송 ──────────────────────────────────
-    function sendMsg() {
-      const text=(input.value||'').trim();
-      if(!text || !myName) return;
-      const dk=chatDayKey();
-      addDoc(collection(db,'lunch_chat_'+dk), {
-        author: myName,
-        text:   text,
-        ts:     Date.now()
-      }).catch(()=>{});
-      input.value='';
-      input.focus();
+function renderChat(msgs) {
+  const el = $('chatMessages');
+  if(!el) return;
+  const atBottom = el.scrollHeight - el.scrollTop <= el.clientHeight + 60;
+
+  el.innerHTML = '';
+  msgs.forEach(msg => {
+    const mine = (msg.author === myName);
+    const ts   = msg.ts ? new Date(msg.ts) : new Date();
+    const time  = ts.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+
+    const wrap  = document.createElement('div');
+    wrap.className = 'chat-bubble-wrap ' + (mine ? 'mine' : 'other');
+
+    if(!mine) {
+      const auth = document.createElement('div');
+      auth.className = 'chat-author';
+      auth.textContent = msg.author || '';
+      wrap.appendChild(auth);
     }
-    sendBtn.addEventListener('click', sendMsg);
-    input.addEventListener('keydown', e=>{
-      if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); sendMsg(); }
-    });
 
-    // ── 이모지 퀵 ────────────────────────────────────
-    document.querySelectorAll('.chat-emoji-quick button').forEach(btn=>{
-      btn.addEventListener('click',()=>{
-        input.value=(input.value||'')+btn.dataset.e;
-        input.focus();
-      });
-    });
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-bubble';
+    bubble.textContent = msg.text || '';
+    wrap.appendChild(bubble);
 
-    // ── Firebase 실시간 구독 ──────────────────────────
-    subscribeChat();
+    const timeEl = document.createElement('div');
+    timeEl.className = 'chat-time';
+    timeEl.textContent = time;
+    wrap.appendChild(timeEl);
 
-    // 자정에 채팅 갱신 (날짜 바뀌면 새 채팅방)
-    const now=new Date();
-    const midnight=new Date(now); midnight.setHours(24,0,5,0);
-    setTimeout(()=>{
-      if(chatUnsub) chatUnsub();
-      chatInited=false;
-      if(msgEl) msgEl.innerHTML='';
-      subscribeChat();
-    }, midnight-now);
-  }
-
-  function subscribeChat() {
-    const dk=chatDayKey();
-    const q=query(
-      collection(db,'lunch_chat_'+dk),
-      orderBy('ts','asc'),
-      limit(200)
-    );
-    let lastDate='';
-    chatUnsub=onSnapshot(q, snap=>{
-      const msgEl=document.getElementById('chatMessages');
-      if(!msgEl) return;
-      const wasBottom = msgEl.scrollHeight-msgEl.scrollTop <= msgEl.clientHeight+40;
-
-      msgEl.innerHTML='';
-      snap.docs.forEach(d=>{
-        const msg=d.data();
-        const mine=(msg.author===myName);
-        const dt=new Date(msg.ts||Date.now());
-        const dateStr=dt.toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'});
-        const timeStr=dt.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
-
-        if(dateStr!==lastDate){
-          lastDate=dateStr;
-          const sep=document.createElement('div');
-          sep.className='chat-date-sep';
-          sep.textContent=dateStr;
-          msgEl.appendChild(sep);
-        }
-
-        const wrap=document.createElement('div');
-        wrap.className='chat-bubble-wrap '+(mine?'mine':'other');
-
-        if(!mine){
-          const auth=document.createElement('div');
-          auth.className='chat-author';
-          auth.textContent=msg.author||'';
-          wrap.appendChild(auth);
-        }
-
-        const bubble=document.createElement('div');
-        bubble.className='chat-bubble';
-        bubble.textContent=msg.text||'';
-        wrap.appendChild(bubble);
-
-        const time=document.createElement('div');
-        time.className='chat-time';
-        time.textContent=timeStr;
-        wrap.appendChild(time);
-
-        msgEl.appendChild(wrap);
-      });
-
-      // 접속 인원
-      const names=[...new Set(snap.docs.map(d=>d.data().author).filter(Boolean))];
-      const online=document.getElementById('chatOnline');
-      if(online) online.textContent=names.length>0?`${names.length}명 참여중`:'';
-
-      if(wasBottom) msgEl.scrollTop=msgEl.scrollHeight;
-    }, err=>console.warn('채팅 오류:',err));
-  }
-
-  // DOMContentLoaded 후 바인딩
-  document.addEventListener('DOMContentLoaded', ()=>{
-    // 로그인 완료 후 채팅 초기화 (myName 필요)
-    const origStartApp = window._origStartApp;
-    // startApp 실행 후 자동 초기화
-    const obs = new MutationObserver(()=>{
-      if(myName && document.getElementById('chatPanel')) {
-        initFloatChat();
-        obs.disconnect();
-      }
-    });
-    obs.observe(document.body, {attributes:true, childList:true, subtree:true});
+    el.appendChild(wrap);
   });
 
-  // startApp 호출 시 채팅 초기화
-  window._initFloatChat = initFloatChat;
-})();
+  // 참여자 표시
+  const names = [...new Set(msgs.map(m=>m.author).filter(Boolean))];
+  const onlineEl = $('chatOnline');
+  if(onlineEl) onlineEl.textContent = names.length > 0 ? names.length+'명 참여' : '';
+
+  if(atBottom) el.scrollTop = el.scrollHeight;
+}
 
 function applyViewMode(mode) {
   const m=$('mainEl');
