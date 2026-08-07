@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>GlucoLog v2.1 — 혈당관리</title>
+<title>GlucoLog v3.0 — 혈당관리</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, collection, addDoc, getDocs, query, orderBy, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getFirestore, collection, addDoc, getDocs, query, orderBy, doc, updateDoc, deleteDoc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
   const cfg = {
     apiKey:"AIzaSyBYqd2uRr1ZvFLDCWuS15h9qFkT-Dvg5Es",
     authDomain:"insys-work.firebaseapp.com",
@@ -21,6 +21,7 @@
   window._db=db; window._col=collection; window._addDoc=addDoc;
   window._getDocs=getDocs; window._q=query; window._orderBy=orderBy;
   window._doc=doc; window._updateDoc=updateDoc; window._deleteDoc=deleteDoc;
+  window._setDoc=setDoc; window._getDoc=getDoc;
   window.dispatchEvent(new Event('firebaseReady'));
 </script>
 <style>
@@ -215,6 +216,18 @@ textarea.form-input{resize:none;height:70px;}
 @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
 .modal-bar{width:36px;height:4px;background:var(--border);border-radius:4px;margin:0 auto 12px;}
 .modal-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:12px;}
+/* ── 사용자 등록 게이트 ── */
+.register-gate{position:fixed;inset:0;background:var(--bg);z-index:2000;
+  display:none;align-items:center;justify-content:center;padding:20px;overflow-y:auto;}
+.register-gate.show{display:flex;}
+.register-card{background:var(--surface);border-radius:20px;padding:28px 22px;
+  width:100%;max-width:380px;box-shadow:var(--sh);}
+.register-logo{font-size:26px;font-weight:900;color:var(--primary);text-align:center;letter-spacing:-0.5px;}
+.register-logo span{color:var(--accent);}
+.register-sub{font-size:12px;color:var(--text3);text-align:center;margin-top:2px;margin-bottom:16px;}
+.register-desc{font-size:12.5px;color:var(--text2);line-height:1.6;margin-bottom:18px;text-align:center;
+  background:var(--pl);border-radius:10px;padding:10px 12px;}
+.user-badge{color:#fff;font-size:11px;font-weight:600;opacity:0.9;}
 .print-header{display:none;}
 @media print{
   .print-header{display:flex;align-items:center;justify-content:space-between;
@@ -224,14 +237,58 @@ textarea.form-input{resize:none;height:70px;}
 </head>
 <body>
 
+<!-- 사용자 등록 게이트 (최초 접속시에만 표시) -->
+<div class="register-gate" id="registerGate">
+  <div class="register-card">
+    <div class="register-logo">Gluco<span>Log</span></div>
+    <div class="register-sub">혈당·혈압·식단 통합 관리</div>
+    <div class="register-desc">👋 처음 오셨네요! 기본 정보를 입력하면<br>다음부터는 자동으로 이 화면이 나타납니다.</div>
+
+    <div class="form-group">
+      <label class="form-label">이름</label>
+      <input class="form-input" type="text" id="regName" placeholder="이름을 입력하세요">
+    </div>
+    <div class="input-row">
+      <div class="form-group">
+        <label class="form-label">성별</label>
+        <select class="form-input" id="regGender">
+          <option value="male">남성</option>
+          <option value="female">여성</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">생년월일</label>
+        <input class="form-input" type="date" id="regBirth">
+      </div>
+    </div>
+    <div class="input-row">
+      <div class="form-group">
+        <label class="form-label">키 (cm)</label>
+        <input class="form-input" type="number" id="regHeight" placeholder="예: 170">
+      </div>
+      <div class="form-group">
+        <label class="form-label">몸무게 (kg)</label>
+        <input class="form-input" type="number" id="regWeight" placeholder="예: 68" step="0.1">
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="completeRegistration()">✅ 시작하기</button>
+    <div style="font-size:10.5px;color:var(--text3);text-align:center;margin-top:10px;line-height:1.5">
+      입력한 정보는 이 기기에 저장되며,<br>다음 접속부터 자동으로 인식됩니다.
+    </div>
+  </div>
+</div>
+
 <div class="safe-top"></div>
 <header class="app-header">
   <div class="logo-block">
-    <div class="logo">Gluco<span>Log</span> <span class="ver">v2.1</span></div>
+    <div class="logo">Gluco<span>Log</span> <span class="ver">v3.0</span></div>
     <div class="logo-sub">혈당·혈압·식단 통합 관리</div>
   </div>
-  <div id="headerDate" class="date-badge">로딩중...</div>
-  <div class="fb-dot" id="fbDot"></div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <span class="user-badge" id="headerUserName"></span>
+    <div id="headerDate" class="date-badge">로딩중...</div>
+    <div class="fb-dot" id="fbDot"></div>
+  </div>
 </header>
 
 <main class="main">
@@ -554,6 +611,10 @@ textarea.form-input{resize:none;height:70px;}
   <!-- 개인정보 -->
   <div class="card">
     <div class="card-title"><span class="dot" style="background:var(--primary)"></span>개인 정보</div>
+    <div class="form-group">
+      <label class="form-label">이름</label>
+      <input class="form-input" type="text" id="pfName" placeholder="이름">
+    </div>
     <div class="input-row">
       <div class="form-group">
         <label class="form-label">성별</label>
@@ -563,8 +624,8 @@ textarea.form-input{resize:none;height:70px;}
         </select>
       </div>
       <div class="form-group">
-        <label class="form-label">나이 (세)</label>
-        <input class="form-input" type="number" id="pfAge" placeholder="예: 45" min="1" max="120">
+        <label class="form-label">생년월일</label>
+        <input class="form-input" type="date" id="pfBirth">
       </div>
     </div>
     <div class="input-row">
@@ -818,11 +879,15 @@ let mealB64=null,quickB64=null;
 let labPhotosArr=[];
 let labRecordsCache=[];
 let calcMode=1;
-const VER='v2.1';
-const UPDATE_NOTE='혈액검사 결과지 여러 장 업로드, 검사기록 목록·삭제 기능이 추가되었습니다.';
+const VER='v3.0';
+const UPDATE_NOTE='여러 사람이 함께 쓸 수 있도록 사용자 등록 기능이 추가되었습니다. 각자의 기록은 서로 분리되어 안전하게 관리됩니다.';
 
 // ─ Firestore 문서 조작 함수 ─
-let fsDoc,updateDoc,deleteDoc;
+let fsDoc,updateDoc,deleteDoc,fsSetDoc,fsGetDoc;
+
+// ─ 사용자 계정 상태 (다중 사용자 지원) ─
+let currentUserId=null;
+let currentUserName='';
 let todayRecordsCache=[];
 let editingId=null, editingType=null;
 let mealOptionsCache=[];
@@ -893,20 +958,97 @@ window.addEventListener('firebaseReady',async()=>{
   db=window._db; col=window._col; addDoc=window._addDoc;
   getDocs=window._getDocs; q=window._q; orderBy=window._orderBy;
   fsDoc=window._doc; updateDoc=window._updateDoc; deleteDoc=window._deleteDoc;
+  fsSetDoc=window._setDoc; fsGetDoc=window._getDoc;
   const dot=document.getElementById('fbDot');
   dot.style.background='#4CAF50'; dot.style.boxShadow='0 0 6px #4CAF50';
+  await tryAutoLogin();
+});
+
+// ─ 사용자 등록 / 자동 로그인 ─
+function genUserId(){
+  if(window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return 'u_'+Date.now()+'_'+Math.random().toString(36).slice(2,10);
+}
+
+function updateHeaderUserName(){
+  const el=document.getElementById('headerUserName');
+  if(el) el.textContent=currentUserName?`${currentUserName}님`:'';
+}
+
+function showRegisterGate(){
+  document.getElementById('registerGate').classList.add('show');
+}
+function hideRegisterGate(){
+  document.getElementById('registerGate').classList.remove('show');
+}
+
+async function tryAutoLogin(){
+  let uid=null;
+  try{ uid=localStorage.getItem('gl_user_id'); }catch(e){}
+  if(!uid){ showRegisterGate(); return; }
+  try{
+    const snap=await fsGetDoc(fsDoc(db,'glucolog_users',uid));
+    if(snap.exists()){
+      const d=snap.data();
+      currentUserId=uid;
+      currentUserName=d.name||'';
+      profileData={gender:d.gender,age:calcAgeFromBirth(d.birth),height:d.height,weight:d.weight,birth:d.birth,name:d.name};
+      updateHeaderUserName();
+      await initAppData();
+    }else{
+      showRegisterGate();
+    }
+  }catch(e){
+    console.error(e);
+    showRegisterGate();
+  }
+}
+
+async function completeRegistration(){
+  const name=document.getElementById('regName').value.trim();
+  const gender=document.getElementById('regGender').value;
+  const birth=document.getElementById('regBirth').value;
+  const height=parseFloat(document.getElementById('regHeight').value);
+  const weight=parseFloat(document.getElementById('regWeight').value);
+  if(!name){showToast('⚠️ 이름을 입력하세요');return;}
+  if(!birth){showToast('⚠️ 생년월일을 입력하세요');return;}
+  if(!height||!weight){showToast('⚠️ 키와 몸무게를 입력하세요');return;}
+  if(!db){showToast('⚠️ Firebase 연결 중입니다. 잠시 후 다시 시도하세요');return;}
+
+  const uid=genUserId();
+  const userDoc={name,gender,birth,height,weight,createdAt:new Date()};
+  try{
+    await fsSetDoc(fsDoc(db,'glucolog_users',uid),userDoc);
+  }catch(e){
+    showToast('❌ 등록 실패. 다시 시도해주세요');console.error(e);return;
+  }
+  try{
+    localStorage.setItem('gl_user_id',uid);
+    localStorage.setItem('gl_user_name',name);
+  }catch(e){}
+
+  currentUserId=uid;
+  currentUserName=name;
+  profileData={gender,age:calcAgeFromBirth(birth),height,weight,birth,name};
+  updateHeaderUserName();
+  hideRegisterGate();
+  showToast(`✅ ${name}님, 환영합니다!`);
+  await initAppData();
+}
+
+async function initAppData(){
   await loadTodayRecords();
   loadAllHistory();
   loadGC('day',document.querySelector('#gcTabs .chart-tab'));
   loadBC('day',document.querySelector('#bcTabs .chart-tab'));
   loadMC('week',document.querySelector('#mcTabs .chart-tab'));
-  await loadProfile();
+  loadProfile();
   loadTodayActivity();
   loadMealOptions();
   await loadLastVitals();
   loadExerciseReminder();
   loadLabRecordsList();
-});
+}
 
 // ─ 탭 ─
 function switchTab(name){
@@ -1051,31 +1193,45 @@ function renderProfileStats(){
   document.getElementById('profileStatBox').style.display='block';
 }
 
-async function saveProfile(){
-  const gender=document.getElementById('pfGender').value;
-  const age=parseFloat(document.getElementById('pfAge').value);
-  const height=parseFloat(document.getElementById('pfHeight').value);
-  const weight=parseFloat(document.getElementById('pfWeight').value);
-  if(!age||!height||!weight){showToast('⚠️ 나이·키·몸무게를 모두 입력하세요');return;}
-  if(!db){showToast('⚠️ Firebase 연결 중');return;}
-  profileData={gender,age,height,weight};
-  await addDoc(col(db,'glucolog'),{type:'profile',gender,age,height,weight,createdAt:new Date()});
-  showToast('✅ 개인정보 저장 완료');
-  renderProfileStats();
+// 생년월일로 만 나이 계산
+function calcAgeFromBirth(birthStr){
+  if(!birthStr) return null;
+  const b=new Date(birthStr), now=new Date();
+  let age=now.getFullYear()-b.getFullYear();
+  const m=now.getMonth()-b.getMonth();
+  if(m<0||(m===0&&now.getDate()<b.getDate())) age--;
+  return age;
 }
 
-async function loadProfile(){
-  if(!db) return;
-  const snap=await getDocs(q(col(db,'glucolog'),orderBy('createdAt','desc')));
-  const rec=snap.docs.map(d=>d.data()).find(r=>r.type==='profile');
-  if(rec){
-    profileData={gender:rec.gender,age:rec.age,height:rec.height,weight:rec.weight};
-    document.getElementById('pfGender').value=rec.gender;
-    document.getElementById('pfAge').value=rec.age;
-    document.getElementById('pfHeight').value=rec.height;
-    document.getElementById('pfWeight').value=rec.weight;
+async function saveProfile(){
+  const name=document.getElementById('pfName').value.trim();
+  const gender=document.getElementById('pfGender').value;
+  const birth=document.getElementById('pfBirth').value;
+  const height=parseFloat(document.getElementById('pfHeight').value);
+  const weight=parseFloat(document.getElementById('pfWeight').value);
+  if(!name){showToast('⚠️ 이름을 입력하세요');return;}
+  if(!birth){showToast('⚠️ 생년월일을 입력하세요');return;}
+  if(!height||!weight){showToast('⚠️ 키·몸무게를 모두 입력하세요');return;}
+  if(!db||!currentUserId){showToast('⚠️ 연결 중입니다');return;}
+  profileData={gender,age:calcAgeFromBirth(birth),height,weight,birth,name};
+  currentUserName=name;
+  try{
+    await fsSetDoc(fsDoc(db,'glucolog_users',currentUserId),{name,gender,birth,height,weight,updatedAt:new Date()},{merge:true});
+    try{ localStorage.setItem('gl_user_name',name); }catch(e){}
+    updateHeaderUserName();
+    showToast('✅ 개인정보 저장 완료');
     renderProfileStats();
-  }
+  }catch(e){showToast('❌ 저장 실패');console.error(e);}
+}
+
+// 등록 시 세팅된 profileData를 프로필탭 입력필드에 반영
+function loadProfile(){
+  document.getElementById('pfName').value=profileData.name||'';
+  document.getElementById('pfGender').value=profileData.gender||'male';
+  document.getElementById('pfBirth').value=profileData.birth||'';
+  document.getElementById('pfHeight').value=profileData.height||'';
+  document.getElementById('pfWeight').value=profileData.weight||'';
+  renderProfileStats();
 }
 
 // ══════════════════════════════════════════════
@@ -1147,6 +1303,7 @@ async function saveActivityRecord(){
   if(!db){showToast('⚠️ Firebase 연결 중');return;}
   const cal=calcActivityCalories(walkingSeconds,runningSeconds);
   await addDoc(col(db,'glucolog'),{
+    userId:currentUserId,
     type:'activity',date:todayStr(),
     steps:stepCount,
     walkMin:+(walkingSeconds/60).toFixed(1),
@@ -1165,6 +1322,7 @@ async function saveManualSteps(){
   const minutes=steps/100;
   const cal=calcActivityCalories(minutes*60,0);
   await addDoc(col(db,'glucolog'),{
+    userId:currentUserId,
     type:'activity',date:todayStr(),
     steps,walkMin:+minutes.toFixed(1),runMin:0,
     calories:Math.round(cal),method:'manual',
@@ -1178,7 +1336,7 @@ async function saveManualSteps(){
 async function loadTodayActivity(){
   if(!db) return;
   const snap=await getDocs(q(col(db,'glucolog'),orderBy('createdAt','desc')));
-  const all=snap.docs.map(d=>d.data()).filter(r=>r.type==='activity'&&r.date===todayStr());
+  const all=snap.docs.map(d=>d.data()).filter(r=>r.userId===currentUserId).filter(r=>r.type==='activity'&&r.date===todayStr());
   const el=document.getElementById('todayActivitySummary');
   if(!all.length){el.innerHTML='<div class="empty-state"><div class="e-icon">🏃</div><div class="e-txt">측정된 활동이 없습니다</div></div>';return;}
   const totalSteps=all.reduce((a,b)=>a+(b.steps||0),0);
@@ -1206,7 +1364,7 @@ async function generateDietPrescription(){
   setBtnLoading('dietRxBtnTxt','dietRxSp',true,'');
   try{
     const snap=await getDocs(q(col(db,'glucolog'),orderBy('createdAt','asc')));
-    const all=snap.docs.map(d=>d.data());
+    const all=snap.docs.map(d=>d.data()).filter(r=>r.userId===currentUserId);
     const todayMeals=all.filter(r=>r.type==='meal'&&r.date===todayStr());
     const todayActivity=all.filter(r=>r.type==='activity'&&r.date===todayStr());
 
@@ -1241,6 +1399,7 @@ async function generateDietPrescription(){
     document.getElementById('dietRxResult').classList.add('show');
 
     await addDoc(col(db,'glucolog'),{
+      userId:currentUserId,
       type:'dietPrescription',date:todayStr(),
       prescription:res,mealCount:todayMeals.length,
       createdAt:new Date()
@@ -1261,6 +1420,7 @@ async function saveGlucose(){
   if(!db){showToast('⚠️ Firebase 연결 중');return;}
   const inputDate=document.getElementById('glucoseDate').value||todayStr();
   await addDoc(col(db,'glucolog'),{
+    userId:currentUserId,
     type:'glucose',date:inputDate,
     time:document.getElementById('glucoseTime').value,
     value:val,when:document.getElementById('glucoseWhen').value,
@@ -1284,6 +1444,7 @@ async function saveBP(){
   if(!db){showToast('⚠️ Firebase 연결 중');return;}
   const inputDate=document.getElementById('bpDate').value||todayStr();
   await addDoc(col(db,'glucolog'),{
+    userId:currentUserId,
     type:'bp',date:inputDate,
     time:document.getElementById('bpTime').value,
     systolic:sys,diastolic:dia,
@@ -1310,6 +1471,7 @@ async function saveMeal(){
   const inputDate=document.getElementById('mealDate').value||todayStr();
   const photoToStore=(mealB64 && mealB64.length<700000)?mealB64:null;
   const data={
+    userId:currentUserId,
     type:'meal',date:inputDate,
     time:document.getElementById('mealTime').value,
     mealType:mType,menu,
@@ -1405,6 +1567,7 @@ async function analyzeLabResult(){
       showToast('⚠️ 사진 용량이 커서 원본은 저장하지 않고 분석결과만 저장합니다',3500);
     }
     await addDoc(col(db,'glucolog'),{
+      userId:currentUserId,
       type:'labResult',date:labDate,memo,aiDiagnosis:res,
       photoCount:labPhotosArr.length,photos:photosToStore,
       createdAt:new Date()
@@ -1424,7 +1587,7 @@ async function analyzeLabResult(){
 async function loadLabRecordsList(){
   if(!db) return;
   const snap=await getDocs(q(col(db,'glucolog'),orderBy('createdAt','desc')));
-  const recs=snap.docs.map(d=>({...d.data(),_id:d.id})).filter(r=>r.type==='labResult');
+  const recs=snap.docs.map(d=>({...d.data(),_id:d.id})).filter(r=>r.userId===currentUserId).filter(r=>r.type==='labResult');
   labRecordsCache=recs;
   const el=document.getElementById('labRecordsList');
   if(!el) return;
@@ -1484,7 +1647,7 @@ function markPrefilled(id){
 async function loadLastVitals(){
   if(!db) return;
   const snap=await getDocs(q(col(db,'glucolog'),orderBy('createdAt','desc')));
-  const all=snap.docs.map(d=>d.data());
+  const all=snap.docs.map(d=>d.data()).filter(r=>r.userId===currentUserId);
   const lastG=all.find(r=>r.type==='glucose');
   const lastB=all.find(r=>r.type==='bp');
   if(lastG){
@@ -1505,7 +1668,7 @@ async function loadLastVitals(){
 async function loadMealOptions(){
   if(!db) return;
   const snap=await getDocs(q(col(db,'glucolog'),orderBy('createdAt','desc')));
-  const meals=snap.docs.map(d=>({...d.data(),_id:d.id})).filter(r=>r.type==='meal').slice(0,30);
+  const meals=snap.docs.map(d=>({...d.data(),_id:d.id})).filter(r=>r.userId===currentUserId).filter(r=>r.type==='meal').slice(0,30);
   mealOptionsCache=meals;
   const sel=document.getElementById('mealSelectDropdown');
   if(!sel) return;
@@ -1629,7 +1792,7 @@ async function calcAutoHbA1c(){
   const days=parseInt(document.getElementById('calcPeriod').value);
   const cutoff=new Date(); cutoff.setDate(cutoff.getDate()-days);
   const snap=await getDocs(q(col(db,'glucolog'),orderBy('createdAt','asc')));
-  const glRecs=snap.docs.map(d=>d.data())
+  const glRecs=snap.docs.map(d=>d.data()).filter(r=>r.userId===currentUserId)
     .filter(r=>r.type==='glucose'&&new Date(r.date)>=cutoff);
   if(!glRecs.length){showToast('⚠️ 해당 기간 혈당 데이터 없음');return;}
   const avg=Math.round(glRecs.reduce((a,b)=>a+b.value,0)/glRecs.length);
@@ -1672,7 +1835,7 @@ async function generateBriefing(){
     const cutoff=new Date(); cutoff.setDate(cutoff.getDate()-days);
     const cutoffStr=cutoff.toISOString().slice(0,10);
     const snap=await getDocs(q(col(db,'glucolog'),orderBy('createdAt','desc')));
-    const all=snap.docs.map(d=>d.data()).filter(r=>(r.date||'')>=cutoffStr);
+    const all=snap.docs.map(d=>d.data()).filter(r=>r.userId===currentUserId).filter(r=>(r.date||'')>=cutoffStr);
 
     const meals=all.filter(r=>r.type==='meal');
     const glR=all.filter(r=>r.type==='glucose');
@@ -1743,7 +1906,7 @@ async function generateBriefing(){
       document.getElementById('exerciseRecBox').style.display='none';
     }
 
-    if(db) await addDoc(col(db,'glucolog'),{type:'briefing',period:currentBriefPeriod,date:todayStr(),content:res,createdAt:new Date()});
+    if(db) await addDoc(col(db,'glucolog'),{userId:currentUserId,type:'briefing',period:currentBriefPeriod,date:todayStr(),content:res,createdAt:new Date()});
     showToast('✅ 브리핑 생성 완료');
   }catch(e){showToast('❌ 브리핑 생성 오류');console.error(e);}
   setBtnLoading('briefBtnTxt','briefSp',false,'🩺 브리핑 생성');
@@ -1760,6 +1923,7 @@ async function enableExerciseReminder(){
   if(db){
     try{
       await addDoc(col(db,'glucolog'),{
+        userId:currentUserId,
         type:'exerciseReminder',time:timeStr,
         content:exerciseRecCache.content||'',intensity:exerciseRecCache.intensity||'',
         active:true,createdAt:new Date()
@@ -1793,7 +1957,7 @@ async function loadExerciseReminder(){
   if(!db) return;
   if(!('Notification' in window) || Notification.permission!=='granted') return;
   const snap=await getDocs(q(col(db,'glucolog'),orderBy('createdAt','desc')));
-  const rec=snap.docs.map(d=>d.data()).find(r=>r.type==='exerciseReminder'&&r.active);
+  const rec=snap.docs.map(d=>d.data()).filter(r=>r.userId===currentUserId).find(r=>r.type==='exerciseReminder'&&r.active);
   if(rec) scheduleLocalReminder(rec.time,rec.content||'혈당관리를 위한 운동을 시작하세요');
 }
 
@@ -1803,7 +1967,7 @@ async function generateReport(){
   setBtnLoading('reportBtnTxt','reportSp',true,'');
   try{
     const snap=await getDocs(q(col(db,'glucolog'),orderBy('createdAt','desc')));
-    const all=snap.docs.map(d=>d.data());
+    const all=snap.docs.map(d=>d.data()).filter(r=>r.userId===currentUserId);
     const glR=all.filter(r=>r.type==='glucose');
     const bpR=all.filter(r=>r.type==='bp');
     const mlR=all.filter(r=>r.type==='meal');
@@ -1905,7 +2069,7 @@ function printReport(){
 async function loadTodayRecords(){
   if(!db) return;
   const snap=await getDocs(q(col(db,'glucolog'),orderBy('createdAt','asc')));
-  const all=snap.docs.map(d=>({...d.data(),_id:d.id})).filter(r=>r.date===todayStr());
+  const all=snap.docs.map(d=>({...d.data(),_id:d.id})).filter(r=>r.userId===currentUserId).filter(r=>r.date===todayStr());
   todayRecordsCache=all;
   const glR=all.filter(r=>r.type==='glucose');
   const bpR=all.filter(r=>r.type==='bp');
@@ -2057,7 +2221,7 @@ async function confirmDeleteRecord(id){
 async function loadAllHistory(){
   if(!db) return;
   const snap=await getDocs(q(col(db,'glucolog'),orderBy('createdAt','desc')));
-  const all=snap.docs.map(d=>d.data());
+  const all=snap.docs.map(d=>d.data()).filter(r=>r.userId===currentUserId);
   const el=document.getElementById('allHistoryList');
   if(!all.length){el.innerHTML='<div class="empty-state"><div class="e-icon">📁</div><div class="e-txt">저장된 기록 없음</div></div>';return;}
   const byDate={};
@@ -2113,7 +2277,7 @@ async function loadGC(period,tabEl){
   if(tabEl){document.querySelectorAll('#gcTabs .chart-tab').forEach(t=>t.classList.remove('active'));tabEl.classList.add('active');}
   if(!db) return;
   const snap=await getDocs(q(col(db,'glucolog'),orderBy('createdAt','asc')));
-  const all=snap.docs.map(d=>d.data()).filter(r=>r.type==='glucose');
+  const all=snap.docs.map(d=>d.data()).filter(r=>r.userId===currentUserId).filter(r=>r.type==='glucose');
   const{labels,vals}=filterP(all,lastGCPeriod,r=>r.value,r=>r.date);
   if(gChart) gChart.destroy();
   const ctx=document.getElementById('glucoseChart').getContext('2d');
@@ -2133,7 +2297,7 @@ async function loadBC(period,tabEl){
   if(tabEl){document.querySelectorAll('#bcTabs .chart-tab').forEach(t=>t.classList.remove('active'));tabEl.classList.add('active');}
   if(!db) return;
   const snap=await getDocs(q(col(db,'glucolog'),orderBy('createdAt','asc')));
-  const all=snap.docs.map(d=>d.data()).filter(r=>r.type==='bp');
+  const all=snap.docs.map(d=>d.data()).filter(r=>r.userId===currentUserId).filter(r=>r.type==='bp');
   const{labels,vals:sv}=filterP(all,lastBCPeriod,r=>r.systolic,r=>r.date);
   const{vals:dv}=filterP(all,lastBCPeriod,r=>r.diastolic,r=>r.date);
   if(bChart) bChart.destroy();
@@ -2149,7 +2313,7 @@ async function loadMC(period,tabEl){
   if(tabEl){document.querySelectorAll('#mcTabs .chart-tab').forEach(t=>t.classList.remove('active'));tabEl.classList.add('active');}
   if(!db) return;
   const snap=await getDocs(q(col(db,'glucolog'),orderBy('createdAt','asc')));
-  const all=snap.docs.map(d=>d.data()).filter(r=>r.type==='meal');
+  const all=snap.docs.map(d=>d.data()).filter(r=>r.userId===currentUserId).filter(r=>r.type==='meal');
   const{labels,vals}=filterP(all,lastMCPeriod,()=>1,r=>r.date,true);
   if(mChart) mChart.destroy();
   const ctx=document.getElementById('mealChart').getContext('2d');
