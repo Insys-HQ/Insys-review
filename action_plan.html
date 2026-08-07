@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>셰플러 이천공장 수입검사 실행계획서 v4.8</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
@@ -960,6 +963,46 @@ const APP_VERSION = 'v4.8';
 const APP_VER_DATE = '2026-08-05';
 const VER_KEY = 'action-plan-seen-version';
 
+
+// ── 서버 최신 버전 자동 확인 ─────────────────────
+const VER_CHECK_URL = 'version.json';
+
+async function checkLatestVersion(){
+  try{
+    const r = await fetch(VER_CHECK_URL + '?t=' + Date.now(), {cache:'no-store'});
+    if(!r.ok) return;
+    const data = await r.json();
+    const latest = data['action-plan'];
+    if(!latest || latest === APP_VERSION) return;
+
+    // 서버에 더 최신 버전이 있음 → 자동 새로고침 안내
+    const oldEl = document.getElementById('vm-old');
+    const newEl = document.getElementById('vm-new');
+    const dtEl  = document.getElementById('vm-date');
+    if(oldEl) oldEl.textContent = APP_VERSION;
+    if(newEl) newEl.textContent = latest;
+    if(dtEl)  dtEl.textContent  = '(' + (data.date||'') + ')';
+
+    const bg = document.getElementById('ver-modal');
+    if(bg){
+      bg.classList.add('open');
+      // 5초 후 자동 새로고침
+      let sec = 5;
+      const btn = bg.querySelector('.vm-btn-load');
+      if(btn){
+        const timer = setInterval(()=>{
+          sec--;
+          btn.textContent = `최신 버전 로드 (${sec}초)`;
+          if(sec<=0){ clearInterval(timer); hardRefresh(); }
+        }, 1000);
+        // 닫기 누르면 타이머 중단
+        const closeBtn = bg.querySelector('.vm-btn-close');
+        if(closeBtn) closeBtn.addEventListener('click', ()=>clearInterval(timer), {once:true});
+      }
+    }
+  }catch(e){}
+}
+
 function initVersionModal(){
   let prev = null;
   try{ prev = localStorage.getItem(VER_KEY); }catch(e){}
@@ -1822,6 +1865,7 @@ function renderActionPage(){
 
 window.addEventListener('load', async ()=>{
   initVersionModal();
+  checkLatestVersion();
   const today=new Date().toISOString().slice(0,10);
   ['sign-date','sop-date','qe-date','inf-due','pl-due'].forEach(id=>{
     const e=document.getElementById(id); if(e) e.value=today;
