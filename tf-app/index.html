@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>화재복구 TF 통합관리</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#16233F;
+    --navy2:#223655;
+    --accent:#3B6EA5;
+    --accent-light:#DCE8F5;
+    --bg:#F3F5F8;
+    --card:#FFFFFF;
+    --text:#22262B;
+    --text-sub:#5B6472;
+    --border:#E1E5EB;
+    --ok:#2E7D5B;
+    --warn:#B4741E;
+    --danger:#B23B3B;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    font-family:'Noto Sans KR',sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    font-size:14px;
+    line-height:1.6;
+  }
+  #gate{
+    position:fixed;inset:0;background:var(--navy);
+    display:flex;align-items:center;justify-content:center;z-index:999;
+  }
+  #gate .box{
+    background:var(--card);padding:40px 36px;border-radius:12px;width:320px;text-align:center;
+  }
+  #gate h1{font-size:18px;margin-bottom:6px;color:var(--navy);}
+  #gate p{font-size:12px;color:var(--text-sub);margin-bottom:20px;}
+  #gate input{
+    width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;font-size:14px;margin-bottom:12px;font-family:inherit;
+  }
+  #gate button{
+    width:100%;padding:12px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;font-family:inherit;font-weight:500;
+  }
+  #gate .err{color:var(--danger);font-size:12px;margin-top:8px;min-height:16px;}
+
+  header{
+    background:var(--navy);color:#fff;padding:22px 0;
+  }
+  header .inner{
+    max-width:1100px;margin:0 auto;padding:0 20px;display:flex;justify-content:space-between;align-items:center;
+  }
+  header h1{font-size:19px;font-weight:700;letter-spacing:-0.3px;}
+  header .sub{font-size:11px;color:#B9C4D6;margin-top:3px;}
+  header .meta{font-size:11px;color:#B9C4D6;text-align:right;}
+
+  nav{
+    background:var(--navy2);position:sticky;top:0;z-index:50;
+  }
+  nav .inner{
+    max-width:1100px;margin:0 auto;padding:0 20px;display:flex;gap:4px;overflow-x:auto;
+  }
+  nav button{
+    background:transparent;border:none;color:#C9D4E4;padding:13px 16px;font-size:13px;cursor:pointer;font-family:inherit;
+    border-bottom:3px solid transparent;white-space:nowrap;font-weight:500;
+  }
+  nav button.active{color:#fff;border-bottom-color:var(--accent);}
+
+  main{max-width:1100px;margin:0 auto;padding:24px 20px 60px;}
+  .view{display:none;}
+  .view.active{display:block;}
+
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+  @media(max-width:800px){.grid4{grid-template-columns:repeat(2,1fr);}}
+  .track-card{
+    background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;
+  }
+  .track-card .label{font-size:11px;color:var(--text-sub);font-weight:500;margin-bottom:6px;}
+  .track-card .status{font-size:14px;font-weight:700;color:var(--navy);margin-bottom:8px;min-height:20px;}
+  .track-card textarea{
+    width:100%;border:1px solid var(--border);border-radius:6px;padding:8px;font-size:12px;font-family:inherit;resize:vertical;min-height:60px;color:var(--text);
+  }
+  .track-card .row{display:flex;gap:6px;margin-top:8px;}
+  .track-card input[type=text]{
+    flex:1;border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:11px;font-family:inherit;
+  }
+  .track-card button.save{
+    background:var(--accent);color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:11px;cursor:pointer;font-family:inherit;
+  }
+  .track-card .updated{font-size:10px;color:#98A2AF;margin-top:6px;}
+
+  .section-title{font-size:15px;font-weight:700;color:var(--navy);margin:26px 0 12px;display:flex;align-items:center;gap:8px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:16px;}
+
+  .upload-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px;}
+  .upload-row input[type=file]{font-size:12px;}
+  .upload-row input[type=text]{
+    flex:1;min-width:180px;border:1px solid var(--border);border-radius:6px;padding:9px 10px;font-size:12px;font-family:inherit;
+  }
+  .upload-row select{
+    border:1px solid var(--border);border-radius:6px;padding:9px 10px;font-size:12px;font-family:inherit;background:#fff;
+  }
+  .upload-row button{
+    background:var(--navy);color:#fff;border:none;border-radius:6px;padding:9px 16px;font-size:12px;cursor:pointer;font-family:inherit;font-weight:500;
+  }
+  .progress{font-size:11px;color:var(--accent);margin-bottom:12px;}
+
+  .photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;}
+  .photo-item{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+  .photo-item img{width:100%;height:150px;object-fit:cover;display:block;background:#eee;cursor:pointer;}
+  .photo-item .meta{padding:10px;}
+  .photo-item .tag{
+    display:inline-block;font-size:10px;background:var(--accent-light);color:var(--accent);padding:2px 8px;border-radius:10px;margin-bottom:6px;font-weight:500;
+  }
+  .photo-item .memo{font-size:12px;color:var(--text);margin-bottom:4px;}
+  .photo-item .date{font-size:10px;color:var(--text-sub);}
+  .photo-item .del{font-size:10px;color:var(--danger);cursor:pointer;float:right;}
+
+  .file-list{border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+  .file-row{
+    display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--border);background:var(--card);font-size:12px;
+  }
+  .file-row:last-child{border-bottom:none;}
+  .file-row .ftag{
+    font-size:10px;background:var(--accent-light);color:var(--accent);padding:2px 8px;border-radius:10px;font-weight:500;flex-shrink:0;
+  }
+  .file-row .fname{flex:1;color:var(--text);}
+  .file-row a{color:var(--accent);text-decoration:none;font-size:11px;font-weight:500;}
+  .file-row .fdate{font-size:10px;color:var(--text-sub);flex-shrink:0;}
+  .file-row .del{font-size:10px;color:var(--danger);cursor:pointer;flex-shrink:0;}
+
+  table.sched{width:100%;border-collapse:collapse;font-size:12px;}
+  table.sched th{
+    background:var(--accent-light);color:var(--navy);text-align:left;padding:9px 10px;font-weight:700;font-size:11px;
+  }
+  table.sched td{padding:9px 10px;border-bottom:1px solid var(--border);color:var(--text);}
+  table.sched tr:last-child td{border-bottom:none;}
+  .badge{padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;}
+  .badge.done{background:#DFF3E8;color:var(--ok);}
+  .badge.prog{background:#FDF0DC;color:var(--warn);}
+  .badge.plan{background:#E7ECF2;color:var(--text-sub);}
+  .del-cell{color:var(--danger);cursor:pointer;font-size:11px;}
+
+  .empty{color:var(--text-sub);font-size:12px;padding:20px;text-align:center;}
+
+  #lightbox{
+    display:none;position:fixed;inset:0;background:rgba(10,14,22,0.9);z-index:200;align-items:center;justify-content:center;padding:20px;
+  }
+  #lightbox img{max-width:90%;max-height:90%;border-radius:6px;}
+  #lightbox .close{position:absolute;top:20px;right:26px;color:#fff;font-size:28px;cursor:pointer;}
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="box">
+    <h1>화재복구 TF 통합관리</h1>
+    <p>인시스 AI혁신 연구개발실</p>
+    <input type="password" id="passInput" placeholder="TF 접속 암호">
+    <button onclick="checkPass()">입장</button>
+    <div class="err" id="passErr"></div>
+  </div>
+</div>
+
+<header>
+  <div class="inner">
+    <div>
+      <h1>화재복구 TF 통합관리</h1>
+      <div class="sub">인시스 AI혁신 연구개발실</div>
+    </div>
+    <div class="meta">v1.0<br>ys.kim@in-sys.co.kr</div>
+  </div>
+</header>
+
+<nav>
+  <div class="inner">
+    <button class="active" data-view="dashboard">트랙현황</button>
+    <button data-view="photos">사진 타임라인</button>
+    <button data-view="files">파일함</button>
+    <button data-view="kakao">카톡 정리</button>
+    <button data-view="schedule">일정관리</button>
+  </div>
+</nav>
+
+<main>
+
+  <!-- 대시보드: 4대 트랙 현황 -->
+  <div class="view active" id="view-dashboard">
+    <div class="grid4" id="trackGrid"></div>
+  </div>
+
+  <!-- 사진 타임라인 -->
+  <div class="view" id="view-photos">
+    <div class="card">
+      <div class="upload-row">
+        <input type="file" id="photoFile" accept="image/*">
+        <select id="photoCat">
+          <option value="화재현장">화재현장</option>
+          <option value="철거">철거</option>
+          <option value="공사진행">공사진행</option>
+          <option value="기타">기타</option>
+        </select>
+        <input type="text" id="photoMemo" placeholder="한줄 메모 (예: 3층 골조 철거 완료)">
+        <button onclick="uploadPhoto()">업로드</button>
+      </div>
+      <div class="progress" id="photoProgress"></div>
+    </div>
+    <div class="photo-grid" id="photoGrid"></div>
+  </div>
+
+  <!-- 파일함 -->
+  <div class="view" id="view-files">
+    <div class="card">
+      <div class="upload-row">
+        <input type="file" id="docFile">
+        <select id="docCat">
+          <option value="화재보상">화재보상</option>
+          <option value="지자체지원">지자체지원</option>
+          <option value="고객사보상">고객사보상</option>
+          <option value="공장신축">공장신축</option>
+          <option value="기타">기타</option>
+        </select>
+        <button onclick="uploadFile()">업로드</button>
+      </div>
+      <div class="progress" id="fileProgress"></div>
+    </div>
+    <div class="file-list" id="fileList"></div>
+  </div>
+
+  <!-- 카톡 정리 -->
+  <div class="view" id="view-kakao">
+    <div class="card">
+      <div class="upload-row">
+        <input type="file" id="kakaoFile" accept="image/*">
+        <select id="kakaoCat">
+          <option value="화재보상">화재보상</option>
+          <option value="지자체지원">지자체지원</option>
+          <option value="고객사보상">고객사보상</option>
+          <option value="공장신축">공장신축</option>
+          <option value="기타">기타</option>
+        </select>
+        <input type="text" id="kakaoMemo" placeholder="캡쳐 요약 한줄 (예: 소방서 화재조사 결과 회신)">
+        <button onclick="uploadKakao()">업로드</button>
+      </div>
+      <div class="progress" id="kakaoProgress"></div>
+    </div>
+    <div class="photo-grid" id="kakaoGrid"></div>
+  </div>
+
+  <!-- 일정관리 -->
+  <div class="view" id="view-schedule">
+    <div class="card">
+      <div class="upload-row">
+        <select id="schedTrack">
+          <option value="화재보상">화재보상</option>
+          <option value="지자체지원">지자체지원</option>
+          <option value="고객사보상">고객사보상</option>
+          <option value="공장신축">공장신축</option>
+        </select>
+        <input type="text" id="schedTitle" placeholder="마일스톤/일정 내용" style="min-width:220px;">
+        <input type="text" id="schedDate" placeholder="날짜 (예: 2026-08-20)" style="max-width:150px;">
+        <select id="schedStatus">
+          <option value="계획">계획</option>
+          <option value="진행중">진행중</option>
+          <option value="완료">완료</option>
+        </select>
+        <button onclick="addSchedule()">추가</button>
+      </div>
+    </div>
+    <div class="card" style="padding:0;overflow-x:auto;">
+      <table class="sched" id="schedTable">
+        <thead><tr><th>트랙</th><th>내용</th><th>일정</th><th>상태</th><th></th></tr></thead>
+        <tbody id="schedBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<div id="lightbox" onclick="this.style.display='none'">
+  <span class="close">&times;</span>
+  <img id="lightboxImg" src="">
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getFirestore, collection, addDoc, getDocs, deleteDoc, doc,
+  setDoc, getDoc, query, orderBy, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {
+  getStorage, ref, uploadBytes, getDownloadURL, deleteObject
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+import {
+  getAuth, signInAnonymously
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+// ==== Firebase 설정 (전달받은 값 반영) ====
+const firebaseConfig = {
+  apiKey: "AIzaSyBYqd2uRr1ZvFLDCWuS15h9qFkT-Dvg5Es",
+  authDomain: "insys-work.firebaseapp.com",
+  projectId: "insys-work",
+  storageBucket: "insys-work.firebasestorage.app",
+  messagingSenderId: "225275784859",
+  appId: "1:225275784859:web:bd12815c6dc47c0c49e03e"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getStorage ? getFirestore(app) : null;
+const storage = getStorage(app);
+const auth = getAuth(app);
+
+// TF 접속 암호 (필요시 아래 값만 변경하세요)
+const TF_PASSCODE = "insys2026";
+
+window.checkPass = function(){
+  const val = document.getElementById('passInput').value;
+  if(val === TF_PASSCODE){
+    document.getElementById('gate').style.display = 'none';
+    boot();
+  } else {
+    document.getElementById('passErr').textContent = '암호가 올바르지 않습니다.';
+  }
+};
+document.getElementById('passInput').addEventListener('keydown', e=>{
+  if(e.key === 'Enter') window.checkPass();
+});
+
+async function boot(){
+  await signInAnonymously(auth).catch(e=>console.error('auth error', e));
+  initNav();
+  loadTracks();
+  loadPhotos();
+  loadFiles();
+  loadKakao();
+  loadSchedule();
+}
+
+// ==== 탭 네비게이션 ====
+function initNav(){
+  document.querySelectorAll('nav button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('view-'+btn.dataset.view).classList.add('active');
+    });
+  });
+}
+
+// ==== 트랙 현황 (대시보드) ====
+const TRACKS = [
+  {id:'fire', label:'화재보상 진행'},
+  {id:'gov', label:'지방자치단체 지원'},
+  {id:'customer', label:'고객사 보상안'},
+  {id:'construction', label:'공장 신축'}
+];
+
+async function loadTracks(){
+  const grid = document.getElementById('trackGrid');
+  grid.innerHTML = '';
+  for(const t of TRACKS){
+    const snap = await getDoc(doc(db,'trackStatus',t.id));
+    const data = snap.exists() ? snap.data() : {status:'', updatedAt:null};
+    const card = document.createElement('div');
+    card.className = 'track-card';
+    card.innerHTML = `
+      <div class="label">${t.label}</div>
+      <textarea id="status-${t.id}" placeholder="현재 상태 / 다음 액션 / 담당·기한">${data.status||''}</textarea>
+      <div class="row">
+        <button class="save" onclick="saveTrack('${t.id}')">저장</button>
+      </div>
+      <div class="updated" id="upd-${t.id}">${data.updatedAt ? '업데이트: '+formatTs(data.updatedAt) : '아직 업데이트 없음'}</div>
+    `;
+    grid.appendChild(card);
+  }
+}
+
+window.saveTrack = async function(id){
+  const val = document.getElementById('status-'+id).value;
+  await setDoc(doc(db,'trackStatus',id), {status:val, updatedAt: serverTimestamp()});
+  document.getElementById('upd-'+id).textContent = '업데이트: 방금 전';
+};
+
+function formatTs(ts){
+  try{ return ts.toDate().toLocaleString('ko-KR'); }catch(e){ return ''; }
+}
+
+// ==== 사진 타임라인 ====
+async function uploadPhoto(){
+  const fileInput = document.getElementById('photoFile');
+  const file = fileInput.files[0];
+  if(!file){ alert('사진을 선택해주세요.'); return; }
+  const cat = document.getElementById('photoCat').value;
+  const memo = document.getElementById('photoMemo').value;
+  const progEl = document.getElementById('photoProgress');
+  progEl.textContent = '업로드 중...';
+  try{
+    const path = `photos/${Date.now()}_${file.name}`;
+    const sref = ref(storage, path);
+    await uploadBytes(sref, file);
+    const url = await getDownloadURL(sref);
+    await addDoc(collection(db,'photos'), {
+      url, storagePath: path, category: cat, memo,
+      createdAt: serverTimestamp()
+    });
+    progEl.textContent = '업로드 완료';
+    fileInput.value = ''; document.getElementById('photoMemo').value = '';
+    loadPhotos();
+  }catch(e){
+    console.error(e);
+    progEl.textContent = '업로드 실패: ' + e.message;
+  }
+}
+window.uploadPhoto = uploadPhoto;
+
+async function loadPhotos(){
+  const grid = document.getElementById('photoGrid');
+  grid.innerHTML = '<div class="empty">불러오는 중...</div>';
+  const q = query(collection(db,'photos'), orderBy('createdAt','desc'));
+  const snap = await getDocs(q);
+  if(snap.empty){ grid.innerHTML = '<div class="empty">등록된 사진이 없습니다.</div>'; return; }
+  grid.innerHTML = '';
+  snap.forEach(d=>{
+    const p = d.data();
+    const el = document.createElement('div');
+    el.className = 'photo-item';
+    el.innerHTML = `
+      <img src="${p.url}" onclick="openLightbox('${p.url}')">
+      <div class="meta">
+        <span class="del" onclick="delPhoto('${d.id}','${p.storagePath}')">삭제</span>
+        <span class="tag">${p.category||'기타'}</span>
+        <div class="memo">${p.memo||''}</div>
+        <div class="date">${p.createdAt ? formatTs(p.createdAt) : ''}</div>
+      </div>
+    `;
+    grid.appendChild(el);
+  });
+}
+
+window.delPhoto = async function(id, path){
+  if(!confirm('삭제하시겠습니까?')) return;
+  await deleteDoc(doc(db,'photos',id));
+  try{ await deleteObject(ref(storage, path)); }catch(e){}
+  loadPhotos();
+};
+
+window.openLightbox = function(url){
+  document.getElementById('lightboxImg').src = url;
+  document.getElementById('lightbox').style.display = 'flex';
+};
+
+// ==== 파일함 ====
+async function uploadFile(){
+  const fileInput = document.getElementById('docFile');
+  const file = fileInput.files[0];
+  if(!file){ alert('파일을 선택해주세요.'); return; }
+  const cat = document.getElementById('docCat').value;
+  const progEl = document.getElementById('fileProgress');
+  progEl.textContent = '업로드 중...';
+  try{
+    const path = `files/${Date.now()}_${file.name}`;
+    const sref = ref(storage, path);
+    await uploadBytes(sref, file);
+    const url = await getDownloadURL(sref);
+    await addDoc(collection(db,'files'), {
+      url, storagePath: path, filename: file.name, category: cat,
+      uploadedAt: serverTimestamp()
+    });
+    progEl.textContent = '업로드 완료';
+    fileInput.value = '';
+    loadFiles();
+  }catch(e){
+    console.error(e);
+    progEl.textContent = '업로드 실패: ' + e.message;
+  }
+}
+window.uploadFile = uploadFile;
+
+async function loadFiles(){
+  const list = document.getElementById('fileList');
+  list.innerHTML = '<div class="empty">불러오는 중...</div>';
+  const q = query(collection(db,'files'), orderBy('uploadedAt','desc'));
+  const snap = await getDocs(q);
+  if(snap.empty){ list.innerHTML = '<div class="empty">등록된 파일이 없습니다.</div>'; return; }
+  list.innerHTML = '';
+  snap.forEach(d=>{
+    const f = d.data();
+    const row = document.createElement('div');
+    row.className = 'file-row';
+    row.innerHTML = `
+      <span class="ftag">${f.category||'기타'}</span>
+      <span class="fname">${f.filename}</span>
+      <span class="fdate">${f.uploadedAt ? formatTs(f.uploadedAt) : ''}</span>
+      <a href="${f.url}" target="_blank">열기</a>
+      <span class="del" onclick="delFile('${d.id}','${f.storagePath}')">삭제</span>
+    `;
+    list.appendChild(row);
+  });
+}
+
+window.delFile = async function(id, path){
+  if(!confirm('삭제하시겠습니까?')) return;
+  await deleteDoc(doc(db,'files',id));
+  try{ await deleteObject(ref(storage, path)); }catch(e){}
+  loadFiles();
+};
+
+// ==== 카톡 캡쳐 정리 ====
+async function uploadKakao(){
+  const fileInput = document.getElementById('kakaoFile');
+  const file = fileInput.files[0];
+  if(!file){ alert('캡쳐 이미지를 선택해주세요.'); return; }
+  const cat = document.getElementById('kakaoCat').value;
+  const memo = document.getElementById('kakaoMemo').value;
+  const progEl = document.getElementById('kakaoProgress');
+  progEl.textContent = '업로드 중...';
+  try{
+    const path = `kakao/${Date.now()}_${file.name}`;
+    const sref = ref(storage, path);
+    await uploadBytes(sref, file);
+    const url = await getDownloadURL(sref);
+    await addDoc(collection(db,'kakao'), {
+      url, storagePath: path, category: cat, memo,
+      createdAt: serverTimestamp()
+    });
+    progEl.textContent = '업로드 완료';
+    fileInput.value = ''; document.getElementById('kakaoMemo').value = '';
+    loadKakao();
+  }catch(e){
+    console.error(e);
+    progEl.textContent = '업로드 실패: ' + e.message;
+  }
+}
+window.uploadKakao = uploadKakao;
+
+async function loadKakao(){
+  const grid = document.getElementById('kakaoGrid');
+  grid.innerHTML = '<div class="empty">불러오는 중...</div>';
+  const q = query(collection(db,'kakao'), orderBy('createdAt','desc'));
+  const snap = await getDocs(q);
+  if(snap.empty){ grid.innerHTML = '<div class="empty">등록된 캡쳐가 없습니다.</div>'; return; }
+  grid.innerHTML = '';
+  snap.forEach(d=>{
+    const p = d.data();
+    const el = document.createElement('div');
+    el.className = 'photo-item';
+    el.innerHTML = `
+      <img src="${p.url}" onclick="openLightbox('${p.url}')">
+      <div class="meta">
+        <span class="del" onclick="delKakao('${d.id}','${p.storagePath}')">삭제</span>
+        <span class="tag">${p.category||'기타'}</span>
+        <div class="memo">${p.memo||''}</div>
+        <div class="date">${p.createdAt ? formatTs(p.createdAt) : ''}</div>
+      </div>
+    `;
+    grid.appendChild(el);
+  });
+}
+
+window.delKakao = async function(id, path){
+  if(!confirm('삭제하시겠습니까?')) return;
+  await deleteDoc(doc(db,'kakao',id));
+  try{ await deleteObject(ref(storage, path)); }catch(e){}
+  loadKakao();
+};
+
+// ==== 일정관리 ====
+async function addSchedule(){
+  const track = document.getElementById('schedTrack').value;
+  const title = document.getElementById('schedTitle').value;
+  const date = document.getElementById('schedDate').value;
+  const status = document.getElementById('schedStatus').value;
+  if(!title){ alert('일정 내용을 입력해주세요.'); return; }
+  await addDoc(collection(db,'schedule'), {track, title, date, status, createdAt: serverTimestamp()});
+  document.getElementById('schedTitle').value = '';
+  document.getElementById('schedDate').value = '';
+  loadSchedule();
+}
+window.addSchedule = addSchedule;
+
+async function loadSchedule(){
+  const body = document.getElementById('schedBody');
+  body.innerHTML = '<tr><td colspan="5" class="empty">불러오는 중...</td></tr>';
+  const q = query(collection(db,'schedule'), orderBy('date','asc'));
+  const snap = await getDocs(q);
+  if(snap.empty){ body.innerHTML = '<tr><td colspan="5" class="empty">등록된 일정이 없습니다.</td></tr>'; return; }
+  body.innerHTML = '';
+  snap.forEach(d=>{
+    const s = d.data();
+    const badgeClass = s.status === '완료' ? 'done' : (s.status === '진행중' ? 'prog' : 'plan');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${s.track}</td>
+      <td>${s.title}</td>
+      <td>${s.date||'-'}</td>
+      <td><span class="badge ${badgeClass}">${s.status}</span></td>
+      <td class="del-cell" onclick="delSchedule('${d.id}')">삭제</td>
+    `;
+    body.appendChild(tr);
+  });
+}
+
+window.delSchedule = async function(id){
+  if(!confirm('삭제하시겠습니까?')) return;
+  await deleteDoc(doc(db,'schedule',id));
+  loadSchedule();
+};
+</script>
+</body>
+</html>
