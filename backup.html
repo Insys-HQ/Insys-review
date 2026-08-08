@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>제주 아라이동 데이터 백업 도구 v1.0</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+try {
+  const app = initializeApp({
+    apiKey:"AIzaSyBYqd2uRr1ZvFLDCWuS15h9qFkT-Dvg5Es",
+    authDomain:"insys-work.firebaseapp.com",
+    projectId:"insys-work",
+    storageBucket:"insys-work.firebasestorage.app"
+  });
+  window._db = getFirestore(app);
+  window._fb = { collection, getDocs };
+  window._ready = true;
+  window.dispatchEvent(new Event('firebaseReady'));
+} catch(e) {
+  console.error(e);
+  window._ready = false;
+  window.dispatchEvent(new Event('firebaseReady'));
+}
+</script>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans KR',sans-serif;background:#eff2f7;color:#2c3e50;padding:20px;min-height:100vh}
+.wrap{max-width:800px;margin:0 auto}
+
+.hd{background:#1a2744;color:#fff;padding:16px 20px;border-radius:12px 12px 0 0}
+.hd h1{font-size:18px;font-weight:700;display:flex;align-items:center;gap:10px}
+.hd h1 i{color:#5bc4f5}
+.hd small{font-size:11px;color:#9bb3d4;margin-top:4px;display:block}
+
+.card{background:#fff;padding:20px;border-radius:0 0 12px 12px;box-shadow:0 4px 12px rgba(0,0,0,.08)}
+.card h2{font-size:14px;font-weight:700;color:#1a2744;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.card h2 i{color:#5bc4f5}
+
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.stat{background:#f8faff;border:1px solid #e5e9f0;border-radius:8px;padding:12px;text-align:center}
+.stat-v{font-size:22px;font-weight:900;color:#2980b9;line-height:1.1}
+.stat-l{font-size:10px;color:#8a9ab5;margin-top:4px}
+.stat.total .stat-v{color:#1a2744}
+.stat.size .stat-v{color:#e67e22}
+@media(max-width:600px){
+  .stat-grid{grid-template-columns:repeat(2,1fr)}
+}
+
+.step{background:#f8faff;border-left:3px solid #2980b9;padding:10px 14px;margin-bottom:10px;border-radius:0 8px 8px 0}
+.step-t{font-size:12px;color:#8a9ab5;font-weight:600;margin-bottom:3px}
+.step-c{font-size:13px;color:#1a2744}
+
+.btn{
+  width:100%;padding:14px;border:none;border-radius:10px;
+  font-family:'Noto Sans KR',sans-serif;font-size:14px;font-weight:700;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:.15s;margin-bottom:8px;
+}
+.btn:active{opacity:.85;transform:scale(.98)}
+.btn.primary{background:#1a2744;color:#fff}
+.btn.success{background:#27ae60;color:#fff}
+.btn.danger{background:#e74c3c;color:#fff}
+.btn.disabled{background:#e5e9f0;color:#8a9ab5;cursor:not-allowed}
+.btn i{font-size:13px}
+
+.progress{display:none;margin:12px 0}
+.progress-track{height:6px;background:#e8ecf3;border-radius:3px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,#2980b9,#27ae60);width:0%;transition:width .3s}
+.progress-text{font-size:12px;color:#4a5568;margin-top:6px;text-align:center}
+
+.log{
+  background:#0f1419;color:#a8dcff;border-radius:8px;
+  padding:12px;margin-top:12px;font-family:monospace;font-size:11px;
+  max-height:200px;overflow-y:auto;display:none;
+}
+.log.show{display:block}
+.log-line{padding:2px 0;line-height:1.5}
+.log-line.ok{color:#7ee787}
+.log-line.err{color:#ff7b72}
+
+.warn{
+  background:#fff8e1;border:1px solid #ffca28;
+  border-radius:8px;padding:12px 14px;margin-bottom:14px;
+  font-size:12px;color:#8b6914;line-height:1.6;
+}
+.warn i{color:#ff9800;margin-right:6px}
+
+.tabs{display:flex;gap:4px;margin-bottom:14px;border-bottom:2px solid #e5e9f0}
+.tab-btn{
+  padding:8px 14px;border:none;background:transparent;
+  font-family:'Noto Sans KR',sans-serif;font-size:12px;font-weight:600;
+  color:#8a9ab5;cursor:pointer;position:relative;
+}
+.tab-btn.on{color:#1a2744}
+.tab-btn.on::after{content:'';position:absolute;bottom:-2px;left:0;right:0;height:2px;background:#2980b9}
+.tab-panel{display:none}
+.tab-panel.on{display:block}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <div class="hd">
+    <h1><i class="fa fa-shield-halved"></i> 제주 아라이동 데이터 백업</h1>
+    <small>Firebase 유료 전환 전 안전 백업 도구 · v1.0</small>
+  </div>
+
+  <div class="card">
+
+    <div class="warn">
+      <i class="fa fa-triangle-exclamation"></i>
+      Blaze 요금제 전환 전에 이 페이지에서 <b>전체 백업</b>을 받으세요.<br>
+      백업 파일은 나중에 <b>복구</b>할 수 있으므로 안전하게 보관하세요.
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn on" onclick="switchTab('backup', this)"><i class="fa fa-download"></i> 백업</button>
+      <button class="tab-btn" onclick="switchTab('restore', this)"><i class="fa fa-upload"></i> 복구</button>
+    </div>
+
+    <!-- 백업 탭 -->
+    <div class="tab-panel on" id="tabBackup">
+
+      <h2><i class="fa fa-database"></i> 현재 데이터 현황</h2>
+      <div class="stat-grid">
+        <div class="stat"><div class="stat-v" id="cntPhotos">-</div><div class="stat-l">사진</div></div>
+        <div class="stat"><div class="stat-v" id="cntMemos">-</div><div class="stat-l">일지 메모</div></div>
+        <div class="stat"><div class="stat-v" id="cntDocs">-</div><div class="stat-l">문서</div></div>
+        <div class="stat size"><div class="stat-v" id="totalSize">-</div><div class="stat-l">총 용량</div></div>
+      </div>
+
+      <button class="btn primary" id="btnScan" onclick="scanData()">
+        <i class="fa fa-magnifying-glass"></i> 데이터 조회
+      </button>
+
+      <button class="btn success disabled" id="btnBackup" onclick="doBackup()" disabled>
+        <i class="fa fa-cloud-arrow-down"></i> 전체 백업 다운로드 (JSON)
+      </button>
+
+      <div class="progress" id="prog">
+        <div class="progress-track"><div class="progress-fill" id="progFill"></div></div>
+        <div class="progress-text" id="progText">준비 중...</div>
+      </div>
+
+      <div class="log" id="log"></div>
+    </div>
+
+    <!-- 복구 탭 -->
+    <div class="tab-panel" id="tabRestore">
+      <h2><i class="fa fa-rotate-left"></i> 백업 파일에서 복구</h2>
+
+      <div class="warn">
+        <i class="fa fa-triangle-exclamation"></i>
+        복구는 <b>기존 데이터를 덮어쓰지 않고 추가</b>합니다.<br>
+        중복 방지를 위해 <b>기존 데이터를 먼저 삭제</b>하거나, 새 Firebase 프로젝트에 복구하는 것이 안전합니다.
+      </div>
+
+      <input type="file" id="restoreFile" accept=".json" style="display:none" onchange="loadRestoreFile(this.files)">
+      <button class="btn primary" onclick="document.getElementById('restoreFile').click()">
+        <i class="fa fa-file-arrow-up"></i> 백업 JSON 파일 선택
+      </button>
+      <button class="btn danger disabled" id="btnRestore" onclick="doRestore()" disabled>
+        <i class="fa fa-rotate-left"></i> 복구 실행
+      </button>
+      <div class="log" id="restoreLog"></div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+let backupData = null;
+let restoreData = null;
+
+function whenReady(fn){
+  if(window._ready !== undefined) fn();
+  else window.addEventListener('firebaseReady', fn, {once:true});
+}
+
+function log(msg, type=''){
+  const box = document.getElementById('log');
+  box.classList.add('show');
+  const line = document.createElement('div');
+  line.className = 'log-line' + (type ? ' '+type : '');
+  line.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+  box.appendChild(line);
+  box.scrollTop = box.scrollHeight;
+}
+function logRestore(msg, type=''){
+  const box = document.getElementById('restoreLog');
+  box.classList.add('show');
+  const line = document.createElement('div');
+  line.className = 'log-line' + (type ? ' '+type : '');
+  line.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+  box.appendChild(line);
+  box.scrollTop = box.scrollHeight;
+}
+
+function switchTab(name, btn){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('tabBackup').classList.toggle('on', name==='backup');
+  document.getElementById('tabRestore').classList.toggle('on', name==='restore');
+}
+
+function fmtSize(bytes){
+  if(bytes < 1024) return bytes+'B';
+  if(bytes < 1048576) return (bytes/1024).toFixed(0)+'KB';
+  if(bytes < 1073741824) return (bytes/1048576).toFixed(1)+'MB';
+  return (bytes/1073741824).toFixed(2)+'GB';
+}
+
+async function scanData(){
+  const btn = document.getElementById('btnScan');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> 조회 중...';
+  document.getElementById('log').innerHTML='';
+  log('데이터 조회 시작...');
+
+  whenReady(async ()=>{
+    if(!window._ready){
+      log('Firebase 초기화 실패!', 'err');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa fa-magnifying-glass"></i> 다시 시도';
+      return;
+    }
+    try{
+      const {collection,getDocs} = window._fb;
+      const db = window._db;
+
+      log('사진 컬렉션 조회 중...');
+      const photosSnap = await getDocs(collection(db,'jeju_photos'));
+      const photos = photosSnap.docs.map(d=>({id:d.id, ...d.data()}));
+      log('  → ' + photos.length + '개 조회', 'ok');
+
+      log('일지 메모 컬렉션 조회 중...');
+      const memosSnap = await getDocs(collection(db,'jeju_daymemo'));
+      const memos = memosSnap.docs.map(d=>({id:d.id, ...d.data()}));
+      log('  → ' + memos.length + '개 조회', 'ok');
+
+      log('문서 컬렉션 조회 중...');
+      const docsSnap = await getDocs(collection(db,'jeju_docs'));
+      const docs = docsSnap.docs.map(d=>({id:d.id, ...d.data()}));
+      log('  → ' + docs.length + '개 조회', 'ok');
+
+      log('현장정보 조회 중...');
+      const projectSnap = await getDocs(collection(db,'jeju_project'));
+      const project = projectSnap.docs.map(d=>({id:d.id, ...d.data()}));
+      log('  → ' + project.length + '개 조회', 'ok');
+
+      // 크기 계산
+      let totalBytes = 0;
+      photos.forEach(p => totalBytes += (p.url?.length || 0));
+      docs.forEach(d => totalBytes += (d.data?.length || 0));
+      totalBytes += JSON.stringify(memos).length + JSON.stringify(project).length;
+
+      document.getElementById('cntPhotos').textContent = photos.length;
+      document.getElementById('cntMemos').textContent = memos.length;
+      document.getElementById('cntDocs').textContent = docs.length;
+      document.getElementById('totalSize').textContent = fmtSize(totalBytes);
+
+      backupData = {
+        version: '1.0',
+        exportedAt: new Date().toISOString(),
+        project: 'insys-work',
+        source: 'jeju',
+        collections: {
+          jeju_photos: photos,
+          jeju_daymemo: memos,
+          jeju_docs: docs,
+          jeju_project: project
+        },
+        totalBytes
+      };
+
+      log('총 ' + fmtSize(totalBytes) + ' 조회 완료', 'ok');
+      log('이제 [전체 백업 다운로드] 버튼을 누르세요', 'ok');
+
+      const bBtn = document.getElementById('btnBackup');
+      bBtn.disabled = false;
+      bBtn.classList.remove('disabled');
+
+      btn.innerHTML = '<i class="fa fa-check"></i> 조회 완료';
+    }catch(e){
+      log('오류: ' + e.message, 'err');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa fa-magnifying-glass"></i> 다시 시도';
+    }
+  });
+}
+
+async function doBackup(){
+  if(!backupData){ log('먼저 데이터 조회를 실행하세요','err'); return; }
+
+  document.getElementById('prog').style.display = 'block';
+  document.getElementById('progText').textContent = 'JSON 생성 중...';
+  document.getElementById('progFill').style.width = '30%';
+
+  try{
+    const json = JSON.stringify(backupData, null, 0);
+    document.getElementById('progFill').style.width = '70%';
+    document.getElementById('progText').textContent = '파일 생성 중...';
+
+    const blob = new Blob([json], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const today = new Date().toISOString().split('T')[0];
+    const time = new Date().toTimeString().substring(0,5).replace(':','');
+    const filename = `jeju_backup_${today}_${time}.json`;
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    document.getElementById('progFill').style.width = '100%';
+    document.getElementById('progText').textContent = '✅ 다운로드 완료: ' + filename;
+    log('백업 파일 저장 완료: ' + filename, 'ok');
+    log('파일 크기: ' + fmtSize(json.length), 'ok');
+    log('⚠ 이 파일을 안전한 곳에 보관하세요!', 'ok');
+  }catch(e){
+    log('백업 실패: ' + e.message, 'err');
+    document.getElementById('progText').textContent = '실패: ' + e.message;
+  }
+}
+
+// ═══ 복구 ═══
+function loadRestoreFile(files){
+  if(!files || !files.length) return;
+  const file = files[0];
+  const reader = new FileReader();
+  reader.onload = e => {
+    try{
+      restoreData = JSON.parse(e.target.result);
+      logRestore('파일 로드 완료: ' + file.name, 'ok');
+      logRestore('내보내기 시각: ' + restoreData.exportedAt, 'ok');
+      const c = restoreData.collections || {};
+      logRestore('사진: ' + (c.jeju_photos?.length || 0) + '개', 'ok');
+      logRestore('메모: ' + (c.jeju_daymemo?.length || 0) + '개', 'ok');
+      logRestore('문서: ' + (c.jeju_docs?.length || 0) + '개', 'ok');
+      logRestore('프로젝트: ' + (c.jeju_project?.length || 0) + '개', 'ok');
+      logRestore('이제 [복구 실행] 버튼을 누르세요', 'ok');
+
+      const rBtn = document.getElementById('btnRestore');
+      rBtn.disabled = false;
+      rBtn.classList.remove('disabled');
+    }catch(e){
+      logRestore('파일 파싱 실패: ' + e.message, 'err');
+    }
+  };
+  reader.readAsText(file);
+}
+
+async function doRestore(){
+  if(!restoreData) return;
+  if(!confirm('복구를 실행하면 백업된 데이터가 Firestore에 추가됩니다.\n계속하시겠습니까?')) return;
+
+  logRestore('복구 시작...', 'ok');
+  const {collection,setDoc,doc} = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+  const db = window._db;
+
+  for(const [colName, items] of Object.entries(restoreData.collections || {})){
+    logRestore(`${colName}: ${items.length}개 복구 중...`);
+    let ok = 0, fail = 0;
+    for(const item of items){
+      try{
+        const {id, ...data} = item;
+        await setDoc(doc(db, colName, id), data, {merge: true});
+        ok++;
+      }catch(e){
+        fail++;
+        console.error(colName, item.id, e);
+      }
+    }
+    logRestore(`  → 완료: ${ok}개 / 실패: ${fail}개`, fail===0?'ok':'err');
+  }
+  logRestore('복구 완료!', 'ok');
+  alert('복구가 완료되었습니다.');
+}
+</script>
+</body>
+</html>
