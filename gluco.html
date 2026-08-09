@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>GlucoLog v3.1 — 혈당관리</title>
+<title>GlucoLog v3.2 — 혈당관리</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script type="module">
@@ -289,7 +289,7 @@ textarea.form-input{resize:none;height:70px;}
 <div class="safe-top"></div>
 <header class="app-header">
   <div class="logo-block">
-    <div class="logo">Gluco<span>Log</span> <span class="ver">v3.1</span></div>
+    <div class="logo">Gluco<span>Log</span> <span class="ver">v3.2</span></div>
     <div class="logo-sub">혈당·혈압·식단 통합 관리</div>
   </div>
   <div style="display:flex;align-items:center;gap:8px">
@@ -577,13 +577,17 @@ textarea.form-input{resize:none;height:70px;}
   <div class="card">
     <div class="card-title"><span class="dot" style="background:var(--accent)"></span>기록된 식단 선택 분석</div>
     <p style="font-size:12px;color:var(--text3);margin-bottom:10px;line-height:1.6">
-      오늘 탭에서 이미 기록한 식사를 선택하면 저장된 분석을 보여주거나 새로 분석합니다.
+      오늘 탭에서 사진과 함께 기록한 식사를 선택하면 <b>그 사진 그대로</b> 분석합니다. 다시 업로드할 필요 없습니다.
     </p>
     <div class="form-group">
       <label class="form-label">식사 선택</label>
-      <select class="form-input" id="mealSelectDropdown">
+      <select class="form-input" id="mealSelectDropdown" onchange="previewSelectedMeal()">
         <option value="">-- 기록된 식사가 없습니다 --</option>
       </select>
+    </div>
+    <div id="mealSelPhotoPreview" style="display:none;margin-bottom:10px">
+      <img id="mealSelPhotoImg" style="width:100%;max-height:180px;object-fit:contain;border-radius:10px;border:1px solid var(--border);display:block">
+      <div style="font-size:11px;color:var(--accent);margin-top:4px">✅ 이 사진으로 분석합니다 (재업로드 불필요)</div>
     </div>
     <button class="btn btn-accent" onclick="analyzeSelectedMeal()">
       <span id="mealSelBtnTxt">🔍 선택한 식단 분석</span><span class="spinner" id="mealSelSp"></span>
@@ -895,8 +899,8 @@ let mealB64=null,quickB64=null;
 let labPhotosArr=[];
 let labRecordsCache=[];
 let calcMode=1;
-const VER='v3.1';
-const UPDATE_NOTE='생년월일을 년/월/일 직접입력 방식으로 바꿔 더 빠르게 등록할 수 있습니다.';
+const VER='v3.2';
+const UPDATE_NOTE='기록된 식단 선택 시 저장된 사진을 미리 보여줘, 재업로드 없이 바로 확인할 수 있습니다.';
 
 // ─ Firestore 문서 조작 함수 ─
 let fsDoc,updateDoc,deleteDoc,fsSetDoc,fsGetDoc;
@@ -1733,6 +1737,19 @@ async function loadMealOptions(){
     return `<option value="${m._id}">${analyzedTag}${photoTag}${m.date.slice(5)} ${m.mealType}(${m.time||''}) - ${menuTxt}</option>`;
   }).join('');
   if(prevVal && meals.some(m=>m._id===prevVal)) sel.value=prevVal;
+}
+
+function previewSelectedMeal(){
+  const id=document.getElementById('mealSelectDropdown').value;
+  const box=document.getElementById('mealSelPhotoPreview');
+  if(!id){ box.style.display='none'; return; }
+  const m=mealOptionsCache.find(x=>x._id===id);
+  if(m && m.photoData){
+    document.getElementById('mealSelPhotoImg').src='data:image/jpeg;base64,'+m.photoData;
+    box.style.display='block';
+  }else{
+    box.style.display='none';
+  }
 }
 
 async function analyzeSelectedMeal(){
