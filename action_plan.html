@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>셰플러 이천공장 수입검사 실행계획서 v5.0</title>
+<title>셰플러 이천공장 수입검사 실행계획서 v5.1</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 
@@ -279,7 +279,7 @@ textarea{resize:vertical;min-height:64px}
 <div class="doc-hdr">
   <div class="doc-hdr-inner">
     <div>
-      <div class="doc-title">셰플러 이천공장 수입검사 실행계획서 <span style="font-size:12px;font-weight:400;color:#94A3B8">v5.0</span></div>
+      <div class="doc-title">셰플러 이천공장 수입검사 실행계획서 <span style="font-size:12px;font-weight:400;color:#94A3B8">v5.1</span></div>
       <div class="doc-sub">Schaeffler Icheon · insys — SQM 요청 5개 항목 + 인시스 추가 2개 항목  |  회신: 2026.08.08(금)</div>
     </div>
     <div style="display:flex;gap:8px">
@@ -883,7 +883,7 @@ textarea{resize:vertical;min-height:64px}
 
 
 <footer style="max-width:1200px;margin:20px auto 0;padding:12px 20px;text-align:center;font-size:12px;color:var(--slate);border-top:1px solid var(--line)">
-  인시스 AI혁신 연구개발실 · 셰플러 이천공장 수입검사 실행계획서 v5.0 · 최종 수정 2026.08.07 · © (주)인시스
+  인시스 AI혁신 연구개발실 · 셰플러 이천공장 수입검사 실행계획서 v5.1 · 최종 수정 2026.08.07 · © (주)인시스
 </footer>
 
 <!-- 편집 모달 -->
@@ -968,7 +968,7 @@ async function fbRemove(p){
 // ══════════════════════════════════════════════════
 // 버전 업데이트 알림 모달
 // ══════════════════════════════════════════════════
-const APP_VERSION = 'v5.0';
+const APP_VERSION = 'v5.1';
 const APP_VER_DATE = '2026-08-05';
 const VER_KEY = 'action-plan-seen-version';
 
@@ -1083,6 +1083,7 @@ async function loadAllData(){
     infraList=inf;
     raciData=raci; infraChecks=ichk;
     planList=pl;
+    migrateRaciIndex();
     applyDefaultRaci();
     renderActionPage();
     renderPlanTable();
@@ -1200,7 +1201,6 @@ const RACI_TASKS=[
   '검사 완료 라벨 부착',
   '샘플 반납 (원위치 복귀)',
   '기준서 누락·이상 발견 시 보고',
-  '검사원 채용 및 배치',
   '검사원 교육·훈련 계획 수립',
   '검사원 역량 평가',
   '검사원 근태·인력 운영 관리',
@@ -1230,14 +1230,44 @@ const DEFAULT_RACI = [
   ['R','A','','I',''],    // 14 검사 완료 라벨 부착
   ['R','A','','I',''],    // 15 샘플 반납 (원위치 복귀)
   ['R','A','','C','I'],   // 16 기준서 누락·이상 발견 시 보고
-  ['','C','R','','I'],    // 17 검사원 채용 및 배치
-  ['C','R','A','','I'],   // 18 검사원 교육·훈련 계획 수립
-  ['','R','A','','I'],    // 19 검사원 역량 평가
-  ['','R','A','',''],     // 20 검사원 근태·인력 운영 관리
-  ['C','R','A','',''],    // 21 검사 소모품·장비 지원
-  ['R','A','','I',''],    // 22 일일 업무일지 작성·보고
-  ['','R','A','','I'],    // 23 월간 인력 운영 실적 보고
+  ['C','R','A','','I'],   // 17 검사원 교육·훈련 계획 수립
+  ['','R','A','','I'],    // 18 검사원 역량 평가
+  ['','R','A','',''],     // 19 검사원 근태·인력 운영 관리
+  ['C','R','A','',''],    // 20 검사 소모품·장비 지원
+  ['R','A','','I',''],    // 21 일일 업무일지 작성·보고
+  ['','R','A','','I'],    // 22 월간 인력 운영 실적 보고
 ];
+
+
+// 기존 저장 데이터 인덱스 보정 (검사원 채용 항목 삭제 반영)
+const RACI_MIGRATION_KEY = 'raci-migrated-v2';
+function migrateRaciIndex(){
+  if(Object.keys(raciData).length === 0) return false;
+  try{ if(localStorage.getItem(RACI_MIGRATION_KEY)==='1') return false; }catch(e){}
+
+  // 이전 구조(24개)에서 저장된 값이 있으면 17번 이후를 한 칸 당김
+  const migrated = {};
+  let changed = false;
+  Object.entries(raciData).forEach(([key, val])=>{
+    const m = key.match(/^(\d+)_(.+)$/);
+    if(!m){ migrated[key] = val; return; }
+    const idx = parseInt(m[1]), role = m[2];
+    if(idx === 17){ changed = true; return; }        // 채용 항목 → 삭제
+    const newIdx = idx > 17 ? idx - 1 : idx;
+    if(newIdx !== idx) changed = true;
+    migrated[newIdx + '_' + role] = val;
+  });
+
+  if(changed){
+    raciData = migrated;
+    fbSet('/ims/raci', raciData).then(()=>{
+      try{ localStorage.setItem(RACI_MIGRATION_KEY,'1'); }catch(e){}
+    });
+    return true;
+  }
+  try{ localStorage.setItem(RACI_MIGRATION_KEY,'1'); }catch(e){}
+  return false;
+}
 
 // 저장된 값이 없으면 기본값 적용
 function applyDefaultRaci(){
