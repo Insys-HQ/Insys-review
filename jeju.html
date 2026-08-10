@@ -11,7 +11,7 @@
 // ═══ 자동 새로고침 시스템 ═══
 // GitHub Pages 캐시로 구버전이 뜨는 문제 방지
 (function(){
-  const CURRENT_VERSION = 'v4.9';
+  const CURRENT_VERSION = 'v5.0';
   const CHECK_URL = 'https://raw.githubusercontent.com/Insys-HQ/Insys-review/main/jeju.html?_=' + Date.now();
 
   // 이미 이 버전으로 강제 새로고침한 상태면 재체크 스킵 (무한루프 방지)
@@ -47,17 +47,17 @@
     });
 })();
 </script>
-<title>제주 아라이동 주택공사 현장사진일지 v4.9</title>
+<title>제주 아라이동 주택공사 현장사진일지 v5.0</title>
 
 <!-- 카톡·SNS 링크 미리보기 (Open Graph) -->
-<meta property="og:title" content="🏗 제주 아라이동 주택공사 v4.9">
+<meta property="og:title" content="🏗 제주 아라이동 주택공사 v5.0">
 <meta property="og:description" content="현장 사진일지 · 공사내용 · 건축허가 정보">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://insys-hq.github.io/Insys-review/jeju.html">
 <meta property="og:image" content="https://insys-hq.github.io/Insys-review/jeju-og.png">
 <meta property="og:site_name" content="인시스 AI혁신 R&D센터">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="🏗 제주 아라이동 주택공사 v4.9">
+<meta name="twitter:title" content="🏗 제주 아라이동 주택공사 v5.0">
 <meta name="twitter:description" content="현장 사진일지 · 공사내용 · 건축허가 정보">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -604,7 +604,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:#eff2f7;color:#2c3e50
     <div class="appbar-top">
       <div class="appbar-t">
         <i class="fa fa-hard-hat"></i>
-        <div>제주 아라이동 주택공사 <small>v4.9</small></div>
+        <div>제주 아라이동 주택공사 <small>v5.0</small></div>
       </div>
       <span class="appbar-date" id="appDate">-</span>
     </div>
@@ -1111,7 +1111,7 @@ function renderDayList(){
       <div class="photo-grid">
         ${items.map((p,i)=>`
           <div class="photo-item" onclick="openViewer('${date}',${i})">
-            <img src="${p.url}" loading="lazy" alt="">
+            <img src="${p.thumbUrl || p.url}" loading="lazy" alt="">
             <div class="dl-btn" onclick="event.stopPropagation();downloadPhotoById('${p.id}')" title="다운로드">
               <i class="fa fa-download"></i>
             </div>
@@ -1356,29 +1356,55 @@ async function handleUpload(files){
 
   for(const rawFile of fileArr){
     try{
-      text.textContent = `압축 중... (${done+1}/${fileArr.length})`;
+      text.textContent = `처리 중... (${done+1}/${fileArr.length})`;
       console.log(`[Upload] 원본: ${(rawFile.size/1024/1024).toFixed(2)}MB`);
-      // Firestore 문서 제한 1MB이므로 base64 후 700KB 이하로 압축
-      // base64는 원본보다 33% 크므로 실제 이미지는 ~500KB 이하로
-      const compressed = await resizeImageToTarget(rawFile, 500 * 1024);
-      console.log(`[Upload] 압축 후: ${(compressed.size/1024).toFixed(0)}KB`);
 
-      text.textContent = `저장 중... (${done+1}/${fileArr.length})`;
-      const base64 = await fileToBase64(compressed);
-      fill.style.width = Math.round(((done+0.5)/fileArr.length)*100) + '%';
+      // 원본 이미지 - 긴변 2048px 이하로 리사이즈 (원본 크기 유지 목적)
+      let original = rawFile;
+      if(rawFile.size > 3*1024*1024){
+        original = await resizeImage(rawFile, 2048, 0.88);
+      }
+      console.log(`[Upload] 원본 저장용: ${(original.size/1024).toFixed(0)}KB`);
 
-      // Firestore에 직접 저장 (base64 dataURL 사용)
+      // 썸네일 - 400px, 60KB 이하
+      const thumb = await resizeImageToTarget(rawFile, 60*1024, 400);
+      console.log(`[Upload] 썸네일: ${(thumb.size/1024).toFixed(0)}KB`);
+
+      text.textContent = `업로드 중... (${done+1}/${fileArr.length})`;
+
+      // Storage 업로드
+      const timestamp = Date.now();
+      const safeName = rawFile.name.replace(/[^\w.-]/g,'_');
+      const originalPath = `jeju/photos/${date}/${timestamp}_${safeName}`;
+      const thumbPath    = `jeju/thumbs/${date}/${timestamp}_${safeName}`;
+
+      const [originalUrl, thumbUrl] = await Promise.all([
+        uploadToStorage(original, originalPath, (pct)=>{
+          fill.style.width = Math.round(((done + pct/200)/fileArr.length)*100) + '%';
+        }),
+        uploadToStorage(thumb, thumbPath)
+      ]);
+
+      // Firestore에는 URL만 저장 (매우 가벼움)
       const {collection,addDoc,serverTimestamp}=fb();
       const docRef = await addDoc(collection(db(),'jeju_photos'),{
         date,
-        url: base64,       // base64 dataURL (img src에 그대로 사용)
+        url: originalUrl,      // 원본 URL (뷰어용)
+        thumbUrl: thumbUrl,    // 썸네일 URL (그리드용)
+        storagePath: originalPath,
+        thumbPath: thumbPath,
         filename: rawFile.name,
-        size: compressed.size,
+        size: original.size,
         comment: '',
         createdAt: serverTimestamp()
       });
-      photos.unshift({id:docRef.id, date, url:base64, filename:rawFile.name, comment:''});
-      console.log(`[Upload] Firestore 저장 완료: ${docRef.id}`);
+      photos.unshift({
+        id: docRef.id, date,
+        url: originalUrl, thumbUrl,
+        storagePath: originalPath, thumbPath,
+        filename: rawFile.name, comment: ''
+      });
+      console.log(`[Upload] 완료: ${docRef.id}`);
       fill.style.width = Math.round(((done+1)/fileArr.length)*100) + '%';
     }catch(e){
       console.error('업로드 실패:',e);
@@ -1397,6 +1423,28 @@ async function handleUpload(files){
   if(done-failed>0) showToast(`${done-failed}장 저장되었습니다`,'success');
 }
 
+// Storage에 업로드하고 downloadURL 반환
+function uploadToStorage(file, path, onProgress){
+  return new Promise((resolve, reject)=>{
+    const {ref,uploadBytesResumable,getDownloadURL}=fb();
+    const sRef = ref(st(), path);
+    const task = uploadBytesResumable(sRef, file, {
+      contentType: file.type || 'image/jpeg',
+      cacheControl: 'public, max-age=31536000'
+    });
+    task.on('state_changed',
+      s => onProgress && onProgress(s.bytesTransferred/s.totalBytes*100),
+      e => reject(e),
+      async () => {
+        try{
+          const url = await getDownloadURL(task.snapshot.ref);
+          resolve(url);
+        }catch(e){ reject(e); }
+      }
+    );
+  });
+}
+
 // 파일 → base64 dataURL
 function fileToBase64(file){
   return new Promise((resolve,reject)=>{
@@ -1408,15 +1456,17 @@ function fileToBase64(file){
 }
 
 // 목표 크기 이하로 반복 압축
-async function resizeImageToTarget(file, targetBytes){
+async function resizeImageToTarget(file, targetBytes, initialMaxSize){
   let quality = 0.85;
-  let maxSize = 1600;
+  let maxSize = initialMaxSize || 1600;
   let result = await resizeImage(file, maxSize, quality);
   // 여전히 크면 품질/해상도 낮춰가며 재압축
   while(result.size > targetBytes && quality > 0.3){
     quality -= 0.15;
-    if(quality < 0.5) maxSize = 1280;
-    if(quality < 0.35) maxSize = 1024;
+    if(!initialMaxSize){
+      if(quality < 0.5) maxSize = 1280;
+      if(quality < 0.35) maxSize = 1024;
+    }
     result = await resizeImage(file, maxSize, quality);
     console.log(`[Compress] 재시도: ${maxSize}px, q${quality.toFixed(2)} → ${(result.size/1024).toFixed(0)}KB`);
   }
@@ -1592,6 +1642,18 @@ async function deleteCurrentPhoto(){  const p = viewerList[viewerIdx];
   if(!p) return;
   if(!confirm('이 사진을 삭제하시겠습니까?')) return;
   try{
+    // Storage 파일 삭제 (있으면)
+    if(p.storagePath || p.thumbPath){
+      const {ref:sRef, deleteObject} = fb();
+      const promises = [];
+      if(p.storagePath){
+        promises.push(deleteObject(sRef(st(), p.storagePath)).catch(e=>console.warn('원본 삭제 실패:',e.code)));
+      }
+      if(p.thumbPath){
+        promises.push(deleteObject(sRef(st(), p.thumbPath)).catch(e=>console.warn('썸네일 삭제 실패:',e.code)));
+      }
+      await Promise.all(promises);
+    }
     // Firestore에서 삭제
     const {doc,deleteDoc}=fb();
     await deleteDoc(doc(db(),'jeju_photos',p.id));
