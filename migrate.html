@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>제주 아라이동 사진 마이그레이션 도구 v1.0</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, collection, doc, getDocs, updateDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getStorage, ref, uploadBytes, uploadBytesResumable, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js';
+try {
+  const app = initializeApp({
+    apiKey:"AIzaSyBYqd2uRr1ZvFLDCWuS15h9qFkT-Dvg5Es",
+    authDomain:"insys-work.firebaseapp.com",
+    projectId:"insys-work",
+    storageBucket:"insys-work.firebasestorage.app"
+  });
+  window._db = getFirestore(app);
+  window._storage = getStorage(app);
+  window._fb = { collection, doc, getDocs, updateDoc, serverTimestamp, ref, uploadBytes, uploadBytesResumable, getDownloadURL };
+  window._ready = true;
+  window.dispatchEvent(new Event('firebaseReady'));
+} catch(e) {
+  console.error(e);
+  window._ready = false;
+  window.dispatchEvent(new Event('firebaseReady'));
+}
+</script>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans KR',sans-serif;background:#eff2f7;color:#2c3e50;padding:20px;min-height:100vh}
+.wrap{max-width:900px;margin:0 auto}
+
+.hd{background:#1a2744;color:#fff;padding:16px 20px;border-radius:12px 12px 0 0}
+.hd h1{font-size:18px;font-weight:700;display:flex;align-items:center;gap:10px}
+.hd h1 i{color:#5bc4f5}
+.hd small{font-size:11px;color:#9bb3d4;margin-top:4px;display:block}
+
+.card{background:#fff;padding:20px;border-radius:0 0 12px 12px;box-shadow:0 4px 12px rgba(0,0,0,.08)}
+.card h2{font-size:14px;font-weight:700;color:#1a2744;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.card h2 i{color:#5bc4f5}
+
+.warn{
+  background:#fff8e1;border:1px solid #ffca28;
+  border-radius:8px;padding:12px 14px;margin-bottom:14px;
+  font-size:12px;color:#8b6914;line-height:1.7;
+}
+.warn i{color:#ff9800;margin-right:6px}
+.warn b{color:#5d4200}
+
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.stat{background:#f8faff;border:1px solid #e5e9f0;border-radius:8px;padding:12px;text-align:center}
+.stat-v{font-size:22px;font-weight:900;color:#2980b9;line-height:1.1}
+.stat-l{font-size:10px;color:#8a9ab5;margin-top:4px}
+.stat.done .stat-v{color:#27ae60}
+.stat.pending .stat-v{color:#e67e22}
+.stat.failed .stat-v{color:#e74c3c}
+@media(max-width:600px){.stat-grid{grid-template-columns:repeat(2,1fr)}}
+
+.btn{
+  width:100%;padding:14px;border:none;border-radius:10px;
+  font-family:'Noto Sans KR',sans-serif;font-size:14px;font-weight:700;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:.15s;margin-bottom:8px;
+}
+.btn:active{opacity:.85;transform:scale(.98)}
+.btn.primary{background:#1a2744;color:#fff}
+.btn.success{background:#27ae60;color:#fff}
+.btn.danger{background:#e74c3c;color:#fff}
+.btn.warning{background:#e67e22;color:#fff}
+.btn.disabled{background:#e5e9f0;color:#8a9ab5;cursor:not-allowed}
+.btn i{font-size:13px}
+
+.progress{margin:14px 0;display:none}
+.progress.show{display:block}
+.progress-track{height:8px;background:#e8ecf3;border-radius:4px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,#2980b9,#27ae60);width:0%;transition:width .3s}
+.progress-info{
+  display:flex;justify-content:space-between;
+  font-size:11px;color:#4a5568;margin-top:6px;
+}
+.progress-info b{color:#1a2744}
+
+.log{
+  background:#0f1419;color:#a8dcff;border-radius:8px;
+  padding:12px;margin-top:12px;font-family:monospace;font-size:11px;
+  max-height:280px;overflow-y:auto;display:none;
+}
+.log.show{display:block}
+.log-line{padding:2px 0;line-height:1.5}
+.log-line.ok{color:#7ee787}
+.log-line.err{color:#ff7b72}
+.log-line.info{color:#79b8ff}
+
+.control-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media(max-width:600px){.control-row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="hd">
+    <h1><i class="fa fa-arrow-right-arrow-left"></i> 사진 데이터 마이그레이션</h1>
+    <small>기존 base64 사진 → Firebase Storage 이관 · v1.0</small>
+  </div>
+
+  <div class="card">
+
+    <div class="warn">
+      <i class="fa fa-triangle-exclamation"></i>
+      <b>중요:</b>
+      이 도구는 기존 사진 데이터를 Storage로 옮깁니다. 이미 백업 파일이 있는지 확인 후 시작하세요.<br>
+      <b>실행 중에 창을 닫지 마세요.</b> 중단되면 다음에 이어서 실행 가능합니다.
+    </div>
+
+    <h2><i class="fa fa-database"></i> 현재 상태</h2>
+    <div class="stat-grid">
+      <div class="stat"><div class="stat-v" id="cntTotal">-</div><div class="stat-l">전체 사진</div></div>
+      <div class="stat done"><div class="stat-v" id="cntDone">-</div><div class="stat-l">이미 이관됨</div></div>
+      <div class="stat pending"><div class="stat-v" id="cntPending">-</div><div class="stat-l">이관 필요</div></div>
+      <div class="stat failed"><div class="stat-v" id="cntFailed">0</div><div class="stat-l">실패</div></div>
+    </div>
+
+    <button class="btn primary" id="btnScan" onclick="scanData()">
+      <i class="fa fa-magnifying-glass"></i> 데이터 조회
+    </button>
+
+    <button class="btn success disabled" id="btnStart" onclick="startMigration()" disabled>
+      <i class="fa fa-play"></i> 마이그레이션 시작
+    </button>
+
+    <button class="btn warning" id="btnStop" onclick="stopMigration()" style="display:none">
+      <i class="fa fa-stop"></i> 중단
+    </button>
+
+    <div class="progress" id="prog">
+      <div class="progress-track"><div class="progress-fill" id="progFill"></div></div>
+      <div class="progress-info">
+        <span id="progText">준비 중...</span>
+        <span><b id="progPct">0</b>%</span>
+      </div>
+    </div>
+
+    <div class="log" id="log"></div>
+  </div>
+</div>
+
+<script>
+let allPhotos = [];       // Firestore의 모든 사진 문서
+let pendingPhotos = [];   // base64인 사진들 (이관 필요)
+let migrationRunning = false;
+let stopRequested = false;
+let successCount = 0;
+let failedCount = 0;
+
+function whenReady(fn){
+  if(window._ready !== undefined) fn();
+  else window.addEventListener('firebaseReady', fn, {once:true});
+}
+
+function log(msg, type=''){
+  const box = document.getElementById('log');
+  box.classList.add('show');
+  const line = document.createElement('div');
+  line.className = 'log-line' + (type ? ' '+type : '');
+  const time = new Date().toLocaleTimeString('ko-KR', {hour12:false});
+  line.textContent = '[' + time + '] ' + msg;
+  box.appendChild(line);
+  box.scrollTop = box.scrollHeight;
+  // 로그가 너무 많이 쌓이면 오래된 것 제거
+  while(box.children.length > 500){
+    box.removeChild(box.firstChild);
+  }
+}
+
+function fmtSize(bytes){
+  if(bytes < 1024) return bytes+'B';
+  if(bytes < 1048576) return (bytes/1024).toFixed(0)+'KB';
+  return (bytes/1048576).toFixed(1)+'MB';
+}
+
+// 사진 URL이 base64인지 판별
+function isBase64Url(url){
+  return url && typeof url === 'string' && url.startsWith('data:');
+}
+
+// ═══ 1단계: 데이터 조회 ═══
+async function scanData(){
+  const btn = document.getElementById('btnScan');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> 조회 중...';
+  document.getElementById('log').innerHTML='';
+  log('사진 데이터 조회 시작...');
+
+  whenReady(async ()=>{
+    if(!window._ready){
+      log('Firebase 초기화 실패!', 'err');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa fa-magnifying-glass"></i> 다시 시도';
+      return;
+    }
+    try{
+      const {collection,getDocs} = window._fb;
+      const snap = await getDocs(collection(window._db,'jeju_photos'));
+      allPhotos = snap.docs.map(d=>({id:d.id, ...d.data()}));
+
+      pendingPhotos = allPhotos.filter(p => isBase64Url(p.url) && !p.storagePath);
+      const doneCount = allPhotos.length - pendingPhotos.length;
+
+      document.getElementById('cntTotal').textContent = allPhotos.length;
+      document.getElementById('cntDone').textContent = doneCount;
+      document.getElementById('cntPending').textContent = pendingPhotos.length;
+
+      log(`전체 사진: ${allPhotos.length}개`, 'ok');
+      log(`이미 이관됨: ${doneCount}개`, 'ok');
+      log(`이관 필요: ${pendingPhotos.length}개`, pendingPhotos.length > 0 ? 'info' : 'ok');
+
+      // 대략 크기 계산
+      let totalBytes = 0;
+      pendingPhotos.forEach(p => totalBytes += (p.url?.length || 0) * 0.75);  // base64 → 원본 크기
+      log(`이관 예상 데이터: ${fmtSize(totalBytes)}`, 'info');
+
+      if(pendingPhotos.length > 0){
+        const bStart = document.getElementById('btnStart');
+        bStart.disabled = false;
+        bStart.classList.remove('disabled');
+        log('[마이그레이션 시작] 버튼을 눌러 진행하세요.', 'info');
+      } else {
+        log('모든 사진이 이미 Storage에 있습니다.', 'ok');
+      }
+
+      btn.innerHTML = '<i class="fa fa-check"></i> 조회 완료 (다시 조회)';
+      btn.disabled = false;
+    }catch(e){
+      log('오류: ' + e.message, 'err');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa fa-magnifying-glass"></i> 다시 시도';
+    }
+  });
+}
+
+// ═══ 2단계: base64 → File 변환 ═══
+async function base64ToFile(dataUrl, filename){
+  const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+  if(!match) throw new Error('base64 형식 아님');
+  const mime = match[1];
+  const binary = atob(match[2]);
+  const bytes = new Uint8Array(binary.length);
+  for(let i=0; i<binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new File([bytes], filename, {type: mime});
+}
+
+// ═══ 3단계: 이미지 리사이즈 (썸네일 생성용) ═══
+function resizeImage(file, maxSize, quality){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onerror = ()=>reject(new Error('파일 읽기 실패'));
+    reader.onload = (e)=>{
+      const img = new Image();
+      img.onerror = ()=>reject(new Error('이미지 로드 실패'));
+      img.onload = ()=>{
+        let w = img.width, h = img.height;
+        if(w > maxSize || h > maxSize){
+          if(w > h){ h = h * (maxSize/w); w = maxSize; }
+          else     { w = w * (maxSize/h); h = maxSize; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        canvas.toBlob(blob=>{
+          if(!blob) return reject(new Error('리사이즈 실패'));
+          resolve(new File([blob], file.name.replace(/\.[^.]+$/,'.jpg'), {type:'image/jpeg'}));
+        }, 'image/jpeg', quality);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// ═══ 4단계: Storage 업로드 ═══
+function uploadToStorage(file, path){
+  return new Promise((resolve, reject)=>{
+    const {ref, uploadBytesResumable, getDownloadURL} = window._fb;
+    const sRef = ref(window._storage, path);
+    const task = uploadBytesResumable(sRef, file, {
+      contentType: file.type || 'image/jpeg',
+      cacheControl: 'public, max-age=31536000'
+    });
+    task.on('state_changed', null,
+      e => reject(e),
+      async () => {
+        try{
+          const url = await getDownloadURL(task.snapshot.ref);
+          resolve(url);
+        }catch(e){ reject(e); }
+      }
+    );
+  });
+}
+
+// ═══ 5단계: 단일 사진 마이그레이션 ═══
+async function migrateOne(photo){
+  // base64를 File로 변환
+  const filename = photo.filename || `photo_${photo.id}.jpg`;
+  const file = await base64ToFile(photo.url, filename);
+
+  // 썸네일 생성 (400px, 60KB 이하)
+  let quality = 0.75;
+  let thumb = await resizeImage(file, 400, quality);
+  while(thumb.size > 60*1024 && quality > 0.3){
+    quality -= 0.1;
+    thumb = await resizeImage(file, 400, quality);
+  }
+
+  // 경로 설정
+  const timestamp = photo.createdAt?.seconds
+    ? photo.createdAt.seconds * 1000
+    : Date.now();
+  const safeName = filename.replace(/[^\w.-]/g,'_');
+  const originalPath = `jeju/photos/${photo.date}/${timestamp}_${safeName}`;
+  const thumbPath    = `jeju/thumbs/${photo.date}/${timestamp}_${safeName}`;
+
+  // 병렬 업로드
+  const [originalUrl, thumbUrl] = await Promise.all([
+    uploadToStorage(file, originalPath),
+    uploadToStorage(thumb, thumbPath)
+  ]);
+
+  // Firestore 문서 업데이트 (URL 교체, storagePath 추가)
+  const {doc, updateDoc, serverTimestamp} = window._fb;
+  await updateDoc(doc(window._db, 'jeju_photos', photo.id), {
+    url: originalUrl,
+    thumbUrl: thumbUrl,
+    storagePath: originalPath,
+    thumbPath: thumbPath,
+    migratedAt: serverTimestamp()
+  });
+
+  return {originalSize: file.size, thumbSize: thumb.size};
+}
+
+// ═══ 6단계: 배치 실행 ═══
+async function startMigration(){
+  if(migrationRunning) return;
+  if(!pendingPhotos.length){ log('이관할 사진이 없습니다','info'); return; }
+
+  if(!confirm(`${pendingPhotos.length}개 사진을 Storage로 이관합니다.\n예상 시간: ${Math.ceil(pendingPhotos.length * 3 / 60)}분\n계속하시겠습니까?`)) return;
+
+  migrationRunning = true;
+  stopRequested = false;
+  successCount = 0;
+  failedCount = 0;
+
+  document.getElementById('btnStart').style.display = 'none';
+  document.getElementById('btnScan').disabled = true;
+  document.getElementById('btnStop').style.display = 'flex';
+  document.getElementById('prog').classList.add('show');
+
+  log(`마이그레이션 시작: ${pendingPhotos.length}개`, 'info');
+  const startTime = Date.now();
+
+  for(let i = 0; i < pendingPhotos.length; i++){
+    if(stopRequested){
+      log('사용자가 중단했습니다.', 'err');
+      break;
+    }
+    const photo = pendingPhotos[i];
+    const progress = ((i+1) / pendingPhotos.length) * 100;
+    document.getElementById('progFill').style.width = progress + '%';
+    document.getElementById('progPct').textContent = Math.round(progress);
+    document.getElementById('progText').textContent = `처리 중: ${photo.date} (${i+1}/${pendingPhotos.length})`;
+
+    try{
+      const result = await migrateOne(photo);
+      successCount++;
+      log(`✓ ${photo.date} #${i+1}: 원본 ${fmtSize(result.originalSize)} + 썸네일 ${fmtSize(result.thumbSize)}`, 'ok');
+      document.getElementById('cntDone').textContent = parseInt(document.getElementById('cntDone').textContent) + 1;
+      document.getElementById('cntPending').textContent = pendingPhotos.length - successCount - failedCount;
+    }catch(e){
+      failedCount++;
+      log(`✗ ${photo.date} #${i+1}: ${e.message}`, 'err');
+      document.getElementById('cntFailed').textContent = failedCount;
+    }
+  }
+
+  const elapsed = Math.round((Date.now() - startTime) / 1000);
+  log('=====================================', 'info');
+  log(`마이그레이션 완료`, 'ok');
+  log(`성공: ${successCount}개 / 실패: ${failedCount}개`, 'ok');
+  log(`소요 시간: ${elapsed}초`, 'info');
+  if(failedCount > 0){
+    log('실패한 사진은 다시 [마이그레이션 시작]을 눌러 재시도할 수 있습니다.', 'info');
+  }
+
+  document.getElementById('progText').textContent = `완료: ${successCount}성공 / ${failedCount}실패`;
+  document.getElementById('btnStop').style.display = 'none';
+  document.getElementById('btnStart').style.display = 'flex';
+  document.getElementById('btnScan').disabled = false;
+  migrationRunning = false;
+
+  // 자동 재조회
+  setTimeout(scanData, 1000);
+}
+
+function stopMigration(){
+  if(!migrationRunning) return;
+  stopRequested = true;
+  log('중단 요청됨. 현재 사진 처리 후 정지합니다...', 'info');
+}
+</script>
+</body>
+</html>
