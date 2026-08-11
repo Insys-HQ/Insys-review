@@ -6,7 +6,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>인시스 점심주문관리 v7.3</title>
+<title>인시스 점심주문관리 v7.4</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -801,7 +801,7 @@ body.season-warm {
 /* ══ 플로팅 채팅창 ══════════════════════════════════════ */
 .chat-panel {
   position:fixed; bottom:80px; right:16px; z-index:400;
-  width:300px; min-width:220px; max-width:480px;
+  width:320px; min-width:240px; max-width:560px;
   min-height:80px;
   background:#fff; border-radius:16px;
   box-shadow:0 8px 32px rgba(0,0,0,.18);
@@ -831,7 +831,7 @@ body.season-warm {
 .chat-online { font-size:11px; opacity:.8; }
 
 /* 본문 */
-.chat-body { display:flex; flex-direction:column; height:340px; }
+.chat-body { display:flex; flex-direction:column; height:480px; }
 .chat-messages {
   flex:1; overflow-y:auto; padding:10px 12px;
   display:flex; flex-direction:column; gap:6px;
@@ -886,14 +886,13 @@ body.season-warm {
 
 /* 리사이즈 핸들 */
 .chat-resize-handle {
-  position:absolute; bottom:0; left:0; width:16px; height:16px;
-  cursor:sw-resize;
+  position:absolute; bottom:0; left:0; right:0; height:6px;
+  cursor:ns-resize; background:transparent;
 }
 .chat-resize-handle::before {
-  content:''; position:absolute; bottom:4px; left:4px;
-  width:8px; height:8px;
-  border-left:2px solid var(--border); border-bottom:2px solid var(--border);
-  border-radius:0 0 0 4px;
+  content:''; position:absolute; bottom:2px; left:50%; transform:translateX(-50%);
+  width:32px; height:3px;
+  background:var(--border); border-radius:3px;
 }
 
 /* 여름 테마 */
@@ -984,7 +983,7 @@ body.season-summer .chat-panel { border-color:#b2dfdb; }
   <div class="hd-inner">
     <div class="hd-left" style="display:flex;align-items:center;gap:10px">
       <h1>인시스 점심주문관리</h1>
-      <span class="ver-badge">v7.3</span>
+      <span class="ver-badge">v7.4</span>
     </div>
     <div class="hd-right">
       <div id="weatherInfo"></div>
@@ -1243,7 +1242,7 @@ body.season-summer .chat-panel { border-color:#b2dfdb; }
     <div id="restaurantAdminList"></div>
   </div>
 
-  <div class="footer-info">점심주문관리 시스템 v7.3</div>
+  <div class="footer-info">점심주문관리 시스템 v7.4</div>
 
   <!-- ══ AI 추천 모달 ══ -->
   <div id="aiModal" class="modal-overlay hidden">
@@ -1314,6 +1313,7 @@ body.season-summer .chat-panel { border-color:#b2dfdb; }
       <div class="chat-help-item"><span class="chat-help-kw">다이어트 / 살빼기</span><span>저칼로리 메뉴 추천</span></div>
       <div class="chat-help-item"><span class="chat-help-kw">보양식 / 복날</span><span>절기 보양식 추천</span></div>
       <div class="chat-help-item"><span class="chat-help-kw">빨리 / 마감</span><span>마감 임박 식당 안내</span></div>
+      <div class="chat-help-item"><span class="chat-help-kw">오늘 날씨 어때</span><span>창원 현재 날씨 안내</span></div>
       <div class="chat-help-item"><span class="chat-help-kw">메뉴 알려줘</span><span>전체 식당 메뉴 목록</span></div>
     </div>
     <div style="margin-top:16px;padding:10px;background:var(--tagbg);border-radius:8px;font-size:12px;color:var(--muted)">
@@ -3165,11 +3165,13 @@ function startChat() {
     };
     document.addEventListener('mousemove', e => {
       if(!rs) return;
-      const nw = Math.max(220, rw-(e.clientX-rx));
-      const nh = Math.max(280, rh+(e.clientY-ry));
+      // 좌우: 왼쪽으로 드래그하면 넓어짐
+      const nw = Math.max(240, rw-(e.clientX-rx));
+      // 상하: 위로 드래그하면 높아짐
+      const nh = Math.max(300, rh-(e.clientY-ry));
       panel.style.width = nw+'px';
       const body = $('chatBody');
-      if(body) body.style.height = (nh-50)+'px';
+      if(body) body.style.height = Math.max(200, nh-50)+'px';
     });
     document.addEventListener('mouseup', ()=>{ rs=false; });
   }
@@ -3427,6 +3429,38 @@ async function handleBotKeyword(chatCol, text) {
         picks.map((p,i)=>`${['1️⃣','2️⃣','3️⃣'][i]} ${p.rest} - ${p.menu}`).join('\n')
       ); return true;
     }
+  }
+
+  // 날씨 질문
+  if(/날씨|기온|비.*오|눈.*오|덥|춥|흐림|맑음|오늘.*어때|날씨.*어때/.test(t)) {
+    const w = window.G_WEATHER;
+    if(w && w.loaded && w.temp !== null) {
+      const month=new Date().getMonth()+1, day=new Date().getDate();
+      const sambok = typeof getSambokInfo==='function' ? getSambokInfo(month,day) : '';
+      let msg = `🌤 오늘 창원 날씨:
+${w.wdesc} ${w.temp}°C`;
+      if(w.precipProb > 0) msg += `, 강수확률 ${w.precipProb}%`;
+      if(w.humidity > 0)   msg += `, 습도 ${w.humidity}%`;
+      if(sambok)           msg += `
+
+🍗 오늘은 ${sambok}! 보양식 드세요!`;
+      if(w.temp >= 32)     msg += '
+
+☀️ 폭염 주의! 시원한 메뉴 추천드려요.';
+      else if(w.temp >= 28) msg += '
+
+🌡 더운 날씨네요. 냉면·쌀국수 어떠세요?';
+      else if(w.wcode >= 51) msg += '
+
+🌧 비 오는 날엔 따뜻한 국물이 최고!';
+      else if(w.temp <= 5) msg += '
+
+❄️ 추운 날엔 따뜻한 국물 드세요!';
+      await sendBotMsg(chatCol, msg);
+    } else {
+      await sendBotMsg(chatCol, '날씨 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요. 🌤');
+    }
+    return true;
   }
 
   // 메뉴 알려줘
