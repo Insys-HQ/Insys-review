@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>인시스 점심봇 API 설정</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+body {
+  font-family:'Noto Sans KR',sans-serif;
+  background:#f0f4f8; min-height:100vh;
+  display:flex; align-items:center; justify-content:center; padding:20px;
+}
+.wrap {
+  background:#fff; border-radius:16px; padding:32px;
+  max-width:520px; width:100%;
+  box-shadow:0 4px 24px rgba(0,0,0,.1);
+}
+.logo { font-size:32px; text-align:center; margin-bottom:8px; }
+h1 { font-size:18px; font-weight:700; color:#1a3a5c; text-align:center; margin-bottom:4px; }
+.sub { font-size:13px; color:#6b7280; text-align:center; margin-bottom:28px; }
+label { font-size:13px; font-weight:700; color:#374151; display:block; margin-bottom:6px; }
+.input-wrap { position:relative; margin-bottom:8px; }
+input[type=password], input[type=text] {
+  width:100%; border:1.5px solid #d1d5db; border-radius:10px;
+  padding:12px 44px 12px 14px; font-size:14px; font-family:inherit;
+  outline:none; transition:border-color .15s; color:#1f2937;
+}
+input:focus { border-color:#1a3a5c; }
+.eye-btn {
+  position:absolute; right:12px; top:50%; transform:translateY(-50%);
+  background:none; border:none; cursor:pointer; font-size:18px; color:#9ca3af;
+}
+.eye-btn:hover { color:#1a3a5c; }
+.hint {
+  font-size:12px; color:#6b7280; margin-bottom:20px; line-height:1.6;
+  background:#f9fafb; border-radius:8px; padding:10px 12px;
+}
+.hint a { color:#1a3a5c; }
+.btn-primary {
+  width:100%; background:#1a3a5c; color:#fff; border:none;
+  border-radius:10px; padding:13px; font-size:15px; font-weight:700;
+  font-family:inherit; cursor:pointer; transition:background .15s;
+}
+.btn-primary:hover { background:#0f2a45; }
+.btn-primary:disabled { background:#9ca3af; cursor:not-allowed; }
+.status {
+  margin-top:14px; padding:12px 14px; border-radius:10px;
+  font-size:13px; display:none;
+}
+.status.success { background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; }
+.status.error   { background:#fef2f2; color:#991b1b; border:1px solid #fca5a5; }
+.status.loading { background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; }
+.divider { border:none; border-top:1px solid #e5e7eb; margin:24px 0; }
+.step {
+  display:flex; gap:12px; align-items:flex-start;
+  font-size:13px; color:#374151; margin-bottom:12px;
+}
+.step-num {
+  background:#1a3a5c; color:#fff; width:22px; height:22px;
+  border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-size:11px; font-weight:700; flex-shrink:0; margin-top:1px;
+}
+.current-status {
+  background:#f0f9ff; border:1px solid #bae6fd; border-radius:10px;
+  padding:12px 14px; margin-bottom:20px; font-size:13px;
+}
+.current-status .cs-label { color:#0369a1; font-weight:700; margin-bottom:4px; }
+.current-status .cs-val   { color:#1e40af; font-family:monospace; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">🤖</div>
+  <h1>인시스 점심봇 AI 설정</h1>
+  <p class="sub">Anthropic API 키를 입력하면 챗봇이 자유 질문에 답변합니다</p>
+
+  <!-- 현재 상태 -->
+  <div class="current-status" id="currentStatus">
+    <div class="cs-label">현재 AI 상태</div>
+    <div class="cs-val" id="csVal">확인 중...</div>
+  </div>
+
+  <!-- API 키 입력 -->
+  <label>Anthropic API 키</label>
+  <div class="input-wrap">
+    <input type="password" id="apiKeyInput" placeholder="sk-ant-api03-..." autocomplete="off">
+    <button class="eye-btn" id="eyeBtn" title="표시/숨기기">👁</button>
+  </div>
+  <div class="hint">
+    🔑 API 키는 이 기기의 브라우저에만 저장됩니다 (localStorage)<br>
+    GitHub에 업로드되지 않으며 외부로 전송되지 않습니다.<br>
+    키 발급: <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a>
+  </div>
+
+  <button class="btn-primary" id="saveBtn">저장 및 적용</button>
+  <div class="status" id="statusMsg"></div>
+
+  <hr class="divider">
+
+  <!-- 사용 방법 -->
+  <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:12px">📋 사용 방법</div>
+  <div class="step">
+    <div class="step-num">1</div>
+    <div><a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:#1a3a5c;font-weight:700">console.anthropic.com</a> 에서 API 키 발급</div>
+  </div>
+  <div class="step">
+    <div class="step-num">2</div>
+    <div>위 입력창에 키 붙여넣기 → <b>저장 및 적용</b> 클릭</div>
+  </div>
+  <div class="step">
+    <div class="step-num">3</div>
+    <div>점심주문 앱 채팅창에서 <b>/질문</b> 입력하면 AI가 답변</div>
+  </div>
+  <div class="step">
+    <div class="step-num">4</div>
+    <div>키는 이 기기에만 저장 — 다른 PC에서도 설정 필요</div>
+  </div>
+
+  <hr class="divider">
+
+  <button class="btn-primary" id="clearBtn" style="background:#ef4444">🗑 API 키 삭제</button>
+
+  <div style="text-align:center;margin-top:16px">
+    <a href="https://insys-hq.github.io/Insys-review/lunch.html"
+       style="font-size:13px;color:#1a3a5c;font-weight:700">
+      ← 점심주문 앱으로 돌아가기
+    </a>
+  </div>
+</div>
+
+<script>
+const KEY_STORE = 'insys_anthropic_key';
+
+// 현재 상태 표시
+function updateStatus() {
+  const key = localStorage.getItem(KEY_STORE);
+  const el = document.getElementById('csVal');
+  if(key && key.startsWith('sk-ant')) {
+    el.textContent = '✅ AI 활성화됨 (키: ' + key.slice(0,12) + '...)';
+    el.style.color = '#065f46';
+  } else {
+    el.textContent = '❌ API 키 없음 — 로컬 봇 모드';
+    el.style.color = '#991b1b';
+  }
+}
+updateStatus();
+
+// 눈 버튼
+document.getElementById('eyeBtn').addEventListener('click', () => {
+  const input = document.getElementById('apiKeyInput');
+  const isPass = input.type === 'password';
+  input.type = isPass ? 'text' : 'password';
+  document.getElementById('eyeBtn').textContent = isPass ? '🙈' : '👁';
+});
+
+// 저장
+document.getElementById('saveBtn').addEventListener('click', async () => {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  const btn = document.getElementById('saveBtn');
+  const msg = document.getElementById('statusMsg');
+
+  if(!key) {
+    msg.style.display = 'block';
+    msg.className = 'status error';
+    msg.textContent = 'API 키를 입력해 주세요.';
+    return;
+  }
+  if(!key.startsWith('sk-ant')) {
+    msg.style.display = 'block';
+    msg.className = 'status error';
+    msg.textContent = 'Anthropic API 키는 sk-ant 로 시작합니다.';
+    return;
+  }
+
+  // API 키 테스트
+  btn.disabled = true;
+  btn.textContent = '연결 확인 중...';
+  msg.style.display = 'block';
+  msg.className = 'status loading';
+  msg.textContent = '⏳ API 키 유효성 확인 중...';
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 10,
+        messages: [{ role: 'user', content: '안녕' }]
+      })
+    });
+    const data = await res.json();
+    if(data.content) {
+      localStorage.setItem(KEY_STORE, key);
+      msg.className = 'status success';
+      msg.textContent = '✅ API 키 확인 완료! 저장되었습니다. 점심 앱 채팅창에서 /질문 으로 AI를 사용하세요.';
+      document.getElementById('apiKeyInput').value = '';
+      updateStatus();
+    } else {
+      msg.className = 'status error';
+      msg.textContent = '❌ ' + (data.error?.message || 'API 키가 유효하지 않습니다.');
+    }
+  } catch(e) {
+    msg.className = 'status error';
+    msg.textContent = '❌ 연결 실패: ' + e.message;
+  }
+
+  btn.disabled = false;
+  btn.textContent = '저장 및 적용';
+});
+
+// 삭제
+document.getElementById('clearBtn').addEventListener('click', () => {
+  if(!confirm('API 키를 삭제할까요?')) return;
+  localStorage.removeItem(KEY_STORE);
+  updateStatus();
+  const msg = document.getElementById('statusMsg');
+  msg.style.display = 'block';
+  msg.className = 'status success';
+  msg.textContent = '🗑 API 키가 삭제되었습니다. 로컬 봇 모드로 전환됩니다.';
+});
+</script>
+</body>
+</html>
