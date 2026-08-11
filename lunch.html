@@ -6,7 +6,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>인시스 점심주문관리 v8.1</title>
+<title>인시스 점심주문관리 v8.2</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -1014,7 +1014,7 @@ body.season-summer .chat-panel { border-color:#b2dfdb; }
   <div class="hd-inner">
     <div class="hd-left" style="display:flex;align-items:center;gap:10px">
       <h1>인시스 점심주문관리</h1>
-      <span class="ver-badge">v8.1</span>
+      <span class="ver-badge">v8.2</span>
     </div>
     <div class="hd-right">
       <div id="weatherInfo"></div>
@@ -1273,7 +1273,7 @@ body.season-summer .chat-panel { border-color:#b2dfdb; }
     <div id="restaurantAdminList"></div>
   </div>
 
-  <div class="footer-info">점심주문관리 시스템 v8.1</div>
+  <div class="footer-info">점심주문관리 시스템 v8.2</div>
 
   <!-- ══ AI 추천 모달 ══ -->
   <div id="aiModal" class="modal-overlay hidden">
@@ -3341,6 +3341,20 @@ function renderChat(msgs) {
 async function handleSlashCmd(chatCol, cmd) {
   const c = cmd.toLowerCase().trim();
 
+  // /설정
+  if(c === '설정' || c === 'settings' || c === 'api') {
+    const key = localStorage.getItem('insys_anthropic_key');
+    const status = (key && key.startsWith('sk-ant'))
+      ? '✅ AI 활성화됨 (' + key.slice(0,12) + '...)'
+      : '❌ API 키 없음 (로컬 봇 모드)';
+    await sendBotMsg(chatCol,
+      '⚙️ AI 설정 상태: ' + status +
+      '\n\n설정 페이지: https://insys-hq.github.io/Insys-review/api_setup.html' +
+      '\n\n위 페이지에서 Anthropic API 키를 입력하면\n자유로운 AI 답변이 가능합니다.'
+    );
+    return;
+  }
+
   // /도움말
   if(c === '' || c === '도움말' || c === 'help') {
     await sendBotMsg(chatCol,
@@ -3489,8 +3503,60 @@ function findMenus(keywords) {
   return found;
 }
 
-// AI 추천 (로컬 로직 - CORS 없이 동작)
+// AI 답변 (localStorage API 키 사용)
 async function askClaude(chatCol, userQ) {
+  const apiKey = localStorage.getItem('insys_anthropic_key');
+  if(apiKey && apiKey.startsWith('sk-ant')) {
+    // API 키 있으면 Claude 직접 호출
+    await sendBotMsg(chatCol, '⏳ AI 분석 중...');
+    try {
+      const menuList = (dynRestaurants.length ? dynRestaurants : DEFAULT_RESTAURANTS)
+        .filter(r=>r.menus&&r.menus.length)
+        .map(r=>r.name+': '+r.menus.slice(0,5).join(', ')).join('\n');
+      const gw = window.G_WEATHER||{};
+      const mo = new Date().getMonth()+1, da = new Date().getDate();
+      const sb = typeof getSambokInfo==='function' ? getSambokInfo(mo,da) : '';
+      const prompt =
+        '당신은 인시스 창원본사 직원들의 점심 메뉴 도우미입니다.\n'+
+        '오늘: '+mo+'월 '+da+'일'+
+        (gw.wdesc?' 날씨: '+gw.wdesc+' '+gw.temp+'°C':'')+
+        (sb?' '+sb:'')+
+        '\n\n등록된 식당:\n'+menuList+
+        '\n\n질문: '+userQ+
+        '\n\n위 메뉴 중에서 답변하고, 2~3가지 추천 시 식당명과 메뉴명을 명확히 알려주세요. 100자 이내로 간결하게.';
+      const r = await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version':'2023-06-01',
+          'anthropic-dangerous-direct-browser-access':'true'
+        },
+        body:JSON.stringify({
+          model:'claude-haiku-4-5-20251001',
+          max_tokens:300,
+          messages:[{role:'user',content:prompt}]
+        })
+      });
+      const d = await r.json();
+      const answer = d.content&&d.content[0] ? d.content[0].text : '답변을 가져오지 못했습니다.';
+      // "분석 중" 메시지 교체
+      const snap = await getDocs(collection(db, chatCol));
+      const botMsgs = snap.docs.map(d2=>({id:d2.id,...d2.data()}))
+        .filter(m=>m.isBot && m.text==='⏳ AI 분석 중...');
+      if(botMsgs.length) {
+        await setDoc(doc(db,chatCol,botMsgs[botMsgs.length-1].id),{text:answer},{merge:true});
+      } else {
+        await sendBotMsg(chatCol, answer);
+      }
+      return;
+    } catch(e) {
+      await sendBotMsg(chatCol, 'AI 연결 오류: '+e.message+'\n/설정 페이지에서 키를 확인해 주세요.');
+      return;
+    }
+  }
+  // API 키 없으면 로컬 로직
+  const q = userQ.toLowerCase();
   const q = userQ.toLowerCase();
   const gw = window.G_WEATHER || {};
   const mo = new Date().getMonth()+1;
