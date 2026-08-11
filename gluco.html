@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>GlucoLog v3.2 — 혈당관리</title>
+<title>GlucoLog v3.3 — 혈당관리</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script type="module">
@@ -289,7 +289,7 @@ textarea.form-input{resize:none;height:70px;}
 <div class="safe-top"></div>
 <header class="app-header">
   <div class="logo-block">
-    <div class="logo">Gluco<span>Log</span> <span class="ver">v3.2</span></div>
+    <div class="logo">Gluco<span>Log</span> <span class="ver">v3.3</span></div>
     <div class="logo-sub">혈당·혈압·식단 통합 관리</div>
   </div>
   <div style="display:flex;align-items:center;gap:8px">
@@ -587,7 +587,7 @@ textarea.form-input{resize:none;height:70px;}
     </div>
     <div id="mealSelPhotoPreview" style="display:none;margin-bottom:10px">
       <img id="mealSelPhotoImg" style="width:100%;max-height:180px;object-fit:contain;border-radius:10px;border:1px solid var(--border);display:block">
-      <div style="font-size:11px;color:var(--accent);margin-top:4px">✅ 이 사진으로 분석합니다 (재업로드 불필요)</div>
+      <div id="mealSelPhotoCap" style="font-size:11px;color:var(--accent);margin-top:4px">✅ 이 사진으로 분석합니다 (재업로드 불필요)</div>
     </div>
     <button class="btn btn-accent" onclick="analyzeSelectedMeal()">
       <span id="mealSelBtnTxt">🔍 선택한 식단 분석</span><span class="spinner" id="mealSelSp"></span>
@@ -895,12 +895,13 @@ textarea.form-input{resize:none;height:70px;}
 // ─ 전역 상태 ─
 let db,col,addDoc,getDocs,q,orderBy;
 let gChart,bChart,mChart;
-let mealB64=null,quickB64=null;
+// 사진 데이터는 window 프로퍼티로 통일 관리 (prevPhoto가 window[b64Key]에 저장하므로)
+window.mealB64=null; window.quickB64=null;
 let labPhotosArr=[];
 let labRecordsCache=[];
 let calcMode=1;
-const VER='v3.2';
-const UPDATE_NOTE='기록된 식단 선택 시 저장된 사진을 미리 보여줘, 재업로드 없이 바로 확인할 수 있습니다.';
+const VER='v3.3';
+const UPDATE_NOTE='AI 서버 연결이 완료되어 식단·검사·리포트 분석이 정상 작동합니다. 사진 인식 오류도 수정했습니다.';
 
 // ─ Firestore 문서 조작 함수 ─
 let fsDoc,updateDoc,deleteDoc,fsSetDoc,fsGetDoc;
@@ -1122,7 +1123,7 @@ function prevPhoto(input,previewId,b64Key){
   r.onload=async(e)=>{
     const rawB64=e.target.result.split(',')[1];
     let finalB64=rawB64;
-    try{ finalB64=await compressImage(rawB64,800,0.65); }catch(err){}
+    try{ finalB64=await compressImage(rawB64,700,0.6); }catch(err){}
     window[b64Key]=finalB64;
     try{ sessionStorage.setItem('gl_photo_'+b64Key, finalB64); }catch(err){}
     const img=document.getElementById(previewId);
@@ -1524,20 +1525,20 @@ async function saveMeal(){
   setBtnLoading('mealBtnTxt','mealSp',true,'');
   const mType=document.getElementById('mealType').value;
   const inputDate=document.getElementById('mealDate').value||todayStr();
-  const photoToStore=(mealB64 && mealB64.length<700000)?mealB64:null;
+  const photoToStore=(window.mealB64 && window.mealB64.length<900000)?window.mealB64:null;
   const data={
     userId:currentUserId,
     type:'meal',date:inputDate,
     time:document.getElementById('mealTime').value,
     mealType:mType,menu,
     memo:document.getElementById('mealMemo').value,
-    hasPhoto:!!mealB64,photoData:photoToStore,createdAt:new Date()
+    hasPhoto:!!window.mealB64,photoData:photoToStore,createdAt:new Date()
   };
   let aiText='';
   try{
     const prompt=`식사구분:${mType}, 메뉴:${menu}\n\n아래 항목을 분석해주세요:\n1. 예상 총 칼로리 (kcal)\n2. 탄수화물/단백질/지방 (g)\n3. 혈당지수(GI) 추정 및 혈당 상승 위험 요인\n4. 혈당 관리 유리/불리 요소\n5. 개선 추천 (간략히)\n구체적 수치와 근거 포함.`;
-    const msgs=mealB64?
-      [{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:mealB64}},{type:'text',text:prompt}]}]:
+    const msgs=window.mealB64?
+      [{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:window.mealB64}},{type:'text',text:prompt}]}]:
       [{role:'user',content:prompt}];
     aiText=await callClaude(msgs);
     data.aiAnalysis=aiText;
@@ -1746,8 +1747,15 @@ function previewSelectedMeal(){
   const box=document.getElementById('mealSelPhotoPreview');
   if(!id){ box.style.display='none'; return; }
   const m=mealOptionsCache.find(x=>x._id===id);
+  const cap=document.getElementById('mealSelPhotoCap');
   if(m && m.photoData){
     document.getElementById('mealSelPhotoImg').src='data:image/jpeg;base64,'+m.photoData;
+    document.getElementById('mealSelPhotoImg').style.display='block';
+    if(cap) cap.textContent='✅ 이 사진으로 분석합니다 (재업로드 불필요)';
+    box.style.display='block';
+  }else if(m){
+    document.getElementById('mealSelPhotoImg').style.display='none';
+    if(cap) cap.textContent='ℹ️ 저장된 사진이 없어 메뉴 텍스트로 분석합니다: '+(m.menu||'');
     box.style.display='block';
   }else{
     box.style.display='none';
@@ -1785,22 +1793,22 @@ async function analyzeSelectedMeal(){
     }
     showToast(m.photoData?'✅ 사진 기반 분석 완료':'✅ 분석 완료 (텍스트 기반)');
     loadMealOptions();
-  }catch(e){showToast('❌ 분석 오류');console.error(e);}
+  }catch(e){showToast('❌ 분석 오류: '+(e.message||e),4000);console.error(e);}
   setBtnLoading('mealSelBtnTxt','mealSelSp',false,'🔍 선택한 식단 분석');
 }
 
 // ─ 식단 빠른 분석 ─
 async function analyzeQuickFood(){
-  if(!quickB64){showToast('⚠️ 식단 사진 먼저 선택');return;}
+  if(!window.quickB64){showToast('⚠️ 식단 사진 먼저 선택');return;}
   setBtnLoading('quickBtnTxt','quickSp',true,'');
   try{
     const res=await callClaude([{role:'user',content:[
-      {type:'image',source:{type:'base64',media_type:'image/jpeg',data:quickB64}},
+      {type:'image',source:{type:'base64',media_type:'image/jpeg',data:window.quickB64}},
       {type:'text',text:`위 식단 사진 분석:\n1. 식별된 음식 목록\n2. 예상 총 칼로리 (kcal)\n3. 탄수화물/단백질/지방 (g)\n4. 혈당지수(GI) 및 혈당 상승 위험 요인\n5. 혈당 친화적 음식 vs 주의 음식\n6. 개선 제안\n구체적 수치 포함.`}
     ]}]);
     document.getElementById('quickFoodBody').textContent=res;
     document.getElementById('quickFoodResult').classList.add('show');
-  }catch(e){showToast('❌ 분석 오류');console.error(e);}
+  }catch(e){showToast('❌ 분석 오류: '+(e.message||e),4000);console.error(e);}
   setBtnLoading('quickBtnTxt','quickSp',false,'🔍 칼로리·혈당지수 분석');
 }
 
