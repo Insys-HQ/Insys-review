@@ -29,22 +29,16 @@
     font-size:14px;
     line-height:1.6;
   }
-  #gate{
-    position:fixed;inset:0;background:var(--navy);
-    display:flex;align-items:center;justify-content:center;z-index:999;
+  #gate{display:none;}
+
+  #updateBanner{
+    display:none;position:fixed;top:0;left:0;right:0;z-index:500;
+    background:var(--accent);color:#fff;padding:10px 16px;font-size:12px;
+    align-items:center;justify-content:center;gap:14px;
   }
-  #gate .box{
-    background:var(--card);padding:40px 36px;border-radius:12px;width:320px;text-align:center;
+  #updateBanner button{
+    background:#fff;color:var(--accent);border:none;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;
   }
-  #gate h1{font-size:18px;margin-bottom:6px;color:var(--navy);}
-  #gate p{font-size:12px;color:var(--text-sub);margin-bottom:20px;}
-  #gate input{
-    width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;font-size:14px;margin-bottom:12px;font-family:inherit;
-  }
-  #gate button{
-    width:100%;padding:12px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;font-family:inherit;font-weight:500;
-  }
-  #gate .err{color:var(--danger);font-size:12px;margin-top:8px;min-height:16px;}
 
   header{
     background:var(--navy);color:#fff;padding:22px 0;
@@ -168,15 +162,13 @@
 </head>
 <body>
 
-<div id="gate">
-  <div class="box">
-    <h1>화재복구 TF 통합관리</h1>
-    <p>인시스 AI혁신 연구개발실</p>
-    <input type="password" id="passInput" placeholder="TF 접속 암호">
-    <button onclick="checkPass()">입장</button>
-    <div class="err" id="passErr"></div>
-  </div>
+<div id="gate" style="display:none;"></div>
+
+<div id="updateBanner">
+  새 버전이 배포되었습니다.
+  <button onclick="location.reload(true)">새로고침</button>
 </div>
+
 
 <header>
   <div class="inner">
@@ -184,7 +176,7 @@
       <h1>화재복구 TF 통합관리</h1>
       <div class="sub">인시스 AI혁신 연구개발실</div>
     </div>
-    <div class="meta">v1.4<br>ys.kim@in-sys.co.kr</div>
+    <div class="meta">v1.5<br>ys.kim@in-sys.co.kr</div>
   </div>
 </header>
 
@@ -352,24 +344,14 @@ const auth = getAuth(app);
 // 예: https://analyzelegaldoc-abc123xyz-du.a.run.app
 const LEGAL_ANALYZE_URL = "https://insys-legal-225275784859.asia-northeast3.run.app";
 
-// TF 접속 암호 (필요시 아래 값만 변경하세요)
-const TF_PASSCODE = "insys2026";
-
-window.checkPass = function(){
-  const val = document.getElementById('passInput').value;
-  if(val === TF_PASSCODE){
-    document.getElementById('gate').style.display = 'none';
-    boot();
-  } else {
-    document.getElementById('passErr').textContent = '암호가 올바르지 않습니다.';
-  }
-};
-document.getElementById('passInput').addEventListener('keydown', e=>{
-  if(e.key === 'Enter') window.checkPass();
-});
+// 앱 버전 (배포할 때마다 이 값과 version.json을 함께 올려야 업데이트 배너가 뜹니다)
+const APP_VERSION = "1.5";
 
 async function boot(){
-  await signInAnonymously(auth).catch(e=>console.error('auth error', e));
+  const authResult = await signInAnonymously(auth).catch(e=>{
+    console.error('auth error', e);
+    alert('로그인에 실패했습니다. Firebase 콘솔에서 Authentication > 익명 로그인이 켜져있는지 확인해주세요.\n(' + e.message + ')');
+  });
   initNav();
   loadTracks();
   loadPhotos();
@@ -377,6 +359,20 @@ async function boot(){
   loadKakao();
   loadSchedule();
   loadLegal();
+  checkForUpdate();
+}
+boot();
+
+async function checkForUpdate(){
+  try{
+    const resp = await fetch('./version.json?t=' + Date.now(), {cache:'no-store'});
+    const data = await resp.json();
+    if(data.version && data.version !== APP_VERSION){
+      document.getElementById('updateBanner').style.display = 'flex';
+    }
+  }catch(e){
+    // version.json이 없거나 접근 실패해도 무시(치명적이지 않음)
+  }
 }
 
 // ==== 탭 네비게이션 ====
@@ -573,6 +569,8 @@ async function uploadKakao(){
 }
 window.uploadKakao = uploadKakao;
 
+let kakaoCache = {};
+
 async function loadKakao(){
   const list = document.getElementById('kakaoList');
   list.innerHTML = '<div class="empty">불러오는 중...</div>';
@@ -580,24 +578,58 @@ async function loadKakao(){
   const snap = await getDocs(q);
   if(snap.empty){ list.innerHTML = '<div class="empty">등록된 카톡 내용이 없습니다.</div>'; return; }
   list.innerHTML = '';
+  kakaoCache = {};
   snap.forEach(d=>{
     const p = d.data();
+    kakaoCache[d.id] = p;
     const el = document.createElement('div');
     el.className = 'legal-item';
-    el.innerHTML = `
-      <div class="top">
-        <span class="ftag" style="background:var(--accent-light);color:var(--accent);padding:2px 8px;border-radius:10px;font-size:10px;font-weight:500;">${p.category||'기타'}</span>
-        <span class="fname">${p.memo||'(요약 없음)'}</span>
-      </div>
-      <div class="fdate">${p.createdAt ? formatTs(p.createdAt) : ''}</div>
-      <div class="analysis">${(p.text||'').replace(/</g,'&lt;')}</div>
-      <div class="actions">
-        <span class="del" onclick="delKakao('${d.id}')">삭제</span>
-      </div>
-    `;
+    el.id = 'kakao-' + d.id;
+    renderKakaoView(el, d.id, p);
     list.appendChild(el);
   });
 }
+
+function renderKakaoView(el, id, p){
+  el.innerHTML = `
+    <div class="top">
+      <span class="ftag" style="background:var(--accent-light);color:var(--accent);padding:2px 8px;border-radius:10px;font-size:10px;font-weight:500;">${p.category||'기타'}</span>
+      <span class="fname">${p.memo||'(요약 없음)'}</span>
+    </div>
+    <div class="fdate">${p.createdAt ? formatTs(p.createdAt) : ''}</div>
+    <div class="analysis">${(p.text||'').replace(/</g,'&lt;')}</div>
+    <div class="actions">
+      <span onclick="editKakao('${id}')">수정</span>
+      <span class="del" onclick="delKakao('${id}')">삭제</span>
+    </div>
+  `;
+}
+
+window.editKakao = function(id){
+  const p = kakaoCache[id];
+  const el = document.getElementById('kakao-' + id);
+  const cats = ['화재보상','지자체지원','고객사보상','공장신축','기타'];
+  const options = cats.map(c => `<option value="${c}" ${p.category===c?'selected':''}>${c}</option>`).join('');
+  el.innerHTML = `
+    <div class="upload-row" style="margin-bottom:8px;">
+      <select id="editCat-${id}">${options}</select>
+      <input type="text" id="editMemo-${id}" value="${(p.memo||'').replace(/"/g,'&quot;')}" placeholder="한줄 요약">
+    </div>
+    <textarea id="editText-${id}" style="width:100%;min-height:120px;border:1px solid var(--border);border-radius:6px;padding:10px;font-size:12px;font-family:inherit;resize:vertical;color:var(--text);">${(p.text||'')}</textarea>
+    <div class="actions" style="margin-top:8px;">
+      <span onclick="saveKakaoEdit('${id}')" style="color:var(--accent);font-weight:600;">저장</span>
+      <span onclick="loadKakao()">취소</span>
+    </div>
+  `;
+};
+
+window.saveKakaoEdit = async function(id){
+  const category = document.getElementById('editCat-'+id).value;
+  const memo = document.getElementById('editMemo-'+id).value;
+  const text = document.getElementById('editText-'+id).value;
+  await setDoc(doc(db,'kakao',id), {category, memo, text}, {merge:true});
+  loadKakao();
+};
 
 window.delKakao = async function(id){
   if(!confirm('삭제하시겠습니까?')) return;
