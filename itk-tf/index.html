@@ -184,7 +184,7 @@
       <h1>화재복구 TF 통합관리</h1>
       <div class="sub">인시스 AI혁신 연구개발실</div>
     </div>
-    <div class="meta">v1.3<br>ys.kim@in-sys.co.kr</div>
+    <div class="meta">v1.4<br>ys.kim@in-sys.co.kr</div>
   </div>
 </header>
 
@@ -248,7 +248,6 @@
   <div class="view" id="view-kakao">
     <div class="card">
       <div class="upload-row">
-        <input type="file" id="kakaoFile" accept="image/*">
         <select id="kakaoCat">
           <option value="화재보상">화재보상</option>
           <option value="지자체지원">지자체지원</option>
@@ -256,12 +255,15 @@
           <option value="공장신축">공장신축</option>
           <option value="기타">기타</option>
         </select>
-        <input type="text" id="kakaoMemo" placeholder="캡쳐 요약 한줄 (예: 소방서 화재조사 결과 회신)">
-        <button onclick="uploadKakao()">업로드</button>
+        <input type="text" id="kakaoMemo" placeholder="한줄 요약 (선택, 예: 소방서 화재조사 결과 회신)">
+      </div>
+      <textarea id="kakaoText" placeholder="카톡 대화 내용을 복사해서 여기에 붙여넣으세요" style="width:100%;min-height:130px;border:1px solid var(--border);border-radius:6px;padding:10px;font-size:12px;font-family:inherit;resize:vertical;margin-bottom:10px;color:var(--text);"></textarea>
+      <div class="upload-row" style="margin-bottom:0;">
+        <button onclick="uploadKakao()">저장</button>
       </div>
       <div class="progress" id="kakaoProgress"></div>
     </div>
-    <div class="photo-grid" id="kakaoGrid"></div>
+    <div id="kakaoList"></div>
   </div>
 
   <!-- 일정관리 -->
@@ -547,62 +549,59 @@ window.delFile = async function(id, path){
   loadFiles();
 };
 
-// ==== 카톡 캡쳐 정리 ====
+// ==== 카톡 정리 (텍스트 붙여넣기) ====
 async function uploadKakao(){
-  const fileInput = document.getElementById('kakaoFile');
-  const file = fileInput.files[0];
-  if(!file){ alert('캡쳐 이미지를 선택해주세요.'); return; }
+  const textEl = document.getElementById('kakaoText');
+  const text = textEl.value.trim();
+  if(!text){ alert('카톡 대화 내용을 붙여넣어주세요.'); return; }
   const cat = document.getElementById('kakaoCat').value;
   const memo = document.getElementById('kakaoMemo').value;
   const progEl = document.getElementById('kakaoProgress');
-  progEl.textContent = '업로드 중...';
+  progEl.textContent = '저장 중...';
   try{
-    const path = `kakao/${Date.now()}_${file.name}`;
-    const sref = ref(storage, path);
-    await uploadBytes(sref, file);
-    const url = await getDownloadURL(sref);
     await addDoc(collection(db,'kakao'), {
-      url, storagePath: path, category: cat, memo,
+      category: cat, memo, text,
       createdAt: serverTimestamp()
     });
-    progEl.textContent = '업로드 완료';
-    fileInput.value = ''; document.getElementById('kakaoMemo').value = '';
+    progEl.textContent = '저장 완료';
+    textEl.value = ''; document.getElementById('kakaoMemo').value = '';
     loadKakao();
   }catch(e){
     console.error(e);
-    progEl.textContent = '업로드 실패: ' + e.message;
+    progEl.textContent = '저장 실패: ' + e.message;
   }
 }
 window.uploadKakao = uploadKakao;
 
 async function loadKakao(){
-  const grid = document.getElementById('kakaoGrid');
-  grid.innerHTML = '<div class="empty">불러오는 중...</div>';
+  const list = document.getElementById('kakaoList');
+  list.innerHTML = '<div class="empty">불러오는 중...</div>';
   const q = query(collection(db,'kakao'), orderBy('createdAt','desc'));
   const snap = await getDocs(q);
-  if(snap.empty){ grid.innerHTML = '<div class="empty">등록된 캡쳐가 없습니다.</div>'; return; }
-  grid.innerHTML = '';
+  if(snap.empty){ list.innerHTML = '<div class="empty">등록된 카톡 내용이 없습니다.</div>'; return; }
+  list.innerHTML = '';
   snap.forEach(d=>{
     const p = d.data();
     const el = document.createElement('div');
-    el.className = 'photo-item';
+    el.className = 'legal-item';
     el.innerHTML = `
-      <img src="${p.url}" onclick="openLightbox('${p.url}')">
-      <div class="meta">
-        <span class="del" onclick="delKakao('${d.id}','${p.storagePath}')">삭제</span>
-        <span class="tag">${p.category||'기타'}</span>
-        <div class="memo">${p.memo||''}</div>
-        <div class="date">${p.createdAt ? formatTs(p.createdAt) : ''}</div>
+      <div class="top">
+        <span class="ftag" style="background:var(--accent-light);color:var(--accent);padding:2px 8px;border-radius:10px;font-size:10px;font-weight:500;">${p.category||'기타'}</span>
+        <span class="fname">${p.memo||'(요약 없음)'}</span>
+      </div>
+      <div class="fdate">${p.createdAt ? formatTs(p.createdAt) : ''}</div>
+      <div class="analysis">${(p.text||'').replace(/</g,'&lt;')}</div>
+      <div class="actions">
+        <span class="del" onclick="delKakao('${d.id}')">삭제</span>
       </div>
     `;
-    grid.appendChild(el);
+    list.appendChild(el);
   });
 }
 
-window.delKakao = async function(id, path){
+window.delKakao = async function(id){
   if(!confirm('삭제하시겠습니까?')) return;
   await deleteDoc(doc(db,'kakao',id));
-  try{ await deleteObject(ref(storage, path)); }catch(e){}
   loadKakao();
 };
 
