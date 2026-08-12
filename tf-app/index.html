@@ -145,6 +145,20 @@
 
   .empty{color:var(--text-sub);font-size:12px;padding:20px;text-align:center;}
 
+  .legal-item{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;}
+  .legal-item .top{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+  .legal-item .fname{flex:1;font-size:13px;font-weight:500;color:var(--text);}
+  .legal-item .fdate{font-size:10px;color:var(--text-sub);}
+  .legal-item .actions{display:flex;gap:10px;align-items:center;margin-top:6px;}
+  .legal-item .actions a, .legal-item .actions span{font-size:11px;cursor:pointer;color:var(--accent);}
+  .legal-item .actions .del{color:var(--danger);}
+  .legal-item .analysis{
+    margin-top:10px;padding:12px;background:var(--accent-light);border-radius:8px;font-size:12px;color:var(--text);white-space:pre-wrap;line-height:1.7;
+  }
+  .legal-item .analysis-label{font-size:11px;font-weight:700;color:var(--accent);margin-bottom:4px;}
+  .badge.pending{background:#E7ECF2;color:var(--text-sub);}
+  .badge.error{background:#F7DEDE;color:var(--danger);}
+
   #lightbox{
     display:none;position:fixed;inset:0;background:rgba(10,14,22,0.9);z-index:200;align-items:center;justify-content:center;padding:20px;
   }
@@ -170,7 +184,7 @@
       <h1>화재복구 TF 통합관리</h1>
       <div class="sub">인시스 AI혁신 연구개발실</div>
     </div>
-    <div class="meta">v1.0<br>ys.kim@in-sys.co.kr</div>
+    <div class="meta">v1.1<br>ys.kim@in-sys.co.kr</div>
   </div>
 </header>
 
@@ -181,6 +195,7 @@
     <button data-view="files">파일함</button>
     <button data-view="kakao">카톡 정리</button>
     <button data-view="schedule">일정관리</button>
+    <button data-view="legal">법률의견 AI분석</button>
   </div>
 </nav>
 
@@ -277,6 +292,25 @@
     </div>
   </div>
 
+  <!-- 법률의견 AI분석 -->
+  <div class="view" id="view-legal">
+    <div class="card">
+      <div class="upload-row">
+        <input type="file" id="legalFile" accept=".pdf,.doc,.docx">
+        <select id="legalCat">
+          <option value="화재보상">화재보상</option>
+          <option value="지자체지원">지자체지원</option>
+          <option value="고객사보상">고객사보상</option>
+          <option value="공장신축">공장신축</option>
+          <option value="기타">기타</option>
+        </select>
+        <button onclick="uploadLegal()">업로드 후 AI분석 요청</button>
+      </div>
+      <div class="progress" id="legalProgress"></div>
+    </div>
+    <div id="legalList"></div>
+  </div>
+
 </main>
 
 <div id="lightbox" onclick="this.style.display='none'">
@@ -296,6 +330,9 @@ import {
 import {
   getAuth, signInAnonymously
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFunctions, httpsCallable
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
 
 // ==== Firebase 설정 (전달받은 값 반영) ====
 const firebaseConfig = {
@@ -311,6 +348,7 @@ const app = initializeApp(firebaseConfig);
 const db = getStorage ? getFirestore(app) : null;
 const storage = getStorage(app);
 const auth = getAuth(app);
+const functions = getFunctions(app, "asia-northeast3");
 
 // TF 접속 암호 (필요시 아래 값만 변경하세요)
 const TF_PASSCODE = "insys2026";
@@ -336,6 +374,7 @@ async function boot(){
   loadFiles();
   loadKakao();
   loadSchedule();
+  loadLegal();
 }
 
 // ==== 탭 네비게이션 ====
@@ -607,6 +646,91 @@ window.delSchedule = async function(id){
   if(!confirm('삭제하시겠습니까?')) return;
   await deleteDoc(doc(db,'schedule',id));
   loadSchedule();
+};
+
+// ==== 법률의견 AI분석 ====
+async function uploadLegal(){
+  const fileInput = document.getElementById('legalFile');
+  const file = fileInput.files[0];
+  if(!file){ alert('법률의견 문서를 선택해주세요.'); return; }
+  const cat = document.getElementById('legalCat').value;
+  const progEl = document.getElementById('legalProgress');
+  progEl.textContent = '업로드 중...';
+  try{
+    const path = `legal/${Date.now()}_${file.name}`;
+    const sref = ref(storage, path);
+    await uploadBytes(sref, file);
+    const url = await getDownloadURL(sref);
+    const docRef = await addDoc(collection(db,'legalOpinions'), {
+      url, storagePath: path, filename: file.name, category: cat,
+      analysis: '', analysisStatus: 'pending',
+      uploadedAt: serverTimestamp()
+    });
+    progEl.textContent = 'AI 분석 요청 중... (문서 길이에 따라 30초~1분 소요)';
+    fileInput.value = '';
+    loadLegal();
+    await requestAnalysis(docRef.id);
+    progEl.textContent = '분석 완료';
+  }catch(e){
+    console.error(e);
+    progEl.textContent = '업로드 실패: ' + e.message;
+  }
+}
+window.uploadLegal = uploadLegal;
+
+async function requestAnalysis(docId){
+  try{
+    const call = httpsCallable(functions, 'analyzeLegalDoc');
+    const res = await call({ docId });
+    await setDoc(doc(db,'legalOpinions',docId), {
+      analysis: res.data.analysis, analysisStatus: 'done'
+    }, {merge:true});
+  }catch(e){
+    console.error(e);
+    await setDoc(doc(db,'legalOpinions',docId), {
+      analysis: 'AI 분석 실패: ' + e.message, analysisStatus: 'error'
+    }, {merge:true});
+  }
+  loadLegal();
+}
+window.requestAnalysis = requestAnalysis;
+
+async function loadLegal(){
+  const list = document.getElementById('legalList');
+  list.innerHTML = '<div class="empty">불러오는 중...</div>';
+  const q = query(collection(db,'legalOpinions'), orderBy('uploadedAt','desc'));
+  const snap = await getDocs(q);
+  if(snap.empty){ list.innerHTML = '<div class="empty">등록된 법률의견 문서가 없습니다.</div>'; return; }
+  list.innerHTML = '';
+  snap.forEach(d=>{
+    const f = d.data();
+    const badgeClass = f.analysisStatus === 'done' ? 'done' : (f.analysisStatus === 'error' ? 'error' : 'pending');
+    const badgeLabel = f.analysisStatus === 'done' ? '분석완료' : (f.analysisStatus === 'error' ? '분석실패' : '분석대기');
+    const el = document.createElement('div');
+    el.className = 'legal-item';
+    el.innerHTML = `
+      <div class="top">
+        <span class="ftag" style="background:var(--accent-light);color:var(--accent);padding:2px 8px;border-radius:10px;font-size:10px;font-weight:500;">${f.category||'기타'}</span>
+        <span class="fname">${f.filename}</span>
+        <span class="badge ${badgeClass}">${badgeLabel}</span>
+      </div>
+      <div class="fdate">${f.uploadedAt ? formatTs(f.uploadedAt) : ''}</div>
+      ${f.analysis ? `<div class="analysis"><div class="analysis-label">AI 분석 결과</div>${f.analysis}</div>` : ''}
+      <div class="actions">
+        <a href="${f.url}" target="_blank">원문 열기</a>
+        <span onclick="requestAnalysis('${d.id}')">재분석</span>
+        <span class="del" onclick="delLegal('${d.id}','${f.storagePath}')">삭제</span>
+      </div>
+    `;
+    list.appendChild(el);
+  });
+}
+
+window.delLegal = async function(id, path){
+  if(!confirm('삭제하시겠습니까?')) return;
+  await deleteDoc(doc(db,'legalOpinions',id));
+  try{ await deleteObject(ref(storage, path)); }catch(e){}
+  loadLegal();
 };
 </script>
 </body>
