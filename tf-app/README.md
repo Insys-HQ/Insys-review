@@ -1,4 +1,4 @@
-# 화재복구 TF 통합관리 웹앱 v1.1
+# 화재복구 TF 통합관리 웹앱 v1.2
 
 담당: 인시스 AI혁신 연구개발실 (ys.kim@in-sys.co.kr)
 
@@ -49,47 +49,50 @@ https://insys-hq.github.io/Insys-review/tf-app/
 | 카톡 정리 | 카톡 캡쳐 이미지 업로드 + 수동 태그·한줄 요약 |
 | 일정관리 | 트랙별 마일스톤 등록, 상태(계획/진행중/완료) 관리 |
 
-## 4. 법률의견 AI분석 기능 (v1.1 신규) — 배포 필수 절차
+## 4. 법률의견 AI분석 기능 — 설정 방법 (터미널 없이 웹 화면만으로)
 
 "법률의견 AI분석" 탭에서 PDF 업로드 시 Claude(Anthropic API)가 자동으로
-핵심쟁점/권고조치/기한/리스크/관련트랙을 분석해 보여줍니다. **아래 절차를 반드시 완료해야 동작합니다.**
+핵심쟁점/권고조치/기한/리스크/관련트랙을 분석해 보여줍니다.
 
-### 4-1. Firebase 요금제를 Blaze(종량제)로 전환
-콘솔 좌측 하단 "업그레이드" → Blaze 플랜 선택 (Cloud Functions는 무료 플랜(Spark)에서 실행 불가)
-※ 실제 사용량이 적으면 월 비용은 거의 발생하지 않습니다. (호출당 과금)
+### 4-1. Firebase 요금제를 Blaze로 전환
+Firebase 콘솔(https://console.firebase.google.com) → insys-work 프로젝트 → 좌측 하단 "업그레이드" → Blaze 선택 → 결제수단 등록
+(완료하셨다면 이 단계는 건너뛰세요)
 
-### 4-2. Anthropic API 키 발급
-https://console.anthropic.com 에서 API 키 발급 (기존 사내 키가 있다면 그것을 사용해도 됩니다)
+### 4-2. Google Cloud Console에서 함수 생성 (클릭만으로 배포)
+1. https://console.cloud.google.com/functions 접속 → 상단에서 프로젝트를 **insys-work**로 선택
+2. "함수 만들기" 클릭
+3. 기본 설정
+   - 환경: **2세대**
+   - 함수 이름: `analyzeLegalDoc`
+   - 리전: `asia-northeast3 (서울)`
+   - 트리거: **HTTPS**, 인증 안 됨(공개 액세스 허용) 체크
+4. "런타임, 빌드, 연결 및 보안 설정" 펼치기 → **런타임 환경 변수** 섹션에서 "+ 변수 추가"
+   - 이름: `ANTHROPIC_API_KEY`
+   - 값: 발급받은 Anthropic API 키(sk-ant-로 시작하는 값) 붙여넣기
+5. "다음" 클릭 → 런타임: **Node.js 20**, 진입점: `analyzeLegalDoc`
+6. 소스 코드 편집기에서
+   - `index.js` 탭에 이 저장소의 `functions/index.js` 내용 전체를 복사해서 붙여넣기
+   - `package.json` 탭에 이 저장소의 `functions/package.json` 내용 전체를 복사해서 붙여넣기
+7. "배포" 클릭 (2~3분 소요)
 
-### 4-3. Firebase CLI 설치 및 로그인 (최초 1회, 로컬 PC에서)
-```
-npm install -g firebase-tools
-firebase login
-```
+### 4-3. 배포된 함수 URL을 앱에 연결
+1. 배포 완료 후 함수 상세 화면 상단에 있는 **트리거 URL**을 복사
+   (예: `https://analyzelegaldoc-xxxxxxx-du.a.run.app`)
+2. `tf-app/index.html` 파일 안에서 아래 줄을 찾아 복사한 URL로 교체
+   ```
+   const LEGAL_ANALYZE_URL = "여기에_배포된_함수_URL을_붙여넣으세요";
+   ```
+3. 수정한 파일을 다시 GitHub에 올리면 (챗봇에게 "다시 올려줘"라고 요청하시면 됩니다) 자동 반영됩니다.
 
-### 4-4. API 키를 Cloud Functions 시크릿으로 등록 (코드에 노출되지 않음)
-```
-cd tf-app 상위 폴더(repo 루트)로 이동
-firebase use insys-work
-firebase functions:secrets:set ANTHROPIC_API_KEY
-```
-→ 프롬프트가 뜨면 발급받은 Anthropic API 키 값을 붙여넣기
-
-### 4-5. 함수 배포
-```
-cd functions
-npm install
-cd ..
-firebase deploy --only functions
-```
-
-### 4-6. 확인
-배포 완료 후 웹앱에서 "법률의견 AI분석" 탭 → PDF 업로드 시 자동으로 분석 결과가 표시됩니다.
-현재는 **PDF만 지원**합니다. (doc/docx는 PDF로 변환 후 업로드 안내 문구가 뜹니다)
+### 확인
+https://insys-hq.github.io/Insys-review/tf-app/ → 법률의견 AI분석 탭 → PDF 업로드 → 30초~1분 내 분석 결과 표시
 
 ### 참고
-- 분석 결과는 법적 자문을 대체하지 않는 TF 내부 참고용입니다. 실제 의사결정 전 담당 변호사 확인이 필요합니다.
-- 함수 리전은 `asia-northeast3`(서울)로 설정되어 있습니다.
+- 이 방식은 API 키를 Cloud Function의 "환경 변수"로 저장합니다. Secret Manager보다 접근 통제가 느슨하므로,
+  이 프로젝트(insys-work)에 접근 권한이 있는 사람만 콘솔에서 값을 볼 수 있다는 점 참고해주세요.
+  더 엄격한 보안이 필요하면 이후 Secret Manager로 전환 가능합니다(요청 시 안내).
+- 분석 결과는 법적 자문을 대체하지 않는 TF 내부 참고용입니다.
+- 현재는 **PDF만 지원**합니다.
 
 ## 5. 그 외 다음 단계 (미포함, 확장 검토 필요)
 

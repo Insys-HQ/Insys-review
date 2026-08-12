@@ -184,7 +184,7 @@
       <h1>화재복구 TF 통합관리</h1>
       <div class="sub">인시스 AI혁신 연구개발실</div>
     </div>
-    <div class="meta">v1.1<br>ys.kim@in-sys.co.kr</div>
+    <div class="meta">v1.2<br>ys.kim@in-sys.co.kr</div>
   </div>
 </header>
 
@@ -330,9 +330,6 @@ import {
 import {
   getAuth, signInAnonymously
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import {
-  getFunctions, httpsCallable
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
 
 // ==== Firebase 설정 (전달받은 값 반영) ====
 const firebaseConfig = {
@@ -348,7 +345,10 @@ const app = initializeApp(firebaseConfig);
 const db = getStorage ? getFirestore(app) : null;
 const storage = getStorage(app);
 const auth = getAuth(app);
-const functions = getFunctions(app, "asia-northeast3");
+
+// Cloud Console에서 함수 배포 후 뜨는 URL을 여기에 붙여넣으세요.
+// 예: https://analyzelegaldoc-abc123xyz-du.a.run.app
+const LEGAL_ANALYZE_URL = "여기에_배포된_함수_URL을_붙여넣으세요";
 
 // TF 접속 암호 (필요시 아래 값만 변경하세요)
 const TF_PASSCODE = "insys2026";
@@ -679,11 +679,20 @@ async function uploadLegal(){
 window.uploadLegal = uploadLegal;
 
 async function requestAnalysis(docId){
+  if(!LEGAL_ANALYZE_URL || LEGAL_ANALYZE_URL.includes('여기에')){
+    alert('아직 AI 분석 함수 URL이 설정되지 않았습니다. 관리자에게 문의해주세요.');
+    return;
+  }
   try{
-    const call = httpsCallable(functions, 'analyzeLegalDoc');
-    const res = await call({ docId });
+    const resp = await fetch(LEGAL_ANALYZE_URL, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ docId })
+    });
+    const data = await resp.json();
+    if(!resp.ok) throw new Error(data.error || '분석 실패');
     await setDoc(doc(db,'legalOpinions',docId), {
-      analysis: res.data.analysis, analysisStatus: 'done'
+      analysis: data.analysis, analysisStatus: 'done'
     }, {merge:true});
   }catch(e){
     console.error(e);
