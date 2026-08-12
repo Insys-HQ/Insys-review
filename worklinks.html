@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>업무용 검토자료 링크 모음 | 인시스</title>
-<meta name="app-version" content="1.3">
+<meta name="app-version" content="1.4">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
@@ -191,6 +191,14 @@
   .lbtn.copy.copied{background:var(--ok);color:#fff;border-color:var(--ok);}
   .lbtn.del{color:var(--danger);}
   .lbtn.del:hover{background:var(--danger-bg);border-color:var(--danger);}
+  .lbtn.move{
+    padding:6px 9px;font-weight:700;color:var(--navy-2);
+  }
+  .lbtn.move:hover{border-color:var(--navy-2);color:var(--navy);}
+  .lbtn.move:disabled{
+    opacity:.3;cursor:not-allowed;color:var(--gray-sub);
+  }
+  .lbtn.move:disabled:hover{border-color:var(--border);color:var(--gray-sub);}
 
   /* ===== MODAL ===== */
   .modal-bg{
@@ -251,7 +259,7 @@
     <div class="nav-brand">
       <div class="logo">IS</div>
       <div class="title">업무용 검토자료 링크</div>
-      <div class="ver">v1.3</div>
+      <div class="ver">v1.4</div>
     </div>
     <div class="nav-user" id="navUser" style="display:none;">
       <span class="email" id="navEmail"></span>
@@ -353,7 +361,7 @@
     </div>
     <div id="linkGrid"></div>
   </div>
-  <footer>인시스 AI혁신 연구개발실 &nbsp;|&nbsp; ys.kim@in-sys.co.kr &nbsp;|&nbsp; worklinks.html v1.3</footer>
+  <footer>인시스 AI혁신 연구개발실 &nbsp;|&nbsp; ys.kim@in-sys.co.kr &nbsp;|&nbsp; worklinks.html v1.4</footer>
 </div>
 
 <!-- ===== 링크 추가/수정 모달 ===== -->
@@ -462,7 +470,7 @@ import {
   reauthenticateWithCredential, EmailAuthProvider
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
-  getFirestore, collection, query, where, orderBy,
+  getFirestore, collection, query, where,
   addDoc, updateDoc, deleteDoc, doc, onSnapshot, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
@@ -479,7 +487,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 const LS_EMAIL_KEY = "worklinks_saved_email";
-const APP_VERSION = "1.3";
+const APP_VERSION = "1.4";
 
 let currentUser = null;
 let unsubLinks = null;
@@ -615,8 +623,7 @@ function subscribeLinks(uid){
   if (unsubLinks) unsubLinks();
   const q = query(
     collection(db, "worklinks"),
-    where("uid", "==", uid),
-    orderBy("createdAt", "desc")
+    where("uid", "==", uid)
   );
   unsubLinks = onSnapshot(q, (snap) => {
     allLinks = [];
@@ -626,6 +633,16 @@ function subscribeLinks(uid){
   }, (err) => {
     console.error(err);
   });
+}
+
+/* ---------- 정렬(선호도 순서) ---------- */
+// order 필드가 있으면 그 값으로, 없으면 등록 시각(최신이 위) 기준으로 정렬
+function effectiveOrder(l){
+  if (typeof l.order === "number") return l.order;
+  return -(l.createdAt && l.createdAt.seconds ? l.createdAt.seconds : 0);
+}
+function sortByOrder(arr){
+  return [...arr].sort((a, b) => effectiveOrder(a) - effectiveOrder(b));
 }
 
 /* ---------- 분류 필터 옵션 ---------- */
@@ -640,6 +657,8 @@ function refreshCatFilter(){
 }
 
 /* ---------- 렌더링 ---------- */
+let currentList = []; // 현재 화면에 표시 중인(필터+정렬된) 링크 목록 - 순서 이동 시 참조용
+
 function renderLinks(){
   const grid = document.getElementById("linkGrid");
   const empty = document.getElementById("emptyMsg");
@@ -653,6 +672,8 @@ function renderLinks(){
     const matchCat = !catTerm || (l.category || "") === catTerm;
     return matchSearch && matchCat;
   });
+  list = sortByOrder(list);
+  currentList = list;
 
   document.getElementById("countInfo").textContent = list.length + "개 링크";
 
@@ -663,7 +684,7 @@ function renderLinks(){
   }
   empty.style.display = "none";
 
-  grid.innerHTML = list.map(l => `
+  grid.innerHTML = list.map((l, i) => `
     <div class="lcard" data-id="${l.id}">
       <div class="lcard-top">
         <div class="lcard-title">${escapeHtml(l.title || "(제목 없음)")}</div>
@@ -672,6 +693,8 @@ function renderLinks(){
       <div class="lcard-url">${escapeHtml(l.url || "")}</div>
       ${l.memo ? `<div class="lcard-memo">${escapeHtml(l.memo)}</div>` : ""}
       <div class="lcard-btns">
+        <button class="lbtn move" data-act="up" data-id="${l.id}" ${i === 0 ? "disabled" : ""} title="위로">▲</button>
+        <button class="lbtn move" data-act="down" data-id="${l.id}" ${i === list.length - 1 ? "disabled" : ""} title="아래로">▼</button>
         <button class="lbtn open" data-act="open" data-url="${escapeAttr(l.url || "")}">열기</button>
         <button class="lbtn copy" data-act="copy" data-url="${escapeAttr(l.url || "")}">복사</button>
         <button class="lbtn" data-act="edit" data-id="${l.id}">수정</button>
@@ -696,6 +719,12 @@ document.getElementById("linkGrid").addEventListener("click", async (e) => {
   if (!btn) return;
   const act = btn.dataset.act;
 
+  if (act === "up"){
+    await moveLink(btn.dataset.id, -1);
+  }
+  if (act === "down"){
+    await moveLink(btn.dataset.id, 1);
+  }
   if (act === "open"){
     const url = btn.dataset.url;
     if (url) window.open(normalizeUrl(url), "_blank", "noopener");
@@ -726,6 +755,29 @@ document.getElementById("linkGrid").addEventListener("click", async (e) => {
 function normalizeUrl(u){
   if (!/^https?:\/\//i.test(u)) return "https://" + u;
   return u;
+}
+
+/* ---------- 링크 순서(선호도) 이동 ---------- */
+async function moveLink(id, direction){
+  const idx = currentList.findIndex(l => l.id === id);
+  if (idx === -1) return;
+  const targetIdx = idx + direction;
+  if (targetIdx < 0 || targetIdx >= currentList.length) return;
+
+  const a = currentList[idx];
+  const b = currentList[targetIdx];
+  const aOrder = effectiveOrder(a);
+  const bOrder = effectiveOrder(b);
+
+  try{
+    await Promise.all([
+      updateDoc(doc(db, "worklinks", a.id), { order: bOrder }),
+      updateDoc(doc(db, "worklinks", b.id), { order: aOrder })
+    ]);
+  }catch(err){
+    alert("순서 변경 중 오류가 발생했습니다.");
+    console.error(err);
+  }
 }
 
 /* ---------- 링크 추가/수정 모달 ---------- */
@@ -762,8 +814,10 @@ document.getElementById("btnLinkSave").addEventListener("click", async () => {
     if (id){
       await updateDoc(doc(db, "worklinks", id), { title, url, category, memo });
     } else {
+      const minOrder = allLinks.length ? Math.min(...allLinks.map(effectiveOrder)) : 0;
       await addDoc(collection(db, "worklinks"), {
-        uid: currentUser.uid, title, url, category, memo, createdAt: serverTimestamp()
+        uid: currentUser.uid, title, url, category, memo,
+        order: minOrder - 1, createdAt: serverTimestamp()
       });
     }
     closeLinkModal();
