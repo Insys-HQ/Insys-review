@@ -2,8 +2,8 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>인시스 외근현황판</title>
+<meta name="viewport" content="width=1080, initial-scale=1.0">
+<title>인시스 외근현황판 v1.3</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 
 <script type="module">
@@ -11,43 +11,45 @@
   import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc,
            onSnapshot, query, orderBy, serverTimestamp, getDoc }
     from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-  const cfg = {
+  const cfg={
     apiKey:"AIzaSyBYqd2uRr1ZvFLDCWuS15h9qFkT-Dvg5Es",
-    authDomain:"insys-work.firebaseapp.com", projectId:"insys-work",
+    authDomain:"insys-work.firebaseapp.com",projectId:"insys-work",
     storageBucket:"insys-work.firebasestorage.app",
     messagingSenderId:"225275784859",
     appId:"1:225275784859:web:bd12815c6dc47c0c49e03e"
   };
-  const app=initializeApp(cfg), db=getFirestore(app);
+  const app=initializeApp(cfg),db=getFirestore(app);
   window.__db=db;
   window.__fs={collection,doc,addDoc,updateDoc,deleteDoc,onSnapshot,query,orderBy,serverTimestamp,getDoc};
   function listen(){
     const {collection:C,query:Q,orderBy:OB,onSnapshot:ON}=window.__fs;
-    ON(Q(C(db,'outings'),OB('departTime')), s=>{
+    ON(Q(C(db,'outings'),OB('departTime')),s=>{
       window.__outings=s.docs.map(d=>({id:d.id,...d.data()}));
       window.renderOutings&&window.renderOutings();
     });
-    ON(Q(C(db,'leaves'),OB('startDate')), s=>{
+    ON(Q(C(db,'leaves'),OB('startDate')),s=>{
       window.__leaves=s.docs.map(d=>({id:d.id,...d.data()}));
       window.renderLeaves&&window.renderLeaves();
     });
-    ON(Q(C(db,'notices'),OB('createdAt')), s=>{
+    ON(Q(C(db,'notices'),OB('createdAt')),s=>{
       window.__notices=s.docs.map(d=>({id:d.id,...d.data()}));
       window.renderNotices&&window.renderNotices();
     });
-    ON(C(db,'vehicles'), s=>{
+    ON(C(db,'vehicles'),s=>{
       window.__vehicles=s.docs.map(d=>({id:d.id,...d.data()}));
       window.renderVehicles&&window.renderVehicles();
     });
   }
   document.addEventListener('DOMContentLoaded',()=>{
-    try{listen();}catch(e){console.warn('FB fallback:',e.message);}
+    try{listen();}catch(e){console.warn('FB:',e.message);}
     window.initApp&&window.initApp();
   });
 </script>
 
 <style>
-/* ━━━ RESET ━━━ */
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   RESET & VARIABLES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 :root{
   --P:#1a3a5c; --P2:#2563a8; --A:#0ea5e9;
@@ -55,229 +57,146 @@
   --BG:#edf2f7; --CARD:#fff; --BD:#d1dbe8;
   --T:#1e293b; --T2:#475569; --T3:#94a3b8;
   --TH:#dbeafe; --TH2:#1e3a5f;
-  --SH:0 1px 8px rgba(26,58,92,.12);
-  --R:10px; --F:'Noto Sans KR',sans-serif;
-}
-html,body{font-family:var(--F);background:var(--BG);color:var(--T);font-size:14px;min-height:100%;}
-a{text-decoration:none;}
+  --F:'Noto Sans KR',sans-serif;
 
-/* ━━━ APP SHELL ━━━ */
-.app{display:flex;flex-direction:column;min-height:100vh;}
+  /* ── 뷰별 설정 ──
+     세로HD터치: 1080px 기준, 폰트 크게
+     PC가로:     max-width 1920px
+     모바일:     360~430px  */
+  --BASE-FONT:15px;
+  --HD-W:1080px;
+}
+
+html{font-size:var(--BASE-FONT);}
+body{
+  font-family:var(--F);background:var(--BG);
+  color:var(--T);min-height:100vh;
+  overflow-x:hidden;
+}
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   HEADER — PC 버전 (기본)
+   뷰모드: TOUCH (기본 = 세로HD터치)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-.hd{background:var(--P);color:#fff;flex-shrink:0;}
+/* 기본(TOUCH) 설정 */
+.view-wrap{width:100%;max-width:var(--HD-W);margin:0 auto;}
 
-/* PC 헤더: 단일 행 */
-.hd-pc{
-  display:flex;align-items:center;gap:12px;
-  padding:0 20px;height:54px;
+/* ── HEADER: 터치/세로HD ── */
+.hd{
+  background:var(--P);color:#fff;
+  width:100%;
 }
-.hd-pc-logo{
-  font-size:17px;font-weight:700;flex:1;white-space:nowrap;letter-spacing:-.3px;
+
+/* 헤더 1행: 로고 + 버튼군 */
+.hd-r1{
+  display:flex;align-items:center;
+  padding:14px 20px;gap:12px;
 }
-.hd-pc-logo span{color:var(--A);}
-.hd-pc-ver{
-  font-size:10px;font-weight:400;
-  background:rgba(255,255,255,.18);border-radius:10px;
-  padding:1px 7px;margin-left:6px;vertical-align:middle;
+.hd-logo{
+  font-size:22px;font-weight:700;flex:1;
+  display:flex;align-items:center;gap:8px;
+}
+.hd-logo span{color:var(--A);}
+.hd-ver{
+  font-size:11px;font-weight:400;
+  background:rgba(255,255,255,.2);
+  border-radius:10px;padding:2px 9px;
   letter-spacing:.3px;
 }
-.hd-pc-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
-.hd-pc-clock{text-align:right;}
-.hd-pc-date{font-size:10px;opacity:.7;letter-spacing:.3px;}
-.hd-pc-time{font-size:18px;font-weight:700;letter-spacing:1.5px;line-height:1.1;}
+.hd-btns{display:flex;align-items:center;gap:8px;flex-shrink:0;}
 
-/* PC 날씨 컴팩트 */
-.wt-pc{
-  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);
-  border-radius:8px;padding:4px 11px;
-  display:flex;align-items:center;gap:8px;
-  font-size:12px;cursor:pointer;position:relative;
-}
-.wt-pc-ico{font-size:20px;}
-.wt-pc-temp{font-size:16px;font-weight:700;}
-.wt-pc-range{font-size:10px;opacity:.8;}
-.wt-pc-umb{
-  background:var(--W);color:#fff;border-radius:4px;
-  padding:1px 6px;font-size:10px;font-weight:700;display:none;
-}
-.wt-pc-umb.show{display:inline;}
-/* 날씨 팝업 */
-.wt-popup{
-  position:absolute;top:calc(100%+6px);right:0;
-  background:#fff;border-radius:10px;color:var(--T);
-  box-shadow:0 6px 24px rgba(0,0,0,.16);
-  padding:12px;width:220px;z-index:999;
-  display:none;border:1px solid var(--BD);
-}
-.wt-popup.open{display:block;}
-.wt-popup h4{font-size:11px;font-weight:700;color:var(--P);margin-bottom:7px;
-  border-bottom:1px solid var(--BD);padding-bottom:5px;}
-.wt-ps{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
-.wt-ps-slot{background:var(--BG);border-radius:6px;padding:7px;text-align:center;}
-.wt-ps-slot .lbl{font-size:10px;color:var(--T3);margin-bottom:2px;}
-.wt-ps-slot .ico{font-size:20px;}
-.wt-ps-slot .tmp{font-size:13px;font-weight:700;color:var(--P);}
-.wt-ps-slot .dsc{font-size:10px;color:var(--T3);}
-.wt-popup-loc{margin-top:7px;font-size:10px;color:var(--T3);
-  border-top:1px solid var(--BD);padding-top:5px;}
-
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   HEADER — 모바일/터치 버전
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-/* 1행: 로고 + 버튼들 */
-.hd-mob-r1{
-  display:flex;align-items:center;gap:6px;
-  padding:9px 12px;
-}
-.hd-mob-logo{
-  font-size:14px;font-weight:700;flex:1;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-}
-.hd-mob-logo span{color:var(--A);}
-.hd-mob-ver{
-  font-size:10px;font-weight:400;
-  background:rgba(255,255,255,.18);border-radius:10px;
-  padding:1px 6px;margin-left:4px;vertical-align:middle;
-}
-.hd-mob-acts{display:flex;align-items:center;gap:5px;flex-shrink:0;}
-
-/* 2행: 날짜 + 시계 */
-.hd-mob-r2{
+/* 헤더 2행: 날짜 + 시계 */
+.hd-r2{
   display:flex;align-items:stretch;
   border-top:1px solid rgba(255,255,255,.12);
+  padding:0 20px;
 }
-.hd-mob-date{
-  flex:1;padding:6px 12px;
-  display:flex;flex-direction:column;gap:1px;
+.hd-date-blk{
+  flex:1;padding:10px 0;
+  display:flex;flex-direction:column;gap:2px;
 }
-.hd-mob-date-lbl{font-size:10px;opacity:.65;}
-.hd-mob-date-val{font-size:12px;font-weight:700;}
-.hd-mob-time{
-  padding:6px 12px;
+.hd-date-lbl{font-size:11px;opacity:.65;letter-spacing:.3px;}
+.hd-date-val{font-size:16px;font-weight:700;}
+.hd-time-blk{
   display:flex;align-items:center;
+  padding:10px 0 10px 20px;
   border-left:1px solid rgba(255,255,255,.15);
-  flex-shrink:0;
 }
-.hd-mob-time-val{font-size:20px;font-weight:900;letter-spacing:1px;}
+.hd-time-val{font-size:32px;font-weight:900;letter-spacing:2px;font-variant-numeric:tabular-nums;}
 
-/* 3행: 날씨 스트립 */
-.hd-mob-r3{
-  display:flex;align-items:center;gap:10px;
-  background:rgba(0,0,0,.2);
+/* 헤더 3행: 날씨 스트립 */
+.hd-r3{
+  background:rgba(0,0,0,.22);
   border-top:1px solid rgba(255,255,255,.08);
-  padding:6px 12px;
+  padding:10px 20px;
+  display:flex;align-items:center;gap:16px;
 }
-.wt-now{display:flex;align-items:center;gap:6px;}
-.wt-now-ico{font-size:20px;line-height:1;}
-.wt-now-temp{font-size:16px;font-weight:900;}
-.wt-now-range{font-size:10px;opacity:.8;line-height:1.3;}
-.wt-divider{width:1px;background:rgba(255,255,255,.2);align-self:stretch;margin:0 2px;}
-.wt-slots{display:flex;gap:10px;flex:1;justify-content:flex-start;}
-.wt-slot{display:flex;flex-direction:column;align-items:center;gap:1px;}
-.wt-slot-lbl{font-size:10px;opacity:.65;}
-.wt-slot-ico{font-size:13px;}
-.wt-slot-tmp{font-size:11px;font-weight:700;}
+.wt-main{display:flex;align-items:center;gap:10px;}
+.wt-icon{font-size:28px;line-height:1;}
+.wt-temp{font-size:26px;font-weight:900;}
+.wt-range{font-size:12px;opacity:.8;line-height:1.4;}
+.wt-sep{width:1px;background:rgba(255,255,255,.2);height:40px;flex-shrink:0;}
+.wt-ampm{display:flex;gap:20px;}
+.wt-slot{display:flex;flex-direction:column;align-items:center;gap:2px;}
+.wt-slot-lbl{font-size:11px;opacity:.65;}
+.wt-slot-ico{font-size:18px;}
+.wt-slot-tmp{font-size:13px;font-weight:700;}
 .wt-umb{
-  background:var(--W);color:#fff;border-radius:5px;
-  padding:2px 8px;font-size:10px;font-weight:700;
-  display:none;margin-left:auto;flex-shrink:0;
+  margin-left:auto;flex-shrink:0;
+  background:var(--W);color:#fff;
+  border-radius:6px;padding:4px 12px;
+  font-size:13px;font-weight:700;
+  display:none;
 }
 .wt-umb.show{display:block;}
 
-/* ━━━ 뷰 전환 버튼 ━━━ */
-.vbtn-group{display:flex;gap:4px;}
-.vbtn{
-  background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.22);
-  color:#fff;border-radius:6px;padding:4px 9px;
-  font-size:11px;font-weight:600;cursor:pointer;
-  font-family:var(--F);display:flex;align-items:center;gap:3px;
-  white-space:nowrap;transition:.15s;
-}
-.vbtn:hover{background:rgba(255,255,255,.25);}
-.vbtn.on{background:var(--A);border-color:var(--A);}
-.vbtn svg{width:12px;height:12px;stroke:#fff;fill:none;stroke-width:2;
-  stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;}
-
-/* ━━━ 아이콘 버튼 ━━━ */
-.ibtn{
-  background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.22);
-  color:#fff;border-radius:6px;padding:5px;
-  cursor:pointer;display:flex;align-items:center;justify-content:center;
-  font-family:var(--F);transition:.15s;
-}
-.ibtn:hover{background:rgba(255,255,255,.28);}
-.ibtn svg{width:16px;height:16px;stroke:#fff;fill:none;stroke-width:2;
-  stroke-linecap:round;stroke-linejoin:round;}
-
 /* ━━━ TICKER ━━━ */
 .ticker{
-  background:#0d2238;color:rgba(255,255,255,.85);
-  padding:5px 12px;display:flex;align-items:center;gap:8px;
-  font-size:11px;overflow:hidden;flex-shrink:0;
+  background:#0c1e30;color:rgba(255,255,255,.85);
+  padding:7px 20px;display:flex;align-items:center;gap:10px;
+  font-size:13px;
 }
 .ticker-lbl{
-  background:var(--A);color:#fff;border-radius:4px;
-  padding:2px 7px;font-weight:700;font-size:10px;flex-shrink:0;
+  background:var(--A);color:#fff;
+  border-radius:4px;padding:2px 9px;
+  font-size:11px;font-weight:700;flex-shrink:0;
 }
 .ticker-track{overflow:hidden;flex:1;}
-.ticker-inner{white-space:nowrap;display:inline-block;animation:tkr 40s linear infinite;}
+.ticker-inner{white-space:nowrap;display:inline-block;animation:tkr 50s linear infinite;}
 @keyframes tkr{0%{transform:translateX(100vw);}100%{transform:translateX(-100%);}}
 
-/* ━━━ MAIN LAYOUT ━━━ */
-.main{flex:1;display:flex;}
-
-/* ── 모바일/터치: 세로 스크롤 ── */
-.panel-left{flex:1;padding:10px;display:flex;flex-direction:column;gap:10px;overflow-y:auto;}
-
-/* ── PC: 우측 패널 ── */
-.panel-right{
-  width:290px;flex-shrink:0;
-  padding:12px;display:flex;flex-direction:column;gap:10px;
-  border-left:1px solid var(--BD);background:#fff;
-  overflow-y:auto;
+/* ━━━ MAIN 컨테이너 ━━━ */
+.main{
+  padding:16px 20px;
+  display:flex;flex-direction:column;gap:14px;
 }
-
-/* ━━━ 뷰 모드별 적용 ━━━ */
-/* 기본(터치/모바일): 모바일 헤더 표시, PC 헤더 숨김 */
-.hd-pc-wrap{display:none;}
-.hd-mob-wrap{display:block;}
-.panel-right{display:none;}
-body.view-pc .hd-pc-wrap{display:flex;} /* PC 헤더 행 */
-body.view-pc .hd-mob-wrap{display:none;}
-body.view-pc .panel-right{display:flex;flex-direction:column;}
-body.view-pc .app{height:100vh;overflow:hidden;}
-body.view-pc .main{overflow:hidden;}
-body.view-pc .panel-left{overflow-y:auto;}
-body.view-pc .panel-left{padding:14px;gap:12px;}
-
-/* 모바일: 패딩 최소화 */
-body.view-mobile .panel-left{padding:8px;gap:8px;}
 
 /* ━━━ CARD ━━━ */
-.card{background:var(--CARD);border-radius:var(--R);box-shadow:var(--SH);overflow:hidden;}
+.card{
+  background:var(--CARD);border-radius:12px;
+  box-shadow:0 2px 12px rgba(26,58,92,.1);overflow:hidden;
+}
 .card-head{
   background:var(--P);color:#fff;
-  padding:9px 14px;
+  padding:12px 18px;
   display:flex;align-items:center;justify-content:space-between;
-  font-size:12px;font-weight:700;
+  font-size:15px;font-weight:700;
 }
-.card-head-l{display:flex;align-items:center;gap:6px;}
-.card-head-l svg{width:15px;height:15px;stroke:#fff;fill:none;stroke-width:2;
-  stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;}
+.card-head-l{display:flex;align-items:center;gap:8px;}
+.card-head-l svg{
+  width:18px;height:18px;stroke:#fff;fill:none;
+  stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;
+}
 .ch-badge{
-  font-size:11px;background:rgba(255,255,255,.2);
-  padding:1px 9px;border-radius:10px;
+  font-size:12px;background:rgba(255,255,255,.2);
+  padding:2px 12px;border-radius:12px;font-weight:600;
 }
 
 /* ━━━ 법인차량 ━━━ */
-.car-strip{display:flex;flex-wrap:wrap;gap:6px;padding:9px 14px;}
+.car-strip{display:flex;flex-wrap:wrap;gap:8px;padding:12px 18px;}
 .car-tag{
   background:#dbeafe;color:#1e3a5f;
-  border:1px solid #93c5fd;border-radius:5px;
-  padding:3px 9px;font-size:11px;font-weight:500;
+  border:1px solid #93c5fd;border-radius:6px;
+  padding:5px 14px;font-size:13px;font-weight:500;
 }
 .car-tag.used{background:#fee2e2;color:#7f1d1d;border-color:#fca5a5;text-decoration:line-through;}
 
@@ -286,167 +205,263 @@ body.view-mobile .panel-left{padding:8px;gap:8px;}
 table{width:100%;border-collapse:collapse;}
 thead th{
   background:var(--TH);color:var(--TH2);
-  padding:7px 8px;text-align:center;
-  font-weight:700;font-size:11px;
+  padding:10px 12px;text-align:center;
+  font-weight:700;font-size:13px;
   border-bottom:2px solid #93c5fd;white-space:nowrap;
 }
 tbody tr:nth-child(even){background:#f8fafc;}
 tbody tr:hover{background:#eff6ff;}
 tbody td{
-  padding:7px 8px;text-align:center;font-size:12px;
-  border-bottom:1px solid #e9f0f8;
-  vertical-align:middle;line-height:1.3;
+  padding:11px 12px;text-align:center;
+  font-size:14px;border-bottom:1px solid #e9f0f8;
+  vertical-align:middle;line-height:1.35;
 }
 .td-n{font-weight:700;color:var(--P);}
 .td-d{font-weight:500;color:var(--P2);}
-.empty td{color:var(--T3);font-style:italic;padding:16px!important;font-size:12px;}
-body.view-touch thead th{font-size:12px;padding:8px 9px;}
-body.view-touch tbody td{font-size:13px;padding:8px 9px;}
+.empty td{
+  color:var(--T3);font-style:italic;
+  padding:24px!important;font-size:14px;text-align:center;
+}
 
 /* ━━━ BADGE ━━━ */
-.badge{border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;display:inline-block;white-space:nowrap;}
+.badge{
+  border-radius:20px;padding:3px 12px;
+  font-size:12px;font-weight:700;
+  display:inline-block;white-space:nowrap;
+}
 .b-out  {background:#dbeafe;color:#1e40af;}
 .b-back {background:#f1f5f9;color:#475569;}
 .b-biz  {background:#d1fae5;color:#065f46;}
 .b-leave{background:#fef3c7;color:#92400e;}
 
-/* ━━━ ADD BAR ━━━ */
-.add-bar{padding:8px 14px;border-top:1px dashed var(--BD);display:flex;justify-content:flex-end;}
+/* ━━━ 버튼 ━━━ */
+.add-bar{
+  padding:12px 18px;border-top:1px dashed var(--BD);
+  display:flex;justify-content:flex-end;
+}
 .btn-add{
-  background:var(--P2);color:#fff;border:none;border-radius:7px;
-  padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;
-  font-family:var(--F);display:flex;align-items:center;gap:5px;transition:.15s;
+  background:var(--P2);color:#fff;border:none;
+  border-radius:8px;padding:10px 20px;
+  font-size:14px;font-weight:700;cursor:pointer;
+  font-family:var(--F);display:flex;align-items:center;gap:6px;
+  transition:.15s;
 }
 .btn-add:hover{background:var(--P);}
-.btn-add svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2.5;stroke-linecap:round;}
-body.view-touch .btn-add{font-size:13px;padding:8px 16px;}
+.btn-add svg{width:16px;height:16px;stroke:#fff;fill:none;stroke-width:2.5;stroke-linecap:round;}
 
-/* 수정/삭제 버튼 */
-.abt{border:none;border-radius:5px;padding:4px 7px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--F);}
+.abt{
+  border:none;border-radius:6px;
+  padding:6px 12px;font-size:13px;font-weight:600;
+  cursor:pointer;font-family:var(--F);
+}
 .abt-e{background:#eff6ff;color:#1d4ed8;}
 .abt-d{background:#fff0f0;color:#b91c1c;}
-body.view-touch .abt{font-size:12px;padding:5px 9px;}
 
-/* ━━━ RIGHT PANEL 내부 ━━━ */
-.rp-card{background:var(--CARD);border-radius:var(--R);box-shadow:var(--SH);overflow:hidden;margin-bottom:10px;}
-.rp-head{background:var(--P);color:#fff;padding:8px 12px;font-size:12px;font-weight:700;
-  display:flex;align-items:center;justify-content:space-between;}
-.rp-head-l{display:flex;align-items:center;gap:6px;}
-.rp-head-l svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
-.ni{padding:6px 10px;border-left:3px solid var(--A);background:#f8fafc;
-  border-radius:0 5px 5px 0;margin-bottom:5px;font-size:11px;line-height:1.5;color:var(--T2);}
+/* ━━━ 뷰 전환 버튼 ━━━ */
+.vbtn-group{display:flex;gap:6px;}
+.vbtn{
+  background:rgba(255,255,255,.15);
+  border:1px solid rgba(255,255,255,.22);
+  color:#fff;border-radius:7px;padding:6px 12px;
+  font-size:12px;font-weight:600;cursor:pointer;
+  font-family:var(--F);display:flex;align-items:center;gap:4px;
+  white-space:nowrap;transition:.15s;
+}
+.vbtn:hover{background:rgba(255,255,255,.28);}
+.vbtn.on{background:var(--A);border-color:var(--A);}
+.vbtn svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2;
+  stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;}
+
+/* ━━━ 아이콘 버튼 ━━━ */
+.ibtn{
+  background:rgba(255,255,255,.15);
+  border:1px solid rgba(255,255,255,.22);
+  color:#fff;border-radius:7px;padding:8px;
+  cursor:pointer;display:flex;align-items:center;
+  font-family:var(--F);transition:.15s;
+}
+.ibtn:hover{background:rgba(255,255,255,.28);}
+.ibtn svg{width:18px;height:18px;stroke:#fff;fill:none;
+  stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   뷰모드: PC (가로 와이드)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+body.view-pc{font-size:13px;}
+body.view-pc .view-wrap{max-width:100%;}
+body.view-pc .app{height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+body.view-pc .hd-r1{padding:0 24px;height:52px;}
+body.view-pc .hd-logo{font-size:18px;}
+body.view-pc .hd-ver{font-size:10px;}
+body.view-pc .hd-r2{padding:0 24px;}
+body.view-pc .hd-date-val{font-size:14px;}
+body.view-pc .hd-time-val{font-size:26px;}
+body.view-pc .hd-r3{padding:8px 24px;}
+body.view-pc .wt-temp{font-size:20px;}
+body.view-pc .ticker{font-size:12px;padding:5px 24px;}
+body.view-pc .main-body{flex:1;overflow:hidden;display:flex;gap:0;}
+body.view-pc .main{flex:1;overflow-y:auto;padding:14px 20px;gap:12px;}
+body.view-pc .panel-right{
+  width:280px;flex-shrink:0;overflow-y:auto;
+  padding:14px;background:#fff;
+  border-left:1px solid var(--BD);
+  display:flex;flex-direction:column;gap:12px;
+}
+body.view-pc .card-head{padding:10px 16px;font-size:14px;}
+body.view-pc thead th{font-size:12px;padding:8px 10px;}
+body.view-pc tbody td{font-size:13px;padding:8px 10px;}
+body.view-pc .btn-add{font-size:13px;padding:8px 16px;}
+body.view-pc .abt{font-size:12px;padding:5px 10px;}
+body.view-pc .add-bar{padding:10px 16px;}
+body.view-pc .car-strip{padding:10px 16px;}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   뷰모드: MOBILE (협소)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+body.view-mobile{font-size:13px;}
+body.view-mobile .view-wrap{max-width:480px;}
+body.view-mobile .hd-r1{padding:10px 14px;gap:8px;}
+body.view-mobile .hd-logo{font-size:16px;}
+body.view-mobile .hd-r2{padding:0 14px;}
+body.view-mobile .hd-date-val{font-size:13px;}
+body.view-mobile .hd-time-val{font-size:24px;}
+body.view-mobile .hd-r3{padding:8px 14px;gap:12px;}
+body.view-mobile .wt-temp{font-size:20px;}
+body.view-mobile .ticker{padding:5px 14px;font-size:12px;}
+body.view-mobile .main{padding:10px 12px;gap:10px;}
+body.view-mobile .card-head{padding:10px 14px;font-size:13px;}
+body.view-mobile thead th{font-size:11px;padding:7px 8px;}
+body.view-mobile tbody td{font-size:12px;padding:7px 8px;}
+body.view-mobile .btn-add{font-size:12px;padding:8px 14px;}
+body.view-mobile .abt{font-size:11px;padding:4px 8px;}
+
+/* PC 우측 패널 컴포넌트 */
+.rp-sec{background:#fff;border-radius:10px;box-shadow:0 1px 8px rgba(26,58,92,.1);overflow:hidden;}
+.rp-head{
+  background:var(--P);color:#fff;
+  padding:9px 14px;font-size:13px;font-weight:700;
+  display:flex;align-items:center;gap:6px;
+}
+.rp-head svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+.rp-body{padding:10px 12px;}
+.ni{
+  padding:7px 10px;border-left:3px solid var(--A);
+  background:#f8fafc;border-radius:0 5px 5px 0;
+  margin-bottom:6px;font-size:11px;line-height:1.5;color:var(--T2);
+}
 .ni-dt{font-size:10px;color:var(--T3);margin-bottom:1px;}
 
-/* PC 날씨 패널 */
-.wt-panel-body{padding:10px 12px;}
-.wt-panel-now{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
-.wt-panel-ico{font-size:36px;}
-.wt-panel-temp{font-size:22px;font-weight:900;color:var(--P);}
-.wt-panel-sub{font-size:11px;color:var(--T3);}
-.wt-panel-slots{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
-.wt-panel-slot{background:var(--BG);border-radius:6px;padding:7px;text-align:center;}
-.wt-panel-slot .lbl{font-size:10px;color:var(--T3);}
-.wt-panel-slot .ico{font-size:18px;}
-.wt-panel-slot .tmp{font-size:13px;font-weight:700;color:var(--P);}
-.wt-panel-slot .dsc{font-size:10px;color:var(--T3);}
-.umb-banner{margin-top:8px;background:#fef3c7;border:1px solid #fcd34d;
-  border-radius:6px;padding:5px 10px;font-size:11px;font-weight:700;
-  color:#92400e;text-align:center;display:none;}
-.umb-banner.show{display:block;}
+/* PC 패널: 기본 숨김, view-pc에서만 표시 */
+.panel-right{display:none;}
+body.view-pc .panel-right{display:flex;}
 
-/* ━━━ MODAL ━━━ */
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   MODAL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 .overlay{
-  position:fixed;inset:0;background:rgba(0,0,0,.45);
-  display:flex;align-items:flex-end;justify-content:center;
-  z-index:1000;
+  position:fixed;inset:0;background:rgba(0,0,0,.5);
+  display:flex;align-items:flex-end;justify-content:center;z-index:1000;
 }
 .overlay.hidden{display:none;}
-body.view-pc .overlay{align-items:center;padding:16px;}
+/* PC: 중앙 */
+body.view-pc .overlay{align-items:center;padding:20px;}
 
 .modal{
   background:#fff;border-radius:16px 16px 0 0;
-  width:100%;max-width:580px;max-height:90vh;overflow-y:auto;
-  box-shadow:0 -4px 28px rgba(0,0,0,.18);
+  width:100%;max-width:680px;max-height:90vh;overflow-y:auto;
+  box-shadow:0 -4px 32px rgba(0,0,0,.2);
 }
-body.view-pc .modal{border-radius:12px;max-height:86vh;}
+body.view-pc .modal{border-radius:14px;max-height:86vh;}
 
-.modal-handle{width:34px;height:4px;background:#d1d5db;border-radius:2px;margin:10px auto 2px;}
+.modal-handle{
+  width:36px;height:4px;background:#d1d5db;
+  border-radius:2px;margin:12px auto 4px;
+}
 body.view-pc .modal-handle{display:none;}
 
 .modal-head{
-  background:var(--P);color:#fff;padding:12px 16px;
+  background:var(--P);color:#fff;
+  padding:14px 20px;
   display:flex;align-items:center;justify-content:space-between;
-  font-weight:700;font-size:14px;
+  font-weight:700;font-size:15px;
   position:sticky;top:0;z-index:1;
 }
-body.view-pc .modal-head{border-radius:12px 12px 0 0;}
-body.view-mobile .modal-head,
-body.view-touch  .modal-head{border-radius:16px 16px 0 0;}
-.modal-close{background:none;border:none;color:#fff;font-size:20px;cursor:pointer;line-height:1;padding:2px;}
-.modal-body{padding:14px 16px;}
-.modal-foot{padding:10px 16px;border-top:1px solid var(--BD);display:flex;justify-content:flex-end;gap:8px;}
+.modal-close{background:none;border:none;color:#fff;font-size:22px;cursor:pointer;line-height:1;}
+.modal-body{padding:18px 20px;}
+.modal-foot{padding:14px 20px;border-top:1px solid var(--BD);display:flex;justify-content:flex-end;gap:10px;}
 
-.fg{display:flex;flex-direction:column;gap:5px;margin-bottom:10px;}
-.fg label{font-size:11px;font-weight:700;color:var(--T2);}
+.fg{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+.fg label{font-size:12px;font-weight:700;color:var(--T2);}
 .fg input,.fg select,.fg textarea{
-  border:1px solid var(--BD);border-radius:7px;
-  padding:9px 11px;font-size:13px;font-family:var(--F);
-  color:var(--T);outline:none;width:100%;
+  border:1px solid var(--BD);border-radius:8px;
+  padding:11px 13px;font-size:14px;
+  font-family:var(--F);color:var(--T);outline:none;width:100%;
 }
 .fg input:focus,.fg select:focus,.fg textarea:focus{
-  border-color:var(--A);box-shadow:0 0 0 3px rgba(14,165,233,.14);
+  border-color:var(--A);box-shadow:0 0 0 3px rgba(14,165,233,.15);
 }
-.fg-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-
-.btn-cancel{background:#f1f5f9;color:var(--T2);border:1px solid var(--BD);
-  border-radius:7px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--F);}
-.btn-save{background:var(--P2);color:#fff;border:none;border-radius:7px;
-  padding:8px 22px;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--F);}
+.fg-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.btn-cancel{
+  background:#f1f5f9;color:var(--T2);border:1px solid var(--BD);
+  border-radius:8px;padding:10px 20px;font-size:14px;font-weight:600;
+  cursor:pointer;font-family:var(--F);
+}
+.btn-save{
+  background:var(--P2);color:#fff;border:none;
+  border-radius:8px;padding:10px 24px;font-size:14px;font-weight:700;
+  cursor:pointer;font-family:var(--F);
+}
 .btn-save:hover{background:var(--P);}
 
 /* 설정 */
-.set-h4{font-size:11px;font-weight:700;color:var(--T3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:7px;}
-.veh-list{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:9px;}
-.veh-tag{background:#dbeafe;color:#1e3a5f;border:1px solid #93c5fd;
-  border-radius:5px;padding:4px 9px;font-size:12px;
-  display:flex;align-items:center;gap:5px;cursor:pointer;}
+.set-h{font-size:11px;font-weight:700;color:var(--T3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;}
+.veh-list{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px;}
+.veh-tag{
+  background:#dbeafe;color:#1e3a5f;border:1px solid #93c5fd;
+  border-radius:6px;padding:5px 12px;font-size:13px;
+  display:flex;align-items:center;gap:6px;cursor:pointer;
+}
 .veh-tag:hover{background:#fee2e2;border-color:#fca5a5;color:#7f1d1d;}
-.veh-add{display:flex;gap:7px;}
-.veh-add input{flex:1;border:1px solid var(--BD);border-radius:7px;padding:8px 11px;font-size:12px;font-family:var(--F);}
+.veh-add{display:flex;gap:8px;}
+.veh-add input{
+  flex:1;border:1px solid var(--BD);border-radius:8px;
+  padding:10px 13px;font-size:14px;font-family:var(--F);
+}
 
 /* 검색 */
-.sch-bar{display:flex;flex-direction:column;gap:7px;margin-bottom:10px;}
-.sch-bar input,.sch-bar select{border:1px solid var(--BD);border-radius:7px;
-  padding:8px 11px;font-size:13px;font-family:var(--F);color:var(--T);outline:none;width:100%;}
-.sch-bar input:focus{border-color:var(--A);}
-.sch-2{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.sch-wrap{display:flex;flex-direction:column;gap:10px;margin-bottom:14px;}
+.sch-wrap input,.sch-wrap select{
+  border:1px solid var(--BD);border-radius:8px;
+  padding:10px 13px;font-size:14px;
+  font-family:var(--F);color:var(--T);outline:none;width:100%;
+}
+.sch-wrap input:focus{border-color:var(--A);}
+.sch-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 
-/* 스크롤바 */
-::-webkit-scrollbar{width:4px;height:4px;}
-::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:2px;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px;}
 </style>
 </head>
 
+<!-- 기본: 세로HD터치 -->
 <body class="view-touch">
 <div class="app">
 
-<!-- ════════════════════════════
-     HEADER
-════════════════════════════ -->
+<!-- ════════════ HEADER ════════════ -->
 <header class="hd">
 
-  <!-- ── PC 헤더 (단일행) ── -->
-  <div class="hd-pc-wrap" style="display:none;width:100%;align-items:center;gap:10px;padding:0 20px;height:54px;">
-    <div class="hd-pc-logo">
+  <!-- 1행: 로고 + 버튼 -->
+  <div class="hd-r1">
+    <div class="hd-logo">
       🏢 <span>인시스</span> 외근현황판
-      <span class="hd-pc-ver">v1.2</span>
+      <span class="hd-ver">v1.3</span>
     </div>
-    <div class="hd-pc-right">
+    <div class="hd-btns">
       <div class="vbtn-group">
-        <button class="vbtn" id="vb-touch">
+        <button class="vbtn on" id="vb-touch">
           <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>터치
         </button>
-        <button class="vbtn on" id="vb-pc">
+        <button class="vbtn" id="vb-pc">
           <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>PC
         </button>
         <button class="vbtn" id="vb-mob">
@@ -459,100 +474,48 @@ body.view-touch  .modal-head{border-radius:16px 16px 0 0;}
       <button class="ibtn" id="btn-search" title="검색">
         <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       </button>
-      <!-- PC 날씨 -->
-      <div class="wt-pc" id="wt-pc-box">
-        <span class="wt-pc-ico" id="wt-pc-ico">⛅</span>
-        <div>
-          <div class="wt-pc-temp" id="wt-pc-temp">--°</div>
-          <div class="wt-pc-range" id="wt-pc-range">↑-- ↓--</div>
-        </div>
-        <span class="wt-pc-umb" id="wt-pc-umb">☂ 우산</span>
-        <div class="wt-popup" id="wt-popup">
-          <h4>📅 오늘의 날씨</h4>
-          <div class="wt-ps">
-            <div class="wt-ps-slot"><div class="lbl">오전</div><div class="ico" id="pp-am-ico">⛅</div><div class="tmp" id="pp-am-tmp">--°</div><div class="dsc" id="pp-am-dsc">--</div></div>
-            <div class="wt-ps-slot"><div class="lbl">오후</div><div class="ico" id="pp-pm-ico">🌤</div><div class="tmp" id="pp-pm-tmp">--°</div><div class="dsc" id="pp-pm-dsc">--</div></div>
-          </div>
-          <div class="wt-popup-loc" id="pp-loc">📍 창원시</div>
-        </div>
-      </div>
-      <!-- PC 시계 -->
-      <div class="hd-pc-clock">
-        <div class="hd-pc-date" id="pc-date">----.--.-- (-)</div>
-        <div class="hd-pc-time" id="pc-time">--:--:--</div>
-      </div>
     </div>
   </div>
 
-  <!-- ── 모바일/터치 헤더 (3행) ── -->
-  <div class="hd-mob-wrap">
-    <!-- 1행: 로고 + 뷰버튼 + 아이콘 -->
-    <div class="hd-mob-r1">
-      <div class="hd-mob-logo">
-        🏢 <span>인시스</span> 외근현황판
-        <span class="hd-mob-ver">v1.2</span>
-      </div>
-      <div class="hd-mob-acts">
-        <div class="vbtn-group">
-          <button class="vbtn on" id="mb-touch">
-            <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>터치
-          </button>
-          <button class="vbtn" id="mb-pc">
-            <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>PC
-          </button>
-          <button class="vbtn" id="mb-mob">
-            <svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>모바일
-          </button>
-        </div>
-        <button class="ibtn" id="mb-settings" title="설정">
-          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        </button>
-        <button class="ibtn" id="mb-search" title="검색">
-          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        </button>
-      </div>
+  <!-- 2행: 날짜 + 시계 -->
+  <div class="hd-r2">
+    <div class="hd-date-blk">
+      <div class="hd-date-lbl">TODAY</div>
+      <div class="hd-date-val" id="hd-date">----년 --월 --일 (-)</div>
     </div>
-
-    <!-- 2행: 날짜 + 시계 -->
-    <div class="hd-mob-r2">
-      <div class="hd-mob-date">
-        <div class="hd-mob-date-lbl">오늘</div>
-        <div class="hd-mob-date-val" id="mob-date">----년 --월 --일 (-)</div>
-      </div>
-      <div class="hd-mob-time">
-        <div class="hd-mob-time-val" id="mob-time">--:--:--</div>
-      </div>
-    </div>
-
-    <!-- 3행: 날씨 스트립 -->
-    <div class="hd-mob-r3">
-      <div class="wt-now">
-        <div class="wt-now-ico" id="mb-wt-ico">⛅</div>
-        <div>
-          <div class="wt-now-temp" id="mb-wt-temp">--°</div>
-          <div class="wt-now-range" id="mb-wt-range">↑-- ↓--</div>
-        </div>
-      </div>
-      <div class="wt-divider"></div>
-      <div class="wt-slots">
-        <div class="wt-slot">
-          <div class="wt-slot-lbl">오전</div>
-          <div class="wt-slot-ico" id="mb-am-ico">⛅</div>
-          <div class="wt-slot-tmp" id="mb-am-tmp">--°</div>
-        </div>
-        <div class="wt-slot">
-          <div class="wt-slot-lbl">오후</div>
-          <div class="wt-slot-ico" id="mb-pm-ico">🌤</div>
-          <div class="wt-slot-tmp" id="mb-pm-tmp">--°</div>
-        </div>
-      </div>
-      <div class="wt-umb" id="mb-umb">☂ 우산</div>
+    <div class="hd-time-blk">
+      <div class="hd-time-val" id="hd-time">--:--:--</div>
     </div>
   </div>
 
-</header><!-- /header -->
+  <!-- 3행: 날씨 -->
+  <div class="hd-r3">
+    <div class="wt-main">
+      <div class="wt-icon" id="wt-ico">⛅</div>
+      <div>
+        <div class="wt-temp" id="wt-tmp">--°</div>
+        <div class="wt-range" id="wt-rng">↑--° ↓--°</div>
+      </div>
+    </div>
+    <div class="wt-sep"></div>
+    <div class="wt-ampm">
+      <div class="wt-slot">
+        <div class="wt-slot-lbl">오전</div>
+        <div class="wt-slot-ico" id="wt-am-i">⛅</div>
+        <div class="wt-slot-tmp" id="wt-am-t">--°</div>
+      </div>
+      <div class="wt-slot">
+        <div class="wt-slot-lbl">오후</div>
+        <div class="wt-slot-ico" id="wt-pm-i">🌤</div>
+        <div class="wt-slot-tmp" id="wt-pm-t">--°</div>
+      </div>
+    </div>
+    <div class="wt-umb" id="wt-umb">☂ 우산 챙기세요</div>
+  </div>
 
-<!-- ═════ TICKER ═════ -->
+</header>
+
+<!-- TICKER -->
 <div class="ticker">
   <span class="ticker-lbl">📢 공지</span>
   <div class="ticker-track">
@@ -560,11 +523,11 @@ body.view-touch  .modal-head{border-radius:16px 16px 0 0;}
   </div>
 </div>
 
-<!-- ═════ MAIN ═════ -->
-<div class="main">
+<!-- ════════════ BODY ════════════ -->
+<div class="main-body">
 
-  <!-- 좌측/전체 패널 -->
-  <div class="panel-left">
+  <!-- 콘텐츠 영역 -->
+  <div class="main">
 
     <!-- 법인차량 -->
     <div class="card">
@@ -576,7 +539,7 @@ body.view-touch  .modal-head{border-radius:16px 16px 0 0;}
         <span class="ch-badge" id="car-summary">로딩중</span>
       </div>
       <div class="car-strip" id="car-list">
-        <span style="color:var(--T3);font-size:11px;">차량 없음 — 설정에서 추가하세요</span>
+        <span style="color:var(--T3);font-size:13px;">차량 없음 — 설정에서 추가하세요</span>
       </div>
     </div>
 
@@ -592,7 +555,10 @@ body.view-touch  .modal-head{border-radius:16px 16px 0 0;}
       <div class="tbl-wrap">
         <table>
           <thead>
-            <tr><th>성명</th><th>행선지</th><th>용무</th><th>출발</th><th>복귀예정</th><th>차량</th><th>상태</th><th>관리</th></tr>
+            <tr>
+              <th>성명</th><th>행선지</th><th>용무</th>
+              <th>출발</th><th>복귀예정</th><th>차량번호</th><th>상태</th><th>관리</th>
+            </tr>
           </thead>
           <tbody id="outing-tbody">
             <tr class="empty"><td colspan="8">등록된 외근자가 없습니다.</td></tr>
@@ -645,7 +611,7 @@ body.view-touch  .modal-head{border-radius:16px 16px 0 0;}
       <div class="tbl-wrap">
         <table>
           <thead>
-            <tr><th style="width:46px;">번호</th><th>내용</th><th style="width:84px;">등록일</th><th style="width:70px;">관리</th></tr>
+            <tr><th style="width:60px;">번호</th><th>내용</th><th style="width:110px;">등록일</th><th style="width:90px;">관리</th></tr>
           </thead>
           <tbody id="notice-tbody">
             <tr class="empty"><td colspan="4">등록된 공지가 없습니다.</td></tr>
@@ -660,87 +626,86 @@ body.view-touch  .modal-head{border-radius:16px 16px 0 0;}
       </div>
     </div>
 
-  </div><!-- /panel-left -->
+  </div><!-- /main -->
 
   <!-- PC 우측 패널 -->
   <div class="panel-right" id="panel-right">
 
-    <!-- 날짜 -->
-    <div class="rp-card">
+    <!-- 날짜 카드 -->
+    <div class="rp-sec">
       <div class="rp-head" style="background:var(--P2);">
-        <div class="rp-head-l">
-          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          오늘
-        </div>
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        오늘
       </div>
       <div style="padding:12px;text-align:center;">
-        <div style="font-size:44px;font-weight:900;color:var(--P);line-height:1;" id="big-day">--</div>
-        <div style="font-size:15px;font-weight:600;color:var(--P2);margin-top:3px;" id="big-dow">--요일</div>
+        <div style="font-size:42px;font-weight:900;color:var(--P);line-height:1;" id="big-d">--</div>
+        <div style="font-size:14px;font-weight:600;color:var(--P2);margin-top:4px;" id="big-dow">--요일</div>
         <div style="font-size:11px;color:var(--T3);margin-top:2px;" id="big-ym">----년 --월</div>
       </div>
     </div>
 
-    <!-- 날씨 상세 (PC) -->
-    <div class="rp-card">
+    <!-- 날씨 상세 -->
+    <div class="rp-sec">
       <div class="rp-head" style="background:#075985;">
-        <div class="rp-head-l">
-          <svg viewBox="0 0 24 24"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z"/></svg>
-          날씨
-        </div>
-        <span style="font-size:10px;opacity:.8;" id="rp-wt-loc">창원시</span>
+        <svg viewBox="0 0 24 24"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z"/></svg>
+        날씨 &nbsp;<span style="font-size:10px;opacity:.75;" id="rp-loc">창원시</span>
       </div>
-      <div class="wt-panel-body">
-        <div class="wt-panel-now">
-          <div class="wt-panel-ico" id="rp-wt-ico">⛅</div>
+      <div class="rp-body">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <div style="font-size:36px;" id="rp-ico">⛅</div>
           <div>
-            <div class="wt-panel-temp" id="rp-wt-temp">--°C</div>
-            <div class="wt-panel-sub" id="rp-wt-range">--</div>
-            <div class="wt-panel-sub" id="rp-wt-pr">강수확률 --%</div>
+            <div style="font-size:22px;font-weight:900;color:var(--P);" id="rp-tmp">--°C</div>
+            <div style="font-size:11px;color:var(--T3);" id="rp-rng">--</div>
+            <div style="font-size:11px;color:var(--T3);" id="rp-pr">강수확률 --%</div>
           </div>
         </div>
-        <div class="wt-panel-slots">
-          <div class="wt-panel-slot"><div class="lbl">오전</div><div class="ico" id="rp-am-ico">⛅</div><div class="tmp" id="rp-am-tmp">--°</div><div class="dsc" id="rp-am-dsc">--</div></div>
-          <div class="wt-panel-slot"><div class="lbl">오후</div><div class="ico" id="rp-pm-ico">🌤</div><div class="tmp" id="rp-pm-tmp">--°</div><div class="dsc" id="rp-pm-dsc">--</div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">
+          <div style="background:var(--BG);border-radius:7px;padding:8px;text-align:center;">
+            <div style="font-size:10px;color:var(--T3);">오전</div>
+            <div style="font-size:18px;" id="rp-ai">⛅</div>
+            <div style="font-size:13px;font-weight:700;color:var(--P);" id="rp-at">--°</div>
+          </div>
+          <div style="background:var(--BG);border-radius:7px;padding:8px;text-align:center;">
+            <div style="font-size:10px;color:var(--T3);">오후</div>
+            <div style="font-size:18px;" id="rp-pi">🌤</div>
+            <div style="font-size:13px;font-weight:700;color:var(--P);" id="rp-pt">--°</div>
+          </div>
         </div>
-        <div class="umb-banner" id="rp-umb">☂ 우산이 필요한 날씨입니다</div>
+        <div id="rp-umb" style="display:none;margin-top:8px;background:#fef3c7;border:1px solid #fcd34d;border-radius:6px;padding:6px;font-size:12px;font-weight:700;color:#92400e;text-align:center;">☂ 우산이 필요합니다</div>
       </div>
     </div>
 
     <!-- 뉴스 -->
-    <div class="rp-card">
+    <div class="rp-sec">
       <div class="rp-head" style="background:#0f6eb4;">
-        <div class="rp-head-l">
-          <svg viewBox="0 0 24 24"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/></svg>
-          오늘의 뉴스
-        </div>
-        <button class="ibtn" id="btn-news" style="padding:3px;">
-          <svg viewBox="0 0 24 24" style="width:13px;height:13px;"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        <svg viewBox="0 0 24 24"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/></svg>
+        오늘의 뉴스
+        <button class="ibtn" id="btn-news" style="margin-left:auto;padding:3px;">
+          <svg viewBox="0 0 24 24" style="width:12px;height:12px;"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
         </button>
       </div>
-      <div style="padding:8px;" id="news-list">
+      <div class="rp-body" id="news-list">
         <div style="color:var(--T3);font-size:11px;">불러오는 중...</div>
       </div>
     </div>
 
     <!-- 공지 요약 -->
-    <div class="rp-card">
+    <div class="rp-sec">
       <div class="rp-head" style="background:#065f46;">
-        <div class="rp-head-l">
-          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          공지 요약
-        </div>
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        공지 요약
       </div>
-      <div style="padding:8px;" id="notice-right">
+      <div class="rp-body" id="notice-right">
         <div style="color:var(--T3);font-size:11px;">공지가 없습니다.</div>
       </div>
     </div>
 
   </div><!-- /panel-right -->
 
-</div><!-- /main -->
+</div><!-- /main-body -->
 </div><!-- /app -->
 
-<!-- ═══════════ MODALS ═══════════ -->
+<!-- ════════════ MODALS ════════════ -->
 
 <!-- 외근 -->
 <div class="overlay hidden" id="m-outing">
@@ -813,7 +778,7 @@ body.view-touch  .modal-head{border-radius:16px 16px 0 0;}
 
 <!-- 공지 -->
 <div class="overlay hidden" id="m-notice">
-  <div class="modal" style="max-width:480px;">
+  <div class="modal" style="max-width:500px;">
     <div class="modal-handle"></div>
     <div class="modal-head">
       <span id="m-notice-ttl">공지 등록</span>
@@ -834,14 +799,14 @@ body.view-touch  .modal-head{border-radius:16px 16px 0 0;}
 
 <!-- 설정 -->
 <div class="overlay hidden" id="m-settings">
-  <div class="modal" style="max-width:460px;">
+  <div class="modal" style="max-width:500px;">
     <div class="modal-handle"></div>
     <div class="modal-head">
       <span>⚙ 설정</span>
       <button class="modal-close" data-close="m-settings">✕</button>
     </div>
     <div class="modal-body">
-      <div class="set-h4">법인차량 관리</div>
+      <div class="set-h">법인차량 관리</div>
       <div class="veh-list" id="veh-manage"></div>
       <div class="veh-add">
         <input type="text" id="veh-input" placeholder="차량번호 (예: 경남12가3456)" maxlength="15">
@@ -856,17 +821,21 @@ body.view-touch  .modal-head{border-radius:16px 16px 0 0;}
 
 <!-- 검색 -->
 <div class="overlay hidden" id="m-search">
-  <div class="modal" style="max-width:600px;">
+  <div class="modal" style="max-width:640px;">
     <div class="modal-handle"></div>
     <div class="modal-head">
       <span>🔍 외근·출장 검색</span>
       <button class="modal-close" data-close="m-search">✕</button>
     </div>
     <div class="modal-body">
-      <div class="sch-bar">
-        <input type="text" id="sch-kw" placeholder="성명·행선지·용무 키워드">
+      <div class="sch-wrap">
+        <input type="text" id="sch-kw" placeholder="성명·행선지·용무 키워드 입력">
         <div class="sch-2">
-          <select id="sch-type"><option value="all">전체</option><option value="outing">외근</option><option value="leave">휴가/출장</option></select>
+          <select id="sch-type">
+            <option value="all">전체</option>
+            <option value="outing">외근</option>
+            <option value="leave">휴가/출장</option>
+          </select>
           <input type="date" id="sch-date">
         </div>
         <button class="btn-save" id="btn-do-search">검색</button>
@@ -876,18 +845,25 @@ body.view-touch  .modal-head{border-radius:16px 16px 0 0;}
   </div>
 </div>
 
-<!-- ═══════════ SCRIPT ═══════════ -->
+<!-- ════════════ SCRIPT ════════════ -->
 <script>
-const VER='v1.2';
 window.__outings=window.__outings||[];
 window.__leaves=window.__leaves||[];
 window.__notices=window.__notices||[];
 window.__vehicles=window.__vehicles||[];
+const DOW=['일','월','화','수','목','금','토'];
+const WMO={0:'☀️ 맑음',1:'🌤 대체로맑음',2:'⛅ 구름많음',3:'☁️ 흐림',
+  45:'🌫 안개',48:'🌫 안개',51:'🌦 이슬비',53:'🌦 이슬비',
+  61:'🌧 비',63:'🌧 비',65:'🌧 강한비',
+  71:'🌨 눈',73:'🌨 눈',80:'🌦 소나기',81:'🌧 소나기',
+  95:'⛈ 뇌우',96:'⛈ 뇌우'};
+const wi=c=>(WMO[c]||'⛅ --').split(' ')[0];
+const wt=c=>(WMO[c]||'⛅ --').split(' ').slice(1).join(' ');
 
-/* ━━ INIT ━━ */
+/* ── INIT ── */
 window.initApp=function(){
   startClock(); loadWeather(); loadNews();
-  renderAll(); updateTicker(); bindAll();
+  renderAll(); updateTicker(); bind();
 };
 function renderAll(){renderVehicles();renderOutings();renderLeaves();renderNotices();}
 window.renderOutings=renderOutings;
@@ -895,40 +871,24 @@ window.renderLeaves=renderLeaves;
 window.renderNotices=renderNotices;
 window.renderVehicles=renderVehicles;
 
-/* ━━ BIND ━━ */
-function bindAll(){
-  /* 뷰 전환 — PC 헤더 */
-  document.getElementById('vb-touch').addEventListener('click',()=>setView('touch'));
-  document.getElementById('vb-pc').addEventListener('click',()=>setView('pc'));
-  document.getElementById('vb-mob').addEventListener('click',()=>setView('mobile'));
-  /* 뷰 전환 — 모바일 헤더 */
-  document.getElementById('mb-touch').addEventListener('click',()=>setView('touch'));
-  document.getElementById('mb-pc').addEventListener('click',()=>setView('pc'));
-  document.getElementById('mb-mob').addEventListener('click',()=>setView('mobile'));
-  /* 아이콘 버튼 — PC */
+/* ── BIND ── */
+function bind(){
+  ['vb-touch','vb-pc','vb-mob'].forEach(id=>{
+    const v={touch:'touch',pc:'pc',mob:'mobile'}[id.replace('vb-','')];
+    document.getElementById(id).addEventListener('click',()=>setView(v));
+  });
   document.getElementById('btn-settings').addEventListener('click',openSettings);
   document.getElementById('btn-search').addEventListener('click',openSearch);
-  /* 아이콘 버튼 — 모바일 */
-  document.getElementById('mb-settings').addEventListener('click',openSettings);
-  document.getElementById('mb-search').addEventListener('click',openSearch);
-  /* CRUD */
   document.getElementById('btn-add-outing').addEventListener('click',()=>openOutingModal());
   document.getElementById('btn-save-outing').addEventListener('click',saveOuting);
   document.getElementById('btn-add-leave').addEventListener('click',()=>openLeaveModal());
   document.getElementById('btn-save-leave').addEventListener('click',saveLeave);
   document.getElementById('btn-add-notice').addEventListener('click',()=>openNoticeModal());
   document.getElementById('btn-save-notice').addEventListener('click',saveNotice);
-  document.getElementById('btn-add-veh').addEventListener('click',addVehicle);
+  document.getElementById('btn-add-veh').addEventListener('click',addVeh);
   document.getElementById('btn-news').addEventListener('click',loadNews);
   document.getElementById('btn-do-search').addEventListener('click',doSearch);
   document.getElementById('sch-kw').addEventListener('keydown',e=>{if(e.key==='Enter')doSearch();});
-  /* 날씨 팝업 (PC) */
-  document.getElementById('wt-pc-box').addEventListener('click',e=>{
-    document.getElementById('wt-popup').classList.toggle('open');
-    e.stopPropagation();
-  });
-  document.addEventListener('click',()=>document.getElementById('wt-popup').classList.remove('open'));
-  /* 모달 닫기 */
   document.querySelectorAll('[data-close]').forEach(el=>{
     el.addEventListener('click',()=>closeModal(el.dataset.close));
   });
@@ -937,73 +897,44 @@ function bindAll(){
   });
 }
 
-/* ━━ VIEW ━━ */
+/* ── VIEW ── */
 function setView(v){
   document.body.className='view-'+v;
-  /* PC 헤더 표시 여부 */
-  const pcW=document.querySelector('.hd-pc-wrap');
-  const mobW=document.querySelector('.hd-mob-wrap');
-  if(v==='pc'){
-    pcW.style.display='flex'; mobW.style.display='none';
-  } else {
-    pcW.style.display='none'; mobW.style.display='block';
-  }
+  /* viewport meta 변경 */
+  const vm=document.querySelector('meta[name=viewport]');
+  if(v==='touch')     vm.content='width=1080, initial-scale=1.0';
+  else if(v==='pc')   vm.content='width=device-width, initial-scale=1.0';
+  else                vm.content='width=device-width, initial-scale=1.0, maximum-scale=1.0';
   /* 버튼 active */
-  ['vb-touch','vb-pc','vb-mob','mb-touch','mb-pc','mb-mob'].forEach(id=>{
-    const el=document.getElementById(id); if(el) el.classList.remove('on');
-  });
-  const map={touch:['vb-touch','mb-touch'],pc:['vb-pc','mb-pc'],mobile:['vb-mob','mb-mob']};
-  (map[v]||[]).forEach(id=>{const el=document.getElementById(id);if(el)el.classList.add('on');});
+  document.querySelectorAll('.vbtn').forEach(b=>b.classList.remove('on'));
+  const map={touch:'vb-touch',pc:'vb-pc',mobile:'vb-mob'};
+  document.getElementById(map[v])?.classList.add('on');
 }
 
-/* ━━ CLOCK ━━ */
-const DOW=['일','월','화','수','목','금','토'];
+/* ── CLOCK ── */
 function startClock(){
   function tick(){
     const n=new Date();
     const y=n.getFullYear(),mo=n.getMonth()+1,d=n.getDate(),dw=n.getDay();
     const hh=p(n.getHours()),mm=p(n.getMinutes()),ss=p(n.getSeconds());
-    const ds=`${y}년 ${mo}월 ${d}일 (${DOW[dw]})`;
-    const ts=`${hh}:${mm}:${ss}`;
-    const dpc=`${y}.${p(mo)}.${p(d)} (${DOW[dw]})`;
-    /* 모바일 */
-    document.getElementById('mob-date').textContent=ds;
-    document.getElementById('mob-time').textContent=ts;
-    /* PC */
-    document.getElementById('pc-date').textContent=dpc;
-    document.getElementById('pc-time').textContent=ts;
-    /* 우측패널 */
-    document.getElementById('big-day').textContent=d;
-    document.getElementById('big-dow').textContent=DOW[dw]+'요일';
-    document.getElementById('big-ym').textContent=`${y}년 ${mo}월`;
+    $('hd-date',`${y}년 ${mo}월 ${d}일 (${DOW[dw]})`);
+    $('hd-time',`${hh}:${mm}:${ss}`);
+    $('big-d',d);$('big-dow',DOW[dw]+'요일');$('big-ym',`${y}년 ${mo}월`);
   }
-  tick(); setInterval(tick,1000);
+  tick();setInterval(tick,1000);
 }
 
-/* ━━ WEATHER ━━ */
-const WMO={
-  0:'☀️ 맑음',1:'🌤 대체로맑음',2:'⛅ 구름많음',3:'☁️ 흐림',
-  45:'🌫 안개',48:'🌫 안개',51:'🌦 이슬비',53:'🌦 이슬비',
-  61:'🌧 비',63:'🌧 비',65:'🌧 강한비',
-  71:'🌨 눈',73:'🌨 눈',80:'🌦 소나기',81:'🌧 소나기',
-  95:'⛈ 뇌우',96:'⛈ 뇌우'
-};
-const wIco=c=>(WMO[c]||'⛅ --').split(' ')[0];
-const wTxt=c=>(WMO[c]||'⛅ --').split(' ').slice(1).join(' ');
-
+/* ── WEATHER ── */
 async function loadWeather(){
   let lat=35.2279,lon=128.6812,loc='창원시';
   try{
     const pos=await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,{timeout:4000}));
-    lat=pos.coords.latitude; lon=pos.coords.longitude;
-    try{
-      const g=await(await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`)).json();
-      loc=g.address?.city||g.address?.county||loc;
-    }catch{}
+    lat=pos.coords.latitude;lon=pos.coords.longitude;
+    try{const g=await(await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`)).json();
+      loc=g.address?.city||g.address?.county||loc;}catch{}
   }catch{}
   try{
-    const url=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,weathercode&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia/Seoul&forecast_days=1`;
-    const d=await(await fetch(url)).json();
+    const d=await(await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,weathercode&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia/Seoul&forecast_days=1`)).json();
     const now=new Date().getHours();
     const hi=Math.round(d.daily.temperature_2m_max[0]);
     const lo=Math.round(d.daily.temperature_2m_min[0]);
@@ -1013,36 +944,26 @@ async function loadWeather(){
     const amWc=d.hourly.weathercode[9],pmWc=d.hourly.weathercode[15];
     const amT=Math.round(d.hourly.temperature_2m[9]),pmT=Math.round(d.hourly.temperature_2m[15]);
     const needU=pr>40||[51,53,61,63,65,80,81,95,96].includes(wc);
-    /* 모바일 헤더 */
-    set('mb-wt-ico',wIco(wc)); set('mb-wt-temp',cur+'°');
-    set('mb-wt-range',`↑${hi}° ↓${lo}°`);
-    set('mb-am-ico',wIco(amWc)); set('mb-am-tmp',amT+'°');
-    set('mb-pm-ico',wIco(pmWc)); set('mb-pm-tmp',pmT+'°');
-    document.getElementById('mb-umb').classList.toggle('show',needU);
-    /* PC 헤더 날씨 */
-    set('wt-pc-ico',wIco(wc)); set('wt-pc-temp',cur+'°');
-    set('wt-pc-range',`↑${hi}° ↓${lo}°`);
-    document.getElementById('wt-pc-umb').classList.toggle('show',needU);
-    set('pp-am-ico',wIco(amWc)); set('pp-am-tmp',amT+'°'); set('pp-am-dsc',wTxt(amWc));
-    set('pp-pm-ico',wIco(pmWc)); set('pp-pm-tmp',pmT+'°'); set('pp-pm-dsc',wTxt(pmWc));
-    set('pp-loc',`📍 ${loc}  |  강수확률 ${pr}%`);
-    /* PC 우측 패널 */
-    set('rp-wt-ico',wIco(wc)); set('rp-wt-temp',cur+'°C');
-    set('rp-wt-range',`최고 ${hi}° / 최저 ${lo}°`);
-    set('rp-wt-pr',`강수확률 ${pr}%`); set('rp-wt-loc',loc);
-    set('rp-am-ico',wIco(amWc)); set('rp-am-tmp',amT+'°'); set('rp-am-dsc',wTxt(amWc));
-    set('rp-pm-ico',wIco(pmWc)); set('rp-pm-tmp',pmT+'°'); set('rp-pm-dsc',wTxt(pmWc));
-    document.getElementById('rp-umb').classList.toggle('show',needU);
+    /* 헤더 */
+    $('wt-ico',wi(wc));$('wt-tmp',cur+'°');$('wt-rng',`↑${hi}° ↓${lo}°`);
+    $('wt-am-i',wi(amWc));$('wt-am-t',amT+'°');
+    $('wt-pm-i',wi(pmWc));$('wt-pm-t',pmT+'°');
+    document.getElementById('wt-umb').classList.toggle('show',needU);
+    /* PC 패널 */
+    $('rp-ico',wi(wc));$('rp-tmp',cur+'°C');
+    $('rp-rng',`최고 ${hi}° / 최저 ${lo}°`);$('rp-pr',`강수확률 ${pr}%`);
+    $('rp-loc',loc);$('rp-ai',wi(amWc));$('rp-at',amT+'°');
+    $('rp-pi',wi(pmWc));$('rp-pt',pmT+'°');
+    document.getElementById('rp-umb').style.display=needU?'block':'none';
   }catch(e){console.warn('날씨 오류',e);}
 }
 
-/* ━━ NEWS ━━ */
+/* ── NEWS ── */
 async function loadNews(){
   const el=document.getElementById('news-list');
   el.innerHTML='<div style="color:var(--T3);font-size:11px;">불러오는 중...</div>';
   try{
-    const rss='https://news.google.com/rss/search?q=경제+기업&hl=ko&gl=KR&ceid=KR:ko';
-    const d=await(await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rss)}&count=6`)).json();
+    const d=await(await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent('https://news.google.com/rss/search?q=경제+기업&hl=ko&gl=KR&ceid=KR:ko')}&count=6`)).json();
     if(d.status!=='ok'||!d.items?.length)throw new Error();
     el.innerHTML=d.items.slice(0,6).map(it=>{
       const dt=new Date(it.pubDate).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
@@ -1052,31 +973,30 @@ async function loadNews(){
       </div>`;
     }).join('');
     updateTicker(d.items.slice(0,5).map(i=>i.title).join('  ·  '));
-  }catch{el.innerHTML='<div class="ni" style="border-color:#0f6eb4;font-size:11px;">뉴스 로드 실패</div>';}
+  }catch{el.innerHTML='<div class="ni" style="border-color:#0f6eb4;">뉴스 로드 실패</div>';}
 }
 
-/* ━━ TICKER ━━ */
+/* ── TICKER ── */
 function updateTicker(news){
   const nc=window.__notices.map(n=>n.content).join('  |  ');
   const base=news||'인시스 외근현황판  |  오늘도 안전한 하루 되세요.';
-  document.getElementById('ticker-txt').textContent=nc?`${nc}  ·  ${base}`:base;
+  $('ticker-txt',nc?`${nc}  ·  ${base}`:base);
 }
 
-/* ━━ VEHICLES ━━ */
+/* ── VEHICLES ── */
 function renderVehicles(){
   const vs=window.__vehicles,os=window.__outings;
   const used=os.filter(o=>o.status==='out').map(o=>o.vehicle).filter(Boolean);
   const cl=document.getElementById('car-list');
   if(!vs.length){
-    cl.innerHTML='<span style="color:var(--T3);font-size:11px;">등록된 차량 없음 — 설정에서 추가</span>';
-    document.getElementById('car-summary').textContent='차량 없음';
-  } else {
-    const avail=vs.filter(v=>!used.includes(v.plate)).length;
-    cl.innerHTML=vs.map(v=>{
-      const u=used.includes(v.plate);
+    cl.innerHTML='<span style="color:var(--T3);font-size:13px;">등록된 차량 없음 — 설정에서 추가하세요</span>';
+    $('car-summary','차량 없음');
+  }else{
+    const av=vs.filter(v=>!used.includes(v.plate)).length;
+    cl.innerHTML=vs.map(v=>{const u=used.includes(v.plate);
       return `<span class="car-tag ${u?'used':''}">${esc(v.plate)} ${u?'🔴':'🟢'}</span>`;
     }).join('');
-    document.getElementById('car-summary').textContent=`가용 ${avail}/${vs.length}대`;
+    $('car-summary',`가용 ${av}/${vs.length}대`);
   }
   const sel=document.getElementById('o-vehicle'),cur=sel.value;
   sel.innerHTML='<option value="">자가용/없음</option>';
@@ -1090,11 +1010,11 @@ function renderVehicles(){
   if(ml){
     ml.innerHTML=vs.length
       ?vs.map(v=>`<span class="veh-tag" data-vid="${v.id}">🚗 ${esc(v.plate)} ✕</span>`).join('')
-      :'<span style="font-size:11px;color:var(--T3);">등록된 차량 없음</span>';
+      :'<span style="font-size:13px;color:var(--T3);">등록된 차량 없음</span>';
     ml.querySelectorAll('[data-vid]').forEach(t=>t.addEventListener('click',()=>delVeh(t.dataset.vid)));
   }
 }
-async function addVehicle(){
+async function addVeh(){
   const inp=document.getElementById('veh-input'),plate=inp.value.trim();
   if(!plate)return alert('차량번호를 입력하세요.');
   if(window.__vehicles.some(v=>v.plate===plate))return alert('이미 등록된 차량번호입니다.');
@@ -1108,17 +1028,21 @@ async function delVeh(id){
   else{window.__vehicles=window.__vehicles.filter(v=>v.id!==id);renderVehicles();}
 }
 
-/* ━━ OUTINGS ━━ */
+/* ── OUTINGS ── */
 function renderOutings(){
   const tb=document.getElementById('outing-tbody'),list=window.__outings;
-  document.getElementById('outing-cnt').textContent=list.filter(o=>o.status==='out').length+'명';
+  $('outing-cnt',list.filter(o=>o.status==='out').length+'명');
   if(!list.length){tb.innerHTML='<tr class="empty"><td colspan="8">등록된 외근자가 없습니다.</td></tr>';renderVehicles();return;}
   tb.innerHTML=list.map(o=>`<tr>
-    <td class="td-n">${esc(o.name)}</td><td class="td-d">${esc(o.dest)}</td><td>${esc(o.purpose)}</td>
-    <td>${esc(o.departTime||'-')}</td><td>${esc(o.returnTime||'-')}</td>
-    <td>${o.vehicle?`<span class="car-tag" style="font-size:10px;padding:2px 7px;">${esc(o.vehicle)}</span>`:'-'}</td>
+    <td class="td-n">${esc(o.name)}</td><td class="td-d">${esc(o.dest)}</td>
+    <td>${esc(o.purpose)}</td><td>${esc(o.departTime||'-')}</td>
+    <td>${esc(o.returnTime||'-')}</td>
+    <td>${o.vehicle?`<span class="car-tag" style="font-size:12px;padding:3px 10px;">${esc(o.vehicle)}</span>`:'-'}</td>
     <td><span class="badge ${o.status==='out'?'b-out':'b-back'}">${o.status==='out'?'외근중':'복귀'}</span></td>
-    <td><button class="abt abt-e" data-oid="${o.id}">수정</button> <button class="abt abt-d" data-odid="${o.id}">삭제</button></td>
+    <td>
+      <button class="abt abt-e" data-oid="${o.id}">수정</button>
+      <button class="abt abt-d" data-odid="${o.id}">삭제</button>
+    </td>
   </tr>`).join('');
   tb.querySelectorAll('[data-oid]').forEach(b=>b.addEventListener('click',()=>editOuting(b.dataset.oid)));
   tb.querySelectorAll('[data-odid]').forEach(b=>b.addEventListener('click',()=>delOuting(b.dataset.odid)));
@@ -1127,16 +1051,21 @@ function renderOutings(){
 function openOutingModal(){
   document.getElementById('o-id').value='';
   ['o-name','o-dest','o-purpose','o-depart','o-return'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('o-vehicle').value='';document.getElementById('o-status').value='out';
+  document.getElementById('o-vehicle').value='';
+  document.getElementById('o-status').value='out';
   document.getElementById('m-outing-ttl').textContent='외근 등록';
   document.getElementById('m-outing').classList.remove('hidden');
 }
 function editOuting(id){
   const o=window.__outings.find(x=>x.id===id);if(!o)return;
-  document.getElementById('o-id').value=id;document.getElementById('o-name').value=o.name||'';
-  document.getElementById('o-dest').value=o.dest||'';document.getElementById('o-purpose').value=o.purpose||'';
-  document.getElementById('o-depart').value=o.departTime||'';document.getElementById('o-return').value=o.returnTime||'';
-  document.getElementById('o-vehicle').value=o.vehicle||'';document.getElementById('o-status').value=o.status||'out';
+  document.getElementById('o-id').value=id;
+  document.getElementById('o-name').value=o.name||'';
+  document.getElementById('o-dest').value=o.dest||'';
+  document.getElementById('o-purpose').value=o.purpose||'';
+  document.getElementById('o-depart').value=o.departTime||'';
+  document.getElementById('o-return').value=o.returnTime||'';
+  document.getElementById('o-vehicle').value=o.vehicle||'';
+  document.getElementById('o-status').value=o.status||'out';
   document.getElementById('m-outing-ttl').textContent='외근 수정';
   document.getElementById('m-outing').classList.remove('hidden');
 }
@@ -1158,7 +1087,7 @@ async function saveOuting(){
     else{data.createdAt=S();await A(C(window.__db,'outings'),data);}
   }else{
     if(id){const i=window.__outings.findIndex(x=>x.id===id);if(i>=0)window.__outings[i]={...window.__outings[i],...data};}
-    else{window.__outings.push({id:Date.now()+'', ...data});}
+    else window.__outings.push({id:Date.now()+'', ...data});
     renderOutings();
   }
   closeModal('m-outing');
@@ -1169,17 +1098,21 @@ async function delOuting(id){
   else{window.__outings=window.__outings.filter(x=>x.id!==id);renderOutings();}
 }
 
-/* ━━ LEAVES ━━ */
+/* ── LEAVES ── */
 const typeMap={'연차':'b-leave','출장':'b-biz','병가':'b-out','반차(오전)':'b-leave','반차(오후)':'b-leave','특별휴가':'b-leave'};
 function renderLeaves(){
   const tb=document.getElementById('leave-tbody'),list=window.__leaves;
-  document.getElementById('leave-cnt').textContent=list.length+'명';
+  $('leave-cnt',list.length+'명');
   if(!list.length){tb.innerHTML='<tr class="empty"><td colspan="6">등록된 휴가·출장이 없습니다.</td></tr>';return;}
   tb.innerHTML=list.map(l=>`<tr>
     <td class="td-n">${esc(l.name)}</td>
     <td><span class="badge ${typeMap[l.type]||'b-back'}">${esc(l.type)}</span></td>
-    <td>${esc(l.startDate||'-')}</td><td>${esc(l.endDate||'-')}</td><td>${esc(l.note||'-')}</td>
-    <td><button class="abt abt-e" data-lid="${l.id}">수정</button> <button class="abt abt-d" data-ldid="${l.id}">삭제</button></td>
+    <td>${esc(l.startDate||'-')}</td><td>${esc(l.endDate||'-')}</td>
+    <td>${esc(l.note||'-')}</td>
+    <td>
+      <button class="abt abt-e" data-lid="${l.id}">수정</button>
+      <button class="abt abt-d" data-ldid="${l.id}">삭제</button>
+    </td>
   </tr>`).join('');
   tb.querySelectorAll('[data-lid]').forEach(b=>b.addEventListener('click',()=>editLeave(b.dataset.lid)));
   tb.querySelectorAll('[data-ldid]').forEach(b=>b.addEventListener('click',()=>delLeave(b.dataset.ldid)));
@@ -1213,7 +1146,7 @@ async function saveLeave(){
     else{data.createdAt=S();await A(C(window.__db,'leaves'),data);}
   }else{
     if(id){const i=window.__leaves.findIndex(x=>x.id===id);if(i>=0)window.__leaves[i]={...window.__leaves[i],...data};}
-    else{window.__leaves.push({id:Date.now()+'', ...data});}
+    else window.__leaves.push({id:Date.now()+'', ...data});
     renderLeaves();
   }
   closeModal('m-leave');
@@ -1224,7 +1157,7 @@ async function delLeave(id){
   else{window.__leaves=window.__leaves.filter(x=>x.id!==id);renderLeaves();}
 }
 
-/* ━━ NOTICES ━━ */
+/* ── NOTICES ── */
 function renderNotices(){
   const tb=document.getElementById('notice-tbody'),list=window.__notices;
   if(!list.length){tb.innerHTML='<tr class="empty"><td colspan="4">등록된 공지가 없습니다.</td></tr>';}
@@ -1232,7 +1165,10 @@ function renderNotices(){
     tb.innerHTML=list.map((n,i)=>`<tr>
       <td>${i+1}</td><td style="text-align:left;">${esc(n.content)}</td>
       <td>${n.createdAt?fmtD(n.createdAt):'-'}</td>
-      <td><button class="abt abt-e" data-nid="${n.id}">수정</button> <button class="abt abt-d" data-ndid="${n.id}">삭제</button></td>
+      <td>
+        <button class="abt abt-e" data-nid="${n.id}">수정</button>
+        <button class="abt abt-d" data-ndid="${n.id}">삭제</button>
+      </td>
     </tr>`).join('');
     tb.querySelectorAll('[data-nid]').forEach(b=>b.addEventListener('click',()=>editNotice(b.dataset.nid)));
     tb.querySelectorAll('[data-ndid]').forEach(b=>b.addEventListener('click',()=>delNotice(b.dataset.ndid)));
@@ -1264,7 +1200,7 @@ async function saveNotice(){
     else{await A(C(window.__db,'notices'),{content:cont,createdAt:S()});}
   }else{
     if(id){const i=window.__notices.findIndex(x=>x.id===id);if(i>=0)window.__notices[i].content=cont;}
-    else{window.__notices.push({id:Date.now()+'',content:cont,createdAt:new Date().toISOString()});}
+    else window.__notices.push({id:Date.now()+'',content:cont,createdAt:new Date().toISOString()});
     renderNotices();
   }
   closeModal('m-notice');
@@ -1275,9 +1211,9 @@ async function delNotice(id){
   else{window.__notices=window.__notices.filter(x=>x.id!==id);renderNotices();}
 }
 
-/* ━━ SEARCH ━━ */
+/* ── SEARCH ── */
 function openSearch(){
-  ['sch-kw'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('sch-kw').value='';
   document.getElementById('sch-type').value='all';
   document.getElementById('sch-date').value='';
   document.getElementById('sch-result').innerHTML='';
@@ -1295,7 +1231,7 @@ function doSearch(){
       return mk&&md;
     });
     if(items.length){
-      html+=`<div style="font-weight:700;color:var(--P);font-size:12px;margin-bottom:5px;">외근 현황 (${items.length}건)</div>`;
+      html+=`<div style="font-weight:700;color:var(--P);font-size:13px;margin-bottom:6px;">외근 현황 (${items.length}건)</div>`;
       html+=items.map(o=>`<div class="ni" style="border-color:var(--P2);">
         <b>${esc(o.name)}</b> → ${esc(o.dest)} | ${esc(o.purpose)} | 출발 ${esc(o.departTime||'-')} 복귀예정 ${esc(o.returnTime||'-')}
         <span class="badge ${o.status==='out'?'b-out':'b-back'}" style="margin-left:4px;">${o.status==='out'?'외근중':'복귀'}</span>
@@ -1309,25 +1245,26 @@ function doSearch(){
       return mk&&md;
     });
     if(items.length){
-      html+=`<div style="font-weight:700;color:var(--P);font-size:12px;margin:8px 0 5px;">휴가/출장 (${items.length}건)</div>`;
+      html+=`<div style="font-weight:700;color:var(--P);font-size:13px;margin:8px 0 6px;">휴가/출장 (${items.length}건)</div>`;
       html+=items.map(l=>`<div class="ni" style="border-color:#059669;">
-        <b>${esc(l.name)}</b> <span class="badge b-leave">${esc(l.type)}</span> ${esc(l.startDate)} ~ ${esc(l.endDate)} ${l.note?'| '+esc(l.note):''}
+        <b>${esc(l.name)}</b> <span class="badge b-leave">${esc(l.type)}</span>
+        ${esc(l.startDate)} ~ ${esc(l.endDate)} ${l.note?'| '+esc(l.note):''}
       </div>`).join('');
     }
   }
-  if(!html)html='<div style="color:var(--T3);font-size:12px;padding:14px;text-align:center;">검색 결과가 없습니다.</div>';
+  if(!html)html='<div style="color:var(--T3);font-size:13px;padding:16px;text-align:center;">검색 결과가 없습니다.</div>';
   document.getElementById('sch-result').innerHTML=html;
 }
 
-/* ━━ SETTINGS ━━ */
+/* ── SETTINGS ── */
 function openSettings(){renderVehicles();document.getElementById('m-settings').classList.remove('hidden');}
 
-/* ━━ MODAL ━━ */
+/* ── MODAL ── */
 function closeModal(id){document.getElementById(id).classList.add('hidden');}
 
-/* ━━ UTILS ━━ */
+/* ── UTILS ── */
 const p=n=>String(n).padStart(2,'0');
-const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+const $=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
 const today=()=>new Date().toISOString().split('T')[0];
 const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const fmtD=v=>{try{return new Date(v.seconds?v.seconds*1000:v).toLocaleDateString('ko-KR');}catch{return '-';}};
