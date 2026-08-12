@@ -8,56 +8,85 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <script>
-// ═══ 자동 새로고침 시스템 ═══
-// GitHub Pages 캐시로 구버전이 뜨는 문제 방지
+// ═══ 새 버전 안내 시스템 ═══
+// GitHub Pages 캐시로 구버전이 뜨는 문제 방지 + 사용자에게 새로고침 여부 확인
+window._newVersionInfo = null;
 (function(){
-  const CURRENT_VERSION = 'v5.2';
+  const CURRENT_VERSION = 'v5.3';
   const CHECK_URL = 'https://raw.githubusercontent.com/Insys-HQ/Insys-review/main/jeju.html?_=' + Date.now();
 
-  // 이미 이 버전으로 강제 새로고침한 상태면 재체크 스킵 (무한루프 방지)
-  const reloadedKey = 'jeju_v_' + CURRENT_VERSION;
-  if(sessionStorage.getItem(reloadedKey)) {
-    console.log('[Version] 최신 버전:', CURRENT_VERSION);
+  // 이미 이 버전에 대해 "나중에" 눌렀으면 세션 동안 다시 안 물어봄
+  const dismissedKey = 'jeju_dismissed_' + CURRENT_VERSION;
+  if(sessionStorage.getItem(dismissedKey)){
+    console.log('[Version] 현재 버전:', CURRENT_VERSION, '(안내 무시됨)');
     return;
   }
 
-  // GitHub raw 파일에서 실제 최신 버전 확인
   fetch(CHECK_URL, {cache: 'no-store'})
     .then(r => r.text())
     .then(html => {
       const m = html.match(/<small>\s*(v[\d.]+)\s*<\/small>/);
       if(m && m[1] !== CURRENT_VERSION){
-        console.log('[Auto-Reload] 새 버전 발견:', m[1], '(현재:', CURRENT_VERSION, ') → 강제 새로고침');
-        // 새 버전 저장 후 캐시 무시 새로고침
-        sessionStorage.setItem('jeju_v_' + m[1], '1');
-        // URL에 timestamp 추가해서 캐시 우회
-        const url = new URL(location.href);
-        url.searchParams.set('v', m[1]);
-        url.searchParams.set('t', Date.now());
-        location.replace(url.toString());
+        console.log('[Version] 새 버전 발견:', m[1], '(현재:', CURRENT_VERSION, ')');
+        window._newVersionInfo = {latest: m[1], current: CURRENT_VERSION};
+        // DOM 준비되면 배너 표시
+        if(document.readyState === 'loading'){
+          document.addEventListener('DOMContentLoaded', showVersionBanner);
+        } else {
+          showVersionBanner();
+        }
       } else {
-        // 최신 버전이면 이 버전을 마킹
-        sessionStorage.setItem(reloadedKey, '1');
-        console.log('[Version] 최신 버전 확인:', CURRENT_VERSION);
+        console.log('[Version] 최신 버전 사용 중:', CURRENT_VERSION);
       }
     })
-    .catch(e => {
-      console.warn('[Version] 확인 실패 (오프라인 가능):', e.message);
-      sessionStorage.setItem(reloadedKey, '1'); // 오프라인이면 그냥 진행
-    });
+    .catch(e => console.warn('[Version] 확인 실패 (오프라인 가능):', e.message));
+
+  function showVersionBanner(){
+    const info = window._newVersionInfo;
+    if(!info) return;
+    const banner = document.createElement('div');
+    banner.id = 'versionBanner';
+    banner.style.cssText = `
+      position:fixed;top:0;left:0;right:0;z-index:99999;
+      background:linear-gradient(135deg,#2980b9,#5bc4f5);
+      color:#fff;padding:10px 14px;
+      display:flex;align-items:center;justify-content:center;gap:10px;
+      font-family:'Noto Sans KR',sans-serif;font-size:12px;font-weight:600;
+      box-shadow:0 2px 8px rgba(0,0,0,.2);flex-wrap:wrap;
+      animation:slideDown .3s ease;
+    `;
+    banner.innerHTML = `
+      <style>@keyframes slideDown{from{transform:translateY(-100%)}to{transform:translateY(0)}}</style>
+      <span>🔔 새 버전(${info.latest})이 있습니다</span>
+      <button id="vbReload" style="padding:5px 12px;background:#fff;color:#2980b9;border:none;border-radius:6px;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer">지금 새로고침</button>
+      <button id="vbLater" style="padding:5px 12px;background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:6px;font-family:inherit;font-size:11px;cursor:pointer">나중에</button>
+    `;
+    document.body.insertBefore(banner, document.body.firstChild);
+
+    document.getElementById('vbReload').onclick = function(){
+      const url = new URL(location.href);
+      url.searchParams.set('v', info.latest);
+      url.searchParams.set('t', Date.now());
+      location.replace(url.toString());
+    };
+    document.getElementById('vbLater').onclick = function(){
+      sessionStorage.setItem('jeju_dismissed_' + info.current, '1');
+      banner.remove();
+    };
+  }
 })();
 </script>
-<title>제주 아라이동 주택공사 현장사진일지 v5.2</title>
+<title>제주 아라이동 주택공사 현장사진일지 v5.3</title>
 
 <!-- 카톡·SNS 링크 미리보기 (Open Graph) -->
-<meta property="og:title" content="🏗 제주 아라이동 주택공사 v5.2">
+<meta property="og:title" content="🏗 제주 아라이동 주택공사 v5.3">
 <meta property="og:description" content="현장 사진일지 · 공사내용 · 건축허가 정보">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://insys-hq.github.io/Insys-review/jeju.html">
 <meta property="og:image" content="https://insys-hq.github.io/Insys-review/jeju-og.png">
 <meta property="og:site_name" content="인시스 AI혁신 R&D센터">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="🏗 제주 아라이동 주택공사 v5.2">
+<meta name="twitter:title" content="🏗 제주 아라이동 주택공사 v5.3">
 <meta name="twitter:description" content="현장 사진일지 · 공사내용 · 건축허가 정보">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -819,7 +848,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:#eff2f7;color:#2c3e50
     <div class="appbar-top">
       <div class="appbar-t">
         <i class="fa fa-hard-hat"></i>
-        <div>제주 아라이동 주택공사 <small>v5.2</small></div>
+        <div>제주 아라이동 주택공사 <small>v5.3</small></div>
       </div>
       <span class="appbar-date" id="appDate">-</span>
     </div>
