@@ -114,6 +114,9 @@
   .auth-msg{font-size:12px;text-align:center;margin-top:12px;min-height:16px;}
   .auth-msg.err{color:var(--danger);}
   .auth-msg.ok{color:var(--ok);}
+  .forgot-link{text-align:center;margin-top:10px;}
+  .forgot-link button{background:none;border:none;font-size:12px;color:var(--blue);padding:2px;}
+  .forgot-link button:hover{text-decoration:underline;}
 
   /* ===== MAIN ===== */
   .main{display:none;padding:20px 0 60px;}
@@ -220,10 +223,11 @@
     <div class="nav-brand">
       <div class="logo">IS</div>
       <div class="title">업무용 검토자료 링크</div>
-      <div class="ver">v1.0</div>
+      <div class="ver">v1.1</div>
     </div>
     <div class="nav-user" id="navUser" style="display:none;">
       <span class="email" id="navEmail"></span>
+      <button class="btn-nav" id="btnAccount">계정 설정</button>
       <button class="btn-nav" id="btnLogout">로그아웃</button>
     </div>
   </div>
@@ -256,6 +260,7 @@
         <label for="loginRemember">이 브라우저에서 로그인 상태 유지 (아이디·자동로그인 저장)</label>
       </div>
       <button class="btn-main" id="btnLogin">로그인</button>
+      <div class="forgot-link"><button type="button" id="btnForgot">비밀번호를 잊으셨나요?</button></div>
     </div>
 
     <div id="signupForm" style="display:none;">
@@ -311,7 +316,7 @@
     </div>
     <div id="linkGrid"></div>
   </div>
-  <footer>인시스 AI혁신 연구개발실 &nbsp;|&nbsp; ys.kim@in-sys.co.kr &nbsp;|&nbsp; worklinks.html v1.0</footer>
+  <footer>인시스 AI혁신 연구개발실 &nbsp;|&nbsp; ys.kim@in-sys.co.kr &nbsp;|&nbsp; worklinks.html v1.1</footer>
 </div>
 
 <!-- ===== 링크 추가/수정 모달 ===== -->
@@ -343,12 +348,65 @@
   </div>
 </div>
 
+<!-- ===== 비밀번호 재설정 모달 ===== -->
+<div class="modal-bg" id="forgotModalBg">
+  <div class="modal">
+    <h3>비밀번호 재설정</h3>
+    <div class="field">
+      <label>가입한 이메일</label>
+      <input type="email" id="forgotEmail" placeholder="name@in-sys.co.kr">
+    </div>
+    <div class="auth-msg" id="forgotMsg"></div>
+    <div class="modal-btns">
+      <button class="cancel" id="btnForgotCancel">취소</button>
+      <button class="save" id="btnForgotSend">재설정 메일 발송</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 계정 설정 모달 ===== -->
+<div class="modal-bg" id="accountModalBg">
+  <div class="modal">
+    <h3>계정 설정</h3>
+
+    <div class="field">
+      <label>이름</label>
+      <input type="text" id="accName" placeholder="이름">
+    </div>
+    <button class="btn-main" id="btnAccNameSave" style="margin-bottom:6px;">이름 저장</button>
+    <div class="auth-msg" id="accNameMsg"></div>
+
+    <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
+
+    <div class="field">
+      <label>현재 비밀번호</label>
+      <input type="password" id="accCurPw" placeholder="현재 비밀번호" autocomplete="current-password">
+    </div>
+    <div class="field">
+      <label>새 비밀번호 (6자 이상)</label>
+      <input type="password" id="accNewPw" placeholder="새 비밀번호" autocomplete="new-password">
+    </div>
+    <div class="field">
+      <label>새 비밀번호 확인</label>
+      <input type="password" id="accNewPw2" placeholder="새 비밀번호 확인" autocomplete="new-password">
+    </div>
+    <button class="btn-main" id="btnAccPwSave">비밀번호 변경</button>
+    <div class="auth-msg" id="accPwMsg"></div>
+
+    <div class="modal-btns">
+      <button class="cancel" id="btnAccountClose" style="flex:none;padding:10px 24px;">닫기</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
   signOut, onAuthStateChanged, setPersistence,
-  browserLocalPersistence, browserSessionPersistence, updateProfile
+  browserLocalPersistence, browserSessionPersistence, updateProfile,
+  sendPasswordResetEmail, updatePassword,
+  reauthenticateWithCredential, EmailAuthProvider
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, collection, query, where, orderBy,
@@ -411,6 +469,8 @@ function mapAuthError(err){
   if (code.includes("weak-password")) return "비밀번호는 6자 이상이어야 합니다.";
   if (code.includes("user-not-found") || code.includes("wrong-password") || code.includes("invalid-credential")) return "이메일 또는 비밀번호가 일치하지 않습니다.";
   if (code.includes("too-many-requests")) return "잠시 후 다시 시도해 주세요.";
+  if (code.includes("requires-recent-login")) return "보안을 위해 다시 로그인 후 시도해 주세요.";
+  if (code.includes("user-not-found")) return "가입되지 않은 이메일입니다.";
   return "처리 중 오류가 발생했습니다. (" + code + ")";
 }
 
@@ -671,6 +731,99 @@ function setViewMode(mode, persist){
 }
 document.getElementById("btnViewPc").addEventListener("click", () => setViewMode("pc"));
 document.getElementById("btnViewMobile").addEventListener("click", () => setViewMode("mobile"));
+
+/* ---------- 비밀번호 재설정 (로그인 화면) ---------- */
+const forgotModalBg = document.getElementById("forgotModalBg");
+document.getElementById("btnForgot").addEventListener("click", () => {
+  document.getElementById("forgotEmail").value = document.getElementById("loginEmail").value.trim();
+  document.getElementById("forgotMsg").textContent = "";
+  document.getElementById("forgotMsg").className = "auth-msg";
+  forgotModalBg.classList.add("show");
+});
+document.getElementById("btnForgotCancel").addEventListener("click", () => forgotModalBg.classList.remove("show"));
+forgotModalBg.addEventListener("click", (e) => { if (e.target === forgotModalBg) forgotModalBg.classList.remove("show"); });
+
+document.getElementById("btnForgotSend").addEventListener("click", async () => {
+  const email = document.getElementById("forgotEmail").value.trim();
+  const msg = document.getElementById("forgotMsg");
+  if (!email){ msg.textContent = "이메일을 입력하세요."; msg.className = "auth-msg err"; return; }
+  const btn = document.getElementById("btnForgotSend");
+  btn.disabled = true;
+  try{
+    await sendPasswordResetEmail(auth, email);
+    msg.textContent = "재설정 메일을 발송했습니다. 메일함을 확인하세요.";
+    msg.className = "auth-msg ok";
+  }catch(err){
+    msg.textContent = mapAuthError(err);
+    msg.className = "auth-msg err";
+  }finally{
+    btn.disabled = false;
+  }
+});
+
+/* ---------- 계정 설정 (로그인 후) ---------- */
+const accountModalBg = document.getElementById("accountModalBg");
+document.getElementById("btnAccount").addEventListener("click", () => {
+  if (!currentUser) return;
+  document.getElementById("accName").value = currentUser.displayName || "";
+  document.getElementById("accCurPw").value = "";
+  document.getElementById("accNewPw").value = "";
+  document.getElementById("accNewPw2").value = "";
+  setAccMsg("accNameMsg", "", "");
+  setAccMsg("accPwMsg", "", "");
+  accountModalBg.classList.add("show");
+});
+document.getElementById("btnAccountClose").addEventListener("click", () => accountModalBg.classList.remove("show"));
+accountModalBg.addEventListener("click", (e) => { if (e.target === accountModalBg) accountModalBg.classList.remove("show"); });
+
+function setAccMsg(id, text, type){
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className = "auth-msg " + (type || "");
+}
+
+document.getElementById("btnAccNameSave").addEventListener("click", async () => {
+  if (!currentUser) return;
+  const name = document.getElementById("accName").value.trim();
+  const btn = document.getElementById("btnAccNameSave");
+  btn.disabled = true;
+  try{
+    await updateProfile(currentUser, { displayName: name });
+    navEmail.textContent = name ? (name + " · " + currentUser.email) : currentUser.email;
+    setAccMsg("accNameMsg", "이름이 저장되었습니다.", "ok");
+  }catch(err){
+    setAccMsg("accNameMsg", mapAuthError(err), "err");
+  }finally{
+    btn.disabled = false;
+  }
+});
+
+document.getElementById("btnAccPwSave").addEventListener("click", async () => {
+  if (!currentUser) return;
+  const curPw = document.getElementById("accCurPw").value;
+  const newPw = document.getElementById("accNewPw").value;
+  const newPw2 = document.getElementById("accNewPw2").value;
+
+  if (!curPw){ setAccMsg("accPwMsg", "현재 비밀번호를 입력하세요.", "err"); return; }
+  if (newPw.length < 6){ setAccMsg("accPwMsg", "새 비밀번호는 6자 이상이어야 합니다.", "err"); return; }
+  if (newPw !== newPw2){ setAccMsg("accPwMsg", "새 비밀번호가 일치하지 않습니다.", "err"); return; }
+
+  const btn = document.getElementById("btnAccPwSave");
+  btn.disabled = true;
+  try{
+    const cred = EmailAuthProvider.credential(currentUser.email, curPw);
+    await reauthenticateWithCredential(currentUser, cred);
+    await updatePassword(currentUser, newPw);
+    setAccMsg("accPwMsg", "비밀번호가 변경되었습니다.", "ok");
+    document.getElementById("accCurPw").value = "";
+    document.getElementById("accNewPw").value = "";
+    document.getElementById("accNewPw2").value = "";
+  }catch(err){
+    setAccMsg("accPwMsg", mapAuthError(err), "err");
+  }finally{
+    btn.disabled = false;
+  }
+});
 </script>
 </body>
 </html>
