@@ -6,7 +6,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>인시스 점심주문관리 v6.3</title>
+<title>인시스 점심주문관리 v6.4</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -670,6 +670,8 @@ body.season-warm {
 .db-daily-row { display:flex; align-items:center; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--border); font-size:12px; }
 .db-daily-row:last-child { border-bottom:none; }
 .db-empty { text-align:center; color:var(--muted); font-size:13px; padding:20px 0; }
+.cq{background:none;border:none;font-size:18px;cursor:pointer;padding:2px 4px;border-radius:6px;}
+.cq:hover{background:#f3f4f6;transform:scale(1.2);}
 </style>
 
 <script>
@@ -701,7 +703,7 @@ body.season-warm {
   <div class="hd-inner">
     <div class="hd-left" style="display:flex;align-items:center;gap:10px">
       <h1>인시스 점심주문관리</h1>
-      <span class="ver-badge">v6.3</span>
+      <span class="ver-badge">v6.4</span>
     </div>
     <div class="hd-right">
       <div id="weatherInfo">🌡️ 로딩중</div>
@@ -954,7 +956,7 @@ body.season-warm {
     <div id="restaurantAdminList"></div>
   </div>
 
-  <div class="footer-info">점심주문관리 시스템 v6.3</div>
+  <div class="footer-info">점심주문관리 시스템 v6.4</div>
 
   <!-- ══ AI 추천 모달 ══ -->
   <div id="aiModal" class="modal-overlay hidden">
@@ -1010,6 +1012,32 @@ body.season-warm {
 </div>
 
 <!-- 플로팅 -->
+
+<!-- 플로팅 채팅창 -->
+<div id="chatPanel" style="position:fixed;bottom:80px;right:16px;z-index:400;width:300px;height:420px;background:#fff;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.2);display:flex;flex-direction:column;border:1.5px solid #b2dfdb;min-width:220px;min-height:200px;">
+  <!-- 헤더 (드래그) -->
+  <div id="chatHandle" style="background:linear-gradient(135deg,#006064,#00897b);color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;border-radius:14px 14px 0 0;cursor:grab;user-select:none;flex-shrink:0;">
+    <span style="font-size:13px;font-weight:700;">💬 오늘의 점심 수다</span>
+    <button id="chatMin" style="background:rgba(255,255,255,.2);border:none;color:#fff;width:24px;height:24px;border-radius:50%;cursor:pointer;font-size:14px;line-height:1;">－</button>
+  </div>
+  <!-- 메시지 영역 -->
+  <div id="chatMsgs" style="flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:6px;"></div>
+  <!-- 이모지 -->
+  <div style="display:flex;gap:4px;padding:4px 10px;border-top:1px solid #e5e7eb;flex-shrink:0;">
+    <button class="cq" data-e="😋">😋</button><button class="cq" data-e="🍜">🍜</button>
+    <button class="cq" data-e="👍">👍</button><button class="cq" data-e="🤔">🤔</button>
+    <button class="cq" data-e="😂">😂</button><button class="cq" data-e="❤️">❤️</button>
+  </div>
+  <!-- 입력 -->
+  <div style="display:flex;gap:6px;padding:8px 10px;border-top:1px solid #e5e7eb;flex-shrink:0;">
+    <input id="chatIn" type="text" placeholder="메시지 입력..." maxlength="200" autocomplete="off"
+      style="flex:1;border:1.5px solid #d1d5db;border-radius:16px;padding:7px 12px;font-size:13px;font-family:inherit;outline:none;">
+    <button id="chatSend" style="background:#006064;color:#fff;border:none;border-radius:16px;padding:7px 14px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;">전송</button>
+  </div>
+  <!-- 리사이즈 핸들 -->
+  <div id="chatResize" style="position:absolute;bottom:0;right:0;width:18px;height:18px;cursor:nwse-resize;"></div>
+</div>
+
 <div id="floatPanel">
   <div class="float-vm-row">
     <button class="vm-btn" data-vm="mobile">📱</button>
@@ -2927,6 +2955,142 @@ async function spinReel(reel, finalItem, items, duration) {
     requestAnimationFrame(animate);
   });
 }
+
+// ── 플로팅 채팅창 ────────────────────────────────────────
+(function() {
+  var panel  = document.getElementById('chatPanel');
+  var handle = document.getElementById('chatHandle');
+  var minBtn = document.getElementById('chatMin');
+  var msgs   = document.getElementById('chatMsgs');
+  var input  = document.getElementById('chatIn');
+  var send   = document.getElementById('chatSend');
+  var resize = document.getElementById('chatResize');
+  if(!panel) return;
+
+  var minimized = false;
+  var unsub = null;
+
+  // ── 최소화 ──
+  minBtn.onclick = function() {
+    minimized = !minimized;
+    msgs.parentElement.style.display = minimized ? 'none' : 'flex';
+    // 이모지·입력 영역 숨기기/보이기
+    var children = panel.children;
+    for(var i=1; i<children.length; i++) {
+      if(children[i].id !== 'chatHandle') children[i].style.display = minimized ? 'none' : '';
+    }
+    minBtn.textContent = minimized ? '＋' : '－';
+    panel.style.height = minimized ? 'auto' : '420px';
+  };
+
+  // ── 드래그 이동 ──
+  var dx=0,dy=0,ox=0,oy=0,dragging=false;
+  handle.addEventListener('mousedown', function(e) {
+    dragging=true;
+    var r=panel.getBoundingClientRect();
+    dx=e.clientX; dy=e.clientY; ox=r.left; oy=r.top;
+    panel.style.right='auto'; panel.style.bottom='auto';
+    panel.style.left=ox+'px'; panel.style.top=oy+'px';
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', function(e) {
+    if(!dragging) return;
+    panel.style.left=Math.max(0,ox+(e.clientX-dx))+'px';
+    panel.style.top=Math.max(0,oy+(e.clientY-dy))+'px';
+  });
+  document.addEventListener('mouseup', function() { dragging=false; });
+
+  // ── 리사이즈 ──
+  var rs=false,rx=0,ry=0,rw=0,rh=0;
+  resize.addEventListener('mousedown', function(e) {
+    rs=true; rx=e.clientX; ry=e.clientY;
+    rw=panel.offsetWidth; rh=panel.offsetHeight;
+    e.preventDefault(); e.stopPropagation();
+  });
+  document.addEventListener('mousemove', function(e) {
+    if(!rs) return;
+    panel.style.width  = Math.max(220, rw+(e.clientX-rx))+'px';
+    panel.style.height = Math.max(200, rh+(e.clientY-ry))+'px';
+  });
+  document.addEventListener('mouseup', function() { rs=false; });
+
+  // ── Firebase 채팅 구독 ──
+  function startChat() {
+    if(unsub) return;
+    var dk = new Date().toISOString().slice(0,10).replace(/-/g,'');
+    var col = 'lunchat'+dk;
+    unsub = onSnapshot(
+      collection(db, col),
+      function(snap) {
+        var list = snap.docs.map(function(d){ return d.data(); })
+          .sort(function(a,b){ return (a.ts||0)-(b.ts||0); });
+        renderMsgs(list, col);
+      },
+      function(err){ console.warn('채팅 오류:', err.message); }
+    );
+  }
+
+  function renderMsgs(list, col) {
+    var myName = localStorage.getItem('insys_lunch_name') || '';
+    var atBottom = msgs.scrollHeight - msgs.scrollTop <= msgs.clientHeight + 50;
+    msgs.innerHTML = '';
+    list.forEach(function(m) {
+      var mine = m.author === myName;
+      var ts = m.ts ? new Date(m.ts) : new Date();
+      var time = ts.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+      var wrap = document.createElement('div');
+      wrap.style.cssText = 'display:flex;flex-direction:column;max-width:82%;'+(mine?'align-self:flex-end;align-items:flex-end;':'align-self:flex-start;align-items:flex-start;');
+      var author = document.createElement('div');
+      author.style.cssText = 'font-size:10px;color:#6b7280;font-weight:700;padding:0 4px;margin-bottom:2px;';
+      author.textContent = m.author||'';
+      var bubble = document.createElement('div');
+      bubble.style.cssText = 'padding:7px 12px;border-radius:16px;font-size:13px;word-break:break-word;max-width:100%;'+(mine?'background:#006064;color:#fff;border-bottom-right-radius:3px;':'background:#f3f4f6;color:#1f2937;border:1px solid #e5e7eb;border-bottom-left-radius:3px;');
+      bubble.textContent = m.text||'';
+      var timeEl = document.createElement('div');
+      timeEl.style.cssText = 'font-size:10px;color:#9ca3af;padding:0 4px;margin-top:2px;';
+      timeEl.textContent = time;
+      wrap.appendChild(author);
+      wrap.appendChild(bubble);
+      wrap.appendChild(timeEl);
+      msgs.appendChild(wrap);
+    });
+    // 참여자
+    var names = [...new Set(list.map(function(m){return m.author;}).filter(Boolean))];
+    var h = document.getElementById('chatHandle').querySelector('span');
+    if(h) h.textContent = '💬 오늘의 점심 수다' + (names.length?' ('+names.length+'명)':'');
+    if(atBottom) msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  // ── 전송 ──
+  function doSend() {
+    var myName = localStorage.getItem('insys_lunch_name') || '';
+    var text = (input.value||'').trim();
+    if(!text) return;
+    if(!myName) { alert('로그인 후 채팅할 수 있습니다.'); return; }
+    var dk = new Date().toISOString().slice(0,10).replace(/-/g,'');
+    addDoc(collection(db,'lunchat'+dk),{author:myName,text:text,ts:Date.now()})
+      .catch(function(e){console.warn(e);});
+    input.value='';
+    input.focus();
+  }
+  send.onclick = doSend;
+  input.addEventListener('keydown', function(e){
+    if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();doSend();}
+  });
+
+  // ── 이모지 퀵 ──
+  document.querySelectorAll('.cq').forEach(function(btn){
+    btn.onclick = function(){ input.value+=(btn.dataset.e||''); input.focus(); };
+  });
+
+  // 로그인 후 채팅 시작 (myName 설정 후)
+  var checkLogin = setInterval(function(){
+    if(localStorage.getItem('insys_lunch_name')) {
+      clearInterval(checkLogin);
+      startChat();
+    }
+  }, 500);
+})();
 
 </script>
 </body>
