@@ -36,7 +36,7 @@ firebase deploy
 이 폴더를 저장소(Insys-HQ/Insys-review)에 올린 뒤
 저장소 설정 → Pages → 브랜치 지정하면 아래 주소로 접속 가능합니다.
 ```
-https://insys-hq.github.io/Insys-review/tf-app/
+https://insys-hq.github.io/Insys-review/itk-tf/
 ```
 
 ## 3. 화면 구성
@@ -78,14 +78,14 @@ Firebase 콘솔(https://console.firebase.google.com) → insys-work 프로젝트
 ### 4-3. 배포된 함수 URL을 앱에 연결
 1. 배포 완료 후 함수 상세 화면 상단에 있는 **트리거 URL**을 복사
    (예: `https://analyzelegaldoc-xxxxxxx-du.a.run.app`)
-2. `tf-app/index.html` 파일 안에서 아래 줄을 찾아 복사한 URL로 교체
+2. `itk-tf/index.html` 파일 안에서 아래 줄을 찾아 복사한 URL로 교체
    ```
    const LEGAL_ANALYZE_URL = "여기에_배포된_함수_URL을_붙여넣으세요";
    ```
 3. 수정한 파일을 다시 GitHub에 올리면 (챗봇에게 "다시 올려줘"라고 요청하시면 됩니다) 자동 반영됩니다.
 
 ### 확인
-https://insys-hq.github.io/Insys-review/tf-app/ → 법률의견 AI분석 탭 → PDF 업로드 → 30초~1분 내 분석 결과 표시
+https://insys-hq.github.io/Insys-review/itk-tf/ → 법률의견 AI분석 탭 → PDF 업로드 → 30초~1분 내 분석 결과 표시
 
 ### 참고
 - 이 방식은 API 키를 Cloud Function의 "환경 변수"로 저장합니다. Secret Manager보다 접근 통제가 느슨하므로,
