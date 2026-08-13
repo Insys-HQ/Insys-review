@@ -3112,6 +3112,106 @@ async function spinReel(reel, finalItem, items, duration) {
   }, 500);
 })();
 
+
+// ── 설정 모달 (자동 열기) ────────────────────────────────
+(function() {
+  var SETTING_KEY = 'insys_auto_open';
+  var autoTimer = null;
+
+  function loadSetting() {
+    try { return JSON.parse(localStorage.getItem(SETTING_KEY)||'{}'); }
+    catch(e) { return {}; }
+  }
+
+  function updateToggleUI(enabled) {
+    var toggle = document.getElementById('autoOpenToggle');
+    var thumb  = document.getElementById('autoOpenThumb');
+    var wrap   = document.getElementById('autoOpenTimeWrap');
+    if(!toggle) return;
+    toggle.style.background = enabled ? '#006064' : '#d1d5db';
+    thumb.style.left        = enabled ? '22px' : '2px';
+    if(wrap) wrap.style.display = enabled ? 'block' : 'none';
+  }
+
+  function scheduleAutoOpen(setting) {
+    if(autoTimer) clearTimeout(autoTimer);
+    if(!setting || !setting.enabled || !setting.time) return;
+    var now = new Date();
+    if(now.getDay()===0 || now.getDay()===6) return;
+    var p = setting.time.split(':');
+    var target = new Date();
+    target.setHours(parseInt(p[0]), parseInt(p[1]), 0, 0);
+    var ms = target - now;
+    if(ms <= 0) return;
+    autoTimer = setTimeout(function() {
+      window.focus();
+      if(typeof showToast === 'function') showToast('🍱 점심 주문 시간입니다!');
+      if(window.Notification && Notification.permission==='granted') {
+        new Notification('🍱 점심 주문 시간!', {body:'인시스 점심주문관리 앱이 열렸습니다.'});
+      }
+    }, ms);
+    console.log('자동열기 예약:', setting.time, '('+Math.round(ms/60000)+'분 후)');
+  }
+
+  // DOM 준비 후 실행
+  function initSetting() {
+    var btn   = document.getElementById('settingBtn');
+    var modal = document.getElementById('settingModal');
+    var close = document.getElementById('settingClose');
+    var save  = document.getElementById('settingSave');
+    var chk   = document.getElementById('autoOpenEnabled');
+    var time  = document.getElementById('autoOpenTime');
+    var saved = document.getElementById('settingSavedMsg');
+
+    if(!btn || !modal) return;
+
+    btn.addEventListener('click', function() {
+      var s = loadSetting();
+      chk.checked   = !!s.enabled;
+      time.value    = s.time || '10:30';
+      updateToggleUI(!!s.enabled);
+      if(saved) saved.style.display = 'none';
+      modal.style.display = 'flex';
+    });
+
+    close.addEventListener('click', function() {
+      modal.style.display = 'none';
+    });
+
+    modal.addEventListener('click', function(e) {
+      if(e.target === modal) modal.style.display = 'none';
+    });
+
+    chk.addEventListener('change', function() {
+      updateToggleUI(chk.checked);
+    });
+
+    save.addEventListener('click', function() {
+      var setting = { enabled: chk.checked, time: time.value || '10:30' };
+      localStorage.setItem(SETTING_KEY, JSON.stringify(setting));
+      if(saved) { saved.style.display='block'; }
+      scheduleAutoOpen(setting);
+      if(setting.enabled && window.Notification && Notification.permission==='default') {
+        Notification.requestPermission();
+      }
+      setTimeout(function() {
+        if(saved) saved.style.display='none';
+        modal.style.display='none';
+      }, 1200);
+    });
+  }
+
+  // 초기 설정 로드 및 스케줄
+  var initS = loadSetting();
+  if(initS.enabled) scheduleAutoOpen(initS);
+
+  // DOMContentLoaded 보장
+  if(document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initSetting);
+  } else {
+    initSetting();
+  }
+})();
 </script>
 
 <!-- 설정 모달 -->
