@@ -6,7 +6,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>인시스 점심주문관리 v6.8</title>
+<title>인시스 점심주문관리 v6.9</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -703,7 +703,7 @@ body.season-warm {
   <div class="hd-inner">
     <div class="hd-left" style="display:flex;align-items:center;gap:10px">
       <h1>인시스 점심주문관리</h1>
-      <span class="ver-badge">v6.8</span>
+      <span class="ver-badge">v6.9</span>
       <button id="settingBtn" title="설정" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">⚙️</button>
     </div>
     <div class="hd-right">
@@ -957,7 +957,7 @@ body.season-warm {
     <div id="restaurantAdminList"></div>
   </div>
 
-  <div class="footer-info">점심주문관리 시스템 v6.8</div>
+  <div class="footer-info">점심주문관리 시스템 v6.9</div>
 
   <!-- ══ AI 추천 모달 ══ -->
   <div id="aiModal" class="modal-overlay hidden">
@@ -3114,6 +3114,10 @@ async function spinReel(reel, finalItem, items, duration) {
 })();
 
 
+// removeDupBtn 바인딩
+  var dupBtn = document.getElementById('removeDupBtn');
+  if(dupBtn) dupBtn.addEventListener('click', removeDuplicateRestaurants);
+
 // ── 설정 모달 (자동 열기) ────────────────────────────────
 (function() {
   var SETTING_KEY = 'insys_auto_open';
@@ -3213,6 +3217,54 @@ async function spinReel(reel, finalItem, items, duration) {
     initSetting();
   }
 })();
+
+// ── 중복 식당 자동 삭제 ──────────────────────────────────
+async function removeDuplicateRestaurants() {
+  if(!confirm('중복된 식당을 자동으로 찾아 삭제합니다. 계속할까요?')) return;
+  
+  const btn = $('removeDupBtn');
+  if(btn) { btn.disabled=true; btn.textContent='처리 중...'; }
+  
+  try {
+    // Firebase에서 전체 restaurant_list 조회
+    const snap = await getDocs(collection(db, 'restaurant_list'));
+    const docs = snap.docs.map(d => ({id:d.id, ...d.data(), _ref:d.ref}));
+    
+    // 이름별 그룹화
+    const groups = {};
+    docs.forEach(d => {
+      const name = d.name || d.id;
+      if(!groups[name]) groups[name] = [];
+      groups[name].push(d);
+    });
+    
+    // 중복 찾기 (2개 이상인 것)
+    let deleteCount = 0;
+    const dupNames = [];
+    for(const [name, list] of Object.entries(groups)) {
+      if(list.length > 1) {
+        dupNames.push(name + '(' + list.length + '개)');
+        // 첫 번째만 남기고 나머지 삭제
+        for(let i=1; i<list.length; i++) {
+          await deleteDoc(doc(db, 'restaurant_list', list[i].id));
+          deleteCount++;
+        }
+      }
+    }
+    
+    if(deleteCount === 0) {
+      showToast('중복된 식당이 없습니다 ✅');
+    } else {
+      showToast('🗑 ' + deleteCount + '개 중복 삭제 완료: ' + dupNames.join(', '));
+      await loadRestaurants();
+      renderRestaurantAdmin();
+    }
+  } catch(e) {
+    showToast('오류: ' + e.message);
+  } finally {
+    if(btn) { btn.disabled=false; btn.textContent='🗑 중복 식당 자동 삭제'; }
+  }
+}
 </script>
 
 <!-- 설정 모달 -->
