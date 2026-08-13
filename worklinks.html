@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>업무용 검토자료 링크 모음 | 인시스</title>
-<meta name="app-version" content="1.6">
+<meta name="app-version" content="1.7">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
@@ -301,7 +301,7 @@
     <div class="nav-brand">
       <div class="logo">IS</div>
       <div class="title">업무용 검토자료 링크</div>
-      <div class="ver">v1.6</div>
+      <div class="ver">v1.7</div>
     </div>
     <div class="nav-user" id="navUser" style="display:none;">
       <span class="email" id="navEmail"></span>
@@ -417,7 +417,7 @@
     </div>
     <div id="linkGrid"></div>
   </div>
-  <footer>인시스 AI혁신 연구개발실 &nbsp;|&nbsp; ys.kim@in-sys.co.kr &nbsp;|&nbsp; worklinks.html v1.6</footer>
+  <footer>인시스 AI혁신 연구개발실 &nbsp;|&nbsp; ys.kim@in-sys.co.kr &nbsp;|&nbsp; worklinks.html v1.7</footer>
 </div>
 
 <!-- ===== 링크 추가/수정 모달 ===== -->
@@ -557,7 +557,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 const LS_EMAIL_KEY = "worklinks_saved_email";
-const APP_VERSION = "1.6";
+const APP_VERSION = "1.7";
 const ADMIN_EMAIL = "ys.kim@in-sys.co.kr"; // 기본(부트스트랩) 관리자 계정
 
 let currentUser = null;
@@ -1155,6 +1155,8 @@ function statusBadge(status){
   return `<span class="badge status-pending">승인 대기</span>`;
 }
 
+let adminUsersCache = [];
+
 async function loadAdminUsers(){
   adminUserList.innerHTML = `<div class="admin-empty">불러오는 중...</div>`;
   try{
@@ -1168,6 +1170,7 @@ async function loadAdminUsers(){
       if (sa !== sb) return sa - sb;
       return (a.email || "").localeCompare(b.email || "");
     });
+    adminUsersCache = users;
     renderAdminUsers(users);
   }catch(err){
     adminUserList.innerHTML = `<div class="admin-empty">불러오기 실패했습니다.</div>`;
@@ -1213,9 +1216,16 @@ adminUserList.addEventListener("click", async (e) => {
   const act = btn.dataset.act;
   const uid = btn.dataset.id;
   const ref = doc(db, "users", uid);
+  const targetUser = adminUsersCache.find(u => u.id === uid);
   try{
-    if (act === "approve") await updateDoc(ref, { status: "approved" });
-    if (act === "reject") await updateDoc(ref, { status: "rejected" });
+    if (act === "approve"){
+      await updateDoc(ref, { status: "approved" });
+      if (targetUser) await sendResultEmail(targetUser, "approved");
+    }
+    if (act === "reject"){
+      await updateDoc(ref, { status: "rejected" });
+      if (targetUser) await sendResultEmail(targetUser, "rejected");
+    }
     if (act === "promote") await updateDoc(ref, { role: "admin" });
     if (act === "demote") await updateDoc(ref, { role: "user" });
     loadAdminUsers();
@@ -1224,6 +1234,38 @@ adminUserList.addEventListener("click", async (e) => {
     console.error(err);
   }
 });
+
+/* ---------- 승인/거절 결과 자동 이메일 발송 -----------
+   Firebase Extension "Trigger Email from Firestore"가 'mail' 컬렉션 문서를
+   감지하여 자동으로 이메일을 발송합니다. 확장 프로그램 설치가 필요합니다. */
+const APP_URL = "https://insys-hq.github.io/Insys-review/worklinks.html";
+
+async function sendResultEmail(targetUser, result){
+  const name = targetUser.name || targetUser.email || "";
+  const approved = result === "approved";
+  const subject = approved
+    ? "[인시스] 업무용 검토자료 링크 - 계정 승인 완료 안내"
+    : "[인시스] 업무용 검토자료 링크 - 계정 승인 거절 안내";
+  const html = approved
+    ? `<p>${escapeHtml(name)}님, 안녕하세요.</p>
+       <p>요청하신 <b>인시스 업무용 검토자료 링크</b> 계정이 <b style="color:#2f7a4f;">승인</b>되었습니다.</p>
+       <p>아래 링크에서 로그인 후 이용해 주세요.</p>
+       <p><a href="${APP_URL}">${APP_URL}</a></p>
+       <p style="color:#66707a;font-size:12px;">인시스 AI혁신 연구개발실 | ys.kim@in-sys.co.kr</p>`
+    : `<p>${escapeHtml(name)}님, 안녕하세요.</p>
+       <p>요청하신 <b>인시스 업무용 검토자료 링크</b> 계정 등록 요청이 <b style="color:#b23a3a;">거절</b>되었습니다.</p>
+       <p>문의 사항은 담당자에게 연락해 주세요.</p>
+       <p style="color:#66707a;font-size:12px;">인시스 AI혁신 연구개발실 | ys.kim@in-sys.co.kr</p>`;
+  try{
+    await addDoc(collection(db, "mail"), {
+      to: [targetUser.email],
+      message: { subject, html }
+    });
+  }catch(err){
+    // 메일 발송 요청 실패는 승인/거절 처리 자체를 막지 않음(조용히 로그만 남김)
+    console.error("이메일 발송 요청 실패:", err);
+  }
+}
 </script>
 </body>
 </html>
