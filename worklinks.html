@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>업무용 검토자료 링크 모음 | 인시스</title>
-<meta name="app-version" content="1.4">
+<meta name="app-version" content="1.5">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
@@ -169,6 +169,10 @@
     padding:14px 14px 12px;display:flex;flex-direction:column;gap:8px;
     box-shadow:0 1px 3px rgba(31,45,61,.04);
   }
+  .lcard.important{
+    border-color:#e0b23a;background:#fffdf6;
+    box-shadow:0 1px 4px rgba(224,178,58,.25);
+  }
   .lcard-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
   .lcard-title{font-size:14px;font-weight:700;color:var(--navy);word-break:break-all;}
   .lcard-cat{
@@ -199,6 +203,9 @@
     opacity:.3;cursor:not-allowed;color:var(--gray-sub);
   }
   .lbtn.move:disabled:hover{border-color:var(--border);color:var(--gray-sub);}
+  .lbtn.star{color:#c99a1f;}
+  .lbtn.star:hover{background:#fdf6e3;border-color:#e0b23a;}
+  .lbtn.star.active{background:#e0b23a;color:#fff;border-color:#e0b23a;}
 
   /* ===== MODAL ===== */
   .modal-bg{
@@ -216,6 +223,37 @@
   .modal-btns button{flex:1;padding:10px 0;border-radius:7px;border:none;font-size:13px;font-weight:700;}
   .modal-btns .cancel{background:#eef1f4;color:var(--gray-txt);}
   .modal-btns .save{background:var(--blue);color:#fff;}
+
+  .admin-modal{max-width:560px;}
+  .admin-list{max-height:340px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-top:4px;}
+  .admin-empty{text-align:center;color:var(--gray-sub);font-size:12px;padding:24px 0;}
+  .admin-row{
+    border:1px solid var(--border);border-radius:8px;padding:10px 12px;
+    display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+  }
+  .admin-row .info{min-width:0;}
+  .admin-row .name{font-size:13px;font-weight:700;color:var(--navy);}
+  .admin-row .email{font-size:11.5px;color:var(--gray-sub);word-break:break-all;}
+  .admin-row .badges{display:flex;gap:5px;margin-top:4px;}
+  .badge{
+    font-size:10px;font-weight:700;padding:2px 7px;border-radius:9px;white-space:nowrap;
+  }
+  .badge.role-admin{background:#fdeecb;color:#8a5b00;}
+  .badge.role-user{background:var(--blue-light);color:var(--blue);}
+  .badge.status-pending{background:#fdeceb;color:var(--danger);}
+  .badge.status-approved{background:#e7f5ec;color:var(--ok);}
+  .badge.status-rejected{background:#eee;color:var(--gray-sub);}
+  .admin-row .actions{display:flex;gap:6px;flex-wrap:wrap;}
+  .admin-row .actions button{
+    border:1px solid var(--border);background:#fff;color:var(--gray-txt);
+    padding:6px 10px;border-radius:6px;font-size:11.5px;font-weight:500;
+  }
+  .admin-row .actions .approve{color:var(--ok);}
+  .admin-row .actions .approve:hover{background:#e7f5ec;border-color:var(--ok);}
+  .admin-row .actions .reject{color:var(--danger);}
+  .admin-row .actions .reject:hover{background:var(--danger-bg);border-color:var(--danger);}
+  .admin-row .actions .promote,.admin-row .actions .demote{color:var(--blue);}
+  .admin-row .actions .promote:hover,.admin-row .actions .demote:hover{background:var(--blue-light);border-color:var(--blue);}
 
   footer{
     text-align:center;font-size:11px;color:var(--gray-sub);
@@ -259,10 +297,11 @@
     <div class="nav-brand">
       <div class="logo">IS</div>
       <div class="title">업무용 검토자료 링크</div>
-      <div class="ver">v1.4</div>
+      <div class="ver">v1.5</div>
     </div>
     <div class="nav-user" id="navUser" style="display:none;">
       <span class="email" id="navEmail"></span>
+      <button class="btn-nav" id="btnAdmin" style="display:none;">관리자</button>
       <button class="btn-nav" id="btnAccount">계정 설정</button>
       <button class="btn-nav" id="btnLogout">로그아웃</button>
     </div>
@@ -332,6 +371,18 @@
   </div>
 </div>
 
+<!-- ===== 승인 대기 화면 ===== -->
+<div class="auth-shell" id="pendingShell" style="display:none;">
+  <div class="auth-card">
+    <div class="auth-head">
+      <div class="logo">IS</div>
+      <h1 id="pendingTitle">계정 승인 대기 중</h1>
+      <p id="pendingDesc">관리자 승인 후 이용하실 수 있습니다. 승인이 완료되면 다시 로그인해 주세요.</p>
+    </div>
+    <button class="btn-main" id="btnPendingLogout">로그아웃</button>
+  </div>
+</div>
+
 <!-- ===== 메인(로그인 후) ===== -->
 <div class="main" id="mainArea">
   <div class="wrap">
@@ -361,7 +412,7 @@
     </div>
     <div id="linkGrid"></div>
   </div>
-  <footer>인시스 AI혁신 연구개발실 &nbsp;|&nbsp; ys.kim@in-sys.co.kr &nbsp;|&nbsp; worklinks.html v1.4</footer>
+  <footer>인시스 AI혁신 연구개발실 &nbsp;|&nbsp; ys.kim@in-sys.co.kr &nbsp;|&nbsp; worklinks.html v1.5</footer>
 </div>
 
 <!-- ===== 링크 추가/수정 모달 ===== -->
@@ -453,6 +504,19 @@
   </div>
 </div>
 
+<!-- ===== 관리자 패널 모달 ===== -->
+<div class="modal-bg" id="adminModalBg">
+  <div class="modal admin-modal">
+    <h3>관리자 패널 — 사용자 승인·권한 관리</h3>
+    <div id="adminUserList" class="admin-list">
+      <div class="admin-empty">불러오는 중...</div>
+    </div>
+    <div class="modal-btns">
+      <button class="cancel" id="btnAdminClose" style="flex:none;padding:10px 24px;">닫기</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== 새 버전 업데이트 안내 배너 ===== -->
 <div class="update-banner" id="updateBanner">
   <div class="msg">🔔 새로운 버전이 업데이트되었습니다. <b>새로고침</b> 후 이용해 주세요.</div>
@@ -471,7 +535,8 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, collection, query, where,
-  addDoc, updateDoc, deleteDoc, doc, onSnapshot, serverTimestamp
+  addDoc, updateDoc, deleteDoc, doc, onSnapshot, serverTimestamp,
+  getDoc, setDoc, getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -487,14 +552,17 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 const LS_EMAIL_KEY = "worklinks_saved_email";
-const APP_VERSION = "1.4";
+const APP_VERSION = "1.5";
+const ADMIN_EMAIL = "ys.kim@in-sys.co.kr"; // 기본(부트스트랩) 관리자 계정
 
 let currentUser = null;
+let currentUserProfile = null; // { email, name, role: 'admin'|'user', status: 'pending'|'approved'|'rejected' }
 let unsubLinks = null;
 let allLinks = [];
 
 /* ---------- DOM refs ---------- */
 const authShell = document.getElementById("authShell");
+const pendingShell = document.getElementById("pendingShell");
 const mainArea = document.getElementById("mainArea");
 const navUser = document.getElementById("navUser");
 const navEmail = document.getElementById("navEmail");
@@ -562,8 +630,19 @@ document.getElementById("btnSignup").addEventListener("click", async () => {
     await setPersistence(auth, browserLocalPersistence);
     const cred = await createUserWithEmailAndPassword(auth, email, pw);
     if (name) await updateProfile(cred.user, { displayName: name });
+
+    const isBootstrapAdmin = email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+    await setDoc(doc(db, "users", cred.user.uid), {
+      email, name: name || "",
+      role: isBootstrapAdmin ? "admin" : "user",
+      status: isBootstrapAdmin ? "approved" : "pending",
+      createdAt: serverTimestamp()
+    });
+
     localStorage.setItem(LS_EMAIL_KEY, email);
-    showMsg("계정이 등록되었습니다. 자동으로 로그인됩니다.", "ok");
+    showMsg(isBootstrapAdmin
+      ? "관리자 계정으로 등록되었습니다. 자동으로 로그인됩니다."
+      : "계정 등록 요청이 접수되었습니다. 관리자 승인 후 이용하실 수 있습니다.", "ok");
   }catch(err){
     showMsg(mapAuthError(err), "err");
   }finally{
@@ -595,27 +674,75 @@ document.getElementById("btnLogin").addEventListener("click", async () => {
 });
 
 /* ---------- 로그아웃 ---------- */
-document.getElementById("btnLogout").addEventListener("click", async () => {
-  await signOut(auth);
-});
+async function doLogout(){ await signOut(auth); }
+document.getElementById("btnLogout").addEventListener("click", doLogout);
+document.getElementById("btnPendingLogout").addEventListener("click", doLogout);
+
+/* ---------- 사용자 프로필(users/{uid}) 로드 또는 생성 ---------- */
+async function loadOrCreateUserProfile(user){
+  const ref = doc(db, "users", user.uid);
+  const snap = await getDoc(ref);
+  if (snap.exists()){
+    return snap.data();
+  }
+  // v1.4 이전에 가입한 계정 등, users 문서가 없는 경우 자동 생성(부트스트랩)
+  const isBootstrapAdmin = (user.email || "").toLowerCase() === ADMIN_EMAIL.toLowerCase();
+  const profile = {
+    email: user.email || "",
+    name: user.displayName || "",
+    role: isBootstrapAdmin ? "admin" : "user",
+    status: isBootstrapAdmin ? "approved" : "pending",
+    createdAt: serverTimestamp()
+  };
+  await setDoc(ref, profile);
+  return profile;
+}
 
 /* ---------- 인증 상태 감지 ---------- */
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
   currentUser = user;
-  if (user){
-    authShell.style.display = "none";
-    mainArea.style.display = "block";
-    navUser.style.display = "flex";
-    navEmail.textContent = user.displayName ? (user.displayName + " · " + user.email) : user.email;
-    subscribeLinks(user.uid);
-  } else {
+  if (!user){
+    currentUserProfile = null;
     authShell.style.display = "flex";
+    pendingShell.style.display = "none";
     mainArea.style.display = "none";
     navUser.style.display = "none";
     if (unsubLinks){ unsubLinks(); unsubLinks = null; }
     allLinks = [];
     renderLinks();
+    return;
   }
+
+  let profile;
+  try{
+    profile = await loadOrCreateUserProfile(user);
+  }catch(err){
+    console.error(err);
+    profile = { email: user.email, name: user.displayName || "", role: "user", status: "pending" };
+  }
+  currentUserProfile = profile;
+
+  if (profile.status !== "approved"){
+    authShell.style.display = "none";
+    mainArea.style.display = "none";
+    navUser.style.display = "none";
+    pendingShell.style.display = "flex";
+    document.getElementById("pendingTitle").textContent =
+      profile.status === "rejected" ? "계정 승인이 거절되었습니다" : "계정 승인 대기 중";
+    document.getElementById("pendingDesc").textContent =
+      profile.status === "rejected"
+        ? "관리자에게 문의해 주세요. (문의: " + ADMIN_EMAIL + ")"
+        : "관리자 승인 후 이용하실 수 있습니다. 승인이 완료되면 다시 로그인해 주세요.";
+    return;
+  }
+
+  authShell.style.display = "none";
+  pendingShell.style.display = "none";
+  mainArea.style.display = "block";
+  navUser.style.display = "flex";
+  navEmail.textContent = profile.name ? (profile.name + " · " + user.email) : user.email;
+  document.getElementById("btnAdmin").style.display = profile.role === "admin" ? "inline-block" : "none";
+  subscribeLinks(user.uid);
 });
 
 /* ---------- Firestore 구독 ---------- */
@@ -642,7 +769,12 @@ function effectiveOrder(l){
   return -(l.createdAt && l.createdAt.seconds ? l.createdAt.seconds : 0);
 }
 function sortByOrder(arr){
-  return [...arr].sort((a, b) => effectiveOrder(a) - effectiveOrder(b));
+  return [...arr].sort((a, b) => {
+    const ai = a.important ? 1 : 0;
+    const bi = b.important ? 1 : 0;
+    if (ai !== bi) return bi - ai; // 중요 표시된 링크가 항상 위로
+    return effectiveOrder(a) - effectiveOrder(b);
+  });
 }
 
 /* ---------- 분류 필터 옵션 ---------- */
@@ -685,9 +817,9 @@ function renderLinks(){
   empty.style.display = "none";
 
   grid.innerHTML = list.map((l, i) => `
-    <div class="lcard" data-id="${l.id}">
+    <div class="lcard${l.important ? " important" : ""}" data-id="${l.id}">
       <div class="lcard-top">
-        <div class="lcard-title">${escapeHtml(l.title || "(제목 없음)")}</div>
+        <div class="lcard-title">${l.important ? "⭐ " : ""}${escapeHtml(l.title || "(제목 없음)")}</div>
         ${l.category ? `<div class="lcard-cat">${escapeHtml(l.category)}</div>` : ""}
       </div>
       <div class="lcard-url">${escapeHtml(l.url || "")}</div>
@@ -695,6 +827,7 @@ function renderLinks(){
       <div class="lcard-btns">
         <button class="lbtn move" data-act="up" data-id="${l.id}" ${i === 0 ? "disabled" : ""} title="위로">▲</button>
         <button class="lbtn move" data-act="down" data-id="${l.id}" ${i === list.length - 1 ? "disabled" : ""} title="아래로">▼</button>
+        <button class="lbtn star${l.important ? " active" : ""}" data-act="star" data-id="${l.id}" title="중요 표시">${l.important ? "★ 중요" : "☆ 중요"}</button>
         <button class="lbtn open" data-act="open" data-url="${escapeAttr(l.url || "")}">열기</button>
         <button class="lbtn copy" data-act="copy" data-url="${escapeAttr(l.url || "")}">복사</button>
         <button class="lbtn" data-act="edit" data-id="${l.id}">수정</button>
@@ -724,6 +857,17 @@ document.getElementById("linkGrid").addEventListener("click", async (e) => {
   }
   if (act === "down"){
     await moveLink(btn.dataset.id, 1);
+  }
+  if (act === "star"){
+    const target = allLinks.find(l => l.id === btn.dataset.id);
+    if (target){
+      try{
+        await updateDoc(doc(db, "worklinks", target.id), { important: !target.important });
+      }catch(err){
+        alert("중요 표시 변경 중 오류가 발생했습니다.");
+        console.error(err);
+      }
+    }
   }
   if (act === "open"){
     const url = btn.dataset.url;
@@ -907,6 +1051,8 @@ document.getElementById("btnAccNameSave").addEventListener("click", async () => 
   btn.disabled = true;
   try{
     await updateProfile(currentUser, { displayName: name });
+    await updateDoc(doc(db, "users", currentUser.uid), { name });
+    if (currentUserProfile) currentUserProfile.name = name;
     navEmail.textContent = name ? (name + " · " + currentUser.email) : currentUser.email;
     setAccMsg("accNameMsg", "이름이 저장되었습니다.", "ok");
   }catch(err){
@@ -980,6 +1126,98 @@ document.getElementById("btnUpdateRefresh").addEventListener("click", () => {
 document.getElementById("btnUpdateDismiss").addEventListener("click", () => {
   updateNoticeDismissed = true;
   updateBanner.classList.remove("show");
+});
+
+/* ---------- 관리자 패널 ---------- */
+const adminModalBg = document.getElementById("adminModalBg");
+const adminUserList = document.getElementById("adminUserList");
+
+document.getElementById("btnAdmin").addEventListener("click", () => {
+  adminModalBg.classList.add("show");
+  loadAdminUsers();
+});
+document.getElementById("btnAdminClose").addEventListener("click", () => adminModalBg.classList.remove("show"));
+adminModalBg.addEventListener("click", (e) => { if (e.target === adminModalBg) adminModalBg.classList.remove("show"); });
+
+function roleBadge(role){
+  return role === "admin"
+    ? `<span class="badge role-admin">관리자</span>`
+    : `<span class="badge role-user">사용자</span>`;
+}
+function statusBadge(status){
+  if (status === "approved") return `<span class="badge status-approved">승인됨</span>`;
+  if (status === "rejected") return `<span class="badge status-rejected">거절됨</span>`;
+  return `<span class="badge status-pending">승인 대기</span>`;
+}
+
+async function loadAdminUsers(){
+  adminUserList.innerHTML = `<div class="admin-empty">불러오는 중...</div>`;
+  try{
+    const snap = await getDocs(collection(db, "users"));
+    const users = [];
+    snap.forEach(d => users.push({ id: d.id, ...d.data() }));
+    // 승인 대기 → 승인됨 → 거절됨 순으로, 같은 상태면 이메일순
+    const statusOrder = { pending: 0, approved: 1, rejected: 2 };
+    users.sort((a, b) => {
+      const sa = statusOrder[a.status] ?? 9, sb = statusOrder[b.status] ?? 9;
+      if (sa !== sb) return sa - sb;
+      return (a.email || "").localeCompare(b.email || "");
+    });
+    renderAdminUsers(users);
+  }catch(err){
+    adminUserList.innerHTML = `<div class="admin-empty">불러오기 실패했습니다.</div>`;
+    console.error(err);
+  }
+}
+
+function renderAdminUsers(users){
+  if (users.length === 0){
+    adminUserList.innerHTML = `<div class="admin-empty">등록된 사용자가 없습니다.</div>`;
+    return;
+  }
+  adminUserList.innerHTML = users.map(u => {
+    const isSelf = currentUser && u.id === currentUser.uid;
+    const actions = [];
+    if (u.status !== "approved"){
+      actions.push(`<button class="approve" data-act="approve" data-id="${u.id}">승인</button>`);
+    }
+    if (u.status !== "rejected"){
+      actions.push(`<button class="reject" data-act="reject" data-id="${u.id}">거절</button>`);
+    }
+    if (u.status === "approved" && !isSelf){
+      actions.push(u.role === "admin"
+        ? `<button class="demote" data-act="demote" data-id="${u.id}">관리자 해제</button>`
+        : `<button class="promote" data-act="promote" data-id="${u.id}">관리자 지정</button>`);
+    }
+    return `
+      <div class="admin-row">
+        <div class="info">
+          <div class="name">${escapeHtml(u.name || "(이름 없음)")}${isSelf ? " (본인)" : ""}</div>
+          <div class="email">${escapeHtml(u.email || "")}</div>
+          <div class="badges">${roleBadge(u.role)}${statusBadge(u.status)}</div>
+        </div>
+        <div class="actions">${actions.join("")}</div>
+      </div>
+    `;
+  }).join("");
+}
+
+adminUserList.addEventListener("click", async (e) => {
+  const btn = e.target.closest("button[data-act]");
+  if (!btn) return;
+  const act = btn.dataset.act;
+  const uid = btn.dataset.id;
+  const ref = doc(db, "users", uid);
+  try{
+    if (act === "approve") await updateDoc(ref, { status: "approved" });
+    if (act === "reject") await updateDoc(ref, { status: "rejected" });
+    if (act === "promote") await updateDoc(ref, { role: "admin" });
+    if (act === "demote") await updateDoc(ref, { role: "user" });
+    loadAdminUsers();
+  }catch(err){
+    alert("처리 중 오류가 발생했습니다.");
+    console.error(err);
+  }
 });
 </script>
 </body>
