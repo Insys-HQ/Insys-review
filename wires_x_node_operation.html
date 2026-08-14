@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FTM-510D WIRES-X 노드 운용 — 모드별 시작·검색·접속 정리</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#0f2540; --navy2:#16345c; --accent:#e2725b; --green:#2e7d5b;
+    --blue:#2563a8; --red:#c0392b; --g1:#f6f8fa; --g2:#e9edf1; --g3:#6b7785;
+    --ink:#1c2733;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Noto Sans KR',sans-serif;background:var(--g1);color:var(--ink);font-size:14px;line-height:1.6;}
+  .cover{background:linear-gradient(135deg,var(--navy) 0%,var(--navy2) 100%);color:#fff;padding:36px 20px;text-align:center;}
+  .cover-inner{max-width:1100px;margin:0 auto;}
+  .cover h1{font-size:23px;font-weight:900;margin:0 0 8px;}
+  .cover .sub{font-size:13px;color:rgba(255,255,255,.75);margin-bottom:14px;}
+  .badge{display:inline-block;background:var(--accent);color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:10px;margin:0 4px;}
+  .wrap{max-width:1100px;margin:0 auto;padding:20px;}
+  .section{background:#fff;border:1px solid var(--g2);border-radius:10px;margin-bottom:18px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.05);}
+  .sh{padding:12px 16px;font-weight:700;font-size:15px;color:#fff;}
+  .c-navy{background:var(--navy);}
+  .c-red{background:var(--red);}
+  .c-green{background:var(--green);}
+  .c-blue{background:var(--blue);}
+  .sb{padding:16px;}
+  p.sub{font-weight:700;font-size:13px;color:var(--navy);border-left:4px solid var(--accent);padding-left:8px;margin:16px 0 8px;}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:10px;}
+  th,td{border:1px solid var(--g2);padding:8px 10px;text-align:left;vertical-align:top;}
+  th{background:var(--g1);font-weight:700;color:var(--navy);}
+  tr:nth-child(even) td{background:#fafbfc;}
+  .alert{display:flex;gap:8px;padding:10px 12px;border-radius:8px;margin:10px 0;font-size:12.5px;}
+  .aw{background:#fff3e0;border:1px solid #f5c16c;}
+  .ad{background:#fdecea;border:1px solid #f1a9a0;}
+  .ai{background:#e8f1fb;border:1px solid #a9c8ea;}
+  .steps{display:flex;flex-direction:column;gap:8px;margin:10px 0;}
+  .step{display:flex;gap:10px;align-items:flex-start;}
+  .snum{flex:0 0 24px;height:24px;border-radius:50%;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+  .rd{background:var(--red);} .gn{background:var(--green);} .bl{background:var(--blue);} .nv{background:var(--navy);}
+  .sc strong{color:var(--navy);}
+  .sc p{margin:4px 0 0;color:var(--g3);font-size:12px;}
+  mono{font-family:monospace;background:var(--g2);padding:1px 6px;border-radius:4px;}
+  .keyresult{background:var(--navy);color:#fff;padding:14px 16px;border-radius:8px;margin:14px 0;font-size:13px;}
+  .keyresult b{color:#ffd28a;}
+  footer{text-align:center;color:var(--g3);font-size:11px;padding:20px;}
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="cover-inner">
+    <h1>FTM-510D WIRES-X 노드 운용 — 모드별 시작·검색·접속 정리</h1>
+    <div class="sub">HL2TLS(Andy) 개인국 실전 정리 · 2026-08-14</div>
+    <span class="badge">v1.0</span>
+    <span class="badge">인시스 AI혁신 연구개발실</span>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="section">
+    <div class="sh c-navy">개요</div>
+    <div class="sb">
+      <p>FTM-510D(SCU-58 케이블, PC 직결)로 WIRES-X 노드를 운용할 때, 무전기를 어떤 모드로 켜야 하는지와 무전기 본체에서 룸/노드를 직접 검색·접속하는 방법을 정리한 문서입니다. 야에스 공식 "WIRES-X 포터블 디지털 노드 기능" 매뉴얼을 기준으로, 오늘 실전 확인된 내용을 반영했습니다.</p>
+      <div class="keyresult">
+        핵심: 무전기를 <b>PDN 모드</b>(디지털 전용) 또는 <b>포터블 HRI 모드</b>(디지털+아날로그)로 켜고, WIRES-X 소프트웨어(ADMS-18 아님)를 실행하면, 무전기 자체 버튼으로도 룸/노드 검색과 접속이 가능합니다.
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sh c-blue">1. 무전기 모드별 켜는 방법</div>
+    <div class="sb">
+      <table>
+        <tr><th>모드</th><th>지원 범위</th><th>켜는 방법</th><th>화면 표시</th></tr>
+        <tr><td>일반 모드</td><td>무전기 단독 (FM/디지털 교신)</td><td>버튼 조합 없이 그냥 전원 ON</td><td>평소 VFO(주파수) 화면</td></tr>
+        <tr><td><strong>PDN 모드</strong><br>(Portable Digital Node)</td><td>디지털 전용 인터넷 통신</td><td><strong>[D X] 키를 누른 채</strong> 전원 ON</td><td>화면 하단 "WIRES-X PDN"</td></tr>
+        <tr><td><strong>Portable HRI 모드</strong></td><td>디지털+아날로그 인터넷 통신</td><td><strong>[D X]+[GM] 키를 동시에 누른 채</strong> 전원 ON</td><td>화면에 YAESU 로고 + "WIRES-X"<br>(소프트웨어 정상 통신 시 "WIRES-X NODE"로 표시)</td></tr>
+      </table>
+      <div class="alert ai"><span>💡</span><div>한 번 특정 모드로 켠 뒤에는, 무전기가 마지막 부팅 모드를 기억합니다. 이후 버튼 조합 없이 <strong>전원만 눌러도 같은 모드로 재부팅</strong>됩니다. 일반 모드로 되돌리려면, 마지막에 사용한 모드 진입 키 조합을 <strong>한 번 더</strong> 누른 채 전원을 켜면 됩니다 (토글 방식).</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sh c-navy">2. WIRES-X 소프트웨어 실행 및 연결 순서</div>
+    <div class="sb">
+      <div class="steps">
+        <div class="step"><div class="snum nv">1</div><div class="sc"><strong>PC 먼저 켜기</strong><p>SCU-58 케이블이 무전기·PC 양쪽에 연결된 상태 확인. 이 단계에서 무전기는 아직 꺼둠</p></div></div>
+        <div class="step"><div class="snum bl">2</div><div class="sc"><strong>WIRES-X 소프트웨어 실행</strong><p>바탕화면 "WIRES-X" 아이콘 (ADMS-18과는 별개 프로그램)</p></div></div>
+        <div class="step"><div class="snum bl">3</div><div class="sc"><strong>무전기를 원하는 모드로 켜기</strong><p>위 표 참고 — PDN 또는 Portable HRI</p></div></div>
+        <div class="step"><div class="snum gn">4</div><div class="sc"><strong>소프트웨어가 무전기를 인식하는지 확인</strong><p>화면 상단이 "P-HRI FTM-510D" 등으로 바뀌고, 우하단에 "ONLINE(IPv4)" 표시</p></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sh c-green">3. 무전기 본체에서 검색·접속</div>
+    <div class="sb">
+      <p>무전기가 PDN/HRI 모드로 정상 부팅되고 PC와 통신 중이면(화면에 "WIRES-X PDN" 표시가 점멸하지 않는 정상 대기 상태), 본체 버튼으로 직접 룸/노드를 검색·접속할 수 있습니다.</p>
+
+      <p class="sub">3-1. 접속 시작</p>
+      <div class="steps">
+        <div class="step"><div class="snum rd">1</div><div class="sc"><strong>[D X] 키를 짧게 누름</strong><p>화면 좌측 상단 "X" 아이콘이 점멸하며 접속을 시작. PC와 정상 통신되면 점멸 → 점등으로 바뀌고 자국 노드 ID·도시명이 표시됨</p></div></div>
+      </div>
+
+      <p class="sub">3-2. 룸/노드 목록에서 선택 접속</p>
+      <div class="steps">
+        <div class="step"><div class="snum bl">1</div><div class="sc"><strong>화면 하단 "SEARCH & DIRECT" 표시 상태에서 FUNC 노브로 선택 → FUNC 확정</strong></div></div>
+        <div class="step"><div class="snum bl">2</div><div class="sc"><strong>카테고리 목록에서 FUNC 돌려 "ALL" 선택 → FUNC 확정</strong><p>접속 가능한 룸·노드 전체 목록 표시 (룸 다음 노드 순)</p></div></div>
+        <div class="step"><div class="snum gn">3</div><div class="sc"><strong>FUNC 돌려 원하는 룸/노드 선택 → FUNC 확정 (또는 선택 후 바로 PTT)</strong><p>접속 성공 시 화면에 "Connected" 및 접속 대상 이름 표시</p></div></div>
+      </div>
+
+      <p class="sub">3-3. DTMF ID로 직접 접속 (노드 번호를 알 때 — 가장 빠름)</p>
+      <div class="steps">
+        <div class="step"><div class="snum nv">1</div><div class="sc"><strong>마이크 [#] 키를 길게 누름</strong><p>DTMF ID 입력 화면 표시</p></div></div>
+        <div class="step"><div class="snum nv">2</div><div class="sc"><strong>마이크 숫자 키패드로 5자리 노드번호 입력</strong></div></div>
+        <div class="step"><div class="snum gn">3</div><div class="sc"><strong>[#] 키를 다시 눌러 확정</strong><p>접속 성공 시 "Connected" 표시</p></div></div>
+      </div>
+
+      <p class="sub">3-4. 교신 및 종료</p>
+      <div class="steps">
+        <div class="step"><div class="snum rd">1</div><div class="sc"><strong>PTT로 교신</strong> — 누르면 송신, 놓으면 수신</div></div>
+        <div class="step"><div class="snum nv">2</div><div class="sc"><strong>접속 해제</strong> — 마이크 <mono>[*]</mono> 키 길게 누름, 또는 PC 소프트웨어 접속 메뉴에서 "절단"</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sh c-red">4. 접속·조작이 안 될 때 확인할 것</div>
+    <div class="sb">
+      <table>
+        <tr><th>증상</th><th>원인/설명</th></tr>
+        <tr><td>[D X] 눌러도 X 아이콘이 안 뜨거나 바로 사라짐</td><td>PC·무전기 간 통신이 안 되는 상태. "WIRES-X PDN" 표시가 점멸 중이면 케이블/드라이버/COM포트 재확인 필요</td></tr>
+        <tr><td>이미 룸/노드에 접속된 상태에서 FUNC·DIAL 등 본체 버튼이 전혀 안 먹음</td><td>정상 동작. 노드가 PC 소프트웨어에 의해 제어되는 상태에서는 본체 로컬 버튼이 잠기고, <strong>마이크 숫자 키패드([#]/[*])만</strong> 계속 살아있음</td></tr>
+        <tr><td>PTT 눌러도 "TX Prohibit" 삐빅음</td><td>ON-AIR LOCK 상태(다른 국 송신 중이거나 접속 직후 안정화 대기) — 몇 초 기다린 뒤 재시도, 또는 룸 재접속</td></tr>
+        <tr><td>접속 중 반복적으로 자동 끊김 (Digital transceiver error reset)</td><td>일부 룸은 일정 시간 무통신 시 자동 이탈시키는 정책 운영 — 정상 동작. PTT 한 번 ON/OFF로 재접속됨</td></tr>
+        <tr><td>ADMS-18(메모리 편집)에서 CLONE 통신이 계속 실패</td><td>WIRES-X 노드 운용과는 별개 문제. 무전기 사양(일본 내수/해외 수출)과 ADMS-18 언어판이 일치해야 함</td></tr>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  YAESU WIRES-X 포터블 디지털 노드 기능 공식 매뉴얼 기반 정리 · HL2TLS(Andy) · 인시스 AI혁신 연구개발실 · v1.0 · 2026-08-14
+</footer>
+
+</body>
+</html>
