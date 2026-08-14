@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>GlucoLog v3.4 — 혈당관리</title>
+<title>GlucoLog v3.5 — 혈당관리</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script type="module">
@@ -242,7 +242,7 @@ textarea.form-input{resize:none;height:70px;}
   <div class="register-card">
     <div class="register-logo">Gluco<span>Log</span></div>
     <div class="register-sub">혈당·혈압·식단 통합 관리</div>
-    <div class="register-desc">👋 처음 오셨네요! 기본 정보를 입력하면<br>다음부터는 자동으로 이 화면이 나타납니다.</div>
+    <div class="register-desc">👋 처음이면 기본 정보를 입력하세요.<br>이미 등록하셨다면 같은 이름·생년월일로<br>입력하면 기존 기록을 그대로 불러옵니다.</div>
 
     <div class="form-group">
       <label class="form-label">이름</label>
@@ -289,7 +289,7 @@ textarea.form-input{resize:none;height:70px;}
 <div class="safe-top"></div>
 <header class="app-header">
   <div class="logo-block">
-    <div class="logo">Gluco<span>Log</span> <span class="ver">v3.4</span></div>
+    <div class="logo">Gluco<span>Log</span> <span class="ver">v3.5</span></div>
     <div class="logo-sub">혈당·혈압·식단 통합 관리</div>
   </div>
   <div style="display:flex;align-items:center;gap:8px">
@@ -900,8 +900,8 @@ window.mealB64=null; window.quickB64=null;
 let labPhotosArr=[];
 let labRecordsCache=[];
 let calcMode=1;
-const VER='v3.4';
-const UPDATE_NOTE='식단 분석에 특이사항을 반영하고, 분석 결과의 표·기호를 정리해 읽기 쉽게 개선했습니다.';
+const VER='v3.5';
+const UPDATE_NOTE='같은 이름·생년월일이면 재등록 없이 기존 기록을 자동으로 불러오도록 개선했습니다.';
 
 // ─ Firestore 문서 조작 함수 ─
 let fsDoc,updateDoc,deleteDoc,fsSetDoc,fsGetDoc;
@@ -1006,23 +1006,40 @@ function hideRegisterGate(){
 async function tryAutoLogin(){
   let uid=null;
   try{ uid=localStorage.getItem('gl_user_id'); }catch(e){}
-  if(!uid){ showRegisterGate(); return; }
-  try{
-    const snap=await fsGetDoc(fsDoc(db,'glucolog_users',uid));
-    if(snap.exists()){
-      const d=snap.data();
-      currentUserId=uid;
-      currentUserName=d.name||'';
-      profileData={gender:d.gender,age:calcAgeFromBirth(d.birth),height:d.height,weight:d.weight,birth:d.birth,name:d.name};
-      updateHeaderUserName();
-      await initAppData();
-    }else{
-      showRegisterGate();
-    }
-  }catch(e){
-    console.error(e);
-    showRegisterGate();
+  if(uid){
+    try{
+      const snap=await fsGetDoc(fsDoc(db,'glucolog_users',uid));
+      if(snap.exists()){
+        applyUser(uid,snap.data());
+        await initAppData();
+        return;
+      }
+    }catch(e){ console.error(e); }
   }
+  // localStorage에 uid가 없거나 무효 → 등록 화면 표시 (여기서 이름+생년월일로 기존사용자 자동인식)
+  showRegisterGate();
+}
+
+// 사용자 데이터를 앱 상태에 적용
+function applyUser(uid,d){
+  currentUserId=uid;
+  currentUserName=d.name||'';
+  profileData={gender:d.gender,age:calcAgeFromBirth(d.birth),height:d.height,weight:d.weight,birth:d.birth,name:d.name};
+  try{ localStorage.setItem('gl_user_id',uid); localStorage.setItem('gl_user_name',d.name||''); }catch(e){}
+  updateHeaderUserName();
+}
+
+// 이름+생년월일로 기존 등록 사용자 찾기 (localStorage가 초기화돼도 재등록 방지)
+async function findExistingUser(name,birth){
+  try{
+    const snap=await getDocs(col(db,'glucolog_users'));
+    let found=null;
+    snap.forEach(docSnap=>{
+      const d=docSnap.data();
+      if(d.name===name && d.birth===birth) found={id:docSnap.id,data:d};
+    });
+    return found;
+  }catch(e){ console.error(e); return null; }
 }
 
 async function completeRegistration(){
@@ -1040,6 +1057,16 @@ async function completeRegistration(){
   if(!height||!weight){showToast('⚠️ 키와 몸무게를 입력하세요');return;}
   if(!db){showToast('⚠️ Firebase 연결 중입니다. 잠시 후 다시 시도하세요');return;}
 
+  // 이미 등록된 사용자(같은 이름+생년월일)인지 먼저 확인 → 있으면 재등록 없이 로그인
+  const existing=await findExistingUser(name,birth);
+  if(existing){
+    applyUser(existing.id,existing.data);
+    hideRegisterGate();
+    showToast(`✅ ${name}님, 다시 오셨네요!`);
+    await initAppData();
+    return;
+  }
+
   const uid=genUserId();
   const userDoc={name,gender,birth,height,weight,createdAt:new Date()};
   try{
@@ -1047,14 +1074,10 @@ async function completeRegistration(){
   }catch(e){
     showToast('❌ 등록 실패. 다시 시도해주세요');console.error(e);return;
   }
-  try{
-    localStorage.setItem('gl_user_id',uid);
-    localStorage.setItem('gl_user_name',name);
-  }catch(e){}
-
   currentUserId=uid;
   currentUserName=name;
   profileData={gender,age:calcAgeFromBirth(birth),height,weight,birth,name};
+  try{ localStorage.setItem('gl_user_id',uid); localStorage.setItem('gl_user_name',name); }catch(e){}
   updateHeaderUserName();
   hideRegisterGate();
   showToast(`✅ ${name}님, 환영합니다!`);
