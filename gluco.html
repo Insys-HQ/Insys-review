@@ -3,7 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>GlucoLog v3.5 — 혈당관리</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>GlucoLog v3.6 — 혈당관리</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script type="module">
@@ -289,7 +292,7 @@ textarea.form-input{resize:none;height:70px;}
 <div class="safe-top"></div>
 <header class="app-header">
   <div class="logo-block">
-    <div class="logo">Gluco<span>Log</span> <span class="ver">v3.5</span></div>
+    <div class="logo">Gluco<span>Log</span> <span class="ver">v3.6</span></div>
     <div class="logo-sub">혈당·혈압·식단 통합 관리</div>
   </div>
   <div style="display:flex;align-items:center;gap:8px">
@@ -900,8 +903,8 @@ window.mealB64=null; window.quickB64=null;
 let labPhotosArr=[];
 let labRecordsCache=[];
 let calcMode=1;
-const VER='v3.5';
-const UPDATE_NOTE='같은 이름·생년월일이면 재등록 없이 기존 기록을 자동으로 불러오도록 개선했습니다.';
+const VER='v3.6';
+const UPDATE_NOTE='앱을 열면 항상 최신 버전이 자동으로 로드되도록 개선했습니다.';
 
 // ─ Firestore 문서 조작 함수 ─
 let fsDoc,updateDoc,deleteDoc,fsSetDoc,fsGetDoc;
@@ -950,6 +953,7 @@ window.addEventListener('DOMContentLoaded',()=>{
     if(savedLab){ labPhotosArr=JSON.parse(savedLab); renderLabThumbs(); }
   }catch(e){}
   checkVersionUpdate();
+  ensureLatestVersion();
 });
 
 // ─ 새 버전 배포 감지 & 알림 ─
@@ -966,6 +970,25 @@ function checkVersionUpdate(){
 }
 function closeUpdateModal(){
   document.getElementById('updateOverlay').classList.remove('show');
+}
+
+// ─ 서버 최신 버전 확인 → 캐시된 구버전이면 자동 새로고침 ─
+async function ensureLatestVersion(){
+  try{
+    const url='https://raw.githubusercontent.com/Insys-HQ/Insys-review/main/gluco.html?t='+Date.now();
+    const res=await fetch(url,{cache:'no-store'});
+    if(!res.ok) return;
+    const text=await res.text();
+    const m=text.match(/const VER='(v[\d.]+)'/);
+    if(m && m[1] && m[1]!==VER){
+      // 이미 이번 세션에서 새로고침을 시도했으면 무한루프 방지
+      const reloadKey='gl_reloaded_for_'+m[1];
+      if(!sessionStorage.getItem(reloadKey)){
+        sessionStorage.setItem(reloadKey,'1');
+        location.reload(true);
+      }
+    }
+  }catch(e){ /* 네트워크 실패시 무시 - 현재 버전으로 계속 사용 */ }
 }
 
 // 날짜를 오늘로 리셋
