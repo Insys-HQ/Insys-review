@@ -279,8 +279,17 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
     <div class="banner-text">
       <div class="org">대한적십자사 서울특별지사 재난대응봉사회</div>
       <div class="tit">위 임 장</div>
-      <div class="sub">월례회 불참자 의결권 위임 전자접수 시스템 · v4.4</div>
+      <div class="sub">월례회 불참자 의결권 위임 전자접수 시스템 · v" + APP_VER + "</div>
     </div>
+  </div>
+</div>
+
+<!-- 버전 업데이트 알림 배너 -->
+<div id="updateBanner" style="display:none;background:#1a3a6e;color:#fff;padding:10px 16px;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+  <span style="font-size:13px;font-weight:500;">🔄 <span class="upd-msg"></span></span>
+  <div style="display:flex;gap:8px;">
+    <button onclick="doReload()" style="background:#fff;color:#1a3a6e;border:none;border-radius:6px;padding:6px 14px;font-family:'Noto Sans KR',sans-serif;font-size:12px;font-weight:700;cursor:pointer;">지금 새로고침</button>
+    <button onclick="document.getElementById('updateBanner').style.display='none'" style="background:transparent;color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.4);border-radius:6px;padding:6px 10px;font-family:'Noto Sans KR',sans-serif;font-size:12px;cursor:pointer;">나중에</button>
   </div>
 </div>
 
@@ -455,8 +464,10 @@ window.dispatchEvent(new Event('fbReady'));
 
 <script>
 // ══ 전역 상태 ══════════════════════════════
-const SK='rcnet_v5';          // ← 버전 업 시 이 값만 변경
-const SK_DEL='rcnet_deleted'; // 삭제된 ID 블랙리스트
+const APP_VER='4.5';           // ← 버전 업 시 이 값만 변경
+const SK='rcnet_v5';           // localStorage 데이터 키 (유지)
+const SK_DEL='rcnet_deleted';  // 삭제된 ID 블랙리스트
+const SK_VER='rcnet_appver';   // 저장된 버전 키
 let proxies=[];
 let signDataURL='';
 let fbOk=false;
@@ -474,6 +485,29 @@ function setFbSt(){
   const el=document.getElementById('fbSt');
   el.textContent=fbOk?'✅ Firebase 연결됨':'⚠️ 로컬 저장소 사용 중';
   el.className='fb-st '+(fbOk?'ok':'local');
+}
+
+// ── 버전 체크: 저장된 버전 ≠ 현재 버전이면 새로고침 안내
+function checkVersion(){
+  // 버전 표시 업데이트
+  const vEl=document.getElementById('verDisplay');
+  if(vEl) vEl.textContent='v'+APP_VER;
+
+  const saved=localStorage.getItem(SK_VER)||'';
+  if(saved && saved!==APP_VER){
+    // 새 버전 감지 → 안내창 표시
+    showUpdateBanner(saved, APP_VER);
+  }
+  localStorage.setItem(SK_VER, APP_VER);
+}
+
+function showUpdateBanner(oldV, newV){
+  const banner=document.getElementById('updateBanner');
+  if(banner){
+    banner.querySelector('.upd-msg').textContent=
+      `새 버전이 있습니다 (v${oldV} → v${newV}). 새로고침하면 최신 버전이 적용됩니다.`;
+    banner.style.display='flex';
+  }
 }
 
 // ── 날짜 자동 ───────────────────────────────
@@ -897,11 +931,12 @@ window.doCSV=doCSV;
 
 // ══ Firebase ════════════════════════════════
 async function loadData(){
-  loadLocal(); // 이전 버전 localStorage 병합
+  loadLocal(); // localStorage 전 버전 병합
   if(!fbOk||!window._db){renderList();renderSummary();return;}
   try{
-    const{collection:C,getDocs:G,query:Q,orderBy:O}=window._fs;
-    // 현재 컬렉션 + 이전 컬렉션('proxies') 모두 조회
+    const{collection:C,getDocs:G}=window._fs;
+    const deleted=loadDeleted();
+    // 현재 + 이전 컬렉션 모두 수집
     const cols=['proxies_rcnet','proxies'];
     const fbMap={};
     for(const col of cols){
@@ -909,26 +944,28 @@ async function loadData(){
         const snap=await G(C(window._db,col));
         snap.forEach(d=>{
           const item={id:d.id,...d.data()};
-          if(item.name&&item.month) fbMap[d.id]=item;
+          // 삭제된 항목 완전 제외
+          if(item.name&&item.month&&!deleted.has(d.id)){
+            fbMap[d.id]=item;
+          }
         });
       }catch(e){}
     }
-    const fbArr=Object.values(fbMap).sort((a,b)=>{
-      const ta=a.createdAt?.seconds||0, tb=b.createdAt?.seconds||0;
-      return tb-ta;
+    // localStorage + Firebase 완전 병합 (삭제 항목 재차 제외)
+    const merged={};
+    proxies.forEach(p=>{
+      if(p.id&&!deleted.has(p.id)) merged[p.id]=p;
     });
-    if(fbArr.length>0){
-      const deleted=loadDeleted();
-      // Firebase + localStorage 병합, 삭제된 항목 제외
-      const localMap={};
-      proxies.forEach(p=>{if(p.id&&!deleted.has(p.id))localMap[p.id]=p;});
-      fbArr.forEach(p=>{if(!deleted.has(p.id))localMap[p.id]=p;});
-      proxies=Object.values(localMap).sort((a,b)=>{
-        const ta=a.submittedAt||'', tb=b.submittedAt||'';
-        return tb.localeCompare(ta);
-      });
-      saveLocal();
-    }
+    Object.values(fbMap).forEach(p=>{
+      if(!deleted.has(p.id)) merged[p.id]=p;
+    });
+    proxies=Object.values(merged).sort((a,b)=>{
+      // Firebase timestamp 또는 submittedAt 기준 정렬
+      const ta=a.submittedAt||a.createdAt?.seconds||'';
+      const tb=b.submittedAt||b.createdAt?.seconds||'';
+      return String(tb).localeCompare(String(ta));
+    });
+    saveLocal();
   }catch(e){console.warn('FB loadData:',e);}
   renderList();renderSummary();
 }
@@ -951,10 +988,17 @@ function saveDeleted(set){localStorage.setItem(SK_DEL,JSON.stringify([...set]));
 function markDeleted(id){const s=loadDeleted();s.add(id);saveDeleted(s);}
 function loadLocal(){
   const deleted=loadDeleted();
-  // 이전 버전 키 전부 병합
-  const oldKeys=['rcnet_v4','rcnet_proxy_v3','rcnet_proxy_v2','proxy_data_rcnet'];
+  // 과거 모든 버전 키 + 현재 키 전부 수집
+  const allKeys=[
+    SK,                    // 현재 rcnet_v5
+    'rcnet_v4',
+    'rcnet_proxy_v3',
+    'rcnet_proxy_v2',
+    'proxy_data_rcnet',
+    'STORAGE_KEY',
+  ];
   const merged={};
-  [...oldKeys,SK].forEach(k=>{
+  allKeys.forEach(k=>{
     try{
       const d=localStorage.getItem(k);
       if(!d)return;
@@ -962,15 +1006,20 @@ function loadLocal(){
       if(!Array.isArray(arr))return;
       arr.forEach(p=>{
         if(!p||!p.name||!p.month)return;
-        const uid=p.id||('M'+(p.name+p.month+(p.birth||'')));
+        // id 없으면 name+month+birth 조합으로 고유 ID 생성
+        const uid=p.id||('M_'+[p.name,p.month,p.birth||''].join('_'));
+        // 삭제 블랙리스트에 없는 것만 수집
         if(!deleted.has(uid)) merged[uid]={...p,id:uid};
       });
     }catch(e){}
   });
   proxies=Object.values(merged).sort((a,b)=>(b.submittedAt||'').localeCompare(a.submittedAt||''));
-  // 현재 키로 통합 저장, 구 키 삭제
+  // 현재 키로 통합 저장
   localStorage.setItem(SK,JSON.stringify(proxies));
-  oldKeys.forEach(k=>{ if(k!==SK) localStorage.removeItem(k); });
+  // 구 키 정리 (현재 키 제외)
+  allKeys.filter(k=>k!==SK).forEach(k=>{
+    if(localStorage.getItem(k)) localStorage.removeItem(k);
+  });
 }
 
 // ══ 유틸 ════════════════════════════════════
@@ -979,6 +1028,14 @@ let _tt;
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');clearTimeout(_tt);_tt=setTimeout(()=>t.classList.remove('on'),2800);}
 function loadJS(src){return new Promise((res,rej)=>{if(document.querySelector(`script[src="${src}"]`)){res();return;}const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s);});}
 
+// ── 새로고침 (캐시 무효화)
+function doReload(){
+  localStorage.setItem(SK_VER, APP_VER); // 버전 업데이트 후
+  location.reload(true);
+}
+window.doReload=doReload;
+
+checkVersion();   // 버전 비교
 loadLocal();renderList();renderSummary();
 </script>
 </body>
