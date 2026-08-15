@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
 <title>위임장 | 대한적십자사 서울특별지사 재난대응봉사회</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -279,7 +282,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
     <div class="banner-text">
       <div class="org">대한적십자사 서울특별지사 재난대응봉사회</div>
       <div class="tit">위 임 장</div>
-      <div class="sub">월례회 불참자 의결권 위임 전자접수 시스템 · v" + APP_VER + "</div>
+      <div class="sub">월례회 불참자 의결권 위임 전자접수 시스템 · <span id="verDisplay">v4.6</span></div>
     </div>
   </div>
 </div>
@@ -464,7 +467,7 @@ window.dispatchEvent(new Event('fbReady'));
 
 <script>
 // ══ 전역 상태 ══════════════════════════════
-const APP_VER='4.5';           // ← 버전 업 시 이 값만 변경
+const APP_VER='4.6';           // ← 버전 업 시 이 값만 변경
 const SK='rcnet_v5';           // localStorage 데이터 키 (유지)
 const SK_DEL='rcnet_deleted';  // 삭제된 ID 블랙리스트
 const SK_VER='rcnet_appver';   // 저장된 버전 키
@@ -489,16 +492,19 @@ function setFbSt(){
 
 // ── 버전 체크: 저장된 버전 ≠ 현재 버전이면 새로고침 안내
 function checkVersion(){
-  // 버전 표시 업데이트
+  // 버전 표시: span에 즉시 반영
   const vEl=document.getElementById('verDisplay');
   if(vEl) vEl.textContent='v'+APP_VER;
 
   const saved=localStorage.getItem(SK_VER)||'';
-  if(saved && saved!==APP_VER){
-    // 새 버전 감지 → 안내창 표시
-    showUpdateBanner(saved, APP_VER);
+  // 저장된 버전이 없거나 현재 버전과 다르면 새로고침 안내
+  if(saved !== APP_VER){
+    if(saved){
+      // 이전 버전이 있으면 업데이트 배너
+      showUpdateBanner(saved, APP_VER);
+    }
+    localStorage.setItem(SK_VER, APP_VER);
   }
-  localStorage.setItem(SK_VER, APP_VER);
 }
 
 function showUpdateBanner(oldV, newV){
@@ -1034,6 +1040,18 @@ function doReload(){
   location.reload(true);
 }
 window.doReload=doReload;
+
+
+// ── 서비스워커 캐시 강제 클리어 (버전업 시 구 캐시 제거)
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.getRegistrations().then(regs=>{
+    regs.forEach(reg=>reg.unregister());
+  });
+}
+// 브라우저 캐시 무효화: fetch intercept
+if(window.caches){
+  caches.keys().then(keys=>keys.forEach(k=>caches.delete(k)));
+}
 
 checkVersion();   // 버전 비교
 loadLocal();renderList();renderSummary();
