@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>GlucoLog v3.6 — 혈당관리</title>
+<title>GlucoLog v3.7 — 혈당관리</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script type="module">
@@ -292,7 +292,7 @@ textarea.form-input{resize:none;height:70px;}
 <div class="safe-top"></div>
 <header class="app-header">
   <div class="logo-block">
-    <div class="logo">Gluco<span>Log</span> <span class="ver">v3.6</span></div>
+    <div class="logo">Gluco<span>Log</span> <span class="ver">v3.7</span></div>
     <div class="logo-sub">혈당·혈압·식단 통합 관리</div>
   </div>
   <div style="display:flex;align-items:center;gap:8px">
@@ -903,8 +903,8 @@ window.mealB64=null; window.quickB64=null;
 let labPhotosArr=[];
 let labRecordsCache=[];
 let calcMode=1;
-const VER='v3.6';
-const UPDATE_NOTE='앱을 열면 항상 최신 버전이 자동으로 로드되도록 개선했습니다.';
+const VER='v3.7';
+const UPDATE_NOTE='같은 폰에서는 재등록 없이 자동 로그인되고, 새 버전이 나오면 자동 로딩 후 이 안내창을 띄웁니다.';
 
 // ─ Firestore 문서 조작 함수 ─
 let fsDoc,updateDoc,deleteDoc,fsSetDoc,fsGetDoc;
@@ -959,13 +959,16 @@ window.addEventListener('DOMContentLoaded',()=>{
 // ─ 새 버전 배포 감지 & 알림 ─
 function checkVersionUpdate(){
   try{
-    const lastVer=localStorage.getItem('gl_last_seen_ver');
+    let prevVer=null;
+    try{ prevVer=localStorage.getItem('gl_prev_ver'); }catch(e){}
+    const lastVer=prevVer||localStorage.getItem('gl_last_seen_ver');
     if(lastVer && lastVer!==VER){
       document.getElementById('updateVerText').textContent=
         `${lastVer} → ${VER} 로 업데이트되었습니다.\n${UPDATE_NOTE}`;
       document.getElementById('updateOverlay').classList.add('show');
     }
     localStorage.setItem('gl_last_seen_ver',VER);
+    try{ localStorage.removeItem('gl_prev_ver'); }catch(e){}
   }catch(e){}
 }
 function closeUpdateModal(){
@@ -981,14 +984,16 @@ async function ensureLatestVersion(){
     const text=await res.text();
     const m=text.match(/const VER='(v[\d.]+)'/);
     if(m && m[1] && m[1]!==VER){
-      // 이미 이번 세션에서 새로고침을 시도했으면 무한루프 방지
       const reloadKey='gl_reloaded_for_'+m[1];
       if(!sessionStorage.getItem(reloadKey)){
         sessionStorage.setItem(reloadKey,'1');
-        location.reload(true);
+        // 새로고침 후 안내창을 띄우기 위해 이전 버전 기록
+        try{ localStorage.setItem('gl_prev_ver',VER); }catch(e){}
+        // 캐시 무시하고 최신 버전 강제 로드
+        location.replace(location.pathname+'?v='+Date.now());
       }
     }
-  }catch(e){ /* 네트워크 실패시 무시 - 현재 버전으로 계속 사용 */ }
+  }catch(e){ /* 네트워크 실패시 무시 */ }
 }
 
 // 날짜를 오늘로 리셋
@@ -1027,8 +1032,7 @@ function hideRegisterGate(){
 }
 
 async function tryAutoLogin(){
-  let uid=null;
-  try{ uid=localStorage.getItem('gl_user_id'); }catch(e){}
+  let uid=readSavedUid();
   if(uid){
     try{
       const snap=await fsGetDoc(fsDoc(db,'glucolog_users',uid));
@@ -1043,12 +1047,31 @@ async function tryAutoLogin(){
   showRegisterGate();
 }
 
+// uid를 여러 저장소에 백업 (localStorage 지워져도 쿠키로 복원)
+function saveUidEverywhere(uid,name){
+  try{ localStorage.setItem('gl_user_id',uid); localStorage.setItem('gl_user_name',name||''); }catch(e){}
+  try{
+    const exp=new Date(); exp.setFullYear(exp.getFullYear()+5);
+    document.cookie='gl_user_id='+encodeURIComponent(uid)+';expires='+exp.toUTCString()+';path=/;SameSite=Lax';
+  }catch(e){}
+}
+
+// 저장된 uid 읽기 (localStorage 우선, 없으면 쿠키)
+function readSavedUid(){
+  try{ const v=localStorage.getItem('gl_user_id'); if(v) return v; }catch(e){}
+  try{
+    const m=document.cookie.match(/(?:^|;\s*)gl_user_id=([^;]+)/);
+    if(m) return decodeURIComponent(m[1]);
+  }catch(e){}
+  return null;
+}
+
 // 사용자 데이터를 앱 상태에 적용
 function applyUser(uid,d){
   currentUserId=uid;
   currentUserName=d.name||'';
   profileData={gender:d.gender,age:calcAgeFromBirth(d.birth),height:d.height,weight:d.weight,birth:d.birth,name:d.name};
-  try{ localStorage.setItem('gl_user_id',uid); localStorage.setItem('gl_user_name',d.name||''); }catch(e){}
+  saveUidEverywhere(uid,d.name||'');
   updateHeaderUserName();
 }
 
@@ -1100,7 +1123,7 @@ async function completeRegistration(){
   currentUserId=uid;
   currentUserName=name;
   profileData={gender,age:calcAgeFromBirth(birth),height,weight,birth,name};
-  try{ localStorage.setItem('gl_user_id',uid); localStorage.setItem('gl_user_name',name); }catch(e){}
+  saveUidEverywhere(uid,name);
   updateHeaderUserName();
   hideRegisterGate();
   showToast(`✅ ${name}님, 환영합니다!`);
