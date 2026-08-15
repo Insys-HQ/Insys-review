@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>GlucoLog v3.7 — 혈당관리</title>
+<title>GlucoLog v3.8 — 혈당관리</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script type="module">
@@ -292,7 +292,7 @@ textarea.form-input{resize:none;height:70px;}
 <div class="safe-top"></div>
 <header class="app-header">
   <div class="logo-block">
-    <div class="logo">Gluco<span>Log</span> <span class="ver">v3.7</span></div>
+    <div class="logo">Gluco<span>Log</span> <span class="ver">v3.8</span></div>
     <div class="logo-sub">혈당·혈압·식단 통합 관리</div>
   </div>
   <div style="display:flex;align-items:center;gap:8px">
@@ -903,8 +903,8 @@ window.mealB64=null; window.quickB64=null;
 let labPhotosArr=[];
 let labRecordsCache=[];
 let calcMode=1;
-const VER='v3.7';
-const UPDATE_NOTE='같은 폰에서는 재등록 없이 자동 로그인되고, 새 버전이 나오면 자동 로딩 후 이 안내창을 띄웁니다.';
+const VER='v3.8';
+const UPDATE_NOTE='시작하기 버튼이 멈추던 문제(무한 새로고침)를 수정했습니다.';
 
 // ─ Firestore 문서 조작 함수 ─
 let fsDoc,updateDoc,deleteDoc,fsSetDoc,fsGetDoc;
@@ -975,8 +975,12 @@ function closeUpdateModal(){
   document.getElementById('updateOverlay').classList.remove('show');
 }
 
-// ─ 서버 최신 버전 확인 → 캐시된 구버전이면 자동 새로고침 ─
+// ─ 서버 최신 버전 확인 → 구버전이면 1회만 새로고침 (무한루프 완전 차단) ─
 async function ensureLatestVersion(){
+  // 이번 브라우저 세션에서 이미 새로고침을 한 번 했으면 절대 다시 안 함
+  let alreadyReloaded=false;
+  try{ alreadyReloaded=!!sessionStorage.getItem('gl_reloaded_once'); }catch(e){}
+  if(alreadyReloaded) return;
   try{
     const url='https://raw.githubusercontent.com/Insys-HQ/Insys-review/main/gluco.html?t='+Date.now();
     const res=await fetch(url,{cache:'no-store'});
@@ -984,16 +988,13 @@ async function ensureLatestVersion(){
     const text=await res.text();
     const m=text.match(/const VER='(v[\d.]+)'/);
     if(m && m[1] && m[1]!==VER){
-      const reloadKey='gl_reloaded_for_'+m[1];
-      if(!sessionStorage.getItem(reloadKey)){
-        sessionStorage.setItem(reloadKey,'1');
-        // 새로고침 후 안내창을 띄우기 위해 이전 버전 기록
-        try{ localStorage.setItem('gl_prev_ver',VER); }catch(e){}
-        // 캐시 무시하고 최신 버전 강제 로드
-        location.replace(location.pathname+'?v='+Date.now());
-      }
+      // 이 세션에서 새로고침 1회 실행 표시 (버전 무관하게 세션당 1회로 고정)
+      try{ sessionStorage.setItem('gl_reloaded_once','1'); }catch(e){}
+      try{ localStorage.setItem('gl_prev_ver',VER); }catch(e){}
+      // 쿼리스트링 누적 없이 순수 경로로만 새로고침 (?v= 안 붙임)
+      location.reload();
     }
-  }catch(e){ /* 네트워크 실패시 무시 */ }
+  }catch(e){ /* 네트워크 실패시 무시 - 현재 버전으로 계속 사용 */ }
 }
 
 // 날짜를 오늘로 리셋
@@ -1101,33 +1102,37 @@ async function completeRegistration(){
   if(!name){showToast('⚠️ 이름을 입력하세요');return;}
   if(!birth){showToast('⚠️ 생년월일을 정확히 입력하세요 (예: 1965 / 3 / 12)');return;}
   if(!height||!weight){showToast('⚠️ 키와 몸무게를 입력하세요');return;}
-  if(!db){showToast('⚠️ Firebase 연결 중입니다. 잠시 후 다시 시도하세요');return;}
+  if(!db){showToast('⚠️ 연결 중입니다. 3초 후 다시 눌러주세요');return;}
 
-  // 이미 등록된 사용자(같은 이름+생년월일)인지 먼저 확인 → 있으면 재등록 없이 로그인
-  const existing=await findExistingUser(name,birth);
-  if(existing){
-    applyUser(existing.id,existing.data);
-    hideRegisterGate();
-    showToast(`✅ ${name}님, 다시 오셨네요!`);
-    await initAppData();
-    return;
-  }
-
-  const uid=genUserId();
-  const userDoc={name,gender,birth,height,weight,createdAt:new Date()};
+  showToast('⏳ 등록 중...');
   try{
+    // 기존 사용자(같은 이름+생년월일) 확인 → 있으면 재등록 없이 로그인
+    let existing=null;
+    try{ existing=await findExistingUser(name,birth); }catch(e){ console.error('findExistingUser',e); }
+    if(existing){
+      applyUser(existing.id,existing.data);
+      hideRegisterGate();
+      showToast(`✅ ${name}님, 다시 오셨네요!`);
+      await initAppData();
+      return;
+    }
+
+    const uid=genUserId();
+    const userDoc={name,gender,birth,height,weight,createdAt:new Date()};
     await fsSetDoc(fsDoc(db,'glucolog_users',uid),userDoc);
+
+    currentUserId=uid;
+    currentUserName=name;
+    profileData={gender,age:calcAgeFromBirth(birth),height,weight,birth,name};
+    saveUidEverywhere(uid,name);
+    updateHeaderUserName();
+    hideRegisterGate();
+    showToast(`✅ ${name}님, 환영합니다!`);
+    await initAppData();
   }catch(e){
-    showToast('❌ 등록 실패. 다시 시도해주세요');console.error(e);return;
+    console.error('completeRegistration',e);
+    showToast('❌ 등록 오류: '+(e.message||e),4000);
   }
-  currentUserId=uid;
-  currentUserName=name;
-  profileData={gender,age:calcAgeFromBirth(birth),height,weight,birth,name};
-  saveUidEverywhere(uid,name);
-  updateHeaderUserName();
-  hideRegisterGate();
-  showToast(`✅ ${name}님, 환영합니다!`);
-  await initAppData();
 }
 
 async function initAppData(){
