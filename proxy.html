@@ -260,7 +260,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
     <div class="banner-text">
       <div class="org">대한적십자사 서울특별지사 재난대응봉사회</div>
       <div class="tit">위 임 장</div>
-      <div class="sub">월례회 불참자 의결권 위임 전자접수 시스템 · v4.1</div>
+      <div class="sub">월례회 불참자 의결권 위임 전자접수 시스템 · v4.2</div>
     </div>
   </div>
 </div>
@@ -436,7 +436,8 @@ window.dispatchEvent(new Event('fbReady'));
 
 <script>
 // ══ 전역 상태 ══════════════════════════════
-const SK='rcnet_v4';
+const SK='rcnet_v5';          // ← 버전 업 시 이 값만 변경
+const SK_DEL='rcnet_deleted'; // 삭제된 ID 블랙리스트
 let proxies=[];
 let signDataURL='';
 let fbOk=false;
@@ -807,6 +808,7 @@ async function confirmWithdraw(id,birth){
   if(!val){toast('❗ 생년월일을 입력해 주세요');return;}
   if(val!==bClean){toast('❌ 생년월일이 일치하지 않습니다');return;}
   if(!confirm('위임장을 철회(삭제)할까요?'))return;
+  markDeleted(id);                          // 블랙리스트 등록
   proxies=proxies.filter(p=>p.id!==id);
   saveLocal();
   await delFb(id);
@@ -818,7 +820,7 @@ window.confirmWithdraw=confirmWithdraw;
 // 관리자 전체 삭제
 function doClear(){
   if(!confirm(`전체 ${proxies.length}건을 삭제할까요? 되돌릴 수 없습니다.`))return;
-  proxies.forEach(p=>delFb(p.id));proxies=[];saveLocal();renderList();renderSummary();toast('전체 삭제 완료');
+  proxies.forEach(p=>{markDeleted(p.id);delFb(p.id);});proxies=[];saveLocal();renderList();renderSummary();toast('전체 삭제 완료');
 }
 window.doClear=doClear;
 
@@ -870,10 +872,11 @@ async function loadData(){
       return tb-ta;
     });
     if(fbArr.length>0){
-      // Firebase 데이터와 localStorage 병합 (중복 제거)
+      const deleted=loadDeleted();
+      // Firebase + localStorage 병합, 삭제된 항목 제외
       const localMap={};
-      proxies.forEach(p=>{if(p.id)localMap[p.id]=p;});
-      fbArr.forEach(p=>{localMap[p.id]=p;});
+      proxies.forEach(p=>{if(p.id&&!deleted.has(p.id))localMap[p.id]=p;});
+      fbArr.forEach(p=>{if(!deleted.has(p.id))localMap[p.id]=p;});
       proxies=Object.values(localMap).sort((a,b)=>{
         const ta=a.submittedAt||'', tb=b.submittedAt||'';
         return tb.localeCompare(ta);
@@ -897,28 +900,31 @@ async function delFb(id){
   try{const{doc:D,deleteDoc:DD}=window._fs;await DD(D(window._db,'proxies_rcnet',id));}catch(e){}
 }
 function saveLocal(){localStorage.setItem(SK,JSON.stringify(proxies));}
+function loadDeleted(){try{const d=localStorage.getItem(SK_DEL);return d?new Set(JSON.parse(d)):new Set();}catch(e){return new Set();}}
+function saveDeleted(set){localStorage.setItem(SK_DEL,JSON.stringify([...set]));}
+function markDeleted(id){const s=loadDeleted();s.add(id);saveDeleted(s);}
 function loadLocal(){
-  // 현재 키 + 이전 버전 키 전부 병합
-  const allKeys=['rcnet_v4','rcnet_proxy_v3','rcnet_proxy_v2','proxy_data_rcnet','STORAGE_KEY'];
+  const deleted=loadDeleted();
+  // 이전 버전 키 전부 병합
+  const oldKeys=['rcnet_v4','rcnet_proxy_v3','rcnet_proxy_v2','proxy_data_rcnet'];
   const merged={};
-  allKeys.forEach(k=>{
+  [...oldKeys,SK].forEach(k=>{
     try{
       const d=localStorage.getItem(k);
       if(!d)return;
       const arr=JSON.parse(d);
       if(!Array.isArray(arr))return;
       arr.forEach(p=>{
-        if(p&&p.name&&p.month){
-          // id 없으면 생성
-          const uid=p.id||('M'+(p.name+p.month+(p.birth||'')).replace(/\s/g,''));
-          merged[uid]={...p,id:uid};
-        }
+        if(!p||!p.name||!p.month)return;
+        const uid=p.id||('M'+(p.name+p.month+(p.birth||'')));
+        if(!deleted.has(uid)) merged[uid]={...p,id:uid};
       });
     }catch(e){}
   });
   proxies=Object.values(merged).sort((a,b)=>(b.submittedAt||'').localeCompare(a.submittedAt||''));
-  // 현재 키로 통합 저장
-  if(proxies.length>0)localStorage.setItem(SK,JSON.stringify(proxies));
+  // 현재 키로 통합 저장, 구 키 삭제
+  localStorage.setItem(SK,JSON.stringify(proxies));
+  oldKeys.forEach(k=>{ if(k!==SK) localStorage.removeItem(k); });
 }
 
 // ══ 유틸 ════════════════════════════════════
