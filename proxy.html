@@ -260,7 +260,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
     <div class="banner-text">
       <div class="org">대한적십자사 서울특별지사 재난대응봉사회</div>
       <div class="tit">위 임 장</div>
-      <div class="sub">월례회 불참자 의결권 위임 전자접수 시스템 · v4.0</div>
+      <div class="sub">월례회 불참자 의결권 위임 전자접수 시스템 · v4.1</div>
     </div>
   </div>
 </div>
@@ -849,14 +849,38 @@ window.doCSV=doCSV;
 
 // ══ Firebase ════════════════════════════════
 async function loadData(){
-  loadLocal();
+  loadLocal(); // 이전 버전 localStorage 병합
   if(!fbOk||!window._db){renderList();renderSummary();return;}
   try{
     const{collection:C,getDocs:G,query:Q,orderBy:O}=window._fs;
-    const snap=await G(Q(C(window._db,'proxies_rcnet'),O('createdAt','desc')));
-    const fb=[];snap.forEach(d=>fb.push({id:d.id,...d.data()}));
-    if(fb.length){proxies=fb;saveLocal();}
-  }catch(e){console.warn(e);}
+    // 현재 컬렉션 + 이전 컬렉션('proxies') 모두 조회
+    const cols=['proxies_rcnet','proxies'];
+    const fbMap={};
+    for(const col of cols){
+      try{
+        const snap=await G(C(window._db,col));
+        snap.forEach(d=>{
+          const item={id:d.id,...d.data()};
+          if(item.name&&item.month) fbMap[d.id]=item;
+        });
+      }catch(e){}
+    }
+    const fbArr=Object.values(fbMap).sort((a,b)=>{
+      const ta=a.createdAt?.seconds||0, tb=b.createdAt?.seconds||0;
+      return tb-ta;
+    });
+    if(fbArr.length>0){
+      // Firebase 데이터와 localStorage 병합 (중복 제거)
+      const localMap={};
+      proxies.forEach(p=>{if(p.id)localMap[p.id]=p;});
+      fbArr.forEach(p=>{localMap[p.id]=p;});
+      proxies=Object.values(localMap).sort((a,b)=>{
+        const ta=a.submittedAt||'', tb=b.submittedAt||'';
+        return tb.localeCompare(ta);
+      });
+      saveLocal();
+    }
+  }catch(e){console.warn('FB loadData:',e);}
   renderList();renderSummary();
 }
 async function saveFb(item){
@@ -873,7 +897,29 @@ async function delFb(id){
   try{const{doc:D,deleteDoc:DD}=window._fs;await DD(D(window._db,'proxies_rcnet',id));}catch(e){}
 }
 function saveLocal(){localStorage.setItem(SK,JSON.stringify(proxies));}
-function loadLocal(){try{const d=localStorage.getItem(SK);proxies=d?JSON.parse(d):[];}catch(e){proxies=[];}}
+function loadLocal(){
+  // 현재 키 + 이전 버전 키 전부 병합
+  const allKeys=['rcnet_v4','rcnet_proxy_v3','rcnet_proxy_v2','proxy_data_rcnet','STORAGE_KEY'];
+  const merged={};
+  allKeys.forEach(k=>{
+    try{
+      const d=localStorage.getItem(k);
+      if(!d)return;
+      const arr=JSON.parse(d);
+      if(!Array.isArray(arr))return;
+      arr.forEach(p=>{
+        if(p&&p.name&&p.month){
+          // id 없으면 생성
+          const uid=p.id||('M'+(p.name+p.month+(p.birth||'')).replace(/\s/g,''));
+          merged[uid]={...p,id:uid};
+        }
+      });
+    }catch(e){}
+  });
+  proxies=Object.values(merged).sort((a,b)=>(b.submittedAt||'').localeCompare(a.submittedAt||''));
+  // 현재 키로 통합 저장
+  if(proxies.length>0)localStorage.setItem(SK,JSON.stringify(proxies));
+}
 
 // ══ 유틸 ════════════════════════════════════
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
