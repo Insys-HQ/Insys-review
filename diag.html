@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>위임장 데이터 진단</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+<style>
+body{font-family:'Noto Sans KR',sans-serif;padding:16px;background:#f4f2f1;color:#1a1a1a;font-size:13px;}
+h2{color:#CE1126;margin-bottom:12px;}
+.card{background:#fff;border-radius:10px;padding:14px;margin-bottom:12px;box-shadow:0 1px 6px rgba(0,0,0,.08);}
+.card h3{font-size:13px;font-weight:700;margin-bottom:8px;color:#CE1126;}
+.tag{display:inline-block;background:#fdedef;color:#CE1126;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;margin:2px;}
+.row{padding:6px 0;border-bottom:1px solid #f0eeee;font-size:12px;}
+.row:last-child{border:none;}
+.key{color:#7a7270;font-weight:600;min-width:100px;display:inline-block;}
+pre{font-size:11px;background:#f8f6f5;padding:8px;border-radius:6px;overflow-x:auto;white-space:pre-wrap;word-break:break-all;}
+.btn{background:#CE1126;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-family:'Noto Sans KR',sans-serif;font-size:13px;font-weight:700;cursor:pointer;margin:4px;}
+.btn.gray{background:#888;}
+.count{font-size:24px;font-weight:900;color:#CE1126;}
+.ok{color:#15803d;font-weight:700;}
+.warn{color:#b45309;font-weight:700;}
+.err{color:#d00;font-weight:700;}
+#log{font-size:11px;background:#1a1a1a;color:#00ff88;padding:10px;border-radius:8px;max-height:300px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;}
+</style>
+</head>
+<body>
+<h2>🔍 위임장 데이터 진단 도구 v1.0</h2>
+
+<div class="card">
+  <h3>📦 localStorage 전체 스캔</h3>
+  <div id="lsResult">스캔 중…</div>
+</div>
+
+<div class="card">
+  <h3>🔥 Firebase 데이터</h3>
+  <div id="fbResult">연결 중…</div>
+</div>
+
+<div class="card">
+  <h3>🗑 삭제 블랙리스트</h3>
+  <div id="delResult">확인 중…</div>
+</div>
+
+<div class="card">
+  <h3>⚙️ 복구 액션</h3>
+  <button class="btn" onclick="restoreAll()">🔄 블랙리스트 초기화 (삭제 취소)</button>
+  <button class="btn gray" onclick="exportAll()">⬇ 전체 데이터 JSON 내보내기</button>
+  <button class="btn gray" onclick="clearLog()">로그 지우기</button>
+  <div style="margin-top:10px;font-size:11px;color:#888;">블랙리스트 초기화 후 위임장 페이지를 새로고침하면 모든 데이터가 복원됩니다.</div>
+</div>
+
+<div class="card">
+  <h3>📋 실시간 로그</h3>
+  <div id="log"></div>
+</div>
+
+<script type="module">
+import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import{getFirestore,collection,getDocs}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const cfg={
+  apiKey:"AIzaSyBYqd2uRr1ZvFLDCWuS15h9qFkT-Dvg5Es",
+  authDomain:"insys-work.firebaseapp.com",
+  projectId:"insys-work",
+  storageBucket:"insys-work.firebasestorage.app",
+  messagingSenderId:"225275784859",
+  appId:"1:225275784859:web:bd12815c6dc47c0c49e03e"
+};
+
+function log(msg){
+  const el=document.getElementById('log');
+  el.textContent+='['+new Date().toLocaleTimeString()+']\n'+msg+'\n\n';
+  el.scrollTop=el.scrollHeight;
+}
+window.log=log;
+window.clearLog=()=>document.getElementById('log').textContent='';
+
+// ── localStorage 전체 스캔
+function scanLS(){
+  const ALL_KEYS=[
+    'rcnet_v5','rcnet_v4','rcnet_proxy_v3','rcnet_proxy_v2',
+    'proxy_data_rcnet','STORAGE_KEY','rcnet_deleted','rcnet_appver'
+  ];
+  let html='';
+  let total=0;
+  ALL_KEYS.forEach(k=>{
+    const raw=localStorage.getItem(k);
+    if(!raw){html+=`<div class="row"><span class="key">${k}</span> <span style="color:#ccc">없음</span></div>`;return;}
+    try{
+      const parsed=JSON.parse(raw);
+      if(Array.isArray(parsed)){
+        total+=parsed.length;
+        html+=`<div class="row"><span class="key">${k}</span> <span class="count">${parsed.length}</span>건`;
+        if(parsed.length>0){
+          html+='<br>'+parsed.map(p=>`<span class="tag">${p.name||'?'}(${p.month||'?'}월)</span>`).join('');
+        }
+        html+='</div>';
+        log(`[${k}] ${parsed.length}건:\n`+JSON.stringify(parsed,null,2));
+      } else if(parsed instanceof Object){
+        // Set (삭제 목록)
+        html+=`<div class="row"><span class="key">${k}</span> ${JSON.stringify(parsed)}</div>`;
+      } else {
+        html+=`<div class="row"><span class="key">${k}</span> ${String(parsed)}</div>`;
+      }
+    }catch(e){
+      html+=`<div class="row"><span class="key">${k}</span> <span class="err">파싱 실패: ${raw.slice(0,50)}</span></div>`;
+    }
+  });
+  html=`<div class="row">총 위임장 데이터: <span class="count">${total}</span>건</div>`+html;
+  document.getElementById('lsResult').innerHTML=html;
+}
+
+// ── Firebase 스캔
+async function scanFB(){
+  const el=document.getElementById('fbResult');
+  try{
+    const app=initializeApp(cfg);
+    const db=getFirestore(app);
+    const cols=['proxies_rcnet','proxies'];
+    let total=0;
+    let html='';
+    for(const col of cols){
+      try{
+        const snap=await getDocs(collection(db,col));
+        const items=[];
+        snap.forEach(d=>items.push({id:d.id,...d.data()}));
+        total+=items.length;
+        html+=`<div class="row"><span class="key">${col}</span> <span class="count">${items.length}</span>건`;
+        if(items.length>0){
+          html+='<br>'+items.map(p=>`<span class="tag">${p.name||'?'}(${p.month||'?'}월)</span>`).join('');
+        }
+        html+='</div>';
+        log(`[Firebase/${col}] ${items.length}건:\n`+JSON.stringify(items,null,2));
+        // Firebase 데이터를 localStorage에 백업
+        if(items.length>0){
+          const bk='fb_backup_'+col;
+          localStorage.setItem(bk,JSON.stringify(items));
+          log(`✅ Firebase ${col} 데이터를 "${bk}" 키로 백업 완료`);
+        }
+      }catch(e){
+        html+=`<div class="row"><span class="key">${col}</span> <span class="err">조회 실패: ${e.message}</span></div>`;
+        log(`[Firebase/${col}] 오류: ${e.message}`);
+      }
+    }
+    html=`<div class="row">Firebase 총: <span class="count">${total}</span>건</div>`+html;
+    el.innerHTML=html;
+  }catch(e){
+    el.innerHTML=`<span class="err">Firebase 연결 실패: ${e.message}</span>`;
+    log('Firebase 오류: '+e.message);
+  }
+}
+
+// ── 블랙리스트 확인
+function scanDeleted(){
+  const raw=localStorage.getItem('rcnet_deleted');
+  const el=document.getElementById('delResult');
+  if(!raw){el.innerHTML='<span class="ok">블랙리스트 없음 (정상)</span>';return;}
+  try{
+    const arr=JSON.parse(raw);
+    el.innerHTML=`<span class="warn">삭제된 ID ${arr.length}개:</span><br>`+
+      arr.map(id=>`<span class="tag">${id}</span>`).join('');
+    log('블랙리스트:\n'+JSON.stringify(arr,null,2));
+  }catch(e){el.innerHTML='<span class="err">파싱 실패</span>';}
+}
+
+// ── 블랙리스트 초기화
+window.restoreAll=function(){
+  if(!confirm('블랙리스트를 초기화할까요?\n삭제 취소된 항목이 다시 보입니다.'))return;
+  localStorage.removeItem('rcnet_deleted');
+  log('✅ 블랙리스트 초기화 완료');
+  scanDeleted();
+  alert('완료! 위임장 페이지(proxy.html)를 새로고침해 주세요.');
+};
+
+// ── 전체 데이터 JSON 내보내기
+window.exportAll=function(){
+  const ALL_KEYS=[
+    'rcnet_v5','rcnet_v4','rcnet_proxy_v3','rcnet_proxy_v2',
+    'proxy_data_rcnet','STORAGE_KEY',
+    'fb_backup_proxies_rcnet','fb_backup_proxies'
+  ];
+  const all={};
+  ALL_KEYS.forEach(k=>{
+    const raw=localStorage.getItem(k);
+    if(raw)try{all[k]=JSON.parse(raw);}catch(e){all[k]=raw;}
+  });
+  const blob=new Blob([JSON.stringify(all,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='proxy_backup_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+  log('✅ JSON 내보내기 완료');
+};
+
+// 실행
+scanLS();
+scanFB();
+scanDeleted();
+</script>
+</body>
+</html>
