@@ -260,7 +260,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
     <div class="banner-text">
       <div class="org">대한적십자사 서울특별지사 재난대응봉사회</div>
       <div class="tit">위 임 장</div>
-      <div class="sub">월례회 불참자 의결권 위임 전자접수 시스템 · v4.2</div>
+      <div class="sub">월례회 불참자 의결권 위임 전자접수 시스템 · v4.3</div>
     </div>
   </div>
 </div>
@@ -281,7 +281,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
       <div class="field"><div class="lbl">콜사인</div><input class="inp" id="dCall" type="text" placeholder="예) HL2TLS" oninput="this.value=this.value.toUpperCase()" style="text-transform:uppercase"></div>
     </div>
     <div class="row2">
-      <div class="field"><div class="lbl">생년월일<span class="req">*</span></div><input class="inp" id="dBirth" type="text" placeholder="예) 1980.01.01"></div>
+      <div class="field"><div class="lbl">생년월일<span class="req">*</span></div><input class="inp" id="dBirth" type="text" placeholder="예) 800101 (6자리)" inputmode="numeric" maxlength="6" oninput="this.value=this.value.replace(/\D/g,'')"></div>
       <div class="field"><div class="lbl">연 락 처</div><input class="inp" id="dPhone" type="tel" placeholder="010-1234-5678" inputmode="numeric" oninput="fmtPhone(this)" maxlength="13"></div>
     </div>
   </div>
@@ -781,7 +781,7 @@ function renderList(){
         <!-- 본인 철회: 생년월일 확인 후 삭제 -->
         <button class="btn-s dan" style="font-size:11px;padding:5px 8px;" onclick="startWithdraw('${esc(p.id)}')">철회/삭제</button>
         <div class="verify-row" id="vr-${esc(p.id)}" style="display:none;">
-          <input class="verify-inp" type="text" id="vi-${esc(p.id)}" placeholder="생년월일 확인" maxlength="12">
+          <input class="verify-inp" type="text" id="vi-${esc(p.id)}" placeholder="생년월일 6자리 예)800101" maxlength="6" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')">
           <button class="btn-s pri" style="font-size:11px;padding:5px 8px;" onclick="confirmWithdraw('${esc(p.id)}','${esc(p.birth||'')}')">확인</button>
           <button class="btn-s warn" style="font-size:11px;padding:5px 8px;" onclick="cancelWithdraw('${esc(p.id)}')">취소</button>
         </div>
@@ -804,9 +804,12 @@ window.cancelWithdraw=cancelWithdraw;
 
 async function confirmWithdraw(id,birth){
   const val=document.getElementById('vi-'+id).value.trim().replace(/[^0-9]/g,'');
-  const bClean=(birth||'').replace(/[^0-9]/g,'');
-  if(!val){toast('❗ 생년월일을 입력해 주세요');return;}
-  if(val!==bClean){toast('❌ 생년월일이 일치하지 않습니다');return;}
+  // 저장된 생년월일에서 숫자만 추출 후 마지막 6자리로 비교
+  const bFull=(birth||'').replace(/[^0-9]/g,'');
+  const b6=bFull.length>=6?bFull.slice(-6):bFull;  // 19800101→800101, 800101→800101
+  if(!val){toast('❗ 생년월일 6자리를 입력해 주세요');return;}
+  if(val.length!==6){toast('❗ 6자리로 입력해 주세요 (예: 800101)');return;}
+  if(val!==b6){toast('❌ 생년월일이 일치하지 않습니다');return;}
   if(!confirm('위임장을 철회(삭제)할까요?'))return;
   markDeleted(id);                          // 블랙리스트 등록
   proxies=proxies.filter(p=>p.id!==id);
