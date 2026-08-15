@@ -282,7 +282,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
     <div class="banner-text">
       <div class="org">대한적십자사 서울특별지사 재난대응봉사회</div>
       <div class="tit">위 임 장</div>
-      <div class="sub">월례회 불참자 의결권 위임 전자접수 시스템 · <span id="verDisplay">v4.6</span></div>
+      <div class="sub">월례회 불참자 의결권 위임 전자접수 시스템 · <span id="verDisplay">v4.7</span></div>
     </div>
   </div>
 </div>
@@ -467,7 +467,7 @@ window.dispatchEvent(new Event('fbReady'));
 
 <script>
 // ══ 전역 상태 ══════════════════════════════
-const APP_VER='4.6';           // ← 버전 업 시 이 값만 변경
+const APP_VER='4.7';           // ← 버전 업 시 이 값만 변경
 const SK='rcnet_v5';           // localStorage 데이터 키 (유지)
 const SK_DEL='rcnet_deleted';  // 삭제된 ID 블랙리스트
 const SK_VER='rcnet_appver';   // 저장된 버전 키
@@ -937,12 +937,16 @@ window.doCSV=doCSV;
 
 // ══ Firebase ════════════════════════════════
 async function loadData(){
-  loadLocal(); // localStorage 전 버전 병합
-  if(!fbOk||!window._db){renderList();renderSummary();return;}
+  // 1단계: localStorage에서 가능한 모든 데이터 수집
+  loadLocal();
+  renderList();renderSummary(); // 우선 로컬 데이터로 즉시 표시
+
+  // 2단계: Firebase 연결되면 병합
+  if(!fbOk||!window._db)return;
   try{
     const{collection:C,getDocs:G}=window._fs;
     const deleted=loadDeleted();
-    // 현재 + 이전 컬렉션 모두 수집
+    // 현재 컬렉션 + 이전 컬렉션 모두 조회
     const cols=['proxies_rcnet','proxies'];
     const fbMap={};
     for(const col of cols){
@@ -950,30 +954,41 @@ async function loadData(){
         const snap=await G(C(window._db,col));
         snap.forEach(d=>{
           const item={id:d.id,...d.data()};
-          // 삭제된 항목 완전 제외
-          if(item.name&&item.month&&!deleted.has(d.id)){
-            fbMap[d.id]=item;
-          }
+          if(!item.name||!item.month)return;
+          // 삭제 블랙리스트 완전 제외
+          if(deleted.has(d.id))return;
+          fbMap[d.id]=item;
         });
-      }catch(e){}
+      }catch(e){console.warn('컬렉션 조회 실패:',col,e);}
     }
-    // localStorage + Firebase 완전 병합 (삭제 항목 재차 제외)
+
+    // 3단계: 로컬 + Firebase 완전 병합 (삭제 항목 이중 확인)
     const merged={};
+    // 로컬 데이터 먼저 (id 기준)
     proxies.forEach(p=>{
-      if(p.id&&!deleted.has(p.id)) merged[p.id]=p;
+      if(!p.id)return;
+      if(deleted.has(p.id))return;
+      merged[p.id]=p;
     });
+    // Firebase 데이터로 덮어쓰기 (최신 기준)
     Object.values(fbMap).forEach(p=>{
-      if(!deleted.has(p.id)) merged[p.id]=p;
+      merged[p.id]=p;
     });
+
     proxies=Object.values(merged).sort((a,b)=>{
-      // Firebase timestamp 또는 submittedAt 기준 정렬
-      const ta=a.submittedAt||a.createdAt?.seconds||'';
-      const tb=b.submittedAt||b.createdAt?.seconds||'';
-      return String(tb).localeCompare(String(ta));
+      const ta=a.submittedAt||'';
+      const tb=b.submittedAt||'';
+      if(ta&&tb) return tb.localeCompare(ta);
+      // submittedAt 없으면 Firebase timestamp 사용
+      const sa=(a.createdAt&&a.createdAt.seconds)?a.createdAt.seconds:0;
+      const sb=(b.createdAt&&b.createdAt.seconds)?b.createdAt.seconds:0;
+      return sb-sa;
     });
+
+    // 최종 데이터 현재 키에 저장
     saveLocal();
-  }catch(e){console.warn('FB loadData:',e);}
-  renderList();renderSummary();
+    renderList();renderSummary();
+  }catch(e){console.warn('FB loadData 오류:',e);}
 }
 async function saveFb(item){
   if(!fbOk||!window._db)return null;
@@ -988,44 +1003,46 @@ async function delFb(id){
   if(!fbOk||!window._db||!id||id.startsWith('L'))return;
   try{const{doc:D,deleteDoc:DD}=window._fs;await DD(D(window._db,'proxies_rcnet',id));}catch(e){}
 }
-function saveLocal(){localStorage.setItem(SK,JSON.stringify(proxies));}
-function loadDeleted(){try{const d=localStorage.getItem(SK_DEL);return d?new Set(JSON.parse(d)):new Set();}catch(e){return new Set();}}
+function saveLocal(){
+  // 현재 버전 키에만 저장 (구 키는 건드리지 않음)
+  try{ localStorage.setItem(SK,JSON.stringify(proxies)); }catch(e){}
+}
+function loadDeleted(){
+  try{const d=localStorage.getItem(SK_DEL);return d?new Set(JSON.parse(d)):new Set();}
+  catch(e){return new Set();}
+}
 function saveDeleted(set){localStorage.setItem(SK_DEL,JSON.stringify([...set]));}
 function markDeleted(id){const s=loadDeleted();s.add(id);saveDeleted(s);}
+
 function loadLocal(){
   const deleted=loadDeleted();
-  // 과거 모든 버전 키 + 현재 키 전부 수집
+  // 과거 모든 버전 키 — 절대 삭제하지 않고 읽기만 함
   const allKeys=[
-    SK,                    // 현재 rcnet_v5
-    'rcnet_v4',
-    'rcnet_proxy_v3',
-    'rcnet_proxy_v2',
-    'proxy_data_rcnet',
-    'STORAGE_KEY',
+    'rcnet_v5','rcnet_v4',
+    'rcnet_proxy_v3','rcnet_proxy_v2',
+    'proxy_data_rcnet','STORAGE_KEY'
   ];
   const merged={};
   allKeys.forEach(k=>{
     try{
-      const d=localStorage.getItem(k);
-      if(!d)return;
-      const arr=JSON.parse(d);
+      const raw=localStorage.getItem(k);
+      if(!raw)return;
+      const arr=JSON.parse(raw);
       if(!Array.isArray(arr))return;
       arr.forEach(p=>{
         if(!p||!p.name||!p.month)return;
-        // id 없으면 name+month+birth 조합으로 고유 ID 생성
-        const uid=p.id||('M_'+[p.name,p.month,p.birth||''].join('_'));
-        // 삭제 블랙리스트에 없는 것만 수집
-        if(!deleted.has(uid)) merged[uid]={...p,id:uid};
+        const uid=p.id||('L_'+p.name+'_'+p.month+'_'+(p.birth||''));
+        // 블랙리스트에 없는 것만 수집
+        if(!deleted.has(uid) && !deleted.has(p.id||'')){
+          merged[uid]={...p,id:p.id||uid};
+        }
       });
     }catch(e){}
   });
-  proxies=Object.values(merged).sort((a,b)=>(b.submittedAt||'').localeCompare(a.submittedAt||''));
-  // 현재 키로 통합 저장
-  localStorage.setItem(SK,JSON.stringify(proxies));
-  // 구 키 정리 (현재 키 제외)
-  allKeys.filter(k=>k!==SK).forEach(k=>{
-    if(localStorage.getItem(k)) localStorage.removeItem(k);
-  });
+  proxies=Object.values(merged).sort(
+    (a,b)=>(b.submittedAt||'').localeCompare(a.submittedAt||'')
+  );
+  // 현재 키에만 저장 (구 키는 건드리지 않음 — Firebase 병합 후 최종 저장)
 }
 
 // ══ 유틸 ════════════════════════════════════
