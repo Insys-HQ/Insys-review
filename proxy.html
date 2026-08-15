@@ -153,7 +153,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 /* ── 모달 ── */
 .modal{display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.55);align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto;}
 .modal.on{display:flex;}
-.mbox{background:#fff;border-radius:14px;width:100%;max-width:700px;margin:auto;box-shadow:0 8px 40px rgba(0,0,0,.25);overflow:hidden;}
+.mbox{background:#fff;border-radius:14px;width:100%;max-width:860px;margin:auto;box-shadow:0 8px 40px rgba(0,0,0,.25);overflow:hidden;}
 .mhead{background:var(--red);color:#fff;padding:13px 16px;display:flex;align-items:center;justify-content:space-between;}
 .mhead-tit{font-size:14px;font-weight:700;letter-spacing:.5px;}
 .mclose{background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:2px 6px;line-height:1;}
@@ -161,17 +161,36 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 .mbody{padding:0;}
 
 /* ── A4 미리보기 영역 ── */
-#previewScroll{background:#888;padding:20px;max-height:75vh;overflow-y:auto;}
+/* ── 미리보기 스크롤 영역 ── */
+#previewScroll{
+  background:#6b6b6b;
+  padding:16px 8px;
+  max-height:78vh;
+  overflow-y:auto;
+  overflow-x:hidden;
+}
+/* A4 페이지: 항상 210mm 고정폭 유지, JS로 scale 적용 */
 .doc-page{
-  width:210mm;max-width:100%;margin:0 auto 20px;
+  width:210mm;         /* A4 고정 너비 */
+  min-height:297mm;    /* A4 고정 높이 */
   background:#fff;
-  box-shadow:0 2px 12px rgba(0,0,0,.3);
-  padding:20mm 18mm 22mm;
+  box-shadow:0 3px 16px rgba(0,0,0,.35);
+  padding:18mm 16mm 20mm;
   position:relative;
-  min-height:280mm;
   display:flex;flex-direction:column;
+  margin:0 auto 16px;
+  transform-origin:top center;
+  flex-shrink:0;
 }
 .doc-page:last-child{margin-bottom:0;}
+/* scale 래퍼 */
+.doc-page-wrap{
+  display:flex;
+  justify-content:center;
+  margin-bottom:16px;
+  overflow:hidden;
+}
+.doc-page-wrap:last-child{margin-bottom:0;}
 
 /* ── 위임장 문서 스타일 ── */
 .doc-title{text-align:center;font-size:28px;font-weight:900;letter-spacing:10px;margin-bottom:42px;margin-top:6px;}
@@ -260,7 +279,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
     <div class="banner-text">
       <div class="org">대한적십자사 서울특별지사 재난대응봉사회</div>
       <div class="tit">위 임 장</div>
-      <div class="sub">월례회 불참자 의결권 위임 전자접수 시스템 · v4.3</div>
+      <div class="sub">월례회 불참자 의결권 위임 전자접수 시스템 · v4.4</div>
     </div>
   </div>
 </div>
@@ -591,7 +610,7 @@ function buildDoc(p){
     const pt=p.signDate.split('.');
     dateStr=`${pt[0]||''}년&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${pt[1]||''}월&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${pt[2]||''}일`;
   }
-  return `<div class="doc-page">
+  return `<div class="doc-page-wrap"><div class="doc-page">
   <div class="doc-title">위 임 장</div>
   <div class="doc-sec">
     <div class="doc-sec-head"><span class="doc-sq"></span>&nbsp;위 임 자</div>
@@ -619,7 +638,7 @@ function buildDoc(p){
       <span class="doc-in">${sigImg}인</span>
     </span>
   </div>
-</div>`;
+</div></div>`;
 }
 
 // ══ 미리보기 모달 ══════════════════════════
@@ -649,12 +668,36 @@ function doPreview(ids){
   }
   document.getElementById('previewDoc').innerHTML=html;
   document.getElementById('previewModal').classList.add('on');
+  // A4 스케일 계산: 스크롤 영역 너비에 맞게 축소
+  requestAnimationFrame(scaleA4Pages);
 }
 window.doPreview=doPreview;
+
+function scaleA4Pages(){
+  const scroll=document.getElementById('previewScroll');
+  const pages=document.querySelectorAll('.doc-page');
+  if(!pages.length)return;
+  const scrollW=scroll.clientWidth - 16; // padding 제외
+  const A4px=pages[0].offsetWidth; // 210mm in px
+  if(A4px<=0)return;
+  const scale=Math.min(1, scrollW/A4px);
+  pages.forEach(p=>{
+    p.style.transform=`scale(${scale})`;
+    // wrap 높이 = 실제 페이지 높이 × scale
+    const wrap=p.parentElement;
+    if(wrap&&wrap.classList.contains('doc-page-wrap')){
+      wrap.style.height=(p.offsetHeight*scale)+'px';
+    }
+  });
+}
+window.scaleA4Pages=scaleA4Pages;
 
 function closePreview(){document.getElementById('previewModal').classList.remove('on');}
 window.closePreview=closePreview;
 document.getElementById('previewModal').addEventListener('click',e=>{if(e.target===e.currentTarget)closePreview();});
+window.addEventListener('resize',()=>{
+  if(document.getElementById('previewModal').classList.contains('on')) scaleA4Pages();
+});
 
 function previewOne(id){doPreview([id]);}
 window.previewOne=previewOne;
