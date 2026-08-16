@@ -16,7 +16,7 @@
 <style>
   :root{
     --bg:#f4f6f9; --card:#ffffff; --line:#e2e6ec;
-    --txt:#2b2f36; --sub:#6b7280; --accent:#2563eb; --accent2:#0891b2;
+    --txt:#2b2f36; --sub:#6b7280; --accent:#2563eb;
     --danger:#dc2626; --ok:#16a34a; --warn:#d97706;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
@@ -26,12 +26,9 @@
   a{ pointer-events:none; }
 
   .nav{background:var(--card);border-bottom:1px solid var(--line);flex:0 0 auto;}
-  .nav-inner{max-width:1100px;margin:0 auto;padding:8px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+  .nav-inner{max-width:1100px;margin:0 auto;padding:9px 16px;display:flex;align-items:center;gap:8px;}
   .brand{font-weight:900;font-size:15px;}
   .ver{font-size:11px;color:var(--sub);background:#eef2f7;padding:2px 8px;border-radius:10px;margin-left:6px;}
-  .modeToggle{display:flex;background:#eef1f5;border-radius:8px;padding:3px;gap:3px;}
-  .modeToggle button{border:none;background:transparent;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:700;color:var(--sub);cursor:pointer;font-family:inherit;touch-action:manipulation;}
-  .modeToggle button.active{background:var(--accent);color:#fff;}
 
   .tabbar{flex:0 0 auto;background:var(--card);border-bottom:1px solid var(--line);display:flex;gap:6px;padding:6px 10px;}
   .tabbar button{flex:1;border:1px solid var(--line);background:#f8fafc;padding:9px 10px;border-radius:8px;font-size:13px;font-weight:700;color:var(--sub);cursor:pointer;font-family:inherit;touch-action:manipulation;}
@@ -45,9 +42,12 @@
   #liveOverlay .status.on{color:#4ade80;font-weight:700;}
 
   #controlBar{flex:0 0 auto;background:#111827;padding:10px 12px calc(10px + env(safe-area-inset-bottom));display:flex;gap:8px;align-items:center;}
-  #controlBar button{touch-action:manipulation;font-family:inherit;font-weight:800;border:none;border-radius:10px;cursor:pointer;font-size:14px;padding:14px 10px;}
-  #btnToggleMeasure{flex:1.3;background:var(--accent);color:#fff;}
+  #controlBar button{touch-action:manipulation;font-family:inherit;font-weight:800;border:none;border-radius:10px;cursor:pointer;font-size:13px;padding:14px 8px;}
+  #btnToggleMeasure{flex:1.2;background:var(--accent);color:#fff;}
   #btnToggleMeasure.recording{background:var(--danger);}
+  #peakChkWrap{flex:0.9;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#1f2937;border-radius:10px;padding:8px 4px;}
+  #peakChkWrap label{color:#e5e7eb;font-size:11px;font-weight:700;display:flex;align-items:center;gap:5px;}
+  #chkPeak{width:18px;height:18px;}
   #btnAnalyze{flex:1;background:var(--ok);color:#fff;}
   #btnAnalyze:disabled{background:#374151;color:#6b7280;cursor:not-allowed;}
 
@@ -58,7 +58,8 @@
     box-shadow:0 -6px 24px rgba(0,0,0,0.25);padding:16px;transform:translateY(110%);
     transition:transform .25s ease;z-index:200;max-height:82vh;overflow-y:auto;}
   #analyzeSheet.open{transform:translateY(0);}
-  #analyzeSheet h3{margin:0 0 10px;font-size:15px;}
+  #analyzeSheet h3{margin:0 0 4px;font-size:15px;}
+  #analyzeSheet .srcTag{font-size:11px;color:var(--sub);margin-bottom:10px;display:block;}
   .bandRow{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;}
   .bandRow b{color:var(--txt);}
   .bandRow .val{font-weight:800;color:var(--accent);}
@@ -69,6 +70,7 @@
   #analyzeSheet .row button{flex:1;font-family:inherit;font-weight:800;padding:12px;border-radius:10px;border:none;cursor:pointer;font-size:13px;}
   #analyzeSheet .btnSave{background:var(--ok);color:#fff;}
   #analyzeSheet .btnClose{background:#6b7280;color:#fff;}
+  #saveError{display:none;background:#fef2f2;color:#b91c1c;font-size:12px;padding:8px 10px;border-radius:8px;margin-bottom:8px;white-space:pre-wrap;}
 
   #compareTab{flex:1 1 auto;display:none;overflow-y:auto;}
   .wrap{max-width:1100px;margin:0 auto;padding:14px 16px 40px;}
@@ -82,20 +84,32 @@
   th{color:var(--sub);font-weight:700;background:#f8fafc;}
   .chk{width:16px;height:16px;}
   .tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px;background:#eef2ff;color:var(--accent);font-weight:700;}
+  .typeTag{display:inline-block;font-size:10px;padding:1px 6px;border-radius:8px;background:#fef3c7;color:#92400e;font-weight:700;margin-left:4px;}
   .legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--sub);}
   .dot{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px;}
   #cmpCanvas{width:100%;background:#0f172a;border-radius:10px;}
+
+  .expNote{font-size:11px;color:var(--sub);line-height:1.6;margin-bottom:10px;background:#f8fafc;padding:8px 10px;border-radius:8px;}
+  .expCard{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px;}
+  .expCard .expHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+  .expCard .expName{font-weight:800;font-size:13px;}
+  .expScore{font-size:12px;font-weight:800;padding:3px 10px;border-radius:10px;color:#fff;}
+  .expBandRow{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px dashed var(--line);font-size:12px;gap:8px;}
+  .expBandRow:last-child{border-bottom:none;}
+  .expBandName{color:var(--sub);min-width:92px;flex-shrink:0;}
+  .expBandComment{flex:1;text-align:right;font-weight:700;}
+  .badge-ideal{color:var(--ok);}
+  .badge-excess{color:var(--danger);}
+  .badge-deficit{color:#2563eb;}
+  .compareSummary{background:#eef2ff;border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.8;}
+  .compareSummary b{color:var(--accent);}
 </style>
 </head>
 <body>
 
 <div class="nav">
   <div class="nav-inner">
-    <div><span class="brand">🚗 차량 오디오 주파수 분석기</span><span class="ver">v2.1</span></div>
-    <div class="modeToggle">
-      <button id="modeMobile" class="active">모바일</button>
-      <button id="modePc">PC</button>
-    </div>
+    <span class="brand">🚗 차량 오디오 주파수 분석기</span><span class="ver">v3.0</span>
   </div>
 </div>
 
@@ -114,16 +128,18 @@
   </div>
   <div id="controlBar">
     <button id="btnToggleMeasure">🎙 측정 시작</button>
-    <button id="btnAnalyze" disabled>📊 분석 (3초)</button>
+    <div id="peakChkWrap"><label><input type="checkbox" id="chkPeak"> 피크 홀드</label></div>
+    <button id="btnAnalyze" disabled>📊 분석</button>
   </div>
 </div>
 
 <div id="dimOverlay"></div>
 <div id="analyzeSheet">
   <h3>분석 결과</h3>
+  <span class="srcTag" id="srcTag"></span>
   <div id="bandResults"></div>
   <input type="text" id="carName" placeholder="차량명/조건 입력 (예: 소나타DN8_기본세팅)">
-  <div id="saveError" style="display:none;background:#fef2f2;color:#b91c1c;font-size:12px;padding:8px 10px;border-radius:8px;margin-bottom:8px;white-space:pre-wrap;"></div>
+  <div id="saveError"></div>
   <div class="row">
     <button class="btnSave" id="btnSave">Firebase에 저장</button>
     <button class="btnClose" id="btnCloseSheet">닫기</button>
@@ -133,7 +149,7 @@
 <div id="compareTab">
   <div class="wrap">
     <div class="card">
-      <h2>저장된 측정 목록 (최대 2개 선택하여 비교)</h2>
+      <h2>저장된 측정 목록 (2개 선택 시 전문가 비교분석 자동 생성)</h2>
       <div class="row" style="margin-bottom:8px;">
         <button class="btn gray" id="btnRefresh">목록 새로고침</button>
       </div>
@@ -146,6 +162,11 @@
       <h2>비교 그래프</h2>
       <canvas id="cmpCanvas" width="1000" height="360"></canvas>
       <div class="legend" id="cmpLegend"></div>
+    </div>
+    <div class="card" id="expertCard" style="display:none;">
+      <h2>🎧 전문가 수준 음질 분석</h2>
+      <div class="expNote">※ 비보정 마이크의 상대 레벨(0-255) 기준 분석입니다. 절대 음압(dB SPL)이 아닌, 사람이 편안하게 느끼는 대역별 밸런스(저음↑ 중음 기준 중고음 약간↑ 고음 완만히↓)를 기준 커브로 삼아 상대적 과다/부족을 판정합니다.</div>
+      <div id="expertResults"></div>
     </div>
   </div>
 </div>
@@ -162,14 +183,9 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const COL = "audio_freq_measurements";
-let authReady = false;
-firebase.auth().signInAnonymously()
-  .then(()=>{ authReady = true; })
-  .catch(e=>{ console.warn('익명 로그인 실패(계속 진행):', e.code, e.message); });
+firebase.auth().signInAnonymously().catch(e=>console.warn('익명 로그인 실패(계속 진행):', e.code, e.message));
 
-document.getElementById('modeMobile').onclick = function(){this.classList.add('active');document.getElementById('modePc').classList.remove('active');};
-document.getElementById('modePc').onclick = function(){this.classList.add('active');document.getElementById('modeMobile').classList.remove('active');};
-
+/* ===== 탭 전환 ===== */
 const liveTab = document.getElementById('liveTab');
 const compareTab = document.getElementById('compareTab');
 document.querySelectorAll('.tabBtn').forEach(b=>{
@@ -186,13 +202,36 @@ document.querySelectorAll('.tabBtn').forEach(b=>{
   };
 });
 
+/* ===== 주파수 대역 (막대/분석/비교 공통) ===== */
+const FREQ_MIN = 20, FREQ_MAX = 20000;
+const BAR_COUNT = 56;
+const LOG_MIN = Math.log10(FREQ_MIN), LOG_MAX = Math.log10(FREQ_MAX);
+const BAR_FREQS = [];
+for(let i=0;i<BAR_COUNT;i++){
+  const t = (i+0.5)/BAR_COUNT;
+  BAR_FREQS.push(Math.pow(10, LOG_MIN + t*(LOG_MAX-LOG_MIN)));
+}
+function freqToX(freq, width){ return ((Math.log10(freq)-LOG_MIN)/(LOG_MAX-LOG_MIN))*width; }
+
+const BANDS = [
+  {key:'bass',   name:'저음(20-250Hz)',    lo:20,  hi:250,   target:1.18, boostDesc:'부밍(웅웅거림) 우려', deficitDesc:'저음 빈약, 박력 부족'},
+  {key:'lowmid', name:'중저음(250-500Hz)', lo:250, hi:500,   target:1.05, boostDesc:'저음 번짐/두루뭉술', deficitDesc:'따뜻함/두께감 부족'},
+  {key:'mid',    name:'중음(500Hz-2kHz)',  lo:500, hi:2000,  target:1.00, boostDesc:'답답한 콧소리(honky)', deficitDesc:'보컬 존재감 약함'},
+  {key:'upmid',  name:'중고음(2k-6kHz)',   lo:2000,hi:6000,  target:1.08, boostDesc:'쏘는 소리, 귀 피로(sibilance)', deficitDesc:'선명도/명료도 부족'},
+  {key:'treble', name:'고음(6k-20kHz)',    lo:6000,hi:20000, target:0.82, boostDesc:'날카롭고 거슬림', deficitDesc:'답답함, 공기감 부족'},
+];
+
+/* ===== 오디오 캡처 / 막대그래프 ===== */
 let audioCtx, analyser, micSource, dataArray, rafId, mediaStream;
 let sampleRate = 44100;
 const FFT_SIZE = 8192;
-const FREQ_MIN = 20, FREQ_MAX = 20000;
 let measuring = false;
+let peakMode = false;
+let peakValues = new Float32Array(BAR_COUNT).fill(0);
+
 let accumulating = false;
-let accumSum = null, accumCount = 0, accumTarget = 30;
+let accumSum = null, accumCount = 0, accumStartTime = 0;
+const ACCUM_DURATION_MS = 3000;
 
 const liveCanvas = document.getElementById('liveCanvas');
 const lctx = liveCanvas.getContext('2d');
@@ -203,6 +242,11 @@ function resizeCanvas(){
   liveCanvas.height = wrap.clientHeight;
 }
 window.addEventListener('resize', resizeCanvas);
+
+document.getElementById('chkPeak').onchange = function(){
+  peakMode = this.checked;
+  if(peakMode){ peakValues = new Float32Array(BAR_COUNT).fill(0); }
+};
 
 document.getElementById('btnToggleMeasure').onclick = async ()=>{
   if(!measuring){
@@ -217,6 +261,7 @@ document.getElementById('btnToggleMeasure').onclick = async ()=>{
       micSource.connect(analyser);
       dataArray = new Uint8Array(analyser.frequencyBinCount);
       measuring = true;
+      peakValues = new Float32Array(BAR_COUNT).fill(0);
       resizeCanvas();
       document.getElementById('micStatus').textContent = '측정 중 (SR:'+sampleRate+'Hz)';
       document.getElementById('micStatus').classList.add('on');
@@ -259,56 +304,90 @@ function draw(){
   lctx.fillStyle = '#0f172a';
   lctx.fillRect(0,0,w,h);
 
-  const barCount = Math.max(28, Math.min(80, Math.floor(w/14)));
   const gap = 3;
-  const barW = (w - gap*(barCount-1)) / barCount;
-  const logMin = Math.log10(FREQ_MIN), logMax = Math.log10(FREQ_MAX);
+  const barW = (w - gap*(BAR_COUNT-1)) / BAR_COUNT;
+  const barVals = new Array(BAR_COUNT);
 
-  for(let i=0;i<barCount;i++){
-    const t = (i+0.5)/barCount;
-    const freq = Math.pow(10, logMin + t*(logMax-logMin));
+  for(let i=0;i<BAR_COUNT;i++){
+    const freq = BAR_FREQS[i];
     const bin = freqToBin(freq);
     const val = dataArray[bin] || 0;
-    const barH = (val/255)*h*0.92;
+    barVals[i] = val;
+    const t = (i+0.5)/BAR_COUNT;
     const hue = 260 - t*260;
     const x = i*(barW+gap);
-    const y = h - barH;
+
+    if(peakMode){
+      if(val>peakValues[i]) peakValues[i]=val;
+      const peakHpx = (peakValues[i]/255)*h*0.92;
+      lctx.fillStyle = `hsla(${hue},70%,72%,0.4)`;
+      lctx.fillRect(x, h-peakHpx, barW, peakHpx);
+    }
+
+    const liveH = (val/255)*h*0.92;
+    const y = h - liveH;
     const grad = lctx.createLinearGradient(0,y,0,h);
     grad.addColorStop(0, `hsl(${hue},90%,60%)`);
     grad.addColorStop(1, `hsl(${hue},90%,35%)`);
     lctx.fillStyle = grad;
-    lctx.fillRect(x, y, barW, barH);
+    lctx.fillRect(x, y, barW, liveH);
   }
 
   lctx.font = '10px Noto Sans KR';
   lctx.fillStyle = 'rgba(255,255,255,0.5)';
   [20,50,100,200,500,1000,2000,5000,10000,20000].forEach(f=>{
-    const xt = ((Math.log10(f)-logMin)/(logMax-logMin))*w;
+    const xt = freqToX(f,w);
     const label = f>=1000 ? (f/1000)+'k' : f;
     lctx.fillText(label, Math.min(xt,w-24), h-4);
   });
 
   if(accumulating){
-    for(let b=0;b<dataArray.length;b++) accumSum[b]+=dataArray[b];
+    for(let i=0;i<BAR_COUNT;i++) accumSum[i]+=barVals[i];
     accumCount++;
-    const pct = Math.round(accumCount/accumTarget*100);
-    document.getElementById('micStatus').textContent = '분석 중... '+pct+'%';
-    if(accumCount>=accumTarget){
-      finishAnalyze();
+    const elapsed = performance.now()-accumStartTime;
+    const pct = Math.min(100, Math.round(elapsed/ACCUM_DURATION_MS*100));
+    document.getElementById('micStatus').textContent = '분석 중(평균)... '+pct+'%';
+    if(elapsed>=ACCUM_DURATION_MS){
+      finishAverageAnalyze();
     }
   }
 
   rafId = requestAnimationFrame(draw);
 }
 
+/* ===== 분석 ===== */
 let lastAnalysis = null;
+let lastAnalysisType = '';
+
 document.getElementById('btnAnalyze').onclick = ()=>{
   if(!measuring || accumulating) return;
-  accumSum = new Float64Array(analyser.frequencyBinCount);
-  accumCount = 0;
-  accumulating = true;
-  document.getElementById('btnAnalyze').disabled = true;
+  if(peakMode){
+    analyzeFromPeak();
+  } else {
+    accumSum = new Float64Array(BAR_COUNT);
+    accumCount = 0;
+    accumStartTime = performance.now();
+    accumulating = true;
+    document.getElementById('btnAnalyze').disabled = true;
+  }
 };
+
+function analyzeFromPeak(){
+  const points = BAR_FREQS.map((f,i)=>({f:Math.round(f), v:Math.round(peakValues[i]*10)/10}));
+  lastAnalysis = points;
+  lastAnalysisType = 'peak';
+  showResultSheet(points, '피크 홀드 값 기준 분석');
+}
+
+function finishAverageAnalyze(){
+  accumulating = false;
+  document.getElementById('btnAnalyze').disabled = false;
+  document.getElementById('micStatus').textContent = measuring ? ('측정 중 (SR:'+sampleRate+'Hz)') : '측정 정지됨';
+  const points = BAR_FREQS.map((f,i)=>({f:Math.round(f), v:Math.round((accumSum[i]/accumCount)*10)/10}));
+  lastAnalysis = points;
+  lastAnalysisType = 'average';
+  showResultSheet(points, '3초 평균값 기준 분석');
+}
 
 function bandAvg(points, lo, hi){
   const filtered = points.filter(p=>p.f>=lo && p.f<hi);
@@ -316,34 +395,15 @@ function bandAvg(points, lo, hi){
   return Math.round(filtered.reduce((s,p)=>s+p.v,0)/filtered.length*10)/10;
 }
 
-function finishAnalyze(){
-  accumulating = false;
-  document.getElementById('btnAnalyze').disabled = false;
-  document.getElementById('micStatus').textContent = measuring ? ('측정 중 (SR:'+sampleRate+'Hz)') : '측정 정지됨';
-
-  const logMin = Math.log10(FREQ_MIN), logMax = Math.log10(FREQ_MAX);
-  const points = [];
-  for(let i=0;i<150;i++){
-    const freq = Math.pow(10, logMin + (i/149)*(logMax-logMin));
-    const bin = freqToBin(freq);
-    const avg = (accumSum[bin]||0)/accumCount;
-    points.push({f:Math.round(freq), v:Math.round(avg*10)/10});
-  }
-  lastAnalysis = points;
-
-  const bands = [
-    {name:'저음 (20-250Hz)', lo:20, hi:250},
-    {name:'중저음 (250-500Hz)', lo:250, hi:500},
-    {name:'중음 (500Hz-2kHz)', lo:500, hi:2000},
-    {name:'중고음 (2k-6kHz)', lo:2000, hi:6000},
-    {name:'고음 (6k-20kHz)', lo:6000, hi:20000},
-  ];
+function showResultSheet(points, srcLabel){
+  document.getElementById('srcTag').textContent = srcLabel;
   let html = '';
-  bands.forEach(b=>{
+  BANDS.forEach(b=>{
     const avg = bandAvg(points, b.lo, b.hi);
     html += `<div class="bandRow"><b>${b.name}</b><span class="val">${avg} / 255</span></div>`;
   });
   document.getElementById('bandResults').innerHTML = html;
+  document.getElementById('saveError').style.display='none';
   openSheet();
 }
 
@@ -370,6 +430,7 @@ document.getElementById('btnSave').onclick = async ()=>{
     await db.collection(COL).add({
       name: name,
       points: lastAnalysis,
+      type: lastAnalysisType,
       sampleRate: sampleRate,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
@@ -384,15 +445,11 @@ document.getElementById('btnSave').onclick = async ()=>{
   btn.disabled = false; btn.textContent = 'Firebase에 저장';
 };
 
+/* ===== 비교 탭 ===== */
 const cmpCanvas = document.getElementById('cmpCanvas');
 const cctx = cmpCanvas.getContext('2d');
 const COLORS = ['#22d3ee','#f97316','#a3e635','#f472b6'];
 let allDocs = [];
-
-function freqToX(freq, width){
-  const logMin = Math.log10(FREQ_MIN), logMax = Math.log10(FREQ_MAX);
-  return ( (Math.log10(freq)-logMin) / (logMax-logMin) ) * width;
-}
 
 async function loadList(){
   const body = document.getElementById('listBody');
@@ -410,14 +467,17 @@ async function loadList(){
   if(allDocs.length===0){ body.innerHTML='<tr><td colspan="4">저장된 데이터가 없습니다.</td></tr>'; return; }
   body.innerHTML = allDocs.map((d,i)=>{
     const dt = d.createdAt && d.createdAt.toDate ? d.createdAt.toDate().toLocaleString('ko-KR') : '-';
+    const typeLabel = d.type==='peak' ? '<span class="typeTag">피크</span>' : (d.type==='average' ? '<span class="typeTag">평균</span>' : '');
     return `<tr>
       <td><input type="checkbox" class="chk cmpChk" data-idx="${i}"></td>
-      <td><span class="tag">${escapeHtml(d.name)}</span></td>
+      <td><span class="tag">${escapeHtml(d.name)}</span>${typeLabel}</td>
       <td>${dt}</td>
       <td><button class="btn danger" style="padding:4px 10px;font-size:11px;" onclick="delDoc('${d.id}')">삭제</button></td>
     </tr>`;
   }).join('');
   document.querySelectorAll('.cmpChk').forEach(c=>c.onchange=onChkChange);
+  document.getElementById('expertCard').style.display='none';
+  document.getElementById('expertResults').innerHTML='';
 }
 
 function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
@@ -429,7 +489,14 @@ function onChkChange(){
     alert('최대 2개까지 비교 가능합니다.');
     return;
   }
-  drawCompare(checked.map(c=>allDocs[c.dataset.idx]));
+  const docs = checked.map(c=>allDocs[c.dataset.idx]);
+  drawCompare(docs);
+  if(docs.length>=1){
+    document.getElementById('expertCard').style.display='block';
+    document.getElementById('expertResults').innerHTML = generateExpertAnalysis(docs);
+  } else {
+    document.getElementById('expertCard').style.display='none';
+  }
 }
 
 function drawCompare(docs){
@@ -480,6 +547,73 @@ window.delDoc = async function(id){
 };
 
 document.getElementById('btnRefresh').onclick = loadList;
+
+/* ===== 전문가 수준 비교 분석 ===== */
+function analyzeOne(doc){
+  const pts = doc.points;
+  const overallAvg = pts.reduce((s,p)=>s+p.v,0)/pts.length || 1;
+  const bands = BANDS.map(b=>{
+    const vals = pts.filter(p=>p.f>=b.lo && p.f<b.hi).map(p=>p.v);
+    const avg = vals.length ? vals.reduce((s,v)=>s+v,0)/vals.length : 0;
+    const max = vals.length ? Math.max(...vals) : 0;
+    const ratio = overallAvg>0 ? avg/overallAvg : 0;
+    const deviation = ratio - b.target;
+    const peakiness = avg>0.5 ? max/avg : 1;
+    let verdict, comment;
+    if(Math.abs(deviation) < 0.07){ verdict='ideal'; comment='이상적 밸런스'; }
+    else if(deviation >= 0.07){ verdict='excess'; comment=b.boostDesc; }
+    else { verdict='deficit'; comment=b.deficitDesc; }
+    if(peakiness > 1.35) comment += ' · 특정 주파수 공진(피크) 감지';
+    return {...b, avg, ratio, deviation, verdict, comment};
+  });
+  const score = Math.max(0, Math.min(100, Math.round(100 - bands.reduce((s,b)=>s+Math.abs(b.deviation)*55,0))));
+  return {name: doc.name, bands, score};
+}
+
+function scoreColor(score){
+  if(score>=80) return '#16a34a';
+  if(score>=60) return '#d97706';
+  return '#dc2626';
+}
+
+function renderExpCard(res){
+  let rows = res.bands.map(b=>{
+    const cls = 'badge-'+b.verdict;
+    return `<div class="expBandRow"><span class="expBandName">${b.name}</span><span class="expBandComment ${cls}">${b.comment} (기준比 ${Math.round(b.ratio*100)}%)</span></div>`;
+  }).join('');
+  return `<div class="expCard">
+    <div class="expHead"><span class="expName">${escapeHtml(res.name)}</span><span class="expScore" style="background:${scoreColor(res.score)}">쾌적도 ${res.score}점</span></div>
+    ${rows}
+  </div>`;
+}
+
+function generateExpertAnalysis(docs){
+  const results = docs.map(analyzeOne);
+  let html = results.map(renderExpCard).join('');
+
+  if(results.length===2){
+    const [a,b] = results;
+    let lines = [];
+    BANDS.forEach((band,i)=>{
+      const ba = a.bands[i], bb = b.bands[i];
+      const better = Math.abs(ba.deviation) <= Math.abs(bb.deviation) ? a.name : b.name;
+      const worse = better===a.name ? b.name : a.name;
+      const worseBand = better===a.name ? bb : ba;
+      if(Math.abs(ba.deviation - bb.deviation) < 0.03){
+        lines.push(`· <b>${band.name}</b>: 두 차량이 비슷한 수준`);
+      } else {
+        lines.push(`· <b>${band.name}</b>: <b>${better}</b>가 더 우수 (${worse}는 ${worseBand.comment})`);
+      }
+    });
+    const overallBetter = a.score>=b.score ? a.name : b.name;
+    const diff = Math.abs(a.score-b.score);
+    let overallLine = diff<5
+      ? `종합적으로 두 차량의 음질 밸런스는 비슷한 수준입니다.`
+      : `종합적으로 <b>${overallBetter}</b>의 음질 밸런스가 더 균형 잡혀 있습니다 (쾌적도 ${diff}점 차이).`;
+    html += `<div class="compareSummary"><b>📌 종합 비교</b><br>${lines.join('<br>')}<br><br>${overallLine}</div>`;
+  }
+  return html;
+}
 
 liveTab.style.display='flex';
 resizeCanvas();
