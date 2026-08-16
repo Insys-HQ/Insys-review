@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>아날로그 핸디로 RC-Net Room 접속하기</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#1f2d3d;
+  --ink2:#31465e;
+  --line:#d8e0ea;
+  --bg:#f4f6f9;
+  --card:#ffffff;
+  --accent:#1b4f8a;
+  --accent-soft:#e8f0f9;
+  --warn-bg:#fdf4e3;
+  --warn-line:#e0b872;
+  --ok-bg:#eaf4ec;
+  --ok-line:#8fbd9c;
+  --hi:#b8442e;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  font-family:'Noto Sans KR',sans-serif;
+  background:var(--bg);color:var(--ink);
+  font-size:15px;line-height:1.7;
+  padding:28px 16px 60px;
+}
+.wrap{max-width:1100px;margin:0 auto;}
+
+.cover{
+  width:100%;
+  background:linear-gradient(135deg,#1b4f8a 0%,#2d6ca8 100%);
+  color:#fff;border-radius:10px;
+  padding:34px 38px;margin-bottom:22px;
+}
+.cover .tag{
+  display:inline-block;font-size:12px;font-weight:500;letter-spacing:.5px;
+  background:rgba(255,255,255,.18);padding:4px 12px;border-radius:20px;margin-bottom:12px;
+}
+.cover h1{font-size:27px;font-weight:700;line-height:1.35;margin-bottom:8px;}
+.cover p{font-size:14px;font-weight:300;opacity:.93;}
+.cover .meta{
+  margin-top:18px;padding-top:14px;
+  border-top:1px solid rgba(255,255,255,.25);
+  font-size:12px;font-weight:300;
+  display:flex;flex-wrap:wrap;gap:20px;
+}
+
+/* 핵심 설정 강조 박스 */
+.keybox{
+  background:#fff;border:2px solid var(--accent);
+  border-radius:10px;padding:20px 24px;margin-bottom:22px;
+}
+.keybox h2{font-size:17px;font-weight:700;color:var(--accent);margin-bottom:12px;}
+.keybox .big{
+  display:flex;flex-wrap:wrap;gap:14px;margin-top:6px;
+}
+.keybox .item{
+  flex:1;min-width:180px;
+  background:var(--accent-soft);border-radius:8px;
+  padding:14px 18px;text-align:center;
+}
+.keybox .item .lbl{font-size:12px;color:var(--ink2);font-weight:500;margin-bottom:4px;}
+.keybox .item .val{font-size:21px;font-weight:900;color:var(--accent);letter-spacing:.5px;}
+
+.step{
+  background:var(--card);border:1px solid var(--line);
+  border-radius:9px;padding:22px 26px;margin-bottom:16px;
+}
+.step-head{
+  display:flex;align-items:center;gap:12px;
+  margin-bottom:14px;padding-bottom:11px;
+  border-bottom:1px solid var(--line);
+}
+.num{
+  flex:none;width:32px;height:32px;
+  background:var(--accent);color:#fff;border-radius:7px;
+  font-size:15px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+}
+.step-head h2{font-size:18px;font-weight:700;color:var(--ink);}
+.step ol{margin-left:20px;}
+.step ul{margin-left:20px;list-style:disc;}
+.step li{margin-bottom:6px;font-size:14px;}
+.step p{font-size:14px;margin-bottom:8px;}
+
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13.5px;}
+th{
+  background:var(--accent-soft);color:var(--accent);
+  font-weight:700;text-align:left;padding:8px 11px;border:1px solid var(--line);
+}
+td{padding:7px 11px;border:1px solid var(--line);color:var(--ink2);vertical-align:top;}
+tr:nth-child(even) td{background:#fafbfd;}
+td.k{font-weight:500;color:var(--ink);}
+td.f{font-weight:700;color:var(--accent);white-space:nowrap;}
+
+.warn,.ok{border-radius:6px;padding:12px 16px;margin:12px 0;font-size:13.5px;}
+.warn{background:var(--warn-bg);border-left:4px solid var(--warn-line);}
+.ok{background:var(--ok-bg);border-left:4px solid var(--ok-line);}
+.warn b{color:#9a6512;}
+.ok b{color:#3a7048;}
+
+a{color:var(--accent);text-decoration:none;font-weight:500;}
+a:hover{text-decoration:underline;}
+code{
+  background:#eef2f7;color:var(--accent);
+  padding:1px 6px;border-radius:4px;
+  font-family:'Noto Sans KR',monospace;font-size:13px;font-weight:500;
+}
+.tbd{color:var(--hi);font-weight:700;}
+
+footer{
+  margin-top:28px;padding:20px 26px;
+  background:var(--card);border:1px solid var(--line);
+  border-radius:9px;font-size:12.5px;color:var(--ink2);
+  display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;
+}
+
+#vpop{
+  position:fixed;left:50%;bottom:22px;transform:translateX(-50%);
+  background:var(--accent);color:#fff;padding:13px 22px;border-radius:8px;
+  font-size:13px;font-weight:500;box-shadow:0 6px 20px rgba(0,0,0,.22);
+  display:none;z-index:999;align-items:center;gap:14px;
+}
+#vpop button{
+  background:#fff;color:var(--accent);border:none;border-radius:5px;
+  padding:5px 13px;font-size:12px;font-weight:700;
+  cursor:pointer;font-family:'Noto Sans KR',sans-serif;
+}
+@media(max-width:640px){
+  .cover{padding:26px 20px;}
+  .cover h1{font-size:21px;}
+  .step{padding:18px 16px;}
+  table{font-size:12.5px;}
+  .keybox .item .val{font-size:18px;}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="cover">
+  <div class="tag">RC-Net 봉사원용 안내</div>
+  <h1>아날로그 핸디로<br>RC-Net Room(48182) 접속하기</h1>
+  <p>디지털 무전기 없이, 일반 아날로그 핸디만으로 전국·해외 교신이 가능합니다</p>
+  <div class="meta">
+    <span>문서버전 v1.0</span>
+    <span>작성일 2026-08-16</span>
+    <span>대상 아날로그 핸디 사용 봉사원</span>
+  </div>
+</div>
+
+<div class="keybox">
+  <h2>가장 중요한 두 가지 설정</h2>
+  <p style="font-size:13.5px;color:var(--ink2);">내 위치에서 가장 가까운 노드의 <b>주파수</b>를 맞추고, <b>톤은 모든 노드가 동일</b>합니다.</p>
+  <div class="big">
+    <div class="item">
+      <div class="lbl">주파수 (노드별로 다름)</div>
+      <div class="val">145.620 ~ 145.660</div>
+    </div>
+    <div class="item">
+      <div class="lbl">톤 스켈치 (전 노드 공통)</div>
+      <div class="val">88.5 Hz</div>
+    </div>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-head"><div class="num">1</div><h2>내 위치에서 접속할 노드 확인</h2></div>
+  <p>가까운 노드를 선택하고 해당 주파수를 핸디에 입력합니다.</p>
+  <table>
+    <tr><th>노드</th><th>주파수</th><th>톤</th><th>설치 위치</th><th>운용</th></tr>
+    <tr><td class="k">DS0ARC</td><td class="f">145.620 MHz</td><td>88.5 Hz</td><td>신월동 재난안전센터</td><td>상시 고정국</td></tr>
+    <tr><td class="k">6K2JPO</td><td class="f">145.640 MHz</td><td>88.5 Hz</td><td>이재영 국장 자택</td><td>상시 고정국</td></tr>
+    <tr><td class="k">DS0ARC/M</td><td class="f">145.660 MHz</td><td>88.5 Hz</td><td>이동차량</td><td>현장 출동 시</td></tr>
+    <tr><td class="k">HL2TLS</td><td class="f tbd">확인 필요</td><td>88.5 Hz</td><td>부천 (김양섭 개인국)</td><td>운용 시간 확인 필요</td></tr>
+  </table>
+  <div class="warn"><b>HL2TLS 주파수</b> — 아직 확정되지 않았습니다. 기술팀장에게 문의 후 이용하십시오.</div>
+  <div class="ok"><b>노드가 여러 개인 이유</b> — 핸디는 전파 도달 거리가 짧기 때문에, 각 지역마다 노드를 두어 인터넷으로 서로 연결합니다. 어느 노드에 접속하든 <b>같은 Room(48182)</b>으로 모이므로 서로 교신할 수 있습니다.</div>
+</div>
+
+<div class="step">
+  <div class="step-head"><div class="num">2</div><h2>핸디 설정</h2></div>
+  <table>
+    <tr><th>항목</th><th>설정값</th></tr>
+    <tr><td class="k">주파수</td><td>1단계에서 선택한 노드 주파수 (예: <b>145.620 MHz</b>)</td></tr>
+    <tr><td class="k">모드</td><td><b>FM</b></td></tr>
+    <tr><td class="k">톤 방식</td><td><b>TSQ</b> 또는 <b>T SQL</b> (톤 스켈치) — 무전기에 따라 표기가 다름</td></tr>
+    <tr><td class="k">톤 주파수</td><td><b>88.5 Hz</b></td></tr>
+    <tr><td class="k">시프트 / 오프셋</td><td><b>없음</b> (심플렉스 · SIMP)</td></tr>
+    <tr><td class="k">출력</td><td>가까우면 Low, 멀면 High</td></tr>
+  </table>
+  <div class="warn"><b>톤 설정을 빠뜨리면 접속되지 않습니다</b> — 88.5 Hz 톤이 실려야 노드가 신호를 받아들입니다. 단순히 "TONE"만 켜는 것이 아니라 <b>TSQ(톤 스켈치)</b>로 설정해야 노드에서 나오는 소리도 정상적으로 들립니다.</div>
+</div>
+
+<div class="step">
+  <div class="step-head"><div class="num">3</div><h2>접속 확인 방법</h2></div>
+  <ol>
+    <li>설정을 마친 후 <b>PTT를 짧게 눌러 자기 콜사인을 송신</b>합니다.<br>예) <i>"HL2TLS, RC-Net 접속 테스트"</i></li>
+    <li>PTT를 떼고 응답을 기다립니다.</li>
+    <li>Room에 다른 국이 있으면 응답이 돌아옵니다.</li>
+  </ol>
+  <div class="ok"><b>소리가 나지 않아도 정상일 수 있습니다</b> — Room에 접속 중인 다른 국이 없으면 응답이 없습니다. 이 경우 무전기 설정이 잘못된 것이 아니라 상대가 없는 것입니다.</div>
+</div>
+
+<div class="step">
+  <div class="step-head"><div class="num">4</div><h2>교신 요령</h2></div>
+  <ul>
+    <li><b>PTT를 누른 후 1초 정도 기다렸다가</b> 말을 시작하십시오. 인터넷 연결이 붙는 데 약간의 시간이 걸려 첫 마디가 잘릴 수 있습니다.</li>
+    <li>말을 마치면 <b>PTT를 바로 떼지 말고 반박자 여유</b>를 두십시오.</li>
+    <li>한 번에 너무 길게 송신하지 마십시오. 다른 국이 끼어들 틈을 주어야 합니다.</li>
+    <li>재난 상황에서는 <b>지시·보고 위주로 간결하게</b> 교신하십시오.</li>
+    <li>교신 시작과 끝에 <b>자기 콜사인</b>을 반드시 밝히십시오.</li>
+  </ul>
+</div>
+
+<div class="step">
+  <div class="step-head"><div class="num">5</div><h2>DTMF 명령 (키패드 있는 핸디)</h2></div>
+  <p>키패드가 있는 아날로그 핸디는 DTMF로 접속 대상을 바꿀 수 있습니다.</p>
+  <table>
+    <tr><th>명령</th><th>기능</th></tr>
+    <tr><td class="k"><code>#48182</code></td><td>RC-Net Room(DS0ARC-ROOM2)으로 접속</td></tr>
+    <tr><td class="k"><code>#55555</code></td><td>기본 Room으로 복귀 (다른 곳에 연결했다가 돌아올 때)</td></tr>
+    <tr><td class="k"><code>#○○○○○</code></td><td>다른 노드·룸의 DTMF ID를 입력하여 접속</td></tr>
+  </table>
+  <div class="warn"><b>주의</b> — 노드는 평소 RC-Net Room(48182)에 자동 접속되어 있습니다. 임의로 다른 룸에 연결하면 다른 봉사원들의 교신이 끊길 수 있으니, <b>기술팀장 승인 없이 변경하지 마십시오.</b></div>
+</div>
+
+<div class="step">
+  <div class="step-head"><div class="num">6</div><h2>접속이 안 될 때 점검 순서</h2></div>
+  <table>
+    <tr><th>점검 항목</th><th>확인 방법</th></tr>
+    <tr><td class="k">주파수가 맞는가</td><td>선택한 노드의 주파수와 정확히 일치하는지 (145.620 / 145.640 / 145.660)</td></tr>
+    <tr><td class="k">톤이 설정되어 있는가</td><td><b>TSQ 88.5 Hz</b> 설정 여부 — 가장 흔한 실수입니다</td></tr>
+    <tr><td class="k">시프트가 걸려 있지 않은가</td><td>레피터 모드(오프셋)가 아닌 <b>심플렉스</b>여야 합니다</td></tr>
+    <tr><td class="k">거리가 너무 먼가</td><td>핸디 출력으로 노드까지 전파가 닿아야 합니다. 실내·지하는 어렵습니다</td></tr>
+    <tr><td class="k">출력이 너무 낮은가</td><td>Low → High로 변경 후 재시도</td></tr>
+    <tr><td class="k">노드가 운용 중인가</td><td>노드 PC가 꺼져 있으면 접속 불가 — 기술팀장에게 확인</td></tr>
+  </table>
+  <div class="ok"><b>그래도 안 되면</b> — 무전기 화면 사진(주파수·톤 표시 부분)을 찍어 기술팀장에게 보내주시면 설정을 확인해 드립니다.</div>
+</div>
+
+<div class="step">
+  <div class="step-head"><div class="num">7</div><h2>알아두면 좋은 것</h2></div>
+  <ul>
+    <li><b>Room 48182는 전 세계에 공개</b>되어 있습니다. 해외 국이 들어올 수 있으니 교신 예절에 유의하십시오.</li>
+    <li>노드는 <b>10분마다 자동으로 콜사인(CW)을 송출</b>합니다. 삐- 소리가 나는 것은 정상입니다.</li>
+    <li>일정 시간 통신이 없으면 노드가 Room에서 자동으로 빠질 수 있습니다. 이때 <b>PTT를 한 번 눌렀다 떼면</b> 자동으로 다시 연결됩니다.</li>
+    <li>아마추어무선 자격증과 개설 허가를 받은 무선국만 송신할 수 있습니다. 미허가 송신은 금지됩니다.</li>
+  </ul>
+</div>
+
+<footer>
+  <div><b>서울 재난대응봉사회 기술팀장</b> · RC-Net WIRES-X 운영</div>
+  <div>문서버전 v1.0 · 2026-08-16</div>
+</footer>
+
+</div>
+
+<div id="vpop">
+  <span id="vmsg"></span>
+  <button onclick="location.reload(true)">새로고침</button>
+</div>
+
+<script>
+var APP_VERSION = "1.0";
+(function(){
+  try{
+    var key = "rcnet_analog_ver";
+    var prev = localStorage.getItem(key);
+    if(prev && prev !== APP_VERSION){
+      var p = document.getElementById("vpop");
+      document.getElementById("vmsg").textContent =
+        "문서가 업데이트되었습니다 (v" + prev + " → v" + APP_VERSION + ")";
+      p.style.display = "flex";
+    }
+    localStorage.setItem(key, APP_VERSION);
+  }catch(e){}
+})();
+</script>
+</body>
+</html>
