@@ -12,6 +12,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <style>
   :root{
     --bg:#f4f6f9; --card:#ffffff; --line:#e2e6ec;
@@ -90,7 +91,7 @@
 
 <div class="nav">
   <div class="nav-inner">
-    <div><span class="brand">🚗 차량 오디오 주파수 분석기</span><span class="ver">v2.0</span></div>
+    <div><span class="brand">🚗 차량 오디오 주파수 분석기</span><span class="ver">v2.1</span></div>
     <div class="modeToggle">
       <button id="modeMobile" class="active">모바일</button>
       <button id="modePc">PC</button>
@@ -122,6 +123,7 @@
   <h3>분석 결과</h3>
   <div id="bandResults"></div>
   <input type="text" id="carName" placeholder="차량명/조건 입력 (예: 소나타DN8_기본세팅)">
+  <div id="saveError" style="display:none;background:#fef2f2;color:#b91c1c;font-size:12px;padding:8px 10px;border-radius:8px;margin-bottom:8px;white-space:pre-wrap;"></div>
   <div class="row">
     <button class="btnSave" id="btnSave">Firebase에 저장</button>
     <button class="btnClose" id="btnCloseSheet">닫기</button>
@@ -160,6 +162,10 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const COL = "audio_freq_measurements";
+let authReady = false;
+firebase.auth().signInAnonymously()
+  .then(()=>{ authReady = true; })
+  .catch(e=>{ console.warn('익명 로그인 실패(계속 진행):', e.code, e.message); });
 
 document.getElementById('modeMobile').onclick = function(){this.classList.add('active');document.getElementById('modePc').classList.remove('active');};
 document.getElementById('modePc').onclick = function(){this.classList.add('active');document.getElementById('modeMobile').classList.remove('active');};
@@ -353,6 +359,8 @@ document.getElementById('btnCloseSheet').onclick = closeSheet;
 document.getElementById('dimOverlay').onclick = closeSheet;
 
 document.getElementById('btnSave').onclick = async ()=>{
+  const errBox = document.getElementById('saveError');
+  errBox.style.display = 'none';
   const name = document.getElementById('carName').value.trim();
   if(!name){ alert('차량명/조건을 입력하세요.'); return; }
   if(!lastAnalysis){ alert('먼저 분석을 진행하세요.'); return; }
@@ -369,7 +377,9 @@ document.getElementById('btnSave').onclick = async ()=>{
     document.getElementById('carName').value='';
     closeSheet();
   }catch(e){
-    alert('저장 실패: '+e.message);
+    console.error('Firestore 저장 오류:', e);
+    errBox.style.display = 'block';
+    errBox.textContent = '저장 실패 [' + (e.code||'unknown') + ']\n' + e.message;
   }
   btn.disabled = false; btn.textContent = 'Firebase에 저장';
 };
@@ -387,7 +397,14 @@ function freqToX(freq, width){
 async function loadList(){
   const body = document.getElementById('listBody');
   body.innerHTML = '<tr><td colspan="4">불러오는 중...</td></tr>';
-  const snap = await db.collection(COL).orderBy('createdAt','desc').limit(50).get();
+  let snap;
+  try{
+    snap = await db.collection(COL).orderBy('createdAt','desc').limit(50).get();
+  }catch(e){
+    console.error('Firestore 조회 오류:', e);
+    body.innerHTML = '<tr><td colspan="4" style="color:#b91c1c;">목록 조회 실패 ['+(e.code||'unknown')+'] '+e.message+'</td></tr>';
+    return;
+  }
   allDocs = [];
   snap.forEach(doc=>allDocs.push({id:doc.id, ...doc.data()}));
   if(allDocs.length===0){ body.innerHTML='<tr><td colspan="4">저장된 데이터가 없습니다.</td></tr>'; return; }
