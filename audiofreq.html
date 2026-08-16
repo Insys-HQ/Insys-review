@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>차량 오디오 주파수 분석기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --bg:#f4f6f9; --card:#ffffff; --line:#e2e6ec;
+    --txt:#2b2f36; --sub:#6b7280; --accent:#2563eb; --accent2:#0891b2;
+    --danger:#dc2626; --ok:#16a34a; --warn:#d97706;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--txt);font-size:14px;}
+  .nav{background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:50;}
+  .nav-inner{max-width:1100px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+  .brand{font-weight:900;font-size:16px;}
+  .ver{font-size:11px;color:var(--sub);background:#eef2f7;padding:2px 8px;border-radius:10px;margin-left:6px;}
+  .modeToggle{display:flex;background:#eef1f5;border-radius:8px;padding:3px;gap:3px;}
+  .modeToggle button{border:none;background:transparent;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:700;color:var(--sub);cursor:pointer;font-family:inherit;}
+  .modeToggle button.active{background:var(--accent);color:#fff;}
+  .wrap{max-width:1100px;margin:0 auto;padding:14px 16px 40px;}
+  .tabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;}
+  .tabs button{border:1px solid var(--line);background:var(--card);padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700;color:var(--sub);cursor:pointer;font-family:inherit;}
+  .tabs button.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px;}
+  .card h2{font-size:14px;margin:0 0 8px;color:var(--txt);}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  input[type=text]{font-family:inherit;font-size:13px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;flex:1;min-width:140px;color:var(--txt);}
+  select{font-family:inherit;font-size:13px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;color:var(--txt);background:#fff;}
+  button.btn{font-family:inherit;font-size:13px;font-weight:700;padding:9px 16px;border-radius:8px;border:none;cursor:pointer;color:#fff;background:var(--accent);}
+  button.btn.gray{background:#6b7280;}
+  button.btn.danger{background:var(--danger);}
+  button.btn.ok{background:var(--ok);}
+  button.btn:disabled{opacity:.45;cursor:not-allowed;}
+  canvas{width:100%;display:block;background:#0f172a;border-radius:10px;}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--sub);}
+  .dot{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px;}
+  .status{font-size:12px;color:var(--sub);margin-top:6px;}
+  .status.on{color:var(--ok);font-weight:700;}
+  table{width:100%;border-collapse:collapse;font-size:12px;}
+  th,td{border-bottom:1px solid var(--line);padding:8px 6px;text-align:left;color:var(--txt);}
+  th{color:var(--sub);font-weight:700;background:#f8fafc;}
+  .chk{width:16px;height:16px;}
+  .tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px;background:#eef2ff;color:var(--accent);font-weight:700;}
+  .note{font-size:12px;color:var(--sub);line-height:1.6;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  @media (max-width:640px){ .grid2{grid-template-columns:1fr;} }
+  .bandInfo{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+  .bandInfo span{font-size:11px;background:#f1f5f9;color:var(--sub);padding:3px 8px;border-radius:6px;}
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <div class="nav-inner">
+    <div><span class="brand">🚗 차량 오디오 주파수 분석기</span><span class="ver">v1.0</span></div>
+    <div class="modeToggle">
+      <button id="modeMobile" class="active">모바일</button>
+      <button id="modePc">PC</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="tabs">
+    <button class="tabBtn active" data-tab="live">실시간 측정</button>
+    <button class="tabBtn" data-tab="compare">저장 데이터 비교</button>
+  </div>
+
+  <!-- ===== 실시간 측정 탭 ===== -->
+  <div id="tab-live">
+    <div class="card">
+      <h2>1. 마이크 연결 및 측정</h2>
+      <div class="row">
+        <button class="btn" id="btnMicStart">🎙 마이크 시작</button>
+        <button class="btn gray" id="btnMicStop" disabled>정지</button>
+        <span class="status" id="micStatus">마이크 미연결</span>
+      </div>
+      <div class="note" style="margin-top:8px;">스윕 음원(20Hz~20kHz) 또는 평소 듣는 음악을 재생한 상태에서 측정하세요. 그래프는 상대 음압 레벨(dB, 비보정)입니다.</div>
+    </div>
+
+    <div class="card">
+      <h2>2. 실시간 주파수 응답 (로그 스케일 20Hz–20kHz)</h2>
+      <canvas id="liveCanvas" width="1000" height="360"></canvas>
+      <div class="bandInfo">
+        <span>저음(Bass) 20–250Hz</span>
+        <span>중저음 250–500Hz</span>
+        <span>중음(Mid) 500–2kHz</span>
+        <span>중고음 2k–6kHz</span>
+        <span>고음(Treble) 6k–20kHz</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>3. 스냅샷 캡처 후 저장 (Firebase)</h2>
+      <div class="row">
+        <input type="text" id="carName" placeholder="차량명/조건 (예: 소나타DN8_기본세팅)">
+        <button class="btn ok" id="btnCapture" disabled>3초간 평균 캡처</button>
+      </div>
+      <div class="status" id="captureStatus"></div>
+      <div class="row" style="margin-top:8px;" id="saveRow" style="display:none;">
+        <button class="btn" id="btnSave" disabled>Firebase에 저장</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 비교 탭 ===== -->
+  <div id="tab-compare" style="display:none;">
+    <div class="card">
+      <h2>저장된 측정 목록 (최대 2개 선택하여 비교)</h2>
+      <div class="row" style="margin-bottom:8px;">
+        <button class="btn gray" id="btnRefresh">목록 새로고침</button>
+      </div>
+      <table id="listTable">
+        <thead><tr><th></th><th>차량/조건명</th><th>측정일시</th><th>삭제</th></tr></thead>
+        <tbody id="listBody"></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h2>비교 그래프</h2>
+      <canvas id="cmpCanvas" width="1000" height="360"></canvas>
+      <div class="legend" id="cmpLegend"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ===== Firebase ===== */
+const firebaseConfig = {
+  apiKey: "AIzaSyBYqd2uRr1ZvFLDCWuS15h9qFkT-Dvg5Es",
+  authDomain: "insys-work.firebaseapp.com",
+  projectId: "insys-work",
+  storageBucket: "insys-work.appspot.com",
+  messagingSenderId: "225275784859",
+  appId: "1:225275784859:web:bd12815c6dc47c0c49e03e"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const COL = "audio_freq_measurements";
+
+/* ===== 모드 토글 ===== */
+const modeMobile = document.getElementById('modeMobile');
+const modePc = document.getElementById('modePc');
+modeMobile.onclick = ()=>{modeMobile.classList.add('active');modePc.classList.remove('active');};
+modePc.onclick = ()=>{modePc.classList.add('active');modeMobile.classList.remove('active');};
+
+/* ===== 탭 전환 ===== */
+document.querySelectorAll('.tabBtn').forEach(b=>{
+  b.onclick = ()=>{
+    document.querySelectorAll('.tabBtn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    document.getElementById('tab-live').style.display = b.dataset.tab==='live' ? 'block':'none';
+    document.getElementById('tab-compare').style.display = b.dataset.tab==='compare' ? 'block':'none';
+    if(b.dataset.tab==='compare') loadList();
+  };
+});
+
+/* ===== 오디오 캡처 ===== */
+let audioCtx, analyser, micSource, dataArray, rafId;
+let sampleRate = 44100;
+const FFT_SIZE = 8192;
+const FREQ_MIN = 20, FREQ_MAX = 20000;
+
+const liveCanvas = document.getElementById('liveCanvas');
+const lctx = liveCanvas.getContext('2d');
+
+document.getElementById('btnMicStart').onclick = async ()=>{
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+    audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    sampleRate = audioCtx.sampleRate;
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = FFT_SIZE;
+    analyser.smoothingTimeConstant = 0.6;
+    micSource = audioCtx.createMediaStreamSource(stream);
+    micSource.connect(analyser);
+    dataArray = new Uint8Array(analyser.frequencyBinCount);
+    document.getElementById('micStatus').textContent = '마이크 연결됨 (SR:'+sampleRate+'Hz)';
+    document.getElementById('micStatus').classList.add('on');
+    document.getElementById('btnMicStart').disabled = true;
+    document.getElementById('btnMicStop').disabled = false;
+    document.getElementById('btnCapture').disabled = false;
+    draw();
+  }catch(e){
+    alert('마이크 접근 실패: '+e.message);
+  }
+};
+
+document.getElementById('btnMicStop').onclick = ()=>{
+  if(rafId) cancelAnimationFrame(rafId);
+  if(audioCtx) audioCtx.close();
+  document.getElementById('micStatus').textContent = '마이크 정지됨';
+  document.getElementById('micStatus').classList.remove('on');
+  document.getElementById('btnMicStart').disabled = false;
+  document.getElementById('btnMicStop').disabled = true;
+  document.getElementById('btnCapture').disabled = true;
+};
+
+function freqToX(freq, width){
+  const logMin = Math.log10(FREQ_MIN), logMax = Math.log10(FREQ_MAX);
+  return ( (Math.log10(freq)-logMin) / (logMax-logMin) ) * width;
+}
+function binForFreq(freq){
+  return Math.round(freq / (sampleRate/2) * (analyser.frequencyBinCount));
+}
+
+function drawGrid(ctx, w, h){
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(0,0,w,h);
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 1;
+  const marks = [20,50,100,200,500,1000,2000,5000,10000,20000];
+  ctx.font = '10px Noto Sans KR';
+  marks.forEach(f=>{
+    const x = freqToX(f,w);
+    ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    const label = f>=1000 ? (f/1000)+'k' : f;
+    ctx.fillText(label+'Hz', Math.min(x+3,w-30), h-4);
+  });
+  for(let db=0; db<=100; db+=20){
+    const y = h - (db/100)*h;
+    ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.fillText(db, 4, y-2);
+  }
+}
+
+function draw(){
+  analyser.getByteFrequencyData(dataArray);
+  const w = liveCanvas.width, h = liveCanvas.height;
+  drawGrid(lctx,w,h);
+  lctx.beginPath();
+  lctx.strokeStyle = '#22d3ee';
+  lctx.lineWidth = 2;
+  for(let x=0;x<w;x++){
+    const logMin=Math.log10(FREQ_MIN), logMax=Math.log10(FREQ_MAX);
+    const freq = Math.pow(10, logMin + (x/w)*(logMax-logMin));
+    const bin = binForFreq(freq);
+    const val = dataArray[bin] || 0;
+    const y = h - (val/255)*h;
+    if(x===0) lctx.moveTo(x,y); else lctx.lineTo(x,y);
+  }
+  lctx.stroke();
+  rafId = requestAnimationFrame(draw);
+}
+
+/* ===== 스냅샷 캡처 (3초 평균) ===== */
+let lastCapture = null;
+document.getElementById('btnCapture').onclick = async ()=>{
+  const btn = document.getElementById('btnCapture');
+  btn.disabled = true;
+  const statusEl = document.getElementById('captureStatus');
+  const DURATION = 3000, INTERVAL = 100;
+  const steps = DURATION/INTERVAL;
+  const bins = analyser.frequencyBinCount;
+  const sum = new Float64Array(bins);
+  let count = 0;
+  for(let i=0;i<steps;i++){
+    await new Promise(r=>setTimeout(r,INTERVAL));
+    analyser.getByteFrequencyData(dataArray);
+    for(let b=0;b<bins;b++) sum[b]+=dataArray[b];
+    count++;
+    statusEl.textContent = '캡처 중... '+Math.round((i+1)/steps*100)+'%';
+  }
+  // 로그 스케일 150개 포인트로 다운샘플
+  const points = [];
+  const logMin=Math.log10(FREQ_MIN), logMax=Math.log10(FREQ_MAX);
+  for(let i=0;i<150;i++){
+    const freq = Math.pow(10, logMin + (i/149)*(logMax-logMin));
+    const bin = binForFreq(freq);
+    const avg = (sum[bin]||0)/count;
+    points.push({f:Math.round(freq), v:Math.round(avg*10)/10});
+  }
+  lastCapture = points;
+  statusEl.textContent = '캡처 완료 ('+points.length+'개 포인트). 차량명을 입력하고 저장하세요.';
+  document.getElementById('saveRow').style.display='flex';
+  document.getElementById('btnSave').disabled = false;
+  btn.disabled = false;
+};
+
+document.getElementById('btnSave').onclick = async ()=>{
+  const name = document.getElementById('carName').value.trim();
+  if(!name){ alert('차량명/조건을 입력하세요.'); return; }
+  if(!lastCapture){ alert('먼저 캡처를 진행하세요.'); return; }
+  const btn = document.getElementById('btnSave');
+  btn.disabled = true; btn.textContent = '저장 중...';
+  try{
+    await db.collection(COL).add({
+      name: name,
+      points: lastCapture,
+      sampleRate: sampleRate,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    alert('저장 완료되었습니다.');
+    document.getElementById('carName').value='';
+    document.getElementById('captureStatus').textContent='';
+    document.getElementById('saveRow').style.display='none';
+  }catch(e){
+    alert('저장 실패: '+e.message);
+  }
+  btn.disabled = false; btn.textContent = 'Firebase에 저장';
+};
+
+/* ===== 비교 탭 ===== */
+const cmpCanvas = document.getElementById('cmpCanvas');
+const cctx = cmpCanvas.getContext('2d');
+const COLORS = ['#22d3ee','#f97316','#a3e635','#f472b6'];
+let allDocs = [];
+
+async function loadList(){
+  const body = document.getElementById('listBody');
+  body.innerHTML = '<tr><td colspan="4">불러오는 중...</td></tr>';
+  const snap = await db.collection(COL).orderBy('createdAt','desc').limit(50).get();
+  allDocs = [];
+  snap.forEach(doc=>allDocs.push({id:doc.id, ...doc.data()}));
+  if(allDocs.length===0){ body.innerHTML='<tr><td colspan="4">저장된 데이터가 없습니다.</td></tr>'; return; }
+  body.innerHTML = allDocs.map((d,i)=>{
+    const dt = d.createdAt && d.createdAt.toDate ? d.createdAt.toDate().toLocaleString('ko-KR') : '-';
+    return `<tr>
+      <td><input type="checkbox" class="chk cmpChk" data-idx="${i}"></td>
+      <td><span class="tag">${escapeHtml(d.name)}</span></td>
+      <td>${dt}</td>
+      <td><button class="btn danger" style="padding:4px 10px;font-size:11px;" onclick="delDoc('${d.id}')">삭제</button></td>
+    </tr>`;
+  }).join('');
+  document.querySelectorAll('.cmpChk').forEach(c=>c.onchange=onChkChange);
+}
+
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+function onChkChange(){
+  const checked = [...document.querySelectorAll('.cmpChk:checked')];
+  if(checked.length>2){
+    this.checked=false;
+    alert('최대 2개까지 비교 가능합니다.');
+    return;
+  }
+  drawCompare(checked.map(c=>allDocs[c.dataset.idx]));
+}
+
+function drawCompare(docs){
+  const w=cmpCanvas.width,h=cmpCanvas.height;
+  drawGridStatic(cctx,w,h);
+  const legend = document.getElementById('cmpLegend');
+  legend.innerHTML = '';
+  docs.forEach((d,idx)=>{
+    const color = COLORS[idx%COLORS.length];
+    cctx.beginPath();
+    cctx.strokeStyle = color;
+    cctx.lineWidth = 2;
+    d.points.forEach((p,i)=>{
+      const x = freqToX(p.f,w);
+      const y = h-(p.v/255)*h;
+      if(i===0) cctx.moveTo(x,y); else cctx.lineTo(x,y);
+    });
+    cctx.stroke();
+    legend.innerHTML += `<span><span class="dot" style="background:${color}"></span>${escapeHtml(d.name)}</span>`;
+  });
+}
+
+function drawGridStatic(ctx,w,h){
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle='#0f172a'; ctx.fillRect(0,0,w,h);
+  ctx.strokeStyle='rgba(255,255,255,0.08)'; ctx.lineWidth=1;
+  const marks=[20,50,100,200,500,1000,2000,5000,10000,20000];
+  ctx.font='10px Noto Sans KR';
+  marks.forEach(f=>{
+    const x=freqToX(f,w);
+    ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,0.45)';
+    const label = f>=1000?(f/1000)+'k':f;
+    ctx.fillText(label+'Hz', Math.min(x+3,w-30), h-4);
+  });
+  for(let db=0;db<=100;db+=20){
+    const y=h-(db/100)*h;
+    ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,0.35)';
+    ctx.fillText(db,4,y-2);
+  }
+}
+
+window.delDoc = async function(id){
+  if(!confirm('이 측정 데이터를 삭제하시겠습니까?')) return;
+  await db.collection(COL).doc(id).delete();
+  loadList();
+};
+
+document.getElementById('btnRefresh').onclick = loadList;
+</script>
+</body>
+</html>
