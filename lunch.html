@@ -6,7 +6,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>인시스 점심주문관리 v8.0</title>
+<title>인시스 점심주문관리 v8.1</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -747,7 +747,7 @@ body.season-warm {
   <div class="hd-inner">
     <div class="hd-left" style="display:flex;align-items:center;gap:10px">
       <h1>인시스 점심주문관리</h1>
-      <span class="ver-badge">v8.0</span>
+      <span class="ver-badge">v8.1</span>
       <button id="settingBtn" title="설정" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">⚙️</button>
     </div>
     <div class="hd-right">
@@ -1001,7 +1001,7 @@ body.season-warm {
     <div id="restaurantAdminList"></div>
   </div>
 
-  <div class="footer-info">점심주문관리 시스템 v8.0</div>
+  <div class="footer-info">점심주문관리 시스템 v8.1</div>
 
   <!-- ══ AI 추천 모달 ══ -->
   <div id="aiModal" class="modal-overlay hidden">
@@ -2832,8 +2832,20 @@ function openSlot() {
 
 // 슬롯 릴 초기 아이템 생성
 function buildSlotReels() {
-  // 다트 원판 슬라이스 생성
-  const items = getSlotItems();
+  // 다트 원판 슬라이스 생성 - 최대 12개 아이템만 표시 (랜덤 샘플링)
+  const allItems = getSlotItems();
+  const MAX_SLICES = 12;
+  let items;
+  if(allItems.length > MAX_SLICES) {
+    // 랜덤으로 12개 선택
+    const shuffled = [...allItems].sort(()=>Math.random()-0.5);
+    items = shuffled.slice(0, MAX_SLICES);
+  } else {
+    items = allItems;
+  }
+  // 저장해서 spinSlot에서 재사용
+  window._dartItems = items;
+
   const slices = document.getElementById('dartSlices');
   if(!slices) return;
   slices.innerHTML = '';
@@ -2841,10 +2853,10 @@ function buildSlotReels() {
   const n = items.length;
   const sliceAngle = 360 / n;
   const cx = 140, cy = 140, r = 130;
-  const colors = ['#006064','#00897b','#e67e22','#c0392b','#8e44ad','#2980b9','#27ae60','#f39c12'];
+  const colors = ['#006064','#00897b','#e67e22','#c0392b','#8e44ad','#2980b9','#27ae60','#f39c12','#16a085','#d35400','#7f8c8d','#c0392b'];
 
   items.forEach((item, i) => {
-    const startAngle = i * sliceAngle - 90; // 12시부터 시작
+    const startAngle = i * sliceAngle - 90;
     const endAngle   = startAngle + sliceAngle;
     const x1 = cx + r * Math.cos(startAngle * Math.PI / 180);
     const y1 = cy + r * Math.sin(startAngle * Math.PI / 180);
@@ -2857,25 +2869,52 @@ function buildSlotReels() {
     path.setAttribute('d', d);
     path.setAttribute('fill', colors[i % colors.length]);
     path.setAttribute('stroke', '#fff');
-    path.setAttribute('stroke-width', '1.5');
+    path.setAttribute('stroke-width', '2');
     slices.appendChild(path);
 
-    // 텍스트 (슬라이스 중앙)
+    // 텍스트 (슬라이스 중앙에서 바깥쪽으로)
     const midAngle = startAngle + sliceAngle / 2;
-    const tr = r * 0.65;
-    const tx = cx + tr * Math.cos(midAngle * Math.PI / 180);
-    const ty = cy + tr * Math.sin(midAngle * Math.PI / 180);
-    const label = (item.retry ? '🔄' : (item.isBong ? '🍗 ' : '') + item.rest.slice(0,4));
+    const midAngleRad = midAngle * Math.PI / 180;
 
-    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    text.setAttribute('x', tx);
-    text.setAttribute('y', ty);
-    text.setAttribute('text-anchor', 'middle');
-    text.setAttribute('dominant-baseline', 'middle');
-    text.setAttribute('transform', `rotate(${midAngle+90}, ${tx}, ${ty})`);
-    text.setAttribute('class', 'dart-slice-text');
-    text.textContent = label;
-    slices.appendChild(text);
+    // 식당명 (안쪽)
+    const rRest = r * 0.75;
+    const rxR = cx + rRest * Math.cos(midAngleRad);
+    const ryR = cy + rRest * Math.sin(midAngleRad);
+    const restLabel = item.retry ? '🔄 재뽑기' : (item.isBong ? '🍗' : '') + (item.rest.length > 5 ? item.rest.slice(0,4)+'…' : item.rest);
+
+    const restText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    restText.setAttribute('x', rxR);
+    restText.setAttribute('y', ryR);
+    restText.setAttribute('text-anchor', 'middle');
+    restText.setAttribute('dominant-baseline', 'middle');
+    restText.setAttribute('transform', `rotate(${midAngle+90}, ${rxR}, ${ryR})`);
+    restText.setAttribute('fill', '#fff');
+    restText.setAttribute('font-size', '12');
+    restText.setAttribute('font-weight', '700');
+    restText.setAttribute('font-family', "'Noto Sans KR',sans-serif");
+    restText.textContent = restLabel;
+    slices.appendChild(restText);
+
+    // 메뉴명 (바깥쪽)
+    if(!item.retry) {
+      const rMenu = r * 0.45;
+      const rxM = cx + rMenu * Math.cos(midAngleRad);
+      const ryM = cy + rMenu * Math.sin(midAngleRad);
+      const menuLabel = item.menu.length > 6 ? item.menu.slice(0,5)+'…' : item.menu;
+
+      const menuText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      menuText.setAttribute('x', rxM);
+      menuText.setAttribute('y', ryM);
+      menuText.setAttribute('text-anchor', 'middle');
+      menuText.setAttribute('dominant-baseline', 'middle');
+      menuText.setAttribute('transform', `rotate(${midAngle+90}, ${rxM}, ${ryM})`);
+      menuText.setAttribute('fill', 'rgba(255,255,255,0.85)');
+      menuText.setAttribute('font-size', '10');
+      menuText.setAttribute('font-weight', '500');
+      menuText.setAttribute('font-family', "'Noto Sans KR',sans-serif");
+      menuText.textContent = menuLabel;
+      slices.appendChild(menuText);
+    }
   });
 }
 
@@ -2913,7 +2952,8 @@ async function spinSlot() {
   isSpinning = true;
   $('slotResult').classList.add('hidden');
 
-  const items = getSlotItems();
+  // buildSlotReels에서 저장한 items 사용 (12개 제한)
+  const items = window._dartItems || getSlotItems();
   const wheel = document.getElementById('dartWheel');
   const btn   = $('slotSpinBtn');
 
