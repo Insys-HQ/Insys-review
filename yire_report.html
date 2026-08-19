@@ -10,6 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
 <style>
   :root{
     --navy:#1f3a5f;
@@ -19,6 +20,7 @@
     --accent:#2e6da4;
     --red:#c0392b;
     --green:#1e7a46;
+    --amber:#b8860b;
     --bg-card:#ffffff;
     --bg-page:#f3f5f8;
     --border:#e1e5eb;
@@ -202,6 +204,24 @@
   ul.risk-list b{
     color:var(--navy);
   }
+  .chart-box{
+    background:#fafbfc;
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:14px;
+    margin:12px 0;
+  }
+  .chart-box .chart-title{
+    font-size:12px;
+    font-weight:700;
+    color:var(--navy);
+    margin-bottom:8px;
+  }
+  .chart-canvas-wrap{
+    position:relative;
+    width:100%;
+    height:280px;
+  }
   .footer{
     text-align:center;
     font-size:11px;
@@ -210,7 +230,7 @@
   }
   .version-tag{
     text-align:center;
-    font-size:10px;
+    font-size:11px;
     color:#9aa4b2;
     padding-bottom:16px;
   }
@@ -220,7 +240,7 @@
     grid-template-columns:1fr;
   }
   body.mobile table{
-    font-size:10px;
+    font-size:11px;
   }
   body.mobile th, body.mobile td{
     padding:5px 4px;
@@ -233,6 +253,9 @@
   }
   body.mobile .section{
     padding:14px 14px;
+  }
+  body.mobile .chart-canvas-wrap{
+    height:240px;
   }
   .table-scroll{
     overflow-x:auto;
@@ -267,7 +290,7 @@
     <div class="meta">
       <span>작성부서 : 인시스 AI혁신 연구개발실</span>
       <span>작성일 : 2026-08-19</span>
-      <span>문서버전 : v1.0</span>
+      <span>문서버전 : v1.1</span>
     </div>
   </div>
 
@@ -310,6 +333,10 @@
 
   <div class="section">
     <h2>2. 매출 추이 — 안정적, 우려 요인 없음</h2>
+    <div class="chart-box">
+      <div class="chart-title">월별 매출 추이 (26.2월~26.7월)</div>
+      <div class="chart-canvas-wrap"><canvas id="chartRevenue"></canvas></div>
+    </div>
     <ul class="risk-list">
       <li>월 매출 <b>4.2억~4.6억원대</b>에서 변동폭 8% 이내로 매우 안정적 (2월 4.54억 ~ 7월 4.60억)</li>
       <li>5월(4.20억)이 최저치이나 6월(4.19억) → 7월(4.60억) 회복세로 추세 이상 아님</li>
@@ -319,17 +346,9 @@
 
   <div class="section">
     <h2>3. 비용구조 분석 — 서산투자비용이 변동성의 핵심 원인</h2>
-    <h3>서산투자비용 월별 추이</h3>
-    <div class="table-scroll">
-    <table class="wide">
-      <tr>
-        <th>항목</th><th>26.2월</th><th>26.3월</th><th>26.4월</th><th>26.5월</th><th>26.6월</th><th>26.7월</th>
-      </tr>
-      <tr>
-        <td class="label-cell">서산투자비용</td>
-        <td>8,462,399</td><td>76,265,228</td><td class="neg">189,478,996</td><td class="neg">378,059,740</td><td>25,256,698</td><td>8,392,899</td>
-      </tr>
-    </table>
+    <div class="chart-box">
+      <div class="chart-title">주요 항목별 월별 추이 (서산투자비용 · 정규직급여 · 매입)</div>
+      <div class="chart-canvas-wrap"><canvas id="chartExpense"></canvas></div>
     </div>
     <ul class="risk-list">
       <li>4~5월 두 달간 <b>567.6백만원</b> 집중 투입 (전체 서산투자비용 726백만원의 78% 비중)</li>
@@ -346,6 +365,10 @@
   <div class="section">
     <h2>4. 손익률 왜곡 확인</h2>
     <p style="font-size:13px;">원안 손익률은 5월 -75%까지 급락하나, 이는 매출(분모) 문제가 아니라 서산투자 집행 타이밍 문제입니다. 서산투자·대출이자 제외 조정손익률로 보면 전 기간 흑자가 유지됩니다.</p>
+    <div class="chart-box">
+      <div class="chart-title">원안 손익 vs 조정손익(대출이자·서산투자 제외) 비교</div>
+      <div class="chart-canvas-wrap"><canvas id="chartProfit"></canvas></div>
+    </div>
     <div class="table-scroll">
     <table class="wide">
       <tr>
@@ -376,7 +399,7 @@
 
   <div class="footer">본 리포트는 제공된 손익분석 시트를 기준으로 작성되었습니다.</div>
   <div class="footer">인시스 AI혁신 연구개발실</div>
-  <div class="version-tag">문서버전 v1.0 | 최종수정 2026-08-19</div>
+  <div class="version-tag">문서버전 v1.1 | 최종수정 2026-08-19</div>
 
 </div>
 
@@ -386,10 +409,175 @@ function setMode(mode){
   document.getElementById('btn-mobile').classList.toggle('active', mode==='mobile');
   document.getElementById('btn-pc').classList.toggle('active', mode==='pc');
 }
-// 기본: 화면 너비에 따라 초기 모드 자동 설정
 if(window.innerWidth > 768){
   setMode('pc');
 }
+
+const months = ['26.2월','26.3월','26.4월','26.5월','26.6월','26.7월'];
+
+Chart.defaults.font.family = "'Noto Sans KR', sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#2b2f36';
+
+new Chart(document.getElementById('chartRevenue'), {
+  type: 'bar',
+  data: {
+    labels: months,
+    datasets: [{
+      label: '매출(원)',
+      data: [453724869, 432366491, 455524793, 456774426, 419763801, 460066417],
+      backgroundColor: '#2e6da4',
+      borderRadius: 4,
+      maxBarThickness: 46
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        titleFont: { size: 12 },
+        bodyFont: { size: 12 },
+        callbacks: {
+          label: function(ctx){ return '매출: ' + ctx.parsed.y.toLocaleString() + '원'; }
+        }
+      }
+    },
+    scales: {
+      y: {
+        ticks: {
+          font: { size: 11 },
+          callback: function(v){ return (v/100000000).toFixed(1) + '억'; }
+        },
+        grid: { color: '#e1e5eb' }
+      },
+      x: {
+        ticks: { font: { size: 11 } },
+        grid: { display: false }
+      }
+    }
+  }
+});
+
+new Chart(document.getElementById('chartExpense'), {
+  type: 'line',
+  data: {
+    labels: months,
+    datasets: [
+      {
+        label: '서산투자비용',
+        data: [8462399, 76265228, 189478996, 378059740, 25256698, 8392899],
+        borderColor: '#c0392b',
+        backgroundColor: 'rgba(192,57,43,0.12)',
+        tension: 0.25,
+        fill: true,
+        pointRadius: 4
+      },
+      {
+        label: '정규직급여',
+        data: [267904115, 306825534, 326098989, 345816823, 329781823, 317226642],
+        borderColor: '#1f3a5f',
+        backgroundColor: 'rgba(31,58,95,0.08)',
+        tension: 0.25,
+        fill: true,
+        pointRadius: 4
+      },
+      {
+        label: '매입',
+        data: [5946032, 5135305, 7928727, 9115981, 6726382, 6903714],
+        borderColor: '#b8860b',
+        backgroundColor: 'rgba(184,134,11,0.08)',
+        tension: 0.25,
+        fill: true,
+        pointRadius: 4
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top',
+        labels: { font: { size: 11 }, boxWidth: 12, padding: 12 }
+      },
+      tooltip: {
+        titleFont: { size: 12 },
+        bodyFont: { size: 12 },
+        callbacks: {
+          label: function(ctx){ return ctx.dataset.label + ': ' + ctx.parsed.y.toLocaleString() + '원'; }
+        }
+      }
+    },
+    scales: {
+      y: {
+        ticks: {
+          font: { size: 11 },
+          callback: function(v){ return (v/1000000).toFixed(0) + '백만'; }
+        },
+        grid: { color: '#e1e5eb' }
+      },
+      x: {
+        ticks: { font: { size: 11 } },
+        grid: { display: false }
+      }
+    }
+  }
+});
+
+new Chart(document.getElementById('chartProfit'), {
+  type: 'bar',
+  data: {
+    labels: months,
+    datasets: [
+      {
+        label: '원안 손익',
+        data: [142641669, -8250489, -156816469, -340879163, 27413860, 93859561],
+        backgroundColor: '#8fa8c4',
+        borderRadius: 4,
+        maxBarThickness: 30
+      },
+      {
+        label: '조정손익(대출이자·서산투자 제외)',
+        data: [155094203, 71631724, 36667046, 41106740, 56734530, 106644651],
+        backgroundColor: '#1e7a46',
+        borderRadius: 4,
+        maxBarThickness: 30
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top',
+        labels: { font: { size: 11 }, boxWidth: 12, padding: 12 }
+      },
+      tooltip: {
+        titleFont: { size: 12 },
+        bodyFont: { size: 12 },
+        callbacks: {
+          label: function(ctx){ return ctx.dataset.label + ': ' + ctx.parsed.y.toLocaleString() + '원'; }
+        }
+      }
+    },
+    scales: {
+      y: {
+        ticks: {
+          font: { size: 11 },
+          callback: function(v){ return (v/100000000).toFixed(1) + '억'; }
+        },
+        grid: { color: '#e1e5eb' }
+      },
+      x: {
+        ticks: { font: { size: 11 } },
+        grid: { display: false }
+      }
+    }
+  }
+});
 </script>
 
 </body>
