@@ -6,7 +6,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>인시스 점심주문관리 v8.4</title>
+<title>인시스 점심주문관리 v8.5</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -30,6 +30,7 @@ body {
   font-family:'Noto Sans KR',sans-serif;
   background:var(--bg); color:var(--text);
   min-height:100vh; font-size:15px;
+  overflow-x:hidden;
   background-attachment:fixed;
   background-size:cover;
   background-position:center;
@@ -675,7 +676,7 @@ body.season-warm {
 
 /* ── 다트 원판 ────────────────────────────────────────── */
 .dart-container {
-  position:relative; margin:20px auto; width:400px; max-width:95vw;
+  position:relative; margin:20px auto; width:400px; max-width:min(95vw, 95%);
   display:flex; flex-direction:column; align-items:center; justify-content:center;
 }
 .dart-arrow {
@@ -753,7 +754,7 @@ body.season-warm {
   <div class="hd-inner">
     <div class="hd-left" style="display:flex;align-items:center;gap:10px">
       <h1>인시스 점심주문관리</h1>
-      <span class="ver-badge">v8.4</span>
+      <span class="ver-badge">v8.5</span>
       <button id="settingBtn" title="설정" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">⚙️</button>
     </div>
     <div class="hd-right">
@@ -1007,7 +1008,7 @@ body.season-warm {
     <div id="restaurantAdminList"></div>
   </div>
 
-  <div class="footer-info">점심주문관리 시스템 v8.4</div>
+  <div class="footer-info">점심주문관리 시스템 v8.5</div>
 
   <!-- ══ AI 추천 모달 ══ -->
   <div id="aiModal" class="modal-overlay hidden">
@@ -2843,13 +2844,11 @@ function buildSlotReels() {
   const MAX_SLICES = 12;
   let items;
   if(allItems.length > MAX_SLICES) {
-    // 랜덤으로 12개 선택
     const shuffled = [...allItems].sort(()=>Math.random()-0.5);
     items = shuffled.slice(0, MAX_SLICES);
   } else {
     items = allItems;
   }
-  // 저장해서 spinSlot에서 재사용
   window._dartItems = items;
 
   const slices = document.getElementById('dartSlices');
@@ -2860,6 +2859,13 @@ function buildSlotReels() {
   const sliceAngle = 360 / n;
   const cx = 190, cy = 190, r = 188;
   const colors = ['#006064','#00897b','#e67e22','#c0392b','#8e44ad','#2980b9','#27ae60','#f39c12','#16a085','#d35400','#7f8c8d','#c0392b'];
+
+  // 텍스트를 2줄로 나누는 함수 (긴 텍스트는 중간 지점에서 줄바꿈)
+  function splitText(text, maxLen) {
+    if(text.length <= maxLen) return [text];
+    const mid = Math.ceil(text.length / 2);
+    return [text.slice(0, mid), text.slice(mid)];
+  }
 
   items.forEach((item, i) => {
     const startAngle = i * sliceAngle - 90;
@@ -2878,15 +2884,34 @@ function buildSlotReels() {
     path.setAttribute('stroke-width', '2');
     slices.appendChild(path);
 
-    // 텍스트 (슬라이스 중앙에서 바깥쪽으로)
     const midAngle = startAngle + sliceAngle / 2;
     const midAngleRad = midAngle * Math.PI / 180;
 
-    // 식당명 (안쪽)
-    const rRest = r * 0.85;
+    if(item.retry) {
+      const rMid = r * 0.7;
+      const rx = cx + rMid * Math.cos(midAngleRad);
+      const ry = cy + rMid * Math.sin(midAngleRad);
+      const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      t.setAttribute('x', rx);
+      t.setAttribute('y', ry);
+      t.setAttribute('text-anchor', 'middle');
+      t.setAttribute('dominant-baseline', 'middle');
+      t.setAttribute('transform', `rotate(${midAngle}, ${rx}, ${ry})`);
+      t.setAttribute('fill', '#fff');
+      t.setAttribute('font-size', '14');
+      t.setAttribute('font-weight', '700');
+      t.setAttribute('font-family', "'Noto Sans KR',sans-serif");
+      t.textContent = '🔄 재뽑기';
+      slices.appendChild(t);
+      return;
+    }
+
+    // 식당명 - 바깥쪽에 2줄까지 (긴 이름 대응)
+    const restName = (item.isBong ? '🍗' : '') + item.rest;
+    const restLines = splitText(restName, 6); // 6자 넘으면 2줄
+    const rRest = r * 0.82;
     const rxR = cx + rRest * Math.cos(midAngleRad);
     const ryR = cy + rRest * Math.sin(midAngleRad);
-    const restLabel = item.retry ? '🔄 재뽑기' : (item.isBong ? '🍗' : '') + (item.rest.length > 6 ? item.rest.slice(0,5)+'…' : item.rest);
 
     const restText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     restText.setAttribute('x', rxR);
@@ -2895,32 +2920,54 @@ function buildSlotReels() {
     restText.setAttribute('dominant-baseline', 'middle');
     restText.setAttribute('transform', `rotate(${midAngle}, ${rxR}, ${ryR})`);
     restText.setAttribute('fill', '#fff');
-    restText.setAttribute('font-size', '13');
+    restText.setAttribute('font-size', '12');
     restText.setAttribute('font-weight', '700');
     restText.setAttribute('font-family', "'Noto Sans KR',sans-serif");
-    restText.textContent = restLabel;
+
+    if(restLines.length === 1) {
+      restText.textContent = restLines[0];
+    } else {
+      const tsp1 = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+      tsp1.setAttribute('x', rxR); tsp1.setAttribute('dy', '-0.55em');
+      tsp1.textContent = restLines[0];
+      const tsp2 = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+      tsp2.setAttribute('x', rxR); tsp2.setAttribute('dy', '1.1em');
+      tsp2.textContent = restLines[1];
+      restText.appendChild(tsp1);
+      restText.appendChild(tsp2);
+    }
     slices.appendChild(restText);
 
-    // 메뉴명 (바깥쪽)
-    if(!item.retry) {
-      const rMenu = r * 0.55;
-      const rxM = cx + rMenu * Math.cos(midAngleRad);
-      const ryM = cy + rMenu * Math.sin(midAngleRad);
-      const menuLabel = item.menu.length > 6 ? item.menu.slice(0,5)+'…' : item.menu;
+    // 메뉴명 - 안쪽에 2줄까지
+    const menuLines = splitText(item.menu, 6);
+    const rMenu = r * 0.5;
+    const rxM = cx + rMenu * Math.cos(midAngleRad);
+    const ryM = cy + rMenu * Math.sin(midAngleRad);
 
-      const menuText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      menuText.setAttribute('x', rxM);
-      menuText.setAttribute('y', ryM);
-      menuText.setAttribute('text-anchor', 'middle');
-      menuText.setAttribute('dominant-baseline', 'middle');
-      menuText.setAttribute('transform', `rotate(${midAngle}, ${rxM}, ${ryM})`);
-      menuText.setAttribute('fill', 'rgba(255,255,255,0.85)');
-      menuText.setAttribute('font-size', '11');
-      menuText.setAttribute('font-weight', '500');
-      menuText.setAttribute('font-family', "'Noto Sans KR',sans-serif");
-      menuText.textContent = menuLabel;
-      slices.appendChild(menuText);
+    const menuText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    menuText.setAttribute('x', rxM);
+    menuText.setAttribute('y', ryM);
+    menuText.setAttribute('text-anchor', 'middle');
+    menuText.setAttribute('dominant-baseline', 'middle');
+    menuText.setAttribute('transform', `rotate(${midAngle}, ${rxM}, ${ryM})`);
+    menuText.setAttribute('fill', 'rgba(255,255,255,0.9)');
+    menuText.setAttribute('font-size', '10');
+    menuText.setAttribute('font-weight', '500');
+    menuText.setAttribute('font-family', "'Noto Sans KR',sans-serif");
+
+    if(menuLines.length === 1) {
+      menuText.textContent = menuLines[0];
+    } else {
+      const tsp1 = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+      tsp1.setAttribute('x', rxM); tsp1.setAttribute('dy', '-0.5em');
+      tsp1.textContent = menuLines[0];
+      const tsp2 = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+      tsp2.setAttribute('x', rxM); tsp2.setAttribute('dy', '1em');
+      tsp2.textContent = menuLines[1];
+      menuText.appendChild(tsp1);
+      menuText.appendChild(tsp2);
     }
+    slices.appendChild(menuText);
   });
 }
 
