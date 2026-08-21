@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>인시스 계열사 손익분석 대시보드</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --navy:#1F3A5F; --ink:#2C3E50; --gray:#5A6B7B; --mute:#8494A4;
+  --line:#DDE4EC; --bg:#F4F6F9; --card:#FFFFFF;
+  --accent:#2E5C8A; --accent2:#4A7CB0;
+  --pos:#1F5FA8; --neg:#B4232A; --warn:#8A6D1F;
+  --pastel:#EBF1F8; --pastel2:#F2F5F9; --pastel3:#FDF6E8;
+  --w:420px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--ink);font-size:13px;line-height:1.5;-webkit-text-size-adjust:100%}
+body.pc{--w:1100px}
+body.mobile{--w:420px}
+.wrap{max-width:var(--w);margin:0 auto;padding:0 14px}
+.navbar{background:var(--navy);color:#fff;padding:8px 0;position:sticky;top:0;z-index:50;box-shadow:0 2px 6px rgba(0,0,0,.12)}
+.nav-inner{max-width:var(--w);margin:0 auto;padding:0 14px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.nav-title{font-size:14px;font-weight:700;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nav-sub{font-size:10px;color:#B9CBE0;font-weight:400}
+.ver{font-size:10px;background:rgba(255,255,255,.16);padding:2px 7px;border-radius:9px;font-weight:500;white-space:nowrap}
+.vt{display:flex;background:rgba(255,255,255,.14);border-radius:7px;overflow:hidden}
+.vt button{background:none;border:none;color:#C9D8E8;font-family:inherit;font-size:10px;padding:4px 8px;cursor:pointer;font-weight:500}
+.vt button.on{background:#fff;color:var(--navy);font-weight:700}
+.tabs{display:flex;gap:4px;overflow-x:auto;padding:8px 0 6px;-ms-overflow-style:none;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{flex:0 0 auto;background:#fff;border:1px solid var(--line);color:var(--gray);font-family:inherit;font-size:11.5px;font-weight:500;padding:6px 11px;border-radius:16px;cursor:pointer}
+.tabs button.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
+.card{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:12px;margin-bottom:8px}
+.card h3{font-size:12.5px;color:var(--navy);font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.card h3 .badge{font-size:10px;background:var(--pastel);color:var(--accent);padding:1px 6px;border-radius:8px;font-weight:500}
+.row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+label.lb{font-size:11px;color:var(--gray);font-weight:500;display:block;margin-bottom:3px}
+select,input[type=text],input[type=number],input[type=month],input[type=password],textarea{
+  font-family:inherit;font-size:12px;color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:6px 8px;background:#fff;width:100%}
+textarea{resize:vertical;min-height:60px;line-height:1.5}
+select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent2)}
+.btn{font-family:inherit;font-size:12px;font-weight:600;border:none;border-radius:6px;padding:7px 13px;cursor:pointer;background:var(--accent);color:#fff}
+.btn:hover{background:#24496E}
+.btn.sec{background:#fff;color:var(--accent);border:1px solid var(--accent2)}
+.btn.gray{background:#fff;color:var(--gray);border:1px solid var(--line)}
+.btn.dan{background:#fff;color:var(--neg);border:1px solid #E5B9BC}
+.btn.sm{font-size:11px;padding:5px 9px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.drop{border:2px dashed #C4D2E2;border-radius:9px;padding:16px 10px;text-align:center;background:var(--pastel2);cursor:pointer}
+.drop.hot{border-color:var(--accent);background:var(--pastel)}
+.drop .t{font-size:12px;font-weight:600;color:var(--accent)}
+.drop .s{font-size:10.5px;color:var(--mute);margin-top:3px}
+table{width:100%;border-collapse:collapse;font-size:11.5px}
+th,td{border:1px solid var(--line);padding:4px 6px;text-align:right;color:var(--ink)}
+th{background:var(--pastel);color:var(--navy);font-weight:700;text-align:center;font-size:11px}
+td.l,th.l{text-align:left}
+td.c,th.c{text-align:center}
+tr.sum td{background:var(--pastel2);font-weight:700}
+tr.sub td{background:#FAFCFE}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.pos{color:var(--pos);font-weight:600}
+.neg{color:var(--neg);font-weight:600}
+.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+body.pc .kpis{grid-template-columns:repeat(4,1fr)}
+.kpi{background:var(--pastel2);border:1px solid var(--line);border-radius:7px;padding:8px}
+.kpi .k{font-size:10px;color:var(--gray);font-weight:500}
+.kpi .v{font-size:15px;font-weight:700;color:var(--navy);margin-top:2px;letter-spacing:-.4px}
+.kpi .d{font-size:10px;margin-top:1px;color:var(--mute)}
+.ins{background:var(--pastel3);border-left:3px solid #C9A227;border-radius:0 7px 7px 0;padding:9px 11px;margin-top:6px}
+.ins .h{font-size:11.5px;font-weight:700;color:#7A5E12;margin-bottom:5px}
+.ins ul{margin:0;padding-left:15px}
+.ins li{font-size:11.5px;color:#4A4230;margin-bottom:3px;line-height:1.55}
+.alert{background:#FBEEEF;border-left:3px solid var(--neg);border-radius:0 7px 7px 0;padding:8px 11px;margin-top:6px}
+.alert .h{font-size:11.5px;font-weight:700;color:var(--neg);margin-bottom:4px}
+.alert li{font-size:11px;color:#7A2C31;margin-bottom:2px;list-style:none}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{font-size:11px;padding:5px 10px;border-radius:15px;border:1px solid var(--line);background:#fff;color:var(--gray);cursor:pointer;font-weight:500;user-select:none}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
+.chip.has{border-color:var(--accent2);color:var(--accent)}
+.chip.on.has{color:#fff}
+.chartbox{position:relative;height:190px;margin-top:6px}
+body.pc .chartbox{height:250px}
+.note{font-size:10.5px;color:var(--mute);line-height:1.6}
+.grid2{display:grid;grid-template-columns:1fr;gap:6px}
+body.pc .grid2{grid-template-columns:1fr 1fr}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+body.pc .fields{grid-template-columns:repeat(4,1fr)}
+.hide{display:none!important}
+.foot{text-align:center;font-size:10px;color:var(--mute);padding:12px 0 20px;line-height:1.7}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--navy);color:#fff;font-size:12px;padding:9px 16px;border-radius:20px;z-index:99;opacity:0;transition:.25s;pointer-events:none;max-width:88%;text-align:center}
+.toast.on{opacity:1}
+.spin{display:inline-block;width:11px;height:11px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-1px;margin-right:5px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.prev{max-width:100%;border-radius:7px;border:1px solid var(--line);margin-top:6px;display:block}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:10.5px;color:var(--gray);margin-top:5px}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:3px;vertical-align:-1px}
+.rank{font-size:10px;background:var(--pastel);color:var(--accent);border-radius:8px;padding:1px 6px;font-weight:600}
+</style>
+</head>
+<body class="mobile">
+
+<div class="navbar">
+  <div class="nav-inner">
+    <div>
+      <div class="nav-title">인시스 계열사 손익분석 대시보드</div>
+      <div class="nav-sub">인시스 AI혁신 연구개발실</div>
+    </div>
+    <div class="row" style="gap:6px;flex-wrap:nowrap">
+      <div class="vt">
+        <button id="vM" class="on" onclick="setView('mobile')">모바일</button>
+        <button id="vP" onclick="setView('pc')">PC</button>
+      </div>
+      <span class="ver" id="verTag">v1.0</span>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="tabs" id="tabs">
+    <button class="on" data-t="input">데이터 입력</button>
+    <button data-t="single">개별 분석</button>
+    <button data-t="compare">비교 분석</button>
+    <button data-t="group">그룹 통합</button>
+    <button data-t="period">기간 분석</button>
+    <button data-t="setup">설정</button>
+  </div>
+
+  <!-- ================= 데이터 입력 ================= -->
+  <div id="p-input">
+    <div class="card">
+      <h3>1. 기준 선택</h3>
+      <div class="row">
+        <div style="flex:1;min-width:120px">
+          <label class="lb">기준 연월</label>
+          <input type="month" id="inYm">
+        </div>
+        <div style="flex:1;min-width:120px">
+          <label class="lb">계열사</label>
+          <select id="inCo"></select>
+        </div>
+        <div style="flex:1;min-width:110px">
+          <label class="lb">금액 단위</label>
+          <select id="inUnit">
+            <option value="auto">자동 판별</option>
+            <option value="1">원</option>
+            <option value="1000">천원</option>
+            <option value="1000000">백만원</option>
+          </select>
+        </div>
+      </div>
+      <div class="note" style="margin-top:6px">저장 단위는 백만원. 원/천원 입력 시 자동 환산된다.</div>
+    </div>
+
+    <div class="card">
+      <h3>2. 자료 업로드 <span class="badge">엑셀 · 캡처화면</span></h3>
+      <div class="drop" id="drop">
+        <div class="t">엑셀 파일을 끌어놓거나 클릭</div>
+        <div class="s">.xlsx / .xls / .csv &nbsp;|&nbsp; 캡처화면은 Ctrl+V 붙여넣기</div>
+      </div>
+      <input type="file" id="file" accept=".xlsx,.xls,.csv,image/*" class="hide">
+      <div id="shotBox" class="hide">
+        <img id="shot" class="prev">
+        <div class="row" style="margin-top:6px">
+          <button class="btn sm" id="btnOcr">AI로 숫자 읽기</button>
+          <button class="btn sm gray" onclick="clearShot()">이미지 제거</button>
+        </div>
+        <div class="note" style="margin-top:4px">설정 탭에 Claude API 키 입력 시 캡처화면 자동 판독이 가능하다.</div>
+      </div>
+      <div id="sheetPick" class="hide" style="margin-top:8px">
+        <label class="lb">시트 선택</label>
+        <select id="sheetSel"></select>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>3. 손익 항목 확인 · 수정</h3>
+      <div class="fields" id="fields"></div>
+      <div id="vErr"></div>
+      <div class="row" style="margin-top:9px">
+        <button class="btn" onclick="saveRec()">저장</button>
+        <button class="btn gray sm" onclick="autoCalc()">자동 계산</button>
+        <button class="btn gray sm" onclick="clearFields()">입력 초기화</button>
+        <button class="btn dan sm" onclick="delRec()">이 월 데이터 삭제</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>4. 등록 현황 <span class="badge" id="ymTag"></span></h3>
+      <div class="chips" id="statusChips"></div>
+      <div class="note" style="margin-top:7px">파란 테두리 = 등록완료 / 회색 = 미제출</div>
+      <div class="tw" style="margin-top:8px"><table id="tblMonth"></table></div>
+    </div>
+  </div>
+
+  <!-- ================= 개별 분석 ================= -->
+  <div id="p-single" class="hide">
+    <div class="card">
+      <h3>대상 선택</h3>
+      <div class="row">
+        <div style="flex:1;min-width:130px">
+          <label class="lb">계열사</label>
+          <select id="sgCo"></select>
+        </div>
+        <div style="flex:1;min-width:120px">
+          <label class="lb">기준 연월</label>
+          <select id="sgYm"></select>
+        </div>
+      </div>
+    </div>
+    <div id="sgOut"></div>
+  </div>
+
+  <!-- ================= 비교 분석 ================= -->
+  <div id="p-compare" class="hide">
+    <div class="card">
+      <h3>관계사 선택 <span class="badge">2개사 이상</span></h3>
+      <div class="row" style="margin-bottom:7px">
+        <div style="flex:1;min-width:120px">
+          <label class="lb">기준 연월</label>
+          <select id="cpYm"></select>
+        </div>
+        <div style="align-self:flex-end">
+          <button class="btn sec sm" onclick="cpAll()">전체 선택</button>
+          <button class="btn gray sm" onclick="cpNone()">해제</button>
+        </div>
+      </div>
+      <div class="chips" id="cpChips"></div>
+    </div>
+    <div id="cpOut"></div>
+  </div>
+
+  <!-- ================= 그룹 통합 ================= -->
+  <div id="p-group" class="hide">
+    <div class="card">
+      <h3>그룹 전체 통합</h3>
+      <label class="lb">기준 연월</label>
+      <select id="gpYm"></select>
+    </div>
+    <div id="gpOut"></div>
+  </div>
+
+  <!-- ================= 기간 분석 ================= -->
+  <div id="p-period" class="hide">
+    <div class="card">
+      <h3>기간 설정</h3>
+      <div class="row">
+        <div style="flex:1;min-width:120px">
+          <label class="lb">분석 단위</label>
+          <select id="pdMode">
+            <option value="Q">분기별</option>
+            <option value="H">반기별</option>
+            <option value="Y">연간</option>
+            <option value="C">기간 지정</option>
+          </select>
+        </div>
+        <div style="flex:1;min-width:120px">
+          <label class="lb">대상</label>
+          <select id="pdCo"></select>
+        </div>
+      </div>
+      <div class="row" id="pdRange" style="margin-top:6px">
+        <div style="flex:1;min-width:110px"><label class="lb">시작</label><input type="month" id="pdFrom"></div>
+        <div style="flex:1;min-width:110px"><label class="lb">종료</label><input type="month" id="pdTo"></div>
+      </div>
+    </div>
+    <div id="pdOut"></div>
+  </div>
+
+  <!-- ================= 설정 ================= -->
+  <div id="p-setup" class="hide">
+    <div class="card">
+      <h3>Claude API 연동 <span class="badge">선택</span></h3>
+      <label class="lb">API 키 (브라우저에만 저장, 서버 전송 없음)</label>
+      <input type="password" id="apiKey" placeholder="sk-ant-...">
+      <div class="row" style="margin-top:7px">
+        <button class="btn sm" onclick="saveKey()">키 저장</button>
+        <button class="btn gray sm" onclick="clearKey()">키 삭제</button>
+        <span class="note" id="keyStat"></span>
+      </div>
+      <div class="note" style="margin-top:6px">키가 없어도 규칙기반 분석 엔진으로 모든 시사점이 생성된다. 키 입력 시 캡처화면 판독과 심층 경영 조언이 추가된다.</div>
+    </div>
+
+    <div class="card">
+      <h3>계열사 관리</h3>
+      <div class="tw"><table id="tblCo"></table></div>
+      <div class="row" style="margin-top:7px">
+        <input type="text" id="newCo" placeholder="추가할 계열사명" style="flex:1;min-width:140px">
+        <button class="btn sm" onclick="addCo()">추가</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>데이터 백업 · 복원</h3>
+      <div class="row">
+        <button class="btn sec sm" onclick="expJson()">JSON 백업</button>
+        <button class="btn sec sm" onclick="document.getElementById('impFile').click()">JSON 복원</button>
+        <button class="btn sec sm" onclick="expCsv()">CSV 내보내기</button>
+        <button class="btn dan sm" onclick="wipe()">전체 초기화</button>
+      </div>
+      <input type="file" id="impFile" accept=".json" class="hide">
+      <div class="note" style="margin-top:7px">데이터는 이 브라우저에 저장된다. PC 교체·공유 시 반드시 JSON 백업할 것. Exchange 전환 후 Firestore 연동으로 교체 예정.</div>
+    </div>
+
+    <div class="card">
+      <h3>저장 현황</h3>
+      <div class="tw"><table id="tblStat"></table></div>
+    </div>
+  </div>
+
+  <div class="foot">
+    인시스 AI혁신 연구개발실 &nbsp;|&nbsp; pl.html <span id="verFoot">v1.0</span><br>
+    금액 단위: 백만원 &nbsp;|&nbsp; 음수 표기: △
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================
+   인시스 계열사 손익분석 대시보드  v1.0
+   인시스 AI혁신 연구개발실
+   ========================================================= */
+var VERSION = 'v1.0';
+var LS_DATA = 'insys_pl_data_v1';
+var LS_CO   = 'insys_pl_co_v1';
+var LS_KEY  = 'insys_pl_key_v1';
+
+var FIELDS = [
+  {k:'revenue',  n:'매출액',      kw:['매출액','총매출','매출총액','매출 합계','매출']},
+  {k:'cogs',     n:'매출원가',    kw:['매출원가','제조원가','매출 원가']},
+  {k:'gross',    n:'매출총이익',  kw:['매출총이익','매출총손익','매출 총이익']},
+  {k:'sga',      n:'판관비',      kw:['판매비와관리비','판매비및관리비','판매관리비','판관비']},
+  {k:'op',       n:'영업이익',    kw:['영업이익','영업손익','영업 이익']},
+  {k:'nonop',    n:'영업외손익',  kw:['영업외손익','영업외수익','영업외비용','영업외']},
+  {k:'net',      n:'당기순이익',  kw:['당기순이익','당기순손익','순이익','당기 순이익']},
+  {k:'head',     n:'인원수(명)',  kw:['인원수','총인원','인원','평균인원']},
+  {k:'labor',    n:'인건비',      kw:['인건비','급여','노무비']},
+  {k:'outsrc',   n:'외주비',      kw:['외주가공비','외주비','외주']}
+];
+
+var DEF_CO = ['인시스','(주)파인','(주)이레','(주)챈스','(주)코어시스템','(주)인텍코리아','우리스틸산업','(주)바른엔피엘자산대부'];
+
+var DB = {};        // { "2026-08": { "(주)파인": {revenue:..}, ... } }
+var COS = [];
+var charts = {};
+var shotData = null;
+var wb = null;
+
+/* ---------- 저장 계층 (Firestore 교체 지점) ---------- */
+var mem = {};
+function lsGet(k){ try{ var v=localStorage.getItem(k); return v===null?(mem[k]===undefined?null:mem[k]):v; }catch(e){ return mem[k]===undefined?null:mem[k]; } }
+function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){ mem[k]=v; } }
+function lsDel(k){ try{ localStorage.removeItem(k); }catch(e){} delete mem[k]; }
+
+function loadAll(){
+  try{ DB = JSON.parse(lsGet(LS_DATA)||'{}'); }catch(e){ DB={}; }
+  try{ COS = JSON.parse(lsGet(LS_CO)||'null') || DEF_CO.slice(); }catch(e){ COS = DEF_CO.slice(); }
+  if(!COS.length) COS = DEF_CO.slice();
+}
+function saveAll(){ lsSet(LS_DATA, JSON.stringify(DB)); lsSet(LS_CO, JSON.stringify(COS)); }
+
+/* ---------- 유틸 ---------- */
+function $(id){ return document.getElementById(id); }
+function toast(m){ var t=$('toast'); t.textContent=m; t.classList.add('on'); setTimeout(function(){t.classList.remove('on');},2200); }
+function num(v){ var n=parseFloat(String(v==null?'':v).replace(/[^0-9.\-]/g,'')); return isNaN(n)?0:n; }
+function comma(n){ return (Math.round(n)).toString().replace(/\B(?=(\d{3})+(?!\d))/g,','); }
+function fmt(n){ if(n===null||n===undefined||isNaN(n)) return '-'; return n<0 ? '△'+comma(Math.abs(n)) : comma(n); }
+function pct(n){ if(n===null||n===undefined||!isFinite(n)) return '-'; return (n<0?'△':'')+Math.abs(n).toFixed(1)+'%'; }
+function cls(n){ return n<0?'neg':'pos'; }
+function ratio(a,b){ return (b&&isFinite(a/b))? a/b*100 : null; }
+function ymNow(){ var d=new Date(); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2); }
+function ymPrev(ym,k){ var p=ym.split('-'); var d=new Date(+p[0], +p[1]-1-k, 1); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2); }
+function ymLabel(ym){ var p=ym.split('-'); return p[0].slice(2)+'년 '+(+p[1])+'월'; }
+function allYms(){ return Object.keys(DB).filter(function(y){ return Object.keys(DB[y]||{}).length; }).sort(); }
+function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+
+function blank(){ var o={}; FIELDS.forEach(function(f){ o[f.k]=0; }); return o; }
+function getRec(ym,co){ return (DB[ym]&&DB[ym][co])?DB[ym][co]:null; }
+
+function agg(list){
+  var o=blank();
+  list.forEach(function(r){ FIELDS.forEach(function(f){ o[f.k]+= num(r[f.k]); }); });
+  return o;
+}
+function metrics(d){
+  return {
+    gm: ratio(d.gross, d.revenue),
+    om: ratio(d.op, d.revenue),
+    nm: ratio(d.net, d.revenue),
+    sgaR: ratio(d.sga, d.revenue),
+    laborR: ratio(d.labor, d.revenue),
+    outR: ratio(d.outsrc, d.revenue),
+    perHead: d.head? d.revenue/d.head : null,
+    opPerHead: d.head? d.op/d.head : null
+  };
+}
+
+/* ---------- 뷰 / 탭 ---------- */
+function setView(v){
+  document.body.className = v;
+  $('vM').classList.toggle('on', v==='mobile');
+  $('vP').classList.toggle('on', v==='pc');
+  setTimeout(function(){ Object.keys(charts).forEach(function(k){ if(charts[k]) charts[k].resize(); }); },120);
+}
+function setTab(t){
+  ['input','single','compare','group','period','setup'].forEach(function(x){
+    $('p-'+x).classList.toggle('hide', x!==t);
+  });
+  Array.prototype.forEach.call($('tabs').children, function(b){ b.classList.toggle('on', b.dataset.t===t); });
+  if(t==='single') renderSingle();
+  if(t==='compare') renderCompare();
+  if(t==='group') renderGroup();
+  if(t==='period') renderPeriod();
+  if(t==='setup') renderSetup();
+}
+
+/* ---------- 셀렉트 채우기 ---------- */
+function fillCoSel(el, withAll){
+  var cur = el.value;
+  el.innerHTML = (withAll?'<option value="__ALL__">그룹 전체</option>':'') +
+    COS.map(function(c){ return '<option value="'+esc(c)+'">'+esc(c)+'</option>'; }).join('');
+  if(cur) el.value = cur;
+}
+function fillYmSel(el){
+  var ys = allYms().reverse(); var cur = el.value;
+  el.innerHTML = ys.length? ys.map(function(y){ return '<option value="'+y+'">'+ymLabel(y)+'</option>'; }).join('')
+                          : '<option value="">데이터 없음</option>';
+  if(cur && ys.indexOf(cur)>=0) el.value = cur;
+}
+
+/* =========================================================
+   데이터 입력
+   ========================================================= */
+function buildFields(){
+  $('fields').innerHTML = FIELDS.map(function(f){
+    return '<div><label class="lb">'+f.n+'</label><input type="number" step="0.1" id="f_'+f.k+'" value="0"></div>';
+  }).join('');
+}
+function readFields(){ var o={}; FIELDS.forEach(function(f){ o[f.k]=num($('f_'+f.k).value); }); return o; }
+function writeFields(d){ FIELDS.forEach(function(f){ $('f_'+f.k).value = d&&d[f.k]!==undefined? d[f.k] : 0; }); }
+function clearFields(){ writeFields(blank()); $('vErr').innerHTML=''; }
+
+function autoCalc(){
+  var d = readFields();
+  if(!d.gross && d.revenue) d.gross = d.revenue - d.cogs;
+  if(!d.op && d.gross) d.op = d.gross - d.sga;
+  if(!d.net && d.op) d.net = d.op + d.nonop;
+  if(!d.cogs && d.revenue && d.gross) d.cogs = d.revenue - d.gross;
+  if(!d.sga && d.gross && d.op) d.sga = d.gross - d.op;
+  writeFields(d); validate(d); toast('자동 계산 완료');
+}
+function validate(d){
+  var w=[];
+  if(d.revenue && Math.abs((d.revenue-d.cogs)-d.gross) > Math.max(1, d.revenue*0.005)) w.push('매출총이익 ≠ 매출액 − 매출원가');
+  if(d.gross && Math.abs((d.gross-d.sga)-d.op) > Math.max(1, d.revenue*0.005)) w.push('영업이익 ≠ 매출총이익 − 판관비');
+  var om = ratio(d.op,d.revenue);
+  if(om!==null && Math.abs(om)>30) w.push('영업이익률 '+pct(om)+' — 이상치 검토 필요');
+  if(d.head && d.revenue && (d.revenue/d.head)>500) w.push('인당 매출액 과다 — 단위 확인 필요');
+  $('vErr').innerHTML = w.length? '<div class="alert"><div class="h">확인 필요</div><ul>'+w.map(function(x){return '<li>· '+esc(x)+'</li>';}).join('')+'</ul></div>' : '';
+  return w;
+}
+
+function unitScale(vals){
+  var u = $('inUnit').value;
+  if(u!=='auto') return 1/parseFloat(u)*1;
+  var mx = 0; vals.forEach(function(v){ if(Math.abs(v)>mx) mx=Math.abs(v); });
+  if(mx >= 100000000) return 1/1000000;
+  if(mx >= 100000) return 1/1000;
+  return 1;
+}
+
+function saveRec(){
+  var ym=$('inYm').value, co=$('inCo').value;
+  if(!ym){ toast('기준 연월을 선택하라'); return; }
+  var d=readFields();
+  if(!d.revenue){ toast('매출액이 비어있다'); return; }
+  validate(d);
+  if(!DB[ym]) DB[ym]={};
+  DB[ym][co]=d; saveAll();
+  toast(ymLabel(ym)+' '+co+' 저장 완료');
+  refreshStatus(); refreshAllSel();
+}
+function delRec(){
+  var ym=$('inYm').value, co=$('inCo').value;
+  if(!getRec(ym,co)){ toast('삭제할 데이터가 없다'); return; }
+  if(!confirm(ymLabel(ym)+' '+co+' 데이터를 삭제할까?')) return;
+  delete DB[ym][co]; if(!Object.keys(DB[ym]).length) delete DB[ym];
+  saveAll(); clearFields(); refreshStatus(); refreshAllSel(); toast('삭제 완료');
+}
+
+function refreshStatus(){
+  var ym=$('inYm').value;
+  $('ymTag').textContent = ym? ymLabel(ym) : '';
+  var mon = DB[ym]||{};
+  $('statusChips').innerHTML = COS.map(function(c){
+    var has = !!mon[c];
+    return '<span class="chip '+(has?'has':'')+'" onclick="pickCo(\''+esc(c).replace(/'/g,"\\'")+'\')">'+esc(c)+(has?' ✓':'')+'</span>';
+  }).join('');
+
+  var rows = COS.filter(function(c){ return mon[c]; });
+  if(!rows.length){ $('tblMonth').innerHTML='<tr><td class="c" style="color:#8494A4;padding:12px">등록된 데이터가 없다</td></tr>'; return; }
+  var tot = agg(rows.map(function(c){ return mon[c]; }));
+  var h='<tr><th class="l">계열사</th><th>매출액</th><th>영업이익</th><th>영업이익률</th><th>당기순이익</th></tr>';
+  h+= rows.map(function(c){
+    var d=mon[c], m=metrics(d);
+    return '<tr><td class="l">'+esc(c)+'</td><td>'+fmt(d.revenue)+'</td><td class="'+cls(d.op)+'">'+fmt(d.op)+'</td><td class="'+cls(d.op)+'">'+pct(m.om)+'</td><td class="'+cls(d.net)+'">'+fmt(d.net)+'</td></tr>';
+  }).join('');
+  var tm=metrics(tot);
+  h+='<tr class="sum"><td class="l">합계 ('+rows.length+'/'+COS.length+'사)</td><td>'+fmt(tot.revenue)+'</td><td class="'+cls(tot.op)+'">'+fmt(tot.op)+'</td><td class="'+cls(tot.op)+'">'+pct(tm.om)+'</td><td class="'+cls(tot.net)+'">'+fmt(tot.net)+'</td></tr>';
+  $('tblMonth').innerHTML=h;
+}
+function pickCo(c){ $('inCo').value=c; onCoChange(); }
+function onCoChange(){
+  var ym=$('inYm').value, co=$('inCo').value;
+  var r=getRec(ym,co);
+  if(r){ writeFields(r); validate(r); } else { clearFields(); }
+}
+
+/* ---------- 엑셀 파싱 ---------- */
+function handleFile(f){
+  if(!f) return;
+  if(/^image\//.test(f.type)){ readShot(f); return; }
+  var fr=new FileReader();
+  fr.onload=function(e){
+    try{
+      wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
+      var sel=$('sheetSel');
+      sel.innerHTML = wb.SheetNames.map(function(n){ return '<option>'+esc(n)+'</option>'; }).join('');
+      $('sheetPick').classList.remove('hide');
+      var pref = wb.SheetNames.find(function(n){ return /손익|실적|P&L|PL/i.test(n); });
+      if(pref) sel.value=pref;
+      parseSheet();
+    }catch(err){ toast('엑셀 읽기 실패: '+err.message); }
+  };
+  fr.readAsArrayBuffer(f);
+}
+function parseSheet(){
+  if(!wb) return;
+  var ws = wb.Sheets[$('sheetSel').value];
+  if(!ws){ toast('시트를 찾을 수 없다'); return; }
+  var rows = XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:''});
+  var found={}, raw=[];
+  FIELDS.forEach(function(f){
+    for(var i=0;i<rows.length && found[f.k]===undefined;i++){
+      var r=rows[i];
+      for(var j=0;j<r.length;j++){
+        var t=String(r[j]==null?'':r[j]).replace(/\s/g,'');
+        if(!t) continue;
+        var hit = f.kw.some(function(k){ return t.indexOf(k.replace(/\s/g,''))>=0; });
+        if(!hit) continue;
+        for(var c=j+1;c<r.length;c++){
+          var v=r[c];
+          if(typeof v==='number' && v!==0){ found[f.k]=v; raw.push(v); break; }
+          if(typeof v==='string' && /^[\-(]?[\d,]+\.?\d*\)?$/.test(v.trim()) && v.trim()!==''){
+            var n=num(v.replace(/^\((.*)\)$/,'-$1')); if(n!==0){ found[f.k]=n; raw.push(n); break; }
+          }
+        }
+        if(found[f.k]!==undefined) break;
+      }
+    }
+  });
+  if(!Object.keys(found).length){ toast('항목을 찾지 못했다. 수동 입력 요망'); return; }
+  var sc = unitScale(raw);
+  var d = blank();
+  Object.keys(found).forEach(function(k){ d[k] = k==='head'? Math.round(found[k]) : Math.round(found[k]*sc*10)/10; });
+  writeFields(d); validate(d);
+  toast(Object.keys(found).length+'개 항목 자동 인식');
+}
+
+/* ---------- 캡처화면 ---------- */
+function readShot(f){
+  var fr=new FileReader();
+  fr.onload=function(e){
+    shotData = e.target.result;
+    $('shot').src = shotData;
+    $('shotBox').classList.remove('hide');
+    toast('이미지 등록됨 — AI로 숫자 읽기 실행');
+  };
+  fr.readAsDataURL(f);
+}
+function clearShot(){ shotData=null; $('shotBox').classList.add('hide'); $('shot').src=''; }
+
+/* ---------- Claude API ---------- */
+function getKey(){ return lsGet(LS_KEY)||''; }
+function saveKey(){ var k=$('apiKey').value.trim(); if(!k){ toast('키를 입력하라'); return; } lsSet(LS_KEY,k); renderSetup(); toast('API 키 저장 완료'); }
+function clearKey(){ lsDel(LS_KEY); $('apiKey').value=''; renderSetup(); toast('API 키 삭제됨'); }
+
+function callClaude(content, sys, maxTok){
+  var key=getKey();
+  if(!key) return Promise.reject(new Error('NOKEY'));
+  return fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'x-api-key':key,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true'
+    },
+    body: JSON.stringify({
+      model:'claude-sonnet-4-6',
+      max_tokens: maxTok||1500,
+      system: sys,
+      messages:[{role:'user', content: content}]
+    })
+  }).then(function(r){
+    if(!r.ok) return r.text().then(function(t){ throw new Error('API '+r.status+' '+t.slice(0,120)); });
+    return r.json();
+  }).then(function(j){
+    return (j.content||[]).filter(function(b){ return b.type==='text'; }).map(function(b){ return b.text; }).join('\n');
+  });
+}
+
+$('btnOcr') && ($('btnOcr').onclick = function(){
+  if(!shotData){ toast('이미지가 없다'); return; }
+  if(!getKey()){ toast('설정 탭에서 API 키를 먼저 등록하라'); return; }
+  var b=this; b.disabled=true; b.innerHTML='<span class="spin"></span>판독 중';
+  var m = shotData.match(/^data:(image\/\w+);base64,(.+)$/);
+  if(!m){ toast('이미지 형식 오류'); b.disabled=false; b.textContent='AI로 숫자 읽기'; return; }
+  var sys='너는 한국 기업 재무제표 판독기다. 이미지에서 손익 항목을 찾아 JSON만 출력한다. 설명·마크다운·백틱 금지.';
+  var ask='이미지에서 다음 항목의 금액을 추출해 JSON으로만 답하라. 단위는 원본 그대로. 없으면 0.\n'+
+    '{"revenue":매출액,"cogs":매출원가,"gross":매출총이익,"sga":판관비,"op":영업이익,"nonop":영업외손익,"net":당기순이익,"head":인원수,"labor":인건비,"outsrc":외주비}';
+  callClaude([{type:'image',source:{type:'base64',media_type:m[1],data:m[2]}},{type:'text',text:ask}], sys, 800)
+    .then(function(txt){
+      var j=JSON.parse(txt.replace(/```json|```/g,'').trim());
+      var raw=Object.keys(j).map(function(k){ return num(j[k]); });
+      var sc=unitScale(raw); var d=blank();
+      Object.keys(j).forEach(function(k){ if(d[k]!==undefined) d[k] = k==='head'? Math.round(num(j[k])) : Math.round(num(j[k])*sc*10)/10; });
+      writeFields(d); validate(d); toast('AI 판독 완료 — 값 확인 후 저장');
+    })
+    .catch(function(e){ toast(e.message==='NOKEY'?'API 키 필요':'판독 실패: '+e.message); })
+    .then(function(){ b.disabled=false; b.textContent='AI로 숫자 읽기'; });
+});
+
+function aiBox(id, prompt, sys){
+  var el=$(id); if(!el) return;
+  if(!getKey()){ el.innerHTML='<div class="note">Claude API 키 등록 시 AI 심층 경영조언이 여기에 표시된다. (설정 탭)</div>'; return; }
+  el.innerHTML='<div class="note"><span class="spin" style="border-top-color:#2E5C8A;border-color:#C4D2E2;border-top-color:#2E5C8A"></span>AI 분석 중...</div>';
+  callClaude([{type:'text',text:prompt}], sys, 1600)
+    .then(function(t){
+      var items=t.split('\n').map(function(s){ return s.replace(/^[\s\-·•*\d.]+/,'').trim(); }).filter(function(s){ return s.length>4; });
+      el.innerHTML='<div class="ins"><div class="h">AI 심층 경영조언</div><ul>'+items.slice(0,10).map(function(s){return '<li>'+esc(s)+'</li>';}).join('')+'</ul></div>';
+    })
+    .catch(function(e){ el.innerHTML='<div class="note">AI 분석 실패: '+esc(e.message)+'</div>'; });
+}
+var SYS_ADV='너는 한국 중견 제조·아웃소싱 그룹의 CFO 자문역이다. 숫자 근거를 반드시 인용하고, 실행 가능한 조언만 한다. 각 줄은 한 문장, 최대 8줄, 번호·마크다운·서론 없이 문장만 출력한다.';
+
+/* =========================================================
+   시사점 규칙 엔진
+   ========================================================= */
+function insightSingle(co, d, prev, yoy, groupAvgOm){
+  var m=metrics(d), out=[];
+  out.push('매출 '+fmt(d.revenue)+'백만원, 영업이익 '+fmt(d.op)+'백만원(영업이익률 '+pct(m.om)+')');
+  if(prev){
+    var dr = ratio(d.revenue-prev.revenue, prev.revenue);
+    var doo = d.op - prev.op;
+    out.push('전월 대비 매출 '+pct(dr)+', 영업이익 '+(doo>=0?'+':'△')+comma(Math.abs(doo))+'백만원');
+    if(prev.op>=0 && d.op<0) out.push('전월 흑자에서 적자 전환 — 원가·판관비 구조 즉시 점검 필요');
+    if(prev.op<0 && d.op>=0) out.push('전월 적자에서 흑자 전환 — 개선 요인 표준화 및 유지 관리 필요');
+    if(dr!==null && Math.abs(dr)>40) out.push('매출 변동폭 '+pct(dr)+'로 이상치 수준 — 일회성 요인 여부 확인 필요');
+  }
+  if(yoy){
+    var yr = ratio(d.revenue-yoy.revenue, yoy.revenue);
+    out.push('전년 동월 대비 매출 '+pct(yr)+', 영업이익률 '+pct(ratio(yoy.op,yoy.revenue))+' → '+pct(m.om));
+  }
+  if(m.om!==null){
+    if(m.om<0) out.push('영업적자 상태 — 고정비 절감과 저수익 물량 정리를 우선 검토');
+    else if(m.om<3) out.push('영업이익률 3% 미만 — 단가 재협상 또는 저수익 계약 구조조정 필요');
+    else if(m.om>12) out.push('영업이익률 12% 상회 — 그룹 내 우수 수익구조, 성공요인 타 계열사 전파 검토');
+  }
+  if(groupAvgOm!==null && m.om!==null){
+    var gap = m.om - groupAvgOm;
+    out.push('그룹 평균 영업이익률 대비 '+(gap>=0?'+':'△')+Math.abs(gap).toFixed(1)+'%p '+(gap>=0?'상회':'하회'));
+  }
+  if(m.sgaR!==null && m.sgaR>25) out.push('판관비율 '+pct(m.sgaR)+'로 과중 — 고정비 항목별 재검토 필요');
+  if(m.gm!==null && m.gm<10) out.push('매출총이익률 '+pct(m.gm)+' — 원가율 개선이 최우선 과제');
+  if(m.laborR!==null && m.laborR>35) out.push('인건비율 '+pct(m.laborR)+' — 인력 운영 효율화 또는 자동화 투자 검토');
+  if(m.outR!==null && m.outR>30) out.push('외주비율 '+pct(m.outR)+' — 내재화 시 원가 절감 여지 존재');
+  if(m.perHead!==null) out.push('인당 매출액 '+fmt(m.perHead)+'백만원 (인원 '+comma(d.head)+'명)');
+  if(d.op!==0 && d.sga){
+    var cm = ratio(d.gross, d.revenue);
+    if(cm) out.push('손익분기 추정 매출액 '+fmt(d.sga/(cm/100))+'백만원 — 현 매출 대비 '+pct(ratio(d.revenue-(d.sga/(cm/100)), d.sga/(cm/100)))+' 여유');
+  }
+  return out;
+}
+
+function insightCompare(items, tot){
+  var out=[];
+  var sorted = items.slice().sort(function(a,b){ return b.m.om - a.m.om; });
+  var top=sorted[0], bot=sorted[sorted.length-1];
+  var tm=metrics(tot);
+  out.push('선택 '+items.length+'개사 합산 매출 '+fmt(tot.revenue)+'백만원, 영업이익 '+fmt(tot.op)+'백만원(이익률 '+pct(tm.om)+')');
+  out.push('수익성 최상위 '+top.co+' '+pct(top.m.om)+' vs 최하위 '+bot.co+' '+pct(bot.m.om)+' — 격차 '+(top.m.om-bot.m.om).toFixed(1)+'%p');
+  var loss = items.filter(function(x){ return x.d.op<0; });
+  if(loss.length) out.push('적자 계열사 '+loss.length+'개사('+loss.map(function(x){return x.co;}).join(', ')+') — 합산 영업손실 '+fmt(Math.abs(loss.reduce(function(s,x){return s+x.d.op;},0)))+'백만원');
+  var maxRev = items.slice().sort(function(a,b){ return b.d.revenue-a.d.revenue; })[0];
+  var conc = ratio(maxRev.d.revenue, tot.revenue);
+  out.push('매출 최대 '+maxRev.co+'가 선택군 매출의 '+pct(conc)+' 차지'+(conc>50?' — 의존도 집중 리스크 관리 필요':''));
+  var contrib = items.filter(function(x){ return x.d.op>0; }).sort(function(a,b){ return b.d.op-a.d.op; })[0];
+  if(contrib) out.push('이익 기여 1위 '+contrib.co+' '+fmt(contrib.d.op)+'백만원 ('+pct(ratio(contrib.d.op, Math.max(tot.op,1)))+')');
+  var ph = items.filter(function(x){ return x.m.perHead; }).sort(function(a,b){ return b.m.perHead-a.m.perHead; });
+  if(ph.length>1) out.push('인당 매출 '+ph[0].co+' '+fmt(ph[0].m.perHead)+' vs '+ph[ph.length-1].co+' '+fmt(ph[ph.length-1].m.perHead)+'백만원 — 인력 재배치 검토 여지');
+  if(top.m.om - bot.m.om > 10) out.push(top.co+'의 원가·판관비 운영방식을 '+bot.co+'에 이식하는 교차 벤치마킹 권고');
+  var sgaHigh = items.filter(function(x){ return x.m.sgaR>22; });
+  if(sgaHigh.length>=2) out.push('판관비율 22% 초과 '+sgaHigh.length+'개사 — 공통 간접비의 그룹 통합 운영(구매·물류·총무) 검토');
+  return out;
+}
+
+function insightGroup(items, tot, prevTot){
+  var out=[], tm=metrics(tot);
+  out.push('그룹 합산 매출 '+fmt(tot.revenue)+'백만원, 영업이익 '+fmt(tot.op)+'백만원(이익률 '+pct(tm.om)+'), 순이익 '+fmt(tot.net)+'백만원');
+  out.push('집계 대상 '+items.length+'개사 / 등록 계열사 '+COS.length+'개사, 총 인원 '+comma(tot.head)+'명, 인당 매출 '+fmt(tm.perHead)+'백만원');
+  if(prevTot){
+    var dr=ratio(tot.revenue-prevTot.revenue, prevTot.revenue);
+    var pm=metrics(prevTot);
+    out.push('전월 대비 그룹 매출 '+pct(dr)+', 영업이익률 '+pct(pm.om)+' → '+pct(tm.om));
+  }
+  var sorted=items.slice().sort(function(a,b){ return b.d.revenue-a.d.revenue; });
+  var hhi = items.reduce(function(s,x){ var sh=x.d.revenue/Math.max(tot.revenue,1); return s+sh*sh; },0)*10000;
+  out.push('매출 집중도(HHI) '+Math.round(hhi)+' — '+(hhi>2500?'특정 계열사 의존이 높아 포트폴리오 분산 필요':hhi>1500?'중간 수준 집중, 모니터링 유지':'분산이 양호'));
+  var loss=items.filter(function(x){ return x.d.op<0; });
+  if(loss.length){
+    out.push('적자 '+loss.length+'개사 — '+loss.map(function(x){ return x.co+'('+fmt(x.d.op)+')'; }).join(', ')+' / 흑자사 이익으로 상쇄 중');
+    out.push('적자 계열사 정상화 시 그룹 영업이익 '+fmt(tot.op+Math.abs(loss.reduce(function(s,x){return s+x.d.op;},0)))+'백만원까지 개선 가능');
+  } else {
+    out.push('전 계열사 영업흑자 — 성장 투자 및 신규 사업 재원 확보 가능 국면');
+  }
+  if(tm.laborR!==null) out.push('그룹 인건비율 '+pct(tm.laborR)+', 외주비율 '+pct(tm.outR)+' — '+(tm.outR>tm.laborR?'외주 의존형 구조, 단가 협상력 확보가 관건':'직고용 중심 구조, 생산성 향상이 관건'));
+  var w = COS.filter(function(c){ return !items.some(function(x){ return x.co===c; }); });
+  if(w.length) out.push('미제출 '+w.length+'개사('+w.join(', ')+') — 합계에서 제외됨, 자료 확보 필요');
+  if(tm.om!==null && tm.om<5) out.push('그룹 영업이익률 5% 미만 — 저수익 사업 정리와 고부가 사업(AI 비전검사·자동화) 비중 확대를 중기 과제로 설정');
+  return out;
+}
+
+function insightPeriod(series, co){
+  var out=[]; if(series.length<2) return ['비교 가능한 기간 데이터가 부족하다. 2개 구간 이상 등록 필요.'];
+  var first=series[0], last=series[series.length-1];
+  var revs=series.map(function(s){ return s.d.revenue; });
+  var oms=series.map(function(s){ return ratio(s.d.op,s.d.revenue)||0; });
+  var avgOm = oms.reduce(function(a,b){return a+b;},0)/oms.length;
+  var growth = ratio(last.d.revenue-first.d.revenue, first.d.revenue);
+  var mean = revs.reduce(function(a,b){return a+b;},0)/revs.length;
+  var sd = Math.sqrt(revs.reduce(function(s,v){ return s+Math.pow(v-mean,2); },0)/revs.length);
+  var cv = mean? sd/mean*100 : 0;
+  var totRev = revs.reduce(function(a,b){return a+b;},0);
+  var totOp = series.reduce(function(s,x){ return s+x.d.op; },0);
+
+  out.push('['+co+'] 분석 구간 '+series.length+'개, 누적 매출 '+fmt(totRev)+'백만원, 누적 영업이익 '+fmt(totOp)+'백만원(평균 이익률 '+pct(avgOm)+')');
+  out.push(first.label+' → '+last.label+' 매출 '+pct(growth)+' '+(growth>=0?'성장':'감소')+', 영업이익 '+fmt(first.d.op)+' → '+fmt(last.d.op)+'백만원');
+  out.push('매출 변동계수 '+cv.toFixed(1)+'% — '+(cv>25?'변동성이 커 수주 파이프라인 안정화가 시급':cv>12?'중간 변동성, 계절요인 관리 필요':'안정적 매출 흐름'));
+  var best=series.slice().sort(function(a,b){ return (ratio(b.d.op,b.d.revenue)||0)-(ratio(a.d.op,a.d.revenue)||0); })[0];
+  var worst=series.slice().sort(function(a,b){ return (ratio(a.d.op,a.d.revenue)||0)-(ratio(b.d.op,b.d.revenue)||0); })[0];
+  out.push('최고 '+best.label+' '+pct(ratio(best.d.op,best.d.revenue))+' / 최저 '+worst.label+' '+pct(ratio(worst.d.op,worst.d.revenue))+' — 편차 요인 분석 필요');
+  var up=0,dn=0; for(var i=1;i<oms.length;i++){ if(oms[i]>=oms[i-1]) up++; else dn++; }
+  out.push('수익성 추세: 개선 '+up+'회 / 악화 '+dn+'회 — '+(up>dn?'개선 추세 유지, 현 전략 지속':up<dn?'악화 추세, 원가구조 전면 재검토 권고':'횡보, 구조적 전환점 필요'));
+
+  out.push('[향후 사업 방향]');
+  if(avgOm<0) out.push('· 구조적 적자 구간 — 사업 철수·축소 또는 사업모델 전환을 이사회 안건으로 상정');
+  else if(avgOm<5) out.push('· 저수익 구간 — 저마진 물량 정리, 고부가 공정(비전검사·자동화 라인) 전환 투자 우선');
+  else if(avgOm<12) out.push('· 안정 구간 — 현 수익성 유지하며 설비 자동화로 인건비율 점진 축소');
+  else out.push('· 고수익 구간 — 잉여현금을 신규 거점·설비 증설 및 M&A 재원으로 배분 검토');
+  if(cv>25) out.push('· 매출 변동성 완화를 위해 장기계약 비중 확대와 고객사 다변화 추진');
+  if(growth!==null && growth<0) out.push('· 매출 역성장 구간 — 신규 고객 개발과 단가 재협상을 동시 추진');
+  if(growth!==null && growth>20) out.push('· 고성장 구간 — 운전자본 소요 증가 대비 자금계획 선제 수립 필요');
+  return out;
+}
+
+function insBlock(title, arr){
+  return '<div class="ins"><div class="h">'+esc(title)+'</div><ul>'+arr.map(function(s){ return '<li>'+esc(s)+'</li>'; }).join('')+'</ul></div>';
+}
+function kpiBlock(d,m){
+  return '<div class="kpis">'+
+    '<div class="kpi"><div class="k">매출액</div><div class="v">'+fmt(d.revenue)+'</div><div class="d">백만원</div></div>'+
+    '<div class="kpi"><div class="k">영업이익</div><div class="v '+cls(d.op)+'">'+fmt(d.op)+'</div><div class="d">이익률 '+pct(m.om)+'</div></div>'+
+    '<div class="kpi"><div class="k">당기순이익</div><div class="v '+cls(d.net)+'">'+fmt(d.net)+'</div><div class="d">순이익률 '+pct(m.nm)+'</div></div>'+
+    '<div class="kpi"><div class="k">인당 매출액</div><div class="v">'+fmt(m.perHead)+'</div><div class="d">인원 '+comma(d.head)+'명</div></div>'+
+  '</div>';
+}
+function plTable(d,m){
+  var r=[['매출액',d.revenue,100],['매출원가',d.cogs,ratio(d.cogs,d.revenue)],['매출총이익',d.gross,m.gm],
+         ['판관비',d.sga,m.sgaR],['영업이익',d.op,m.om],['영업외손익',d.nonop,ratio(d.nonop,d.revenue)],
+         ['당기순이익',d.net,m.nm],['인건비',d.labor,m.laborR],['외주비',d.outsrc,m.outR]];
+  return '<div class="tw"><table><tr><th class="l">항목</th><th>금액(백만원)</th><th>매출대비</th></tr>'+
+    r.map(function(x){
+      var em = ['매출총이익','영업이익','당기순이익'].indexOf(x[0])>=0;
+      return '<tr'+(em?' class="sub"':'')+'><td class="l">'+(em?'<b>'+x[0]+'</b>':x[0])+'</td><td class="'+(x[1]<0?'neg':'')+'">'+fmt(x[1])+'</td><td>'+pct(x[2])+'</td></tr>';
+    }).join('')+'</table></div>';
+}
+function mkChart(id, cfg){
+  if(charts[id]){ charts[id].destroy(); }
+  var el=$(id); if(!el) return;
+  charts[id]=new Chart(el.getContext('2d'), cfg);
+}
+var C_MAIN='#2E5C8A', C_SUB='#7FA8CE', C_POS='#1F5FA8', C_NEG='#B4232A';
+var PALETTE=['#2E5C8A','#4A7CB0','#6E9BC4','#93B7D6','#1F3A5F','#5A6B7B','#8494A4','#A8BCD0','#C9A227','#B4232A','#7A5E12','#3E6B4F'];
+
+/* =========================================================
+   개별 분석
+   ========================================================= */
+function renderSingle(){
+  fillCoSel($('sgCo'), false); fillYmSel($('sgYm'));
+  var co=$('sgCo').value, ym=$('sgYm').value;
+  var out=$('sgOut');
+  if(!ym || !co){ out.innerHTML='<div class="card"><div class="note">데이터를 먼저 등록하라.</div></div>'; return; }
+  var d=getRec(ym,co);
+  if(!d){ out.innerHTML='<div class="card"><div class="note">'+esc(ymLabel(ym)+' / '+co)+' 데이터가 없다.</div></div>'; return; }
+  var m=metrics(d), prev=getRec(ymPrev(ym,1),co), yoy=getRec(ymPrev(ym,12),co);
+  var mon=DB[ym]||{}, others=Object.keys(mon);
+  var gTot=agg(others.map(function(c){return mon[c];}));
+  var gOm=ratio(gTot.op,gTot.revenue);
+
+  var hist=[]; for(var i=11;i>=0;i--){ var y=ymPrev(ym,i); var r=getRec(y,co); if(r) hist.push({y:y,r:r}); }
+
+  out.innerHTML =
+    '<div class="card"><h3>'+esc(co)+' <span class="badge">'+ymLabel(ym)+'</span></h3>'+kpiBlock(d,m)+'</div>'+
+    '<div class="card"><h3>손익계산 요약</h3>'+plTable(d,m)+'</div>'+
+    (hist.length>1? '<div class="card"><h3>최근 추이 <span class="badge">'+hist.length+'개월</span></h3><div class="chartbox"><canvas id="cSg"></canvas></div><div class="legend"><span><i style="background:'+C_MAIN+'"></i>매출액</span><span><i style="background:'+C_SUB+'"></i>영업이익</span></div></div>':'')+
+    '<div class="card"><h3>경영자 시사점</h3>'+insBlock('규칙기반 분석', insightSingle(co,d,prev,yoy,gOm))+'<div id="sgAi"></div></div>';
+
+  if(hist.length>1){
+    mkChart('cSg',{type:'bar',data:{labels:hist.map(function(h){return ymLabel(h.y);}),
+      datasets:[{label:'매출액',data:hist.map(function(h){return h.r.revenue;}),backgroundColor:C_MAIN,order:2},
+                {label:'영업이익',data:hist.map(function(h){return h.r.op;}),type:'line',borderColor:C_SUB,backgroundColor:C_SUB,tension:.3,order:1}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+        scales:{y:{ticks:{font:{size:10},color:'#5A6B7B'},grid:{color:'#EEF2F7'}},x:{ticks:{font:{size:9},color:'#5A6B7B'},grid:{display:false}}}}});
+  }
+  aiBox('sgAi','다음은 인시스 그룹 계열사 '+co+'의 '+ymLabel(ym)+' 손익 데이터다(단위 백만원). '+JSON.stringify(d)+
+    (prev?' 전월: '+JSON.stringify(prev):'')+(yoy?' 전년동월: '+JSON.stringify(yoy):'')+
+    ' 그룹 평균 영업이익률은 '+pct(gOm)+'이다. 이 회사의 경영자가 이번 달에 실행해야 할 조치를 우선순위 순으로 제시하라.', SYS_ADV);
+}
+
+/* =========================================================
+   비교 분석
+   ========================================================= */
+var cpSel = {};
+function renderCompare(){
+  fillYmSel($('cpYm'));
+  var ym=$('cpYm').value, mon=DB[ym]||{};
+  $('cpChips').innerHTML = COS.map(function(c){
+    var has=!!mon[c];
+    return '<span class="chip '+(has?'has ':'')+(cpSel[c]?'on ':'')+'" onclick="cpTog(\''+esc(c).replace(/'/g,"\\'")+'\')">'+esc(c)+(has?'':' ✕')+'</span>';
+  }).join('');
+  drawCompare();
+}
+function cpTog(c){ cpSel[c]=!cpSel[c]; renderCompare(); }
+function cpAll(){ COS.forEach(function(c){ cpSel[c]=true; }); renderCompare(); }
+function cpNone(){ cpSel={}; renderCompare(); }
+
+function drawCompare(){
+  var ym=$('cpYm').value, mon=DB[ym]||{}, out=$('cpOut');
+  var picked=COS.filter(function(c){ return cpSel[c] && mon[c]; });
+  if(picked.length<2){ out.innerHTML='<div class="card"><div class="note">데이터가 등록된 계열사를 2개 이상 선택하라.</div></div>'; return; }
+  var items=picked.map(function(c){ var d=mon[c]; return {co:c,d:d,m:metrics(d)}; });
+  var tot=agg(items.map(function(x){return x.d;})), tm=metrics(tot);
+  var ranked=items.slice().sort(function(a,b){ return b.m.om-a.m.om; });
+
+  var head='<tr><th class="l">계열사</th><th>매출액</th><th>매출총이익률</th><th>판관비율</th><th>영업이익</th><th>영업이익률</th><th>순이익</th><th>인당매출</th></tr>';
+  var body=items.map(function(x){
+    var rk=ranked.indexOf(x)+1;
+    return '<tr><td class="l">'+esc(x.co)+' <span class="rank">'+rk+'위</span></td><td>'+fmt(x.d.revenue)+'</td><td>'+pct(x.m.gm)+'</td><td>'+pct(x.m.sgaR)+'</td>'+
+      '<td class="'+cls(x.d.op)+'">'+fmt(x.d.op)+'</td><td class="'+cls(x.d.op)+'">'+pct(x.m.om)+'</td>'+
+      '<td class="'+cls(x.d.net)+'">'+fmt(x.d.net)+'</td><td>'+fmt(x.m.perHead)+'</td></tr>';
+  }).join('');
+  var sum='<tr class="sum"><td class="l">선택 합계</td><td>'+fmt(tot.revenue)+'</td><td>'+pct(tm.gm)+'</td><td>'+pct(tm.sgaR)+'</td><td class="'+cls(tot.op)+'">'+fmt(tot.op)+'</td><td class="'+cls(tot.op)+'">'+pct(tm.om)+'</td><td class="'+cls(tot.net)+'">'+fmt(tot.net)+'</td><td>'+fmt(tm.perHead)+'</td></tr>';
+
+  out.innerHTML=
+    '<div class="card"><h3>선택 '+items.length+'개사 합산 <span class="badge">'+ymLabel(ym)+'</span></h3>'+kpiBlock(tot,tm)+'</div>'+
+    '<div class="card"><h3>계열사별 비교</h3><div class="tw"><table>'+head+body+sum+'</table></div></div>'+
+    '<div class="card"><h3>매출 · 영업이익률</h3><div class="chartbox"><canvas id="cCp"></canvas></div></div>'+
+    '<div class="card"><h3>관계사간 시사점</h3>'+insBlock('규칙기반 분석', insightCompare(items,tot))+'<div id="cpAi"></div></div>';
+
+  mkChart('cCp',{type:'bar',data:{labels:items.map(function(x){return x.co;}),
+    datasets:[{label:'매출액',data:items.map(function(x){return x.d.revenue;}),backgroundColor:C_MAIN,yAxisID:'y'},
+              {label:'영업이익률(%)',data:items.map(function(x){return x.m.om;}),type:'line',borderColor:'#C9A227',backgroundColor:'#C9A227',tension:.3,yAxisID:'y1'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:10},color:'#5A6B7B'}}},
+      scales:{y:{ticks:{font:{size:9},color:'#5A6B7B'},grid:{color:'#EEF2F7'}},
+              y1:{position:'right',ticks:{font:{size:9},color:'#5A6B7B'},grid:{display:false}},
+              x:{ticks:{font:{size:9},color:'#5A6B7B'},grid:{display:false}}}}});
+
+  aiBox('cpAi','인시스 그룹의 '+ymLabel(ym)+' 관계사 손익 비교 데이터다(백만원). '+
+    JSON.stringify(items.map(function(x){ return {회사:x.co, 손익:x.d}; }))+
+    ' 이 관계사들 사이의 구조적 차이, 시너지 기회, 교차 벤치마킹 포인트를 제시하라.', SYS_ADV);
+}
+
+/* =========================================================
+   그룹 통합
+   ========================================================= */
+function renderGroup(){
+  fillYmSel($('gpYm'));
+  var ym=$('gpYm').value, out=$('gpOut');
+  if(!ym){ out.innerHTML='<div class="card"><div class="note">데이터를 먼저 등록하라.</div></div>'; return; }
+  var mon=DB[ym]||{};
+  var items=COS.filter(function(c){ return mon[c]; }).map(function(c){ return {co:c,d:mon[c],m:metrics(mon[c])}; });
+  if(!items.length){ out.innerHTML='<div class="card"><div class="note">'+ymLabel(ym)+' 데이터가 없다.</div></div>'; return; }
+  var tot=agg(items.map(function(x){return x.d;})), tm=metrics(tot);
+  var pym=ymPrev(ym,1), pmon=DB[pym]||{};
+  var pItems=COS.filter(function(c){ return pmon[c]; }).map(function(c){ return pmon[c]; });
+  var prevTot = pItems.length? agg(pItems) : null;
+
+  var hist=[]; for(var i=11;i>=0;i--){ var y=ymPrev(ym,i); var mm=DB[y]||{}; var ks=Object.keys(mm); if(ks.length) hist.push({y:y,t:agg(ks.map(function(k){return mm[k];}))}); }
+
+  var head='<tr><th class="l">계열사</th><th>매출액</th><th>구성비</th><th>영업이익</th><th>영업이익률</th><th>순이익</th><th>인원</th></tr>';
+  var body=items.slice().sort(function(a,b){return b.d.revenue-a.d.revenue;}).map(function(x){
+    return '<tr><td class="l">'+esc(x.co)+'</td><td>'+fmt(x.d.revenue)+'</td><td>'+pct(ratio(x.d.revenue,tot.revenue))+'</td>'+
+      '<td class="'+cls(x.d.op)+'">'+fmt(x.d.op)+'</td><td class="'+cls(x.d.op)+'">'+pct(x.m.om)+'</td>'+
+      '<td class="'+cls(x.d.net)+'">'+fmt(x.d.net)+'</td><td>'+comma(x.d.head)+'</td></tr>';
+  }).join('');
+  var sum='<tr class="sum"><td class="l">그룹 합계</td><td>'+fmt(tot.revenue)+'</td><td>100.0%</td><td class="'+cls(tot.op)+'">'+fmt(tot.op)+'</td><td class="'+cls(tot.op)+'">'+pct(tm.om)+'</td><td class="'+cls(tot.net)+'">'+fmt(tot.net)+'</td><td>'+comma(tot.head)+'</td></tr>';
+
+  var miss=COS.filter(function(c){ return !mon[c]; });
+  var missHtml = miss.length? '<div class="alert"><div class="h">미제출 '+miss.length+'개사</div><ul>'+miss.map(function(c){return '<li>· '+esc(c)+'</li>';}).join('')+'</ul></div>':'';
+
+  out.innerHTML=
+    '<div class="card"><h3>그룹 전체 <span class="badge">'+ymLabel(ym)+' · '+items.length+'/'+COS.length+'사</span></h3>'+missHtml+kpiBlock(tot,tm)+'</div>'+
+    '<div class="card"><h3>계열사별 실적</h3><div class="tw"><table>'+head+body+sum+'</table></div></div>'+
+    '<div class="grid2">'+
+      '<div class="card"><h3>매출 구성비</h3><div class="chartbox"><canvas id="cGp1"></canvas></div></div>'+
+      '<div class="card"><h3>그룹 손익 추이</h3><div class="chartbox"><canvas id="cGp2"></canvas></div></div>'+
+    '</div>'+
+    '<div class="card"><h3>그룹 종합 시사점</h3>'+insBlock('규칙기반 분석', insightGroup(items,tot,prevTot))+'<div id="gpAi"></div></div>';
+
+  mkChart('cGp1',{type:'doughnut',data:{labels:items.map(function(x){return x.co;}),
+    datasets:[{data:items.map(function(x){return x.d.revenue;}),backgroundColor:PALETTE,borderWidth:1,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:9},color:'#5A6B7B',boxWidth:9}}}}});
+
+  if(hist.length>1){
+    mkChart('cGp2',{type:'bar',data:{labels:hist.map(function(h){return ymLabel(h.y);}),
+      datasets:[{label:'매출액',data:hist.map(function(h){return h.t.revenue;}),backgroundColor:C_MAIN},
+                {label:'영업이익',data:hist.map(function(h){return h.t.op;}),type:'line',borderColor:'#C9A227',backgroundColor:'#C9A227',tension:.3}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:10},color:'#5A6B7B'}}},
+        scales:{y:{ticks:{font:{size:9},color:'#5A6B7B'},grid:{color:'#EEF2F7'}},x:{ticks:{font:{size:9},color:'#5A6B7B'},grid:{display:false}}}}});
+  }
+
+  aiBox('gpAi','인시스 그룹('+items.length+'개 계열사) '+ymLabel(ym)+' 통합 손익이다(백만원). 계열사별: '+
+    JSON.stringify(items.map(function(x){ return {회사:x.co, 손익:x.d}; }))+' 그룹합계: '+JSON.stringify(tot)+
+    ' 그룹 차원의 포트폴리오 진단과 향후 3~6개월 사업 방향을 제시하라.', SYS_ADV);
+}
+
+/* =========================================================
+   기간 분석
+   ========================================================= */
+function bucketize(mode, from, to){
+  var yms=allYms().filter(function(y){ return (!from||y>=from) && (!to||y<=to); });
+  var g={};
+  yms.forEach(function(y){
+    var p=y.split('-'), yy=p[0], mm=parseInt(p[1],10), key, lab;
+    if(mode==='Q'){ var q=Math.ceil(mm/3); key=yy+'-Q'+q; lab=yy.slice(2)+'년 '+q+'분기'; }
+    else if(mode==='H'){ var h=mm<=6?1:2; key=yy+'-H'+h; lab=yy.slice(2)+'년 '+(h===1?'상반기':'하반기'); }
+    else if(mode==='Y'){ key=yy; lab=yy+'년'; }
+    else { key='ALL'; lab=(from?ymLabel(from):'전체')+' ~ '+(to?ymLabel(to):'현재'); }
+    if(!g[key]) g[key]={key:key,label:lab,yms:[]};
+    g[key].yms.push(y);
+  });
+  return Object.keys(g).sort().map(function(k){ return g[k]; });
+}
+function renderPeriod(){
+  fillCoSel($('pdCo'), true);
+  var mode=$('pdMode').value;
+  $('pdRange').classList.toggle('hide', mode!=='C');
+  var yms=allYms();
+  if(yms.length && !$('pdFrom').value){ $('pdFrom').value=yms[0]; $('pdTo').value=yms[yms.length-1]; }
+  drawPeriod();
+}
+function drawPeriod(){
+  var mode=$('pdMode').value, co=$('pdCo').value, out=$('pdOut');
+  var from = mode==='C'? $('pdFrom').value : '';
+  var to   = mode==='C'? $('pdTo').value : '';
+  var buckets=bucketize(mode, from, to);
+  if(!buckets.length){ out.innerHTML='<div class="card"><div class="note">해당 기간에 데이터가 없다.</div></div>'; return; }
+
+  var series=buckets.map(function(b){
+    var recs=[];
+    b.yms.forEach(function(y){
+      var mon=DB[y]||{};
+      if(co==='__ALL__'){ Object.keys(mon).forEach(function(c){ recs.push(mon[c]); }); }
+      else if(mon[co]) recs.push(mon[co]);
+    });
+    return {label:b.label, months:b.yms.length, d:agg(recs), n:recs.length};
+  }).filter(function(s){ return s.n>0; });
+
+  if(!series.length){ out.innerHTML='<div class="card"><div class="note">선택 대상의 데이터가 없다.</div></div>'; return; }
+
+  var coName = co==='__ALL__'? '그룹 전체' : co;
+  var tot=agg(series.map(function(s){return s.d;})), tm=metrics(tot);
+
+  var head='<tr><th class="l">구간</th><th>매출액</th><th>매출총이익</th><th>영업이익</th><th>영업이익률</th><th>순이익</th></tr>';
+  var body=series.map(function(s){
+    var m=metrics(s.d);
+    return '<tr><td class="l">'+esc(s.label)+'</td><td>'+fmt(s.d.revenue)+'</td><td>'+fmt(s.d.gross)+'</td>'+
+      '<td class="'+cls(s.d.op)+'">'+fmt(s.d.op)+'</td><td class="'+cls(s.d.op)+'">'+pct(m.om)+'</td><td class="'+cls(s.d.net)+'">'+fmt(s.d.net)+'</td></tr>';
+  }).join('');
+  var sum='<tr class="sum"><td class="l">누적</td><td>'+fmt(tot.revenue)+'</td><td>'+fmt(tot.gross)+'</td><td class="'+cls(tot.op)+'">'+fmt(tot.op)+'</td><td class="'+cls(tot.op)+'">'+pct(tm.om)+'</td><td class="'+cls(tot.net)+'">'+fmt(tot.net)+'</td></tr>';
+
+  out.innerHTML=
+    '<div class="card"><h3>'+esc(coName)+' 누적 <span class="badge">'+series.length+'개 구간</span></h3>'+kpiBlock(tot,tm)+'</div>'+
+    '<div class="card"><h3>구간별 실적</h3><div class="tw"><table>'+head+body+sum+'</table></div></div>'+
+    '<div class="card"><h3>추이</h3><div class="chartbox"><canvas id="cPd"></canvas></div></div>'+
+    '<div class="card"><h3>기간 종합 분석 및 사업 방향</h3>'+insBlock('규칙기반 분석', insightPeriod(series,coName))+'<div id="pdAi"></div></div>';
+
+  mkChart('cPd',{type:'bar',data:{labels:series.map(function(s){return s.label;}),
+    datasets:[{label:'매출액',data:series.map(function(s){return s.d.revenue;}),backgroundColor:C_MAIN},
+              {label:'영업이익',data:series.map(function(s){return s.d.op;}),backgroundColor:'#93B7D6'},
+              {label:'영업이익률(%)',data:series.map(function(s){return metrics(s.d).om;}),type:'line',borderColor:'#C9A227',backgroundColor:'#C9A227',tension:.3,yAxisID:'y1'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:10},color:'#5A6B7B'}}},
+      scales:{y:{ticks:{font:{size:9},color:'#5A6B7B'},grid:{color:'#EEF2F7'}},
+              y1:{position:'right',ticks:{font:{size:9},color:'#5A6B7B'},grid:{display:false}},
+              x:{ticks:{font:{size:9},color:'#5A6B7B'},grid:{display:false}}}}});
+
+  aiBox('pdAi','인시스 그룹 '+coName+'의 기간별 누적 손익 추이다(백만원). '+
+    JSON.stringify(series.map(function(s){ return {구간:s.label, 손익:s.d}; }))+
+    ' 추세 진단과 향후 1년 사업 방향(투자·구조조정·신사업)을 구체적으로 제시하라.', SYS_ADV);
+}
+
+/* =========================================================
+   설정
+   ========================================================= */
+function renderSetup(){
+  $('keyStat').textContent = getKey()? '● 등록됨' : '○ 미등록';
+  $('apiKey').value = getKey();
+  $('tblCo').innerHTML = '<tr><th class="l">계열사</th><th class="c">등록 월수</th><th class="c">관리</th></tr>'+
+    COS.map(function(c,i){
+      var n=allYms().filter(function(y){ return DB[y][c]; }).length;
+      return '<tr><td class="l">'+esc(c)+'</td><td class="c">'+n+'</td><td class="c">'+
+        '<button class="btn dan sm" onclick="delCo('+i+')">삭제</button></td></tr>';
+    }).join('');
+  var yms=allYms();
+  $('tblStat').innerHTML = '<tr><th class="l">기준월</th><th class="c">등록사</th><th>합산 매출</th><th>합산 영업이익</th></tr>'+
+    (yms.length? yms.slice().reverse().map(function(y){
+      var mon=DB[y], ks=Object.keys(mon), t=agg(ks.map(function(k){return mon[k];}));
+      return '<tr><td class="l">'+ymLabel(y)+'</td><td class="c">'+ks.length+'/'+COS.length+'</td><td>'+fmt(t.revenue)+'</td><td class="'+cls(t.op)+'">'+fmt(t.op)+'</td></tr>';
+    }).join('') : '<tr><td class="c" colspan="4" style="color:#8494A4;padding:10px">데이터 없음</td></tr>');
+}
+function addCo(){
+  var n=$('newCo').value.trim();
+  if(!n){ toast('계열사명을 입력하라'); return; }
+  if(COS.indexOf(n)>=0){ toast('이미 등록된 계열사다'); return; }
+  COS.push(n); saveAll(); $('newCo').value=''; refreshAllSel(); renderSetup(); refreshStatus(); toast(n+' 추가됨');
+}
+function delCo(i){
+  var c=COS[i];
+  if(!confirm(c+'를 목록에서 삭제할까? (저장된 손익 데이터는 유지된다)')) return;
+  COS.splice(i,1); saveAll(); refreshAllSel(); renderSetup(); refreshStatus(); toast('삭제됨');
+}
+function expJson(){
+  var blob=new Blob([JSON.stringify({v:VERSION,cos:COS,data:DB},null,2)],{type:'application/json'});
+  dl(blob,'insys_pl_backup_'+ymNow()+'.json');
+}
+function expCsv(){
+  var rows=[['기준월','계열사'].concat(FIELDS.map(function(f){return f.n;}))];
+  allYms().forEach(function(y){ Object.keys(DB[y]).forEach(function(c){
+    rows.push([y,c].concat(FIELDS.map(function(f){ return DB[y][c][f.k]; })));
+  });});
+  var csv='\ufeff'+rows.map(function(r){ return r.map(function(x){ return '"'+String(x).replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
+  dl(new Blob([csv],{type:'text/csv'}),'insys_pl_'+ymNow()+'.csv');
+}
+function dl(blob,name){
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(a.href); },1000);
+  toast(name+' 저장');
+}
+function wipe(){
+  if(!confirm('저장된 모든 손익 데이터를 삭제할까? 복구 불가.')) return;
+  DB={}; COS=DEF_CO.slice(); saveAll(); refreshAllSel(); refreshStatus(); renderSetup(); toast('전체 초기화 완료');
+}
+
+/* =========================================================
+   초기화
+   ========================================================= */
+function refreshAllSel(){
+  fillCoSel($('inCo'),false); fillCoSel($('sgCo'),false); fillCoSel($('pdCo'),true);
+  fillYmSel($('sgYm')); fillYmSel($('cpYm')); fillYmSel($('gpYm'));
+}
+function init(){
+  $('verTag').textContent=VERSION; $('verFoot').textContent=VERSION;
+  loadAll(); buildFields();
+  $('inYm').value = ymNow();
+  refreshAllSel(); refreshStatus(); onCoChange();
+
+  Array.prototype.forEach.call($('tabs').children, function(b){ b.onclick=function(){ setTab(b.dataset.t); }; });
+  $('inYm').onchange=function(){ refreshStatus(); onCoChange(); };
+  $('inCo').onchange=onCoChange;
+  $('sheetSel').onchange=parseSheet;
+  $('sgCo').onchange=renderSingle; $('sgYm').onchange=renderSingle;
+  $('cpYm').onchange=renderCompare;
+  $('gpYm').onchange=renderGroup;
+  $('pdMode').onchange=renderPeriod; $('pdCo').onchange=drawPeriod;
+  $('pdFrom').onchange=drawPeriod; $('pdTo').onchange=drawPeriod;
+
+  var dp=$('drop');
+  dp.onclick=function(){ $('file').click(); };
+  dp.ondragover=function(e){ e.preventDefault(); dp.classList.add('hot'); };
+  dp.ondragleave=function(){ dp.classList.remove('hot'); };
+  dp.ondrop=function(e){ e.preventDefault(); dp.classList.remove('hot'); handleFile(e.dataTransfer.files[0]); };
+  $('file').onchange=function(e){ handleFile(e.target.files[0]); e.target.value=''; };
+  document.addEventListener('paste', function(e){
+    var it=(e.clipboardData||{}).items||[];
+    for(var i=0;i<it.length;i++){ if(it[i].type.indexOf('image')===0){ readShot(it[i].getAsFile()); e.preventDefault(); return; } }
+  });
+  $('impFile').onchange=function(e){
+    var f=e.target.files[0]; if(!f) return;
+    var fr=new FileReader();
+    fr.onload=function(ev){
+      try{
+        var j=JSON.parse(ev.target.result);
+        if(j.data) DB=j.data; if(j.cos&&j.cos.length) COS=j.cos;
+        saveAll(); refreshAllSel(); refreshStatus(); renderSetup(); toast('복원 완료');
+      }catch(err){ toast('복원 실패: '+err.message); }
+    };
+    fr.readAsText(f); e.target.value='';
+  };
+}
+init();
+</script>
+</body>
+</html>
