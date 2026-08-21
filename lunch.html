@@ -6,7 +6,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>인시스 점심주문관리 v9.6</title>
+<title>인시스 점심주문관리 v9.7</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -754,7 +754,7 @@ body.season-warm {
   <div class="hd-inner">
     <div class="hd-left" style="display:flex;align-items:center;gap:10px">
       <h1>인시스 점심주문관리</h1>
-      <span class="ver-badge">v9.6</span>
+      <span class="ver-badge">v9.7</span>
       <button id="settingBtn" title="설정" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">⚙️</button>
     </div>
     <div class="hd-right">
@@ -1008,7 +1008,7 @@ body.season-warm {
     <div id="restaurantAdminList"></div>
   </div>
 
-  <div class="footer-info">점심주문관리 시스템 v9.6</div>
+  <div class="footer-info">점심주문관리 시스템 v9.7</div>
 
   <!-- ══ AI 추천 모달 ══ -->
   <div id="aiModal" class="modal-overlay hidden">
@@ -3600,6 +3600,51 @@ async function removeDupOnce() {
     }
   } catch(e){ console.warn('중복삭제 오류:',e); }
 }
+
+// ── 자동 알림 안내 팝업 ─────────────────────────────────
+(function() {
+  const DISMISS_KEY = 'insys_notice_autoalert_dismissed';
+  
+  function showNoticeIfNeeded() {
+    if(localStorage.getItem(DISMISS_KEY) === '1') return;
+    const modal = document.getElementById('noticeAutoAlert');
+    if(!modal) return;
+    // 로그인 화면일 때는 표시 안 함 (mainScreen 보일 때만)
+    const main = document.getElementById('mainScreen');
+    if(!main || main.classList.contains('hidden')) {
+      setTimeout(showNoticeIfNeeded, 800);
+      return;
+    }
+    modal.style.display = 'flex';
+  }
+  
+  function initNotice() {
+    const modal = document.getElementById('noticeAutoAlert');
+    const closeBtn = document.getElementById('noticeClose');
+    const dontBtn  = document.getElementById('noticeDontShow');
+    if(!modal || !closeBtn || !dontBtn) return;
+    
+    closeBtn.addEventListener('click', () => {
+      modal.style.display = 'none';
+    });
+    dontBtn.addEventListener('click', () => {
+      localStorage.setItem(DISMISS_KEY, '1');
+      modal.style.display = 'none';
+    });
+    modal.addEventListener('click', (e) => {
+      if(e.target === modal) modal.style.display = 'none';
+    });
+    
+    // 3초 후 조건 확인 (로그인 완료 대기)
+    setTimeout(showNoticeIfNeeded, 3000);
+  }
+  
+  if(document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initNotice);
+  } else {
+    initNotice();
+  }
+})();
 </script>
 
 <!-- 설정 모달 -->
@@ -3634,6 +3679,23 @@ async function removeDupOnce() {
     <!-- 저장 버튼 -->
     <button id="settingSave" style="width:100%;background:#006064;color:#fff;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;">저장</button>
     <div id="settingSavedMsg" style="display:none;text-align:center;color:#065f46;font-size:13px;margin-top:10px;font-weight:700;">✅ 저장되었습니다</div>
+  </div>
+</div>
+
+
+<!-- 자동알림 안내 팝업 -->
+<div id="noticeAutoAlert" style="display:none;position:fixed;inset:0;z-index:1100;background:rgba(0,0,0,.6);align-items:center;justify-content:center;padding:16px;">
+  <div style="background:#fff;border-radius:16px;padding:24px;max-width:400px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,.3);">
+    <div style="text-align:center;font-size:38px;margin-bottom:8px;">🔔</div>
+    <div style="font-size:17px;font-weight:700;color:#1a3a5c;text-align:center;margin-bottom:12px;">자동 알림 설정 안내</div>
+    <div style="font-size:14px;color:#374151;line-height:1.7;margin-bottom:20px;">
+      매일 점심 시간에 자동으로 <b>주문 알림 팝업</b>이 뜨도록 설정할 수 있습니다.<br><br>
+      <b style="color:#006064;">⚙️ 설정</b> 버튼을 눌러 자동 알림 시간을 지정하세요.
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button id="noticeDontShow" style="flex:1;background:#f3f4f6;color:#6b7280;border:none;border-radius:10px;padding:12px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;">다시 보지 않기</button>
+      <button id="noticeClose" style="flex:1.5;background:#006064;color:#fff;border:none;border-radius:10px;padding:12px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;">확인</button>
+    </div>
   </div>
 </div>
 
