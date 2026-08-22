@@ -73,7 +73,7 @@
 <header class="cover">
   <div class="inner">
     <h1>PCB 검사 반송 시뮬레이터</h1>
-    <p>선회+텔레스코픽 팔 · 컨베이어 · 검사지그 클램프 · NG/OK 판정 · MES · v3.4 (하드웨어 미연결)</p>
+    <p>선회+텔레스코픽 팔 · 컨베이어 · 검사지그 클램프 · NG/OK 판정 · MES · v3.5 (하드웨어 미연결)</p>
   </div>
 </header>
 
@@ -150,7 +150,7 @@
   </section>
 </main>
 
-<footer>인시스 AI혁신 연구개발실 · 작성자 ys.kim@in-sys.co.kr · v3.4 · 로직 시뮬레이터(하드웨어 미연결)</footer>
+<footer>인시스 AI혁신 연구개발실 · 작성자 ys.kim@in-sys.co.kr · v3.5 · 로직 시뮬레이터(하드웨어 미연결)</footer>
 
 <script>
   // ===== 좌표 (그림 배치 그대로) =====
@@ -164,38 +164,42 @@
   };
   const HOME = {x:350, y:330};       // 팔 최소 신장(대기)
 
-  // ===== 로직 플로우 상태 =====
+  // ===== 로직 플로우 상태 (파이프라인) =====
   const STATES = [
-    { phase:'대기/투입', type:'wait', signal:'START', label:'START 대기 (작업자 PCB 투입 대기)' },
-    { phase:'대기/투입', type:'appear', label:'작업자가 1번(투입)에 PCB 올림' },
-    { phase:'대기/투입', type:'conveyor', label:'컨베이어 구동 → PCB 1→2 이송' },
-    { phase:'대기/투입', type:'sensor', which:'infeed', on:true, label:'투입센서(2번) 감지 → 컨베이어 정지' },
-    { phase:'투입→검사', type:'arm', to:2, label:'팔: 2번으로 회전+신장' },
-    { phase:'투입→검사', type:'grip', open:false, pick:true, label:'그리퍼 닫기 (2번에서 집기)' },
-    { phase:'투입→검사', type:'sensor', which:'infeed', on:false, label:'투입센서 해제' },
+    // 초기 투입 (최초 1회)
+    { phase:'초기 투입', type:'wait', signal:'START', label:'START 대기 (운전 시작)' },
+    { phase:'초기 투입', type:'appear', label:'작업자가 1번에 PCB 투입' },
+    { phase:'초기 투입', type:'conveyor', label:'컨베이어: PCB 1→2 이송 후 정지' },
+    // ↓↓↓ 반복 루프 (LOOP_START) ↓↓↓
+    { phase:'투입→검사', type:'arm', to:2, label:'팔: 2번으로 이동' },
+    { phase:'투입→검사', type:'grip', open:false, pick:true, slot:'2', label:'그리퍼 닫기 (2번에서 집기)' },
     { phase:'투입→검사', type:'arm', to:3, label:'팔: 3번(검사지그)으로 이동' },
-    { phase:'투입→검사', type:'grip', open:true, place:true, label:'그리퍼 열기 (지그에 안착)' },
+    { phase:'투입→검사', type:'grip', open:true, place:true, slot:'3', appear:true, label:'그리퍼 열기 (지그 안착) + 새 PCB 1번 투입' },
     { phase:'투입→검사', type:'sensor', which:'jig', on:true, label:'지그센서: PCB 안착 감지' },
     { phase:'투입→검사', type:'jig', clamp:true, label:'검사지그 클램프 닫힘 (고정)' },
-    { phase:'투입→검사', type:'arm', to:'home', label:'팔: 대기위치 복귀(관절 수축)' },
+    { phase:'투입→검사', type:'arm', to:'home', label:'팔: 대기위치 복귀' },
+    { phase:'다음PCB 대기', type:'conveyor', label:'컨베이어: 다음 PCB 1→2 이송 후 정지' },
     { phase:'검사/판정', type:'wait', signal:'INSPECT', label:'검사완료 신호 대기' },
     { phase:'검사/판정', type:'verdict', label:'NG/OK 판정 표시 + MES 전송' },
     { phase:'검사/판정', type:'jig', clamp:false, label:'검사지그 클램프 열림' },
     { phase:'검사/판정', type:'sensor', which:'jig', on:false, label:'지그센서 해제' },
     { phase:'분류 배출', type:'arm', to:3, label:'팔: 3번(검사지그)으로 이동' },
-    { phase:'분류 배출', type:'grip', open:false, pick:true, label:'그리퍼 닫기 (지그에서 집기)' },
+    { phase:'분류 배출', type:'grip', open:false, pick:true, slot:'3', label:'그리퍼 닫기 (지그에서 집기)' },
     { phase:'분류 배출', type:'arm', toBin:true, label:'팔: 판정에 따라 4(OK)/5(NG)로 이동' },
-    { phase:'분류 배출', type:'grip', open:true, place:true, label:'그리퍼 열기 (배출)' },
+    { phase:'분류 배출', type:'grip', open:true, place:true, slot:'bin', label:'그리퍼 열기 (배출)' },
     { phase:'분류 배출', type:'arm', to:'home', label:'팔: 대기위치 복귀 (반복)' }
   ];
+  const LOOP_START = 3;   // 반복은 이 인덱스로 되돌아감(초기 투입은 1회만)
 
   // ===== 런타임 =====
   let idx=0, running=false, waitingSignal=null;
   let tipX=HOME.x, tipY=HOME.y;      // 팔 끝(그리퍼) 현재 위치
   let gripperOpen=true;
-  let partLoc='none';                // none/pos1/conv/pos2/pos3/pos4/pos5/gripper
-  let convT=0;                       // 컨베이어 PCB 진행(0~1)
-  let beltPhase=0;                    // 컨베이어 벨트 회전 위상
+  // 다중 PCB 위치 플래그 (파이프라인: 2번 대기 + 3번 검사 동시 가능)
+  let p1=false, p2=false, p3=false, pg=false;   // 1/2/3번, 그리퍼
+  let pOut=null;                     // 마지막 배출 PCB {pos:4|5}
+  let convActive=false, convX=0;     // 컨베이어 이송 중 PCB
+  let beltPhase=0;                   // 벨트 회전 위상(이송 중에만 변화)
   let jigClamped=false, s_infeed=false, s_jig=false;
   let verdict=null, verdictBin=null, autoTog=0;
   let cycleCount=0, okCount=0, ngCount=0;
@@ -216,14 +220,26 @@
   const scene=$('scene');
   function draw(){
     let s='';
-    // 컨베이어
-    s+=`<rect x="${CONV_X0}" y="${CONV_Y-CONV_H/2}" width="${CONV_X1-CONV_X0}" height="${CONV_H}" rx="8" fill="#DCE3EC" stroke="#9AA6B4"/>`;
-    // 롤러 무늬(beltPhase 만큼 우측으로 흘러 벨트 회전 표현)
+    // 컨베이어 (실물 유사: 상하 알루미늄 프레임 + 벨트, 모서리 직각)
+    const _top=CONV_Y-CONV_H/2, _bot=CONV_Y+CONV_H/2, _fr=8; // _fr: 알루미늄 프레임 두께
+    // 상/하 알루미늄 프레임
+    const _alGrad='fill="#AEB7C2"';
+    s+=`<rect x="${CONV_X0}" y="${_top-_fr}" width="${CONV_X1-CONV_X0}" height="${_fr}" ${_alGrad} stroke="#7C8896"/>`;   // 상부 프레임
+    s+=`<rect x="${CONV_X0}" y="${_bot}" width="${CONV_X1-CONV_X0}" height="${_fr}" ${_alGrad} stroke="#7C8896"/>`;       // 하부 프레임
+    // 프레임 하이라이트(알루미늄 광택)
+    s+=`<rect x="${CONV_X0}" y="${_top-_fr}" width="${CONV_X1-CONV_X0}" height="2" fill="#D5DCE4"/>`;
+    s+=`<rect x="${CONV_X0}" y="${_bot}" width="${CONV_X1-CONV_X0}" height="2" fill="#D5DCE4"/>`;
+    // 벨트 본체 (직각 모서리)
+    s+=`<rect x="${CONV_X0}" y="${_top}" width="${CONV_X1-CONV_X0}" height="${CONV_H}" fill="#3A4048" stroke="#2A2F35"/>`;
+    // 벨트 표면 롤러 무늬(beltPhase 만큼 이동 → PCB와 동일 연동)
     const _sp=26, _off=((beltPhase%_sp)+_sp)%_sp;
     for(let rx=CONV_X0+16+_off-_sp; rx<CONV_X1-2; rx+=_sp){
       if(rx<=CONV_X0+3) continue;
-      s+=`<line x1="${rx}" y1="${CONV_Y-CONV_H/2}" x2="${rx}" y2="${CONV_Y+CONV_H/2}" stroke="#C2CBD6"/>`;
+      s+=`<line x1="${rx}" y1="${_top}" x2="${rx}" y2="${_bot}" stroke="#4C535C"/>`;
     }
+    // 양끝 롤러(풀리)
+    s+=`<rect x="${CONV_X0-3}" y="${_top-2}" width="6" height="${CONV_H+4}" rx="3" fill="#8A929C" stroke="#6B7480"/>`;
+    s+=`<rect x="${CONV_X1-3}" y="${_top-2}" width="6" height="${CONV_H+4}" rx="3" fill="#8A929C" stroke="#6B7480"/>`;
     // 이동방향 화살표(1→2 사이)
     const ax=262;
     s+=`<polygon points="${ax-16},${CONV_Y-9} ${ax+6},${CONV_Y-9} ${ax+6},${CONV_Y-16} ${ax+22},${CONV_Y} ${ax+6},${CONV_Y+16} ${ax+6},${CONV_Y+9} ${ax-16},${CONV_Y+9}" fill="#F2C200" stroke="#B99400"/>`;
@@ -259,13 +275,12 @@
     s+=`<circle cx="${POS[3].x+36}" cy="${POS[3].y+20}" r="5" fill="${s_jig?'#16A34A':'#C9CDD3'}"/>`;
     s+=`<text x="${POS[3].x+44}" y="${POS[3].y+23}" font-size="9.5" fill="#5B6472">지그센서</text>`;
 
-    // 컨베이어 위 PCB (위치별)
-    if(partLoc==='pos1') s+=pcb(POS[1].x,POS[1].y);
-    if(partLoc==='pos2') s+=pcb(POS[2].x,POS[2].y);
-    if(partLoc==='pos3') s+=pcb(POS[3].x,POS[3].y);
-    if(partLoc==='pos4') s+=pcb(POS[4].x,POS[4].y);
-    if(partLoc==='pos5') s+=pcb(POS[5].x,POS[5].y);
-    if(partLoc==='conv'){ const cx=POS[1].x+(POS[2].x-POS[1].x)*convT; s+=pcb(cx,CONV_Y); }
+    // 컨베이어/지그/배출 위의 PCB (다중)
+    if(p1) s+=pcb(POS[1].x,POS[1].y);
+    if(p2) s+=pcb(POS[2].x,POS[2].y);
+    if(p3) s+=pcb(POS[3].x,POS[3].y);
+    if(pOut) s+=pcb(POS[pOut].x,POS[pOut].y);
+    if(convActive) s+=pcb(convX,CONV_Y);
 
     // ===== 로봇 팔 (텔레스코픽) =====
     const dx=tipX-BX, dy=tipY-BY; const L=Math.hypot(dx,dy)||1;
@@ -283,7 +298,7 @@
     const perpx=-uy, perpy=ux; const g=gripperOpen?11:4;
     s+=`<circle cx="${tipX+perpx*g}" cy="${tipY+perpy*g}" r="5" fill="#122540"/>`;
     s+=`<circle cx="${tipX-perpx*g}" cy="${tipY-perpy*g}" r="5" fill="#122540"/>`;
-    if(partLoc==='gripper') s+=pcb(tipX,tipY);
+    if(pg) s+=pcb(tipX,tipY);
     // 베이스
     s+=`<rect x="${BX-30}" y="${BY-14}" width="60" height="28" rx="5" fill="#C69A5A" stroke="#8A6A2E" stroke-width="2"/>`;
     s+=`<circle cx="${BX}" cy="${BY}" r="16" fill="#1E3A5F"/><circle cx="${BX}" cy="${BY}" r="6" fill="#0E1D33"/>`;
@@ -321,9 +336,16 @@
     requestAnimationFrame(f);
   }
   function tweenConv(done){
-    const my=++animToken, dur=durs().move, t0=performance.now(); partLoc='conv';
-    function f(now){ if(my!==animToken)return; convT=Math.min((now-t0)/dur,1); draw();
-      if(convT<1)requestAnimationFrame(f); else {partLoc='pos2';draw();done&&done();} }
+    const my=++animToken, dur=durs().move, t0=performance.now();
+    p1=false; convActive=true; let lastX=POS[1].x; convX=POS[1].x;
+    function f(now){ if(my!==animToken)return;
+      let k=Math.min((now-t0)/dur,1); const e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
+      convX = POS[1].x + (POS[2].x-POS[1].x)*e;
+      beltPhase += (convX - lastX); lastX = convX;   // 벨트=PCB 동일 속도 연동
+      draw();
+      if(k<1)requestAnimationFrame(f);
+      else { convActive=false; p2=true; s_infeed=true; draw(); done&&done(); }
+    }
     requestAnimationFrame(f);
   }
   function pause(ms,done){const my=++animToken;setTimeout(()=>{if(my===animToken)done&&done();},ms);}
@@ -337,11 +359,12 @@
       tweenTip(tgt.x,tgt.y,next);
     } else if(st.type==='grip'){
       gripperOpen=st.open;
-      if(st.pick){partLoc='gripper';}
-      if(st.place){partLoc='pos'+nearestPos();}
+      if(st.pick){ pg=true; if(st.slot==='2'){p2=false; s_infeed=false;} else if(st.slot==='3'){p3=false;} }
+      if(st.place){ pg=false; if(st.slot==='3'){p3=true;} else if(st.slot==='bin'){pOut=verdictBin;} }
+      if(st.appear){ p1=true; }
       addLog('[그리퍼] '+st.label); draw(); pause(durs().act,next);
     } else if(st.type==='appear'){
-      partLoc='pos1'; addLog('[투입] '+st.label); draw(); pause(durs().act,next);
+      p1=true; addLog('[투입] '+st.label); draw(); pause(durs().act,next);
     } else if(st.type==='conveyor'){
       addLog('[컨베이어] '+st.label); tweenConv(next);
     } else if(st.type==='sensor'){
@@ -371,10 +394,9 @@
   function next(){
     idx++;
     if(idx>=STATES.length){
-      idx=0; cycleCount++; $('cycleCount').textContent=cycleCount;
+      idx=LOOP_START; cycleCount++; $('cycleCount').textContent=cycleCount;
       if(verdict==='OK'){okCount++;$('okCount').textContent=okCount;} else if(verdict==='NG'){ngCount++;$('ngCount').textContent=ngCount;}
-      partLoc='none'; s_infeed=false; s_jig=false; convT=0;
-      addLog('=== 1 사이클 완료 (총 '+cycleCount+'회) ===');
+      addLog('=== 1개 처리 완료 (총 '+cycleCount+'개) ===');
     }
     if(running) runState();
   }
@@ -387,8 +409,9 @@
   $('btnStop').addEventListener('click',()=>{ running=false; animToken++; if(autoTimer){clearTimeout(autoTimer);autoTimer=null;} $('btnRun').disabled=false; addLog('■ 정지'); });
   $('btnReset').addEventListener('click',()=>{
     running=false; animToken++; if(autoTimer){clearTimeout(autoTimer);autoTimer=null;}
-    idx=0; waitingSignal=null; tipX=HOME.x; tipY=HOME.y; gripperOpen=true; partLoc='none';
-    jigClamped=false; s_infeed=false; s_jig=false; verdict=null; verdictBin=null; convT=0;
+    idx=0; waitingSignal=null; tipX=HOME.x; tipY=HOME.y; gripperOpen=true;
+    p1=false; p2=false; p3=false; pg=false; pOut=null; convActive=false; convX=0; beltPhase=0;
+    jigClamped=false; s_infeed=false; s_jig=false; verdict=null; verdictBin=null;
     $('verdictLamp').textContent='--'; $('verdictLamp').className='verdict-lamp';
     $('mesInd').className='mes-ind'; $('mesInd').innerHTML='<span class="dot"></span>MES 전송: 대기';
     $('btnRun').disabled=false; updateSigBtns(); draw(); renderSteps(); $('curStateText').textContent=''; addLog('↺ 초기화');
@@ -402,14 +425,7 @@
   if(!$('speed')){ const d=document.createElement('input'); d.type='range'; d.id='speed'; d.min=1;d.max=10;d.value=6; d.style.display='none'; document.body.appendChild(d); }
 
   draw(); renderSteps(); updateSigBtns();
-  addLog('시뮬레이터 v3.4 준비 완료. "자동 운전 시작"을 누르세요.');
-
-  // 컨베이어 벨트 회전 루프 (운전 중일 때 롤러 무늬가 흘러감)
-  function beltLoop(){
-    if(running){ beltPhase += 0.9; draw(); }
-    requestAnimationFrame(beltLoop);
-  }
-  beltLoop();
+  addLog('시뮬레이터 v3.5 준비 완료. "자동 운전 시작"을 누르세요.');
 </script>
 </body>
 </html>
