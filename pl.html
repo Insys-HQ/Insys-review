@@ -125,6 +125,8 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
 .fbtn{font-family:inherit;font-size:10px;font-weight:600;border:1px solid var(--line);background:#fff;color:var(--gray);border-radius:5px;padding:0 7px;cursor:pointer;flex:0 0 auto}
 .finp{display:flex;gap:4px;align-items:stretch}
 .finp input{flex:1;min-width:0;text-align:right;font-variant-numeric:tabular-nums;letter-spacing:.2px}
+.finp input.miss{background:#FDF6E8;border-color:#D9C078}
+.miss-tag{font-size:9.5px;color:#8A6D1F;font-weight:700;background:#FBF3DE;border-radius:7px;padding:0 5px;margin-left:4px}
 </style>
 </head>
 <body class="mobile">
@@ -141,7 +143,7 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
         <button id="vP" onclick="setView('pc')">PC</button>
       </div>
       <span class="ver" id="fbStat">연결중</span>
-      <span class="ver" id="verTag">v1.8</span>
+      <span class="ver" id="verTag">v1.9</span>
     </div>
   </div>
 </div>
@@ -395,7 +397,7 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
   </div>
 
   <div class="foot">
-    인시스 AI혁신 연구개발실 &nbsp;|&nbsp; pl.html <span id="verFoot">v1.8</span><br>
+    인시스 AI혁신 연구개발실 &nbsp;|&nbsp; pl.html <span id="verFoot">v1.9</span><br>
     금액 단위: <span id="unitFoot">원</span> &nbsp;|&nbsp; 음수 표기: △ &nbsp;|&nbsp; 저장: Firestore insys_pl
   </div>
 </div>
@@ -407,7 +409,7 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
    인시스 계열사 손익분석 대시보드  v1.0
    인시스 AI혁신 연구개발실
    ========================================================= */
-var VERSION = 'v1.8';
+var VERSION = 'v1.9';
 var LS_DATA = 'insys_pl_data_v1';
 var LS_CO   = 'insys_pl_co_v1';
 var LS_KEY  = 'insys_pl_key_v1';
@@ -415,11 +417,11 @@ var LS_KEY  = 'insys_pl_key_v1';
 var FIELDS = [
   {k:'revenue',  n:'매출액',      kw:['매출액','매출총액','총매출','매출합계','매출'],
                  ex:['원가','총이익','총손익','채권','할인','에누리','환입','원가율','이익률','비율','증감','구성']},
-  {k:'cogs',     n:'매출원가',    kw:['매출원가','제조원가','상품매출원가','원가'],
-                 ex:['율','비율','증감','구성','총이익']},
+  {k:'cogs',     n:'매출원가·매입',kw:['매출원가','제품매출원가','상품매출원가','당기매입액','제조원가','매입액','상품매입','원재료비','재료비','매입','원가'],
+                 ex:['율','비율','증감','구성','총이익','채무','부가세','환급','예정']},
   {k:'gross',    n:'매출총이익',  kw:['매출총이익','매출총손익','총이익'],
                  ex:['율','비율','증감','구성']},
-  {k:'sga',      n:'판매비와관리비',kw:['판매비와관리비','판매비및관리비','판매관리비','판관비','판매비'],
+  {k:'sga',      n:'판매비와관리비',kw:['판매비와관리비','판매비및관리비','판매관리비','판관비','일반관리비','비용합계','비용계','판매비'],
                  ex:['율','비율','증감','구성']},
   {k:'op',       n:'영업이익',    kw:['영업이익','영업손익'],
                  ex:['율','비율','증감','구성','외','전기','전년']},
@@ -429,9 +431,9 @@ var FIELDS = [
                  ex:['율','비율','증감','구성','전기','전년','법인세']},
   {k:'head',     n:'인원수(명)',  kw:['인원수','총인원','평균인원','인원'],
                  ex:['비','율','증감']},
-  {k:'labor',    n:'인건비',      kw:['인건비','노무비','급여총액','급여'],
-                 ex:['율','비율','증감','구성','상여충당','퇴직급여충당']},
-  {k:'outsrc',   n:'외주비',      kw:['외주가공비','외주용역비','외주비','외주'],
+  {k:'labor',    n:'인건비',      kw:['인건비계','인건비','노무비','급여총액','급여합계','급료','임금','급여'],
+                 ex:['율','비율','증감','구성','충당','미지급']},
+  {k:'outsrc',   n:'외주비',      kw:['외주가공비','외주용역비','도급비','외주비','외주'],
                  ex:['율','비율','증감','구성']}
 ];
 
@@ -687,7 +689,7 @@ function fillYmSel(el){
 function buildFields(){
   $('fields').innerHTML = FIELDS.map(function(f){
     var suf = f.k==='head'? '' : ' (원)';
-    return '<div><label class="lb">'+f.n.replace('(명)','')+suf+(f.k==='head'?' (명)':'')+'</label>'+
+    return '<div><label class="lb">'+f.n.replace('(명)','')+suf+(f.k==='head'?' (명)':'')+'<span id="lb_'+f.k+'"></span></label>'+
       '<div class="finp"><input type="text" inputmode="decimal" autocomplete="off" id="f_'+f.k+'" value="0">'+
       '<button class="fbtn" id="mb_'+f.k+'" onclick="startMap(\''+f.k+'\')" title="원본 시트에서 셀 선택">지정</button></div></div>';
   }).join('');
@@ -755,11 +757,26 @@ function bindFmt(){
 }
 function clearFields(){
   writeFields(blank()); $('vErr').innerHTML=''; $('parseInfo').innerHTML='';
-  usedCell={}; mapTarget=null;
+  usedCell={}; mapTarget=null; clearMiss();
   FIELDS.forEach(function(f){ var b=$('mb_'+f.k); if(b) b.classList.remove('mapon'); });
   if(sheetRows.length) renderPrev();
 }
 var LS_IU='insys_pl_iu_v2';
+function markMiss(found){
+  FIELDS.forEach(function(f){
+    var el=$('f_'+f.k), lb=$('lb_'+f.k);
+    var ok = found && found[f.k]!==undefined;
+    if(el) el.className = ok? '' : 'miss';
+    if(lb) lb.innerHTML = ok? '' : '<span class="miss-tag">미인식</span>';
+  });
+}
+function clearMiss(){
+  FIELDS.forEach(function(f){
+    var el=$('f_'+f.k), lb=$('lb_'+f.k);
+    if(el) el.className='';
+    if(lb) lb.innerHTML='';
+  });
+}
 function showParse(sc, raw, d, cnt){
   var e=$('parseInfo'); if(!e) return;
   var nm={1:'원 (배율 없음)',1000:'천원 → ×1,000',1000000:'백만원 → ×1,000,000'};
@@ -783,6 +800,9 @@ function validate(d){
   var w=[];
   if(d.revenue && Math.abs((d.revenue-d.cogs)-d.gross) > Math.max(1, d.revenue*0.005)) w.push('매출총이익 ≠ 매출액 − 매출원가');
   if(d.gross && Math.abs((d.gross-d.sga)-d.op) > Math.max(1, d.revenue*0.005)) w.push('영업이익 ≠ 매출총이익 − 판관비');
+  if(d.revenue>0 && d.cogs===0) w.push('매출원가(매입)가 0이다 — 원가 없이는 손익 분석 불가. [지정] 버튼으로 시트에서 직접 선택할 것');
+  if(d.revenue>0 && d.cogs===0 && d.sga>0) w.push('현재 영업이익은 매출액 − 판관비로만 계산된 값이다');
+  if(d.revenue>0 && d.labor===0 && d.sga>0) w.push('인건비가 0이다 — 시트 항목명이 급여·임금·노무비 등인지 확인 후 [지정]으로 선택할 것');
   if(d.revenue>0 && d.cogs>d.revenue) w.push('매출원가('+fmt(d.cogs)+')가 매출액('+fmt(d.revenue)+')보다 크다 — 열 지정 오류 가능성');
   if(d.revenue>0 && d.labor>d.revenue) w.push('인건비가 매출액을 초과한다 — 값 확인 필요');
   if(d.revenue>0 && Math.abs(ratio(d.gross,d.revenue))>100) w.push('매출총이익률 절대값 100% 초과 — 값 확인 필요');
@@ -957,7 +977,7 @@ function parseSheet(){
   var d = blank();
   Object.keys(found).forEach(function(k){ d[k] = k==='head'? Math.round(found[k]) : Math.round(found[k]*sc); });
   usedCell = hitCell;
-  writeFields(d); validate(d); showParse(sc, raw, d, Object.keys(found).length);
+  writeFields(d); markMiss(found); validate(d); showParse(sc, raw, d, Object.keys(found).length);
   renderPrev();
   toast(Object.keys(found).length+'개 항목 인식 (단위: '+({1:'원',1000:'천원',1000000:'백만원'}[sc]||'원')+')');
 }
@@ -1006,6 +1026,8 @@ function renderPrev(){
     var k=mapTarget;
     var cur=readFields(); cur[k]= k==='head'? Math.round(n) : Math.round(n*sheetScale);
     writeFields(cur); usedCell[k]=r+'_'+c;
+    var el2=$('f_'+k); if(el2) el2.className='';
+    var lb2=$('lb_'+k); if(lb2) lb2.innerHTML='';
     var btn=$('mb_'+k); if(btn) btn.classList.remove('mapon');
     mapTarget=null;
     $('mapHint').textContent='지정 완료 — '+(FIELDS.filter(function(f){return f.k===k;})[0].n)+' = '+comma(n)+' (시트값)';
@@ -1102,7 +1124,8 @@ $('btnOcr') && ($('btnOcr').onclick = function(){
       var raw=Object.keys(j).map(function(k){ return num(j[k]); });
       var sc=unitScale(raw); var d=blank();
       Object.keys(j).forEach(function(k){ if(d[k]!==undefined) d[k] = k==='head'? Math.round(num(j[k])) : Math.round(num(j[k])*sc); });
-      writeFields(d); validate(d); showParse(sc, raw, d, Object.keys(j).length);
+      var fnd={}; Object.keys(j).forEach(function(k){ if(d[k]!==undefined && num(j[k])!==0) fnd[k]=1; });
+      writeFields(d); markMiss(fnd); validate(d); showParse(sc, raw, d, Object.keys(j).length);
       toast('AI 판독 완료 — 값 확인 후 저장');
     })
     .catch(function(e){ toast(e.message==='NOKEY'?'API 키 필요':'판독 실패: '+e.message); })
