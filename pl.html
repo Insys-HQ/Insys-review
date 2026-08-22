@@ -141,7 +141,7 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
         <button id="vP" onclick="setView('pc')">PC</button>
       </div>
       <span class="ver" id="fbStat">연결중</span>
-      <span class="ver" id="verTag">v1.5</span>
+      <span class="ver" id="verTag">v1.6</span>
     </div>
   </div>
 </div>
@@ -172,10 +172,9 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
         <div style="flex:1;min-width:104px">
           <label class="lb">입력자료 단위</label>
           <select id="inUnit">
-            <option value="1" selected>원 (기본)</option>
-            <option value="1000">천원</option>
-            <option value="1000000">백만원</option>
-            <option value="auto">자동 판별</option>
+            <option value="1" selected>원 — 시트 숫자 그대로 (기본)</option>
+            <option value="1000">천원 → 원 환산 (×1,000)</option>
+            <option value="1000000">백만원 → 원 환산 (×1,000,000)</option>
           </select>
         </div>
         <div style="flex:1;min-width:104px">
@@ -188,7 +187,7 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
           </select>
         </div>
       </div>
-      <div class="note" style="margin-top:6px"><b>입력자료 단위</b>=업로드한 엑셀·캡처의 단위 / <b>화면 표시 단위</b>=모든 탭의 금액 표기 방식. 저장은 항상 <b>원</b> 단위로 이루어진다.</div>
+      <div class="note" style="margin-top:6px"><b>입력자료 단위</b>는 <b>원(배율 없음)</b>이 기본이다. 시트에 적힌 숫자를 그대로 저장·표시하며 자동 판별은 하지 않는다.</div>
     </div>
 
     <div class="card">
@@ -343,7 +342,15 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
       <div class="row" style="margin-top:7px">
         <button class="btn sm" onclick="syncDown()">Firebase에서 불러오기</button>
         <button class="btn sec sm" onclick="syncUp()">로컬 → Firebase 전체 업로드</button>
-        <button class="btn gray sm" onclick="migrateMW()">백만원 → 원 일괄 변환</button>
+      </div>
+      <div class="row" style="margin-top:7px">
+        <select id="scaleSel" style="flex:1;min-width:180px">
+          <option value="0.001">÷ 1,000 — 천원 오인식 되돌리기</option>
+          <option value="0.000001">÷ 1,000,000</option>
+          <option value="1000">× 1,000</option>
+          <option value="1000000">× 1,000,000 — 백만원→원</option>
+        </select>
+        <button class="btn gray sm" onclick="rescaleAll()">저장 데이터 배율 조정</button>
       </div>
       <div class="note" style="margin-top:6px">모든 손익 데이터는 Firestore <b>insys_pl</b> 컬렉션에 저장된다. 네트워크 장애 시 로컬에 임시 보관 후 상단 배지가 "오프라인"으로 바뀌며, 복구 후 전체 업로드로 동기화하면 된다.</div>
     </div>
@@ -388,7 +395,7 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
   </div>
 
   <div class="foot">
-    인시스 AI혁신 연구개발실 &nbsp;|&nbsp; pl.html <span id="verFoot">v1.5</span><br>
+    인시스 AI혁신 연구개발실 &nbsp;|&nbsp; pl.html <span id="verFoot">v1.6</span><br>
     금액 단위: <span id="unitFoot">원</span> &nbsp;|&nbsp; 음수 표기: △ &nbsp;|&nbsp; 저장: Firestore insys_pl
   </div>
 </div>
@@ -400,7 +407,7 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
    인시스 계열사 손익분석 대시보드  v1.0
    인시스 AI혁신 연구개발실
    ========================================================= */
-var VERSION = 'v1.5';
+var VERSION = 'v1.6';
 var LS_DATA = 'insys_pl_data_v1';
 var LS_CO   = 'insys_pl_co_v1';
 var LS_KEY  = 'insys_pl_key_v1';
@@ -530,16 +537,18 @@ function markPending(ym,co){ PENDING[ym+'||'+co]=1; lsSet('insys_pl_pending_v1',
 function clearPending(){ PENDING={}; lsDel('insys_pl_pending_v1'); }
 function pendCount(){ return Object.keys(PENDING).length; }
 
-function migrateMW(){
+function rescaleAll(){
+  var m=parseFloat($('scaleSel').value);
   var n=0; allYms().forEach(function(y){ n+=Object.keys(DB[y]).length; });
   if(!n){ toast('변환할 데이터가 없다'); return; }
-  if(!confirm('저장된 '+n+'건의 금액을 1,000,000배 하여 백만원→원 으로 변환할까?\n\n이미 원 단위로 저장된 데이터에는 실행하지 말 것.')) return;
+  var lbl=$('scaleSel').options[$('scaleSel').selectedIndex].text;
+  if(!confirm('저장된 '+n+'건의 금액에 [ '+lbl+' ] 을 적용할까?\n\n인원수는 변경되지 않는다. 실행 후 Firebase 전체 업로드가 필요하다.')) return;
   allYms().forEach(function(y){ Object.keys(DB[y]).forEach(function(c){
     var d=DB[y][c];
-    FIELDS.forEach(function(f){ if(f.k!=='head') d[f.k]=Math.round(num(d[f.k])*1000000); });
+    FIELDS.forEach(function(f){ if(f.k!=='head') d[f.k]=Math.round(num(d[f.k])*m); });
   });});
-  saveAll(); refreshAllSel(); refreshStatus();
-  toast('변환 완료 — Firebase 전체 업로드 실행 권장');
+  saveAll(); refreshAllSel(); refreshStatus(); renderSetup();
+  toast('배율 조정 완료 ('+n+'건) — Firebase 전체 업로드 실행 권장');
 }
 function syncDown(){
   fbStatus('sync','불러오는 중');
@@ -585,7 +594,7 @@ function $(id){ return document.getElementById(id); }
 function toast(m){ var t=$('toast'); t.textContent=m; t.classList.add('on'); setTimeout(function(){t.classList.remove('on');},2200); }
 function num(v){ var n=parseFloat(String(v==null?'':v).replace(/[^0-9.\-]/g,'')); return isNaN(n)?0:n; }
 function comma(n){ return (Math.round(n)).toString().replace(/\B(?=(\d{3})+(?!\d))/g,','); }
-var LS_DU='insys_pl_du_v1';
+var LS_DU='insys_pl_du_v2';
 var DU_NAMES={'1':'원','1000':'천원','1000000':'백만원','100000000':'억원'};
 var DU=1, DU_NAME='원';
 function UN(){ return DU_NAME; }
@@ -694,24 +703,14 @@ function clearFields(){
   FIELDS.forEach(function(f){ var b=$('mb_'+f.k); if(b) b.classList.remove('mapon'); });
   if(sheetRows.length) renderPrev();
 }
-var LS_IU='insys_pl_iu_v1';
-function autoDetect(vals){
-  var mx=0; vals.forEach(function(v){ if(Math.abs(v)>mx) mx=Math.abs(v); });
-  if(mx>=100000000) return 1;
-  if(mx>=100000) return 1000;
-  return 1000000;
-}
+var LS_IU='insys_pl_iu_v2';
 function showParse(sc, raw, d, cnt){
   var e=$('parseInfo'); if(!e) return;
-  var nm={1:'원',1000:'천원',1000000:'백만원'};
-  var auto=autoDetect(raw);
-  var warn = (auto!==sc && $('inUnit').value!=='auto');
-  e.innerHTML='<div class="note" style="background:'+(warn?'#FBEEEF':'var(--pastel2)')+
-    ';border-left:3px solid '+(warn?'var(--neg)':'var(--accent2)')+
-    ';border-radius:0 6px 6px 0;padding:7px 10px;margin-top:7px;line-height:1.7">'+
-    '<b>'+cnt+'개 항목 인식</b> — 입력자료 단위 <b>'+(nm[sc]||'원')+'</b> 적용<br>'+
-    '매출액 <b>'+comma(d.revenue)+'원</b> ('+fmt(d.revenue)+UN()+' 표시)'+
-    (warn? '<br><span style="color:var(--neg);font-weight:600">⚠ 자동 판별은 '+nm[auto]+'으로 추정한다. 원본 시트의 단위를 확인할 것.</span>' : '')+
+  var nm={1:'원 (배율 없음)',1000:'천원 → ×1,000',1000000:'백만원 → ×1,000,000'};
+  e.innerHTML='<div class="note" style="background:var(--pastel2);border-left:3px solid var(--accent2);'+
+    'border-radius:0 6px 6px 0;padding:7px 10px;margin-top:7px;line-height:1.7">'+
+    '<b>'+cnt+'개 항목 인식</b> — 입력자료 단위 <b>'+(nm[sc]||'원 (배율 없음)')+'</b><br>'+
+    '매출액 <b>'+comma(d.revenue)+'원</b>'+(DU!==1? ' ('+fmt(d.revenue)+UN()+' 표시)':'')+
     '</div>';
 }
 
@@ -738,13 +737,9 @@ function validate(d){
   return w;
 }
 
-function unitScale(vals){
-  var u = $('inUnit').value;
-  if(u!=='auto') return parseFloat(u);
-  var mx = 0; vals.forEach(function(v){ if(Math.abs(v)>mx) mx=Math.abs(v); });
-  if(mx >= 100000000) return 1;         // 이미 원 단위
-  if(mx >= 100000) return 1000;         // 천원 단위
-  return 1000000;                       // 백만원 단위
+function unitScale(){
+  var n = parseFloat($('inUnit').value);
+  return (isFinite(n) && n>0)? n : 1;   // 기본 ×1 — 시트 숫자 그대로
 }
 
 function saveRec(){
@@ -1500,7 +1495,8 @@ function init(){
   var du=lsGet(LS_DU)||'1';
   DU=parseFloat(du); DU_NAME=DU_NAMES[du]||'원';
   $('dispUnit').value=du; $('unitFoot').textContent=DU_NAME;
-  $('inUnit').value = lsGet(LS_IU) || '1';
+  var iu = lsGet(LS_IU); if(iu!=='1000' && iu!=='1000000') iu='1';
+  $('inUnit').value = iu;
   buildFields();
   $('inYm').value = ymNow();
   refreshAllSel(); refreshStatus(); onCoChange();
