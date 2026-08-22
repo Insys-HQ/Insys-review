@@ -127,7 +127,7 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
         <button id="vP" onclick="setView('pc')">PC</button>
       </div>
       <span class="ver" id="fbStat">연결중</span>
-      <span class="ver" id="verTag">v1.3</span>
+      <span class="ver" id="verTag">v1.4</span>
     </div>
   </div>
 </div>
@@ -158,10 +158,10 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
         <div style="flex:1;min-width:104px">
           <label class="lb">입력자료 단위</label>
           <select id="inUnit">
-            <option value="auto">자동 판별</option>
-            <option value="1">원</option>
+            <option value="1" selected>원 (기본)</option>
             <option value="1000">천원</option>
             <option value="1000000">백만원</option>
+            <option value="auto">자동 판별</option>
           </select>
         </div>
         <div style="flex:1;min-width:104px">
@@ -212,6 +212,7 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
     <div class="card">
       <h3>3. 손익 항목 확인 · 수정</h3>
       <div class="fields" id="fields"></div>
+      <div id="parseInfo"></div>
       <div id="vErr"></div>
       <div class="row" style="margin-top:9px">
         <button class="btn" onclick="saveRec()">저장</button>
@@ -356,7 +357,7 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
   </div>
 
   <div class="foot">
-    인시스 AI혁신 연구개발실 &nbsp;|&nbsp; pl.html <span id="verFoot">v1.3</span><br>
+    인시스 AI혁신 연구개발실 &nbsp;|&nbsp; pl.html <span id="verFoot">v1.4</span><br>
     금액 단위: <span id="unitFoot">원</span> &nbsp;|&nbsp; 음수 표기: △ &nbsp;|&nbsp; 저장: Firestore insys_pl
   </div>
 </div>
@@ -368,7 +369,7 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
    인시스 계열사 손익분석 대시보드  v1.0
    인시스 AI혁신 연구개발실
    ========================================================= */
-var VERSION = 'v1.3';
+var VERSION = 'v1.4';
 var LS_DATA = 'insys_pl_data_v1';
 var LS_CO   = 'insys_pl_co_v1';
 var LS_KEY  = 'insys_pl_key_v1';
@@ -640,7 +641,27 @@ function buildFields(){
 }
 function readFields(){ var o={}; FIELDS.forEach(function(f){ var v=num($('f_'+f.k).value); o[f.k]= f.k==='head'? Math.round(v) : Math.round(v*DU); }); return o; }
 function writeFields(d){ FIELDS.forEach(function(f){ var v=(d&&d[f.k]!==undefined)?d[f.k]:0; $('f_'+f.k).value = f.k==='head'? Math.round(v) : Math.round(v/DU*100)/100; }); }
-function clearFields(){ writeFields(blank()); $('vErr').innerHTML=''; }
+function clearFields(){ writeFields(blank()); $('vErr').innerHTML=''; $('parseInfo').innerHTML=''; }
+var LS_IU='insys_pl_iu_v1';
+function autoDetect(vals){
+  var mx=0; vals.forEach(function(v){ if(Math.abs(v)>mx) mx=Math.abs(v); });
+  if(mx>=100000000) return 1;
+  if(mx>=100000) return 1000;
+  return 1000000;
+}
+function showParse(sc, raw, d, cnt){
+  var e=$('parseInfo'); if(!e) return;
+  var nm={1:'원',1000:'천원',1000000:'백만원'};
+  var auto=autoDetect(raw);
+  var warn = (auto!==sc && $('inUnit').value!=='auto');
+  e.innerHTML='<div class="note" style="background:'+(warn?'#FBEEEF':'var(--pastel2)')+
+    ';border-left:3px solid '+(warn?'var(--neg)':'var(--accent2)')+
+    ';border-radius:0 6px 6px 0;padding:7px 10px;margin-top:7px;line-height:1.7">'+
+    '<b>'+cnt+'개 항목 인식</b> — 입력자료 단위 <b>'+(nm[sc]||'원')+'</b> 적용<br>'+
+    '매출액 <b>'+comma(d.revenue)+'원</b> ('+fmt(d.revenue)+UN()+' 표시)'+
+    (warn? '<br><span style="color:var(--neg);font-weight:600">⚠ 자동 판별은 '+nm[auto]+'으로 추정한다. 원본 시트의 단위를 확인할 것.</span>' : '')+
+    '</div>';
+}
 
 function autoCalc(){
   var d = readFields();
@@ -774,8 +795,8 @@ function parseSheet(){
   var sc = unitScale(raw);
   var d = blank();
   Object.keys(found).forEach(function(k){ d[k] = k==='head'? Math.round(found[k]) : Math.round(found[k]*sc); });
-  writeFields(d); validate(d);
-  toast(Object.keys(found).length+'개 항목 자동 인식');
+  writeFields(d); validate(d); showParse(sc, raw, d, Object.keys(found).length);
+  toast(Object.keys(found).length+'개 항목 인식 (단위: '+({1:'원',1000:'천원',1000000:'백만원'}[sc]||'원')+')');
 }
 
 /* ---------- 캡처화면 ---------- */
@@ -856,7 +877,8 @@ $('btnOcr') && ($('btnOcr').onclick = function(){
       var raw=Object.keys(j).map(function(k){ return num(j[k]); });
       var sc=unitScale(raw); var d=blank();
       Object.keys(j).forEach(function(k){ if(d[k]!==undefined) d[k] = k==='head'? Math.round(num(j[k])) : Math.round(num(j[k])*sc); });
-      writeFields(d); validate(d); toast('AI 판독 완료 — 값 확인 후 저장');
+      writeFields(d); validate(d); showParse(sc, raw, d, Object.keys(j).length);
+      toast('AI 판독 완료 — 값 확인 후 저장');
     })
     .catch(function(e){ toast(e.message==='NOKEY'?'API 키 필요':'판독 실패: '+e.message); })
     .then(function(){ b.disabled=false; b.textContent='AI로 숫자 읽기'; });
@@ -1321,6 +1343,7 @@ function init(){
   var du=lsGet(LS_DU)||'1';
   DU=parseFloat(du); DU_NAME=DU_NAMES[du]||'원';
   $('dispUnit').value=du; $('unitFoot').textContent=DU_NAME;
+  $('inUnit').value = lsGet(LS_IU) || '1';
   buildFields();
   $('inYm').value = ymNow();
   refreshAllSel(); refreshStatus(); onCoChange();
@@ -1346,6 +1369,7 @@ function init(){
   $('inYm').onchange=function(){ refreshStatus(); onCoChange(); };
   $('inCo').onchange=onCoChange;
   $('dispUnit').onchange=function(){ setDisp(this.value); toast('표시 단위: '+DU_NAME); };
+  $('inUnit').onchange=function(){ lsSet(LS_IU, this.value); if(wb) parseSheet(); };
   $('sheetSel').onchange=parseSheet;
   $('sgCo').onchange=renderSingle; $('sgYm').onchange=renderSingle;
   $('cpYm').onchange=renderCompare;
