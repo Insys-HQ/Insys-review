@@ -29,6 +29,9 @@ body.mobile{--w:420px}
 .nav-title{font-size:14px;font-weight:700;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .nav-sub{font-size:10px;color:#B9CBE0;font-weight:400}
 .ver{font-size:10px;background:rgba(255,255,255,.16);padding:2px 7px;border-radius:9px;font-weight:500;white-space:nowrap}
+.ver.ok{background:#2F6E4A;color:#DFF3E7}
+.ver.off{background:#8A3C41;color:#FBE3E4}
+.ver.sync{background:#7A5E12;color:#FBF0D3}
 .vt{display:flex;background:rgba(255,255,255,.14);border-radius:7px;overflow:hidden}
 .vt button{background:none;border:none;color:#C9D8E8;font-family:inherit;font-size:10px;padding:4px 8px;cursor:pointer;font-weight:500}
 .vt button.on{background:#fff;color:var(--navy);font-weight:700}
@@ -116,7 +119,8 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
         <button id="vM" class="on" onclick="setView('mobile')">모바일</button>
         <button id="vP" onclick="setView('pc')">PC</button>
       </div>
-      <span class="ver" id="verTag">v1.0</span>
+      <span class="ver" id="fbStat">연결중</span>
+      <span class="ver" id="verTag">v1.1</span>
     </div>
   </div>
 </div>
@@ -275,6 +279,16 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
   <!-- ================= 설정 ================= -->
   <div id="p-setup" class="hide">
     <div class="card">
+      <h3>Firebase 연동 <span class="badge">insys-work / insys_pl</span></h3>
+      <div class="tw"><table id="tblFb"></table></div>
+      <div class="row" style="margin-top:7px">
+        <button class="btn sm" onclick="syncDown()">Firebase에서 불러오기</button>
+        <button class="btn sec sm" onclick="syncUp()">로컬 → Firebase 전체 업로드</button>
+      </div>
+      <div class="note" style="margin-top:6px">모든 손익 데이터는 Firestore <b>insys_pl</b> 컬렉션에 저장된다. 네트워크 장애 시 로컬에 임시 보관 후 상단 배지가 "오프라인"으로 바뀌며, 복구 후 전체 업로드로 동기화하면 된다.</div>
+    </div>
+
+    <div class="card">
       <h3>Claude API 연동 <span class="badge">선택</span></h3>
       <label class="lb">API 키 (브라우저에만 저장, 서버 전송 없음)</label>
       <input type="password" id="apiKey" placeholder="sk-ant-...">
@@ -314,7 +328,7 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
   </div>
 
   <div class="foot">
-    인시스 AI혁신 연구개발실 &nbsp;|&nbsp; pl.html <span id="verFoot">v1.0</span><br>
+    인시스 AI혁신 연구개발실 &nbsp;|&nbsp; pl.html <span id="verFoot">v1.1</span><br>
     금액 단위: 백만원 &nbsp;|&nbsp; 음수 표기: △
   </div>
 </div>
@@ -326,7 +340,7 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
    인시스 계열사 손익분석 대시보드  v1.0
    인시스 AI혁신 연구개발실
    ========================================================= */
-var VERSION = 'v1.0';
+var VERSION = 'v1.1';
 var LS_DATA = 'insys_pl_data_v1';
 var LS_CO   = 'insys_pl_co_v1';
 var LS_KEY  = 'insys_pl_key_v1';
@@ -358,10 +372,126 @@ function lsGet(k){ try{ var v=localStorage.getItem(k); return v===null?(mem[k]==
 function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){ mem[k]=v; } }
 function lsDel(k){ try{ localStorage.removeItem(k); }catch(e){} delete mem[k]; }
 
+/* ---------- Firestore REST API 계층 ---------- */
+var FB = {
+  key : 'AIzaSyBYqd2uRr1ZvFLDCWuS15h9qFkT-Dvg5Es',
+  proj: 'insys-work',
+  col : 'insys_pl',
+  meta: 'insys_pl_meta'
+};
+var FB_ON = false;
+var PENDING = {};
+
+function fsUrl(path, qs){
+  var u='https://firestore.googleapis.com/v1/projects/'+FB.proj+'/databases/(default)/documents/'+path;
+  var q=['key='+FB.key]; if(qs) q.push(qs);
+  return u+'?'+q.join('&');
+}
+function toVal(v){
+  if(typeof v==='number') return {doubleValue:v};
+  if(typeof v==='boolean') return {booleanValue:v};
+  if(Object.prototype.toString.call(v)==='[object Array]') return {arrayValue:{values:v.map(toVal)}};
+  return {stringValue:String(v)};
+}
+function fromVal(v){
+  if(!v) return null;
+  if(v.doubleValue!==undefined) return Number(v.doubleValue);
+  if(v.integerValue!==undefined) return Number(v.integerValue);
+  if(v.booleanValue!==undefined) return v.booleanValue;
+  if(v.stringValue!==undefined) return v.stringValue;
+  if(v.arrayValue!==undefined) return (v.arrayValue.values||[]).map(fromVal);
+  return null;
+}
+function docId(ym,co){ return ym+'__'+String(co).replace(/[\/\.\s#\[\]*`?]/g,'_'); }
+function fbStatus(k,t){
+  var e=$('fbStat'); if(!e) return;
+  e.className='ver '+k; e.textContent=t;
+}
+
+function fsLoad(){
+  var out={}, cos=null;
+  function page(tk){
+    return fetch(fsUrl(FB.col,'pageSize=300'+(tk?'&pageToken='+encodeURIComponent(tk):'')))
+      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+      .then(function(j){
+        (j.documents||[]).forEach(function(dc){
+          var f=dc.fields||{}, ym=fromVal(f.ym), co=fromVal(f.co);
+          if(!ym||!co) return;
+          var d=blank();
+          FIELDS.forEach(function(fl){ d[fl.k]=num(fromVal(f[fl.k])); });
+          if(!out[ym]) out[ym]={};
+          out[ym][co]=d;
+        });
+        if(j.nextPageToken) return page(j.nextPageToken);
+      });
+  }
+  return Promise.resolve().then(function(){ return page(null); }).then(function(){
+    return Promise.resolve().then(function(){ return fetch(fsUrl(FB.meta+'/companies')); })
+      .then(function(r){ return r.ok? r.json() : null; })
+      .then(function(j){
+        if(j && j.fields && j.fields.list) cos=fromVal(j.fields.list);
+      })
+      .catch(function(){})
+      .then(function(){ return {data:out, cos:cos}; });
+  });
+}
+function fsSet(ym,co,d){
+  var f={ ym:toVal(ym), co:toVal(co), updatedAt:toVal(new Date().toISOString()) };
+  FIELDS.forEach(function(fl){ f[fl.k]=toVal(num(d[fl.k])); });
+  return fetch(fsUrl(FB.col+'/'+encodeURIComponent(docId(ym,co))),{
+    method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({fields:f})
+  }).then(function(r){ if(!r.ok) return r.text().then(function(t){ throw new Error('HTTP '+r.status+' '+t.slice(0,100)); }); return true; });
+}
+function fsDel(ym,co){
+  return fetch(fsUrl(FB.col+'/'+encodeURIComponent(docId(ym,co))),{method:'DELETE'})
+    .then(function(r){ if(!r.ok && r.status!==404) throw new Error('HTTP '+r.status); return true; });
+}
+function fsMeta(list){
+  return fetch(fsUrl(FB.meta+'/companies'),{
+    method:'PATCH', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({fields:{ list:toVal(list), updatedAt:toVal(new Date().toISOString()) }})
+  }).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return true; });
+}
+function markPending(ym,co){ PENDING[ym+'||'+co]=1; lsSet('insys_pl_pending_v1',JSON.stringify(PENDING)); }
+function clearPending(){ PENDING={}; lsDel('insys_pl_pending_v1'); }
+function pendCount(){ return Object.keys(PENDING).length; }
+
+function syncDown(){
+  fbStatus('sync','불러오는 중');
+  fsLoad().then(function(res){
+    DB=res.data; if(res.cos&&res.cos.length) COS=res.cos;
+    saveAll(); clearPending(); FB_ON=true;
+    var n=0; Object.keys(DB).forEach(function(y){ n+=Object.keys(DB[y]).length; });
+    fbStatus('ok','Firebase '+n+'건');
+    refreshAllSel(); refreshStatus(); renderSetup(); toast('Firebase에서 '+n+'건 불러옴');
+  }).catch(function(e){ FB_ON=false; fbStatus('off','오프라인'); toast('불러오기 실패: '+e.message); });
+}
+function syncUp(){
+  var jobs=[];
+  allYms().forEach(function(y){ Object.keys(DB[y]).forEach(function(c){ jobs.push([y,c,DB[y][c]]); }); });
+  if(!jobs.length){ toast('업로드할 데이터가 없다'); return; }
+  fbStatus('sync','업로드 0/'+jobs.length);
+  var i=0, fail=0;
+  function step(){
+    if(i>=jobs.length){
+      return fsMeta(COS).catch(function(){}).then(function(){
+        if(fail){ FB_ON=false; fbStatus('off','실패 '+fail+'건'); toast('업로드 완료 — 실패 '+fail+'건'); }
+        else { clearPending(); FB_ON=true; fbStatus('ok','Firebase '+jobs.length+'건'); toast('전체 업로드 완료 ('+jobs.length+'건)'); }
+        renderSetup();
+      });
+    }
+    var j=jobs[i++];
+    fbStatus('sync','업로드 '+i+'/'+jobs.length);
+    return fsSet(j[0],j[1],j[2]).catch(function(){ fail++; }).then(step);
+  }
+  step();
+}
+
 function loadAll(){
   try{ DB = JSON.parse(lsGet(LS_DATA)||'{}'); }catch(e){ DB={}; }
   try{ COS = JSON.parse(lsGet(LS_CO)||'null') || DEF_CO.slice(); }catch(e){ COS = DEF_CO.slice(); }
   if(!COS.length) COS = DEF_CO.slice();
+  try{ PENDING = JSON.parse(lsGet('insys_pl_pending_v1')||'{}'); }catch(e){ PENDING={}; }
 }
 function saveAll(){ lsSet(LS_DATA, JSON.stringify(DB)); lsSet(LS_CO, JSON.stringify(COS)); }
 
@@ -483,15 +613,24 @@ function saveRec(){
   validate(d);
   if(!DB[ym]) DB[ym]={};
   DB[ym][co]=d; saveAll();
-  toast(ymLabel(ym)+' '+co+' 저장 완료');
   refreshStatus(); refreshAllSel();
+  fbStatus('sync','저장 중');
+  fsSet(ym,co,d).then(function(){
+    FB_ON=true; fbStatus('ok','Firebase 저장됨');
+    toast(ymLabel(ym)+' '+co+' Firebase 저장 완료');
+  }).catch(function(e){
+    FB_ON=false; markPending(ym,co); fbStatus('off','미동기화 '+pendCount()+'건');
+    toast('Firebase 실패 — 로컬 보관 ('+e.message+')');
+  });
 }
 function delRec(){
   var ym=$('inYm').value, co=$('inCo').value;
   if(!getRec(ym,co)){ toast('삭제할 데이터가 없다'); return; }
   if(!confirm(ymLabel(ym)+' '+co+' 데이터를 삭제할까?')) return;
   delete DB[ym][co]; if(!Object.keys(DB[ym]).length) delete DB[ym];
-  saveAll(); clearFields(); refreshStatus(); refreshAllSel(); toast('삭제 완료');
+  saveAll(); clearFields(); refreshStatus(); refreshAllSel();
+  fsDel(ym,co).then(function(){ fbStatus('ok','Firebase 반영됨'); toast('삭제 완료'); })
+    .catch(function(e){ fbStatus('off','미동기화'); toast('로컬만 삭제됨: '+e.message); });
 }
 
 function refreshStatus(){
@@ -1020,6 +1159,17 @@ function drawPeriod(){
    설정
    ========================================================= */
 function renderSetup(){
+  var tf=$('tblFb');
+  if(tf){
+    var tot=0; allYms().forEach(function(y){ tot+=Object.keys(DB[y]).length; });
+    var pc=pendCount();
+    tf.innerHTML='<tr><th class="l">항목</th><th class="l">상태</th></tr>'+
+      '<tr><td class="l">프로젝트</td><td class="l">'+FB.proj+'</td></tr>'+
+      '<tr><td class="l">컬렉션</td><td class="l">'+FB.col+' / '+FB.meta+'</td></tr>'+
+      '<tr><td class="l">연결 상태</td><td class="l" style="color:'+(FB_ON?'#1F5FA8':'#B4232A')+';font-weight:600">'+(FB_ON?'정상 연결':'오프라인 (로컬 저장 중)')+'</td></tr>'+
+      '<tr><td class="l">보유 데이터</td><td class="l">'+tot+'건 / '+allYms().length+'개월</td></tr>'+
+      '<tr><td class="l">미동기화</td><td class="l" style="color:'+(pc?'#B4232A':'#5A6B7B')+';font-weight:'+(pc?'600':'400')+'">'+(pc? pc+'건 — 전체 업로드 필요' : '없음')+'</td></tr>';
+  }
   $('keyStat').textContent = getKey()? '● 등록됨' : '○ 미등록';
   $('apiKey').value = getKey();
   $('tblCo').innerHTML = '<tr><th class="l">계열사</th><th class="c">등록 월수</th><th class="c">관리</th></tr>'+
@@ -1039,12 +1189,14 @@ function addCo(){
   var n=$('newCo').value.trim();
   if(!n){ toast('계열사명을 입력하라'); return; }
   if(COS.indexOf(n)>=0){ toast('이미 등록된 계열사다'); return; }
-  COS.push(n); saveAll(); $('newCo').value=''; refreshAllSel(); renderSetup(); refreshStatus(); toast(n+' 추가됨');
+  COS.push(n); saveAll(); $('newCo').value=''; refreshAllSel(); renderSetup(); refreshStatus();
+  fsMeta(COS).then(function(){ toast(n+' 추가 — Firebase 반영'); }).catch(function(){ toast(n+' 추가 (로컬)'); });
 }
 function delCo(i){
   var c=COS[i];
   if(!confirm(c+'를 목록에서 삭제할까? (저장된 손익 데이터는 유지된다)')) return;
-  COS.splice(i,1); saveAll(); refreshAllSel(); renderSetup(); refreshStatus(); toast('삭제됨');
+  COS.splice(i,1); saveAll(); refreshAllSel(); renderSetup(); refreshStatus();
+  fsMeta(COS).then(function(){ toast('삭제 — Firebase 반영'); }).catch(function(){ toast('삭제 (로컬)'); });
 }
 function expJson(){
   var blob=new Blob([JSON.stringify({v:VERSION,cos:COS,data:DB},null,2)],{type:'application/json'});
@@ -1065,8 +1217,9 @@ function dl(blob,name){
   toast(name+' 저장');
 }
 function wipe(){
-  if(!confirm('저장된 모든 손익 데이터를 삭제할까? 복구 불가.')) return;
-  DB={}; COS=DEF_CO.slice(); saveAll(); refreshAllSel(); refreshStatus(); renderSetup(); toast('전체 초기화 완료');
+  if(!confirm('이 브라우저의 로컬 캐시를 초기화할까?\n\nFirebase 데이터는 유지되며, [Firebase에서 불러오기]로 복구 가능하다.')) return;
+  DB={}; COS=DEF_CO.slice(); clearPending(); saveAll(); refreshAllSel(); refreshStatus(); renderSetup();
+  fbStatus('off','로컬 초기화됨'); toast('로컬 초기화 완료 — Firebase 데이터는 보존됨');
 }
 
 /* =========================================================
@@ -1081,6 +1234,23 @@ function init(){
   loadAll(); buildFields();
   $('inYm').value = ymNow();
   refreshAllSel(); refreshStatus(); onCoChange();
+
+  fbStatus('sync','동기화중');
+  fsLoad().then(function(res){
+    var rc=0; Object.keys(res.data).forEach(function(y){ rc+=Object.keys(res.data[y]).length; });
+    var lc=0; Object.keys(DB).forEach(function(y){ lc+=Object.keys(DB[y]).length; });
+    FB_ON=true;
+    if(rc>0 || lc===0){
+      DB=res.data; if(res.cos&&res.cos.length) COS=res.cos;
+      saveAll(); clearPending();
+      fbStatus('ok','Firebase '+rc+'건');
+    } else {
+      fbStatus('off','로컬 '+lc+'건 미업로드');
+    }
+    refreshAllSel(); refreshStatus(); onCoChange(); renderSetup();
+  }).catch(function(){
+    FB_ON=false; fbStatus('off','오프라인');
+  });
 
   Array.prototype.forEach.call($('tabs').children, function(b){ b.onclick=function(){ setTab(b.dataset.t); }; });
   $('inYm').onchange=function(){ refreshStatus(); onCoChange(); };
@@ -1109,7 +1279,8 @@ function init(){
       try{
         var j=JSON.parse(ev.target.result);
         if(j.data) DB=j.data; if(j.cos&&j.cos.length) COS=j.cos;
-        saveAll(); refreshAllSel(); refreshStatus(); renderSetup(); toast('복원 완료');
+        saveAll(); refreshAllSel(); refreshStatus(); renderSetup();
+        toast('복원 완료 — [로컬 → Firebase 전체 업로드] 실행 권장');
       }catch(err){ toast('복원 실패: '+err.message); }
     };
     fr.readAsText(f); e.target.value='';
