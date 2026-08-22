@@ -73,7 +73,7 @@
 <header class="cover">
   <div class="inner">
     <h1>PCB 검사 반송 시뮬레이터</h1>
-    <p>선회+텔레스코픽 팔 · 컨베이어 · 검사지그 클램프 · NG/OK 판정 · MES · v3.5 (하드웨어 미연결)</p>
+    <p>선회+텔레스코픽 팔 · 컨베이어 · 검사지그 클램프 · NG/OK 판정 · MES · v3.6 (하드웨어 미연결)</p>
   </div>
 </header>
 
@@ -150,7 +150,7 @@
   </section>
 </main>
 
-<footer>인시스 AI혁신 연구개발실 · 작성자 ys.kim@in-sys.co.kr · v3.5 · 로직 시뮬레이터(하드웨어 미연결)</footer>
+<footer>인시스 AI혁신 연구개발실 · 작성자 ys.kim@in-sys.co.kr · v3.6 · 로직 시뮬레이터(하드웨어 미연결)</footer>
 
 <script>
   // ===== 좌표 (그림 배치 그대로) =====
@@ -197,7 +197,8 @@
   let gripperOpen=true;
   // 다중 PCB 위치 플래그 (파이프라인: 2번 대기 + 3번 검사 동시 가능)
   let p1=false, p2=false, p3=false, pg=false;   // 1/2/3번, 그리퍼
-  let pOut=null;                     // 마지막 배출 PCB {pos:4|5}
+  let okOn=false, okX=0;             // 4번 OK품(컨베이어 위) — 다음 이송 때 우측으로 배출
+  let ngShown=false;                 // 5번 NG품(박스에 표시)
   let convActive=false, convX=0;     // 컨베이어 이송 중 PCB
   let beltPhase=0;                   // 벨트 회전 위상(이송 중에만 변화)
   let jigClamped=false, s_infeed=false, s_jig=false;
@@ -279,7 +280,8 @@
     if(p1) s+=pcb(POS[1].x,POS[1].y);
     if(p2) s+=pcb(POS[2].x,POS[2].y);
     if(p3) s+=pcb(POS[3].x,POS[3].y);
-    if(pOut) s+=pcb(POS[pOut].x,POS[pOut].y);
+    if(okOn) s+=pcb(okX,CONV_Y);
+    if(ngShown) s+=pcb(POS[5].x,POS[5].y);
     if(convActive) s+=pcb(convX,CONV_Y);
 
     // ===== 로봇 팔 (텔레스코픽) =====
@@ -338,13 +340,16 @@
   function tweenConv(done){
     const my=++animToken, dur=durs().move, t0=performance.now();
     p1=false; convActive=true; let lastX=POS[1].x; convX=POS[1].x;
+    const _disp = POS[2].x-POS[1].x;              // 벨트 이동량
+    const okMoving = okOn, okStart = okX, okEnd = okX + _disp;  // OK품도 동일 이동량
     function f(now){ if(my!==animToken)return;
       let k=Math.min((now-t0)/dur,1); const e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
-      convX = POS[1].x + (POS[2].x-POS[1].x)*e;
+      convX = POS[1].x + _disp*e;
       beltPhase += (convX - lastX); lastX = convX;   // 벨트=PCB 동일 속도 연동
+      if(okMoving){ okX = okStart + (okEnd-okStart)*e; }   // OK품 동반 이동(우측 배출)
       draw();
       if(k<1)requestAnimationFrame(f);
-      else { convActive=false; p2=true; s_infeed=true; draw(); done&&done(); }
+      else { convActive=false; p2=true; s_infeed=true; if(okMoving){okOn=false;} draw(); done&&done(); }
     }
     requestAnimationFrame(f);
   }
@@ -360,7 +365,7 @@
     } else if(st.type==='grip'){
       gripperOpen=st.open;
       if(st.pick){ pg=true; if(st.slot==='2'){p2=false; s_infeed=false;} else if(st.slot==='3'){p3=false;} }
-      if(st.place){ pg=false; if(st.slot==='3'){p3=true;} else if(st.slot==='bin'){pOut=verdictBin;} }
+      if(st.place){ pg=false; if(st.slot==='3'){p3=true;} else if(st.slot==='bin'){ if(verdictBin===4){okOn=true; okX=POS[4].x;} else {ngShown=true;} } }
       if(st.appear){ p1=true; }
       addLog('[그리퍼] '+st.label); draw(); pause(durs().act,next);
     } else if(st.type==='appear'){
@@ -410,7 +415,7 @@
   $('btnReset').addEventListener('click',()=>{
     running=false; animToken++; if(autoTimer){clearTimeout(autoTimer);autoTimer=null;}
     idx=0; waitingSignal=null; tipX=HOME.x; tipY=HOME.y; gripperOpen=true;
-    p1=false; p2=false; p3=false; pg=false; pOut=null; convActive=false; convX=0; beltPhase=0;
+    p1=false; p2=false; p3=false; pg=false; okOn=false; okX=0; ngShown=false; convActive=false; convX=0; beltPhase=0;
     jigClamped=false; s_infeed=false; s_jig=false; verdict=null; verdictBin=null;
     $('verdictLamp').textContent='--'; $('verdictLamp').className='verdict-lamp';
     $('mesInd').className='mes-ind'; $('mesInd').innerHTML='<span class="dot"></span>MES 전송: 대기';
@@ -425,7 +430,7 @@
   if(!$('speed')){ const d=document.createElement('input'); d.type='range'; d.id='speed'; d.min=1;d.max=10;d.value=6; d.style.display='none'; document.body.appendChild(d); }
 
   draw(); renderSteps(); updateSigBtns();
-  addLog('시뮬레이터 v3.5 준비 완료. "자동 운전 시작"을 누르세요.');
+  addLog('시뮬레이터 v3.6 준비 완료. "자동 운전 시작"을 누르세요.');
 </script>
 </body>
 </html>
