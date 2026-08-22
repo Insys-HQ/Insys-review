@@ -143,7 +143,7 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
         <button id="vP" onclick="setView('pc')">PC</button>
       </div>
       <span class="ver" id="fbStat">연결중</span>
-      <span class="ver" id="verTag">v1.9</span>
+      <span class="ver" id="verTag">v2.0</span>
     </div>
   </div>
 </div>
@@ -249,6 +249,7 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
       <div class="row" style="margin-top:9px">
         <button class="btn" onclick="saveRec()">저장</button>
         <button class="btn gray sm" onclick="autoCalc()">자동 계산</button>
+        <button class="btn gray sm" onclick="applyPurchase()">매입→원가 적용</button>
         <button class="btn gray sm" onclick="clearFields()">입력 전체 지우기</button>
         <button class="btn dan sm" onclick="delRec()">이 월 데이터 삭제</button>
       </div>
@@ -397,7 +398,7 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
   </div>
 
   <div class="foot">
-    인시스 AI혁신 연구개발실 &nbsp;|&nbsp; pl.html <span id="verFoot">v1.9</span><br>
+    인시스 AI혁신 연구개발실 &nbsp;|&nbsp; pl.html <span id="verFoot">v2.0</span><br>
     금액 단위: <span id="unitFoot">원</span> &nbsp;|&nbsp; 음수 표기: △ &nbsp;|&nbsp; 저장: Firestore insys_pl
   </div>
 </div>
@@ -409,32 +410,52 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
    인시스 계열사 손익분석 대시보드  v1.0
    인시스 AI혁신 연구개발실
    ========================================================= */
-var VERSION = 'v1.9';
+var VERSION = 'v2.0';
 var LS_DATA = 'insys_pl_data_v1';
 var LS_CO   = 'insys_pl_co_v1';
 var LS_KEY  = 'insys_pl_key_v1';
 
 var FIELDS = [
-  {k:'revenue',  n:'매출액',      kw:['매출액','매출총액','총매출','매출합계','매출'],
-                 ex:['원가','총이익','총손익','채권','할인','에누리','환입','원가율','이익률','비율','증감','구성']},
-  {k:'cogs',     n:'매출원가·매입',kw:['매출원가','제품매출원가','상품매출원가','당기매입액','제조원가','매입액','상품매입','원재료비','재료비','매입','원가'],
-                 ex:['율','비율','증감','구성','총이익','채무','부가세','환급','예정']},
-  {k:'gross',    n:'매출총이익',  kw:['매출총이익','매출총손익','총이익'],
+  /* ── 수익 ── */
+  {k:'revenue',  n:'매출액',      grp:'수익',
+                 kw:['매출액','영업수익','제품매출','상품매출','용역매출','공사수익','매출총액','총매출','매출합계','매출'],
+                 ex:['원가','매입','총이익','총손익','채권','할인','에누리','환입','기타','부대','율','비율','증감','구성','전기','전년']},
+  {k:'etcrev',   n:'기타수익',    grp:'수익',
+                 kw:['기타수익','기타영업수익','기타매출','부대수익','잡이익','수입임대료'],
                  ex:['율','비율','증감','구성']},
-  {k:'sga',      n:'판매비와관리비',kw:['판매비와관리비','판매비및관리비','판매관리비','판관비','일반관리비','비용합계','비용계','판매비'],
+  /* ── 원가 ── */
+  {k:'purchase', n:'매입액',      grp:'원가',
+                 kw:['당기매입액','당기상품매입','원재료매입','상품매입','매입액','총매입','매입'],
+                 ex:['매출','원가','채무','부가세','환급','반품','에누리','할인','율','비율','증감','구성']},
+  {k:'cogs',     n:'매출원가',    grp:'원가',
+                 kw:['매출원가','제품매출원가','상품매출원가','용역원가','공사원가','제조원가','매출원가계'],
+                 ex:['율','비율','증감','구성','총이익','매입']},
+  {k:'gross',    n:'매출총이익',  grp:'원가',
+                 kw:['매출총이익','매출총손익','매출이익','총이익'],
                  ex:['율','비율','증감','구성']},
-  {k:'op',       n:'영업이익',    kw:['영업이익','영업손익'],
-                 ex:['율','비율','증감','구성','외','전기','전년']},
-  {k:'nonop',    n:'영업외손익',  kw:['영업외손익','영업외수익','영업외비용','영업외'],
+  /* ── 비용 ── */
+  {k:'sga',      n:'판매비와관리비',grp:'비용',
+                 kw:['판매비와관리비','판매비및관리비','판매관리비','판관비','일반관리비','비용합계','비용계','판매비'],
                  ex:['율','비율','증감','구성']},
-  {k:'net',      n:'당기순이익',  kw:['당기순이익','당기순손익','당기순','순이익'],
-                 ex:['율','비율','증감','구성','전기','전년','법인세']},
-  {k:'head',     n:'인원수(명)',  kw:['인원수','총인원','평균인원','인원'],
-                 ex:['비','율','증감']},
-  {k:'labor',    n:'인건비',      kw:['인건비계','인건비','노무비','급여총액','급여합계','급료','임금','급여'],
+  {k:'labor',    n:'인건비',      grp:'비용',
+                 kw:['인건비계','인건비','노무비','급여총액','급여합계','급료','임금','급여'],
                  ex:['율','비율','증감','구성','충당','미지급']},
-  {k:'outsrc',   n:'외주비',      kw:['외주가공비','외주용역비','도급비','외주비','외주'],
-                 ex:['율','비율','증감','구성']}
+  {k:'outsrc',   n:'외주비',      grp:'비용',
+                 kw:['외주가공비','외주용역비','도급비','외주비','외주'],
+                 ex:['율','비율','증감','구성']},
+  /* ── 손익 ── */
+  {k:'op',       n:'영업이익',    grp:'손익',
+                 kw:['영업이익','영업손익'],
+                 ex:['율','비율','증감','구성','외','전기','전년']},
+  {k:'nonop',    n:'영업외손익',  grp:'손익',
+                 kw:['영업외손익','영업외수익','영업외비용','영업외'],
+                 ex:['율','비율','증감','구성']},
+  {k:'net',      n:'당기순이익',  grp:'손익',
+                 kw:['당기순이익','당기순손익','당기순','순이익'],
+                 ex:['율','비율','증감','구성','전기','전년','법인세']},
+  {k:'head',     n:'인원수(명)',  grp:'기타',
+                 kw:['인원수','총인원','평균인원','인원'],
+                 ex:['비','율','증감']}
 ];
 
 var DEF_CO = ['인시스','(주)파인','(주)이레','(주)챈스','(주)코어시스템','(주)인텍코리아','우리스틸산업','(주)바른엔피엘자산대부'];
@@ -689,7 +710,8 @@ function fillYmSel(el){
 function buildFields(){
   $('fields').innerHTML = FIELDS.map(function(f){
     var suf = f.k==='head'? '' : ' (원)';
-    return '<div><label class="lb">'+f.n.replace('(명)','')+suf+(f.k==='head'?' (명)':'')+'<span id="lb_'+f.k+'"></span></label>'+
+    var gtag = f.grp? '<span style="font-size:9px;color:#8494A4;font-weight:500">['+f.grp+'] </span>' : '';
+    return '<div><label class="lb">'+gtag+f.n.replace('(명)','')+suf+(f.k==='head'?' (명)':'')+'<span id="lb_'+f.k+'"></span></label>'+
       '<div class="finp"><input type="text" inputmode="decimal" autocomplete="off" id="f_'+f.k+'" value="0">'+
       '<button class="fbtn" id="mb_'+f.k+'" onclick="startMap(\''+f.k+'\')" title="원본 시트에서 셀 선택">지정</button></div></div>';
   }).join('');
@@ -789,21 +811,37 @@ function showParse(sc, raw, d, cnt){
 
 function autoCalc(){
   var d = readFields();
-  if(!d.gross && d.revenue) d.gross = d.revenue - d.cogs;
-  if(!d.op && d.gross) d.op = d.gross - d.sga;
-  if(!d.net && d.op) d.net = d.op + d.nonop;
   if(!d.cogs && d.revenue && d.gross) d.cogs = d.revenue - d.gross;
+  if(!d.gross && d.revenue && d.cogs) d.gross = d.revenue - d.cogs;
   if(!d.sga && d.gross && d.op) d.sga = d.gross - d.op;
-  writeFields(d); validate(d); toast('자동 계산 완료');
+  if(!d.op && d.gross) d.op = d.gross - d.sga;
+  if(!d.net && d.op) d.net = d.op + d.nonop + d.etcrev;
+  writeFields(d); validate(d);
+  toast(d.cogs? '자동 계산 완료' : '매출원가가 없어 매출총이익을 계산할 수 없다');
+}
+/* 매입액을 매출원가로 적용 (재고 변동 없는 단순 구조용) */
+function applyPurchase(){
+  var d=readFields();
+  if(!d.purchase){ toast('매입액이 비어 있다'); return; }
+  if(d.cogs && !confirm('매출원가('+fmt(d.cogs)+')를 매입액('+fmt(d.purchase)+')으로 덮어쓸까?')) return;
+  d.cogs=d.purchase;
+  d.gross=d.revenue-d.cogs;
+  d.op=d.gross-d.sga;
+  d.net=d.op+d.nonop+d.etcrev;
+  writeFields(d); validate(d);
+  var el=$('f_cogs'); if(el) el.className=''; var lb=$('lb_cogs'); if(lb) lb.innerHTML='';
+  toast('매입액을 매출원가로 적용했다 (기초·기말 재고 변동 미반영)');
 }
 function validate(d){
   var w=[];
   if(d.revenue && Math.abs((d.revenue-d.cogs)-d.gross) > Math.max(1, d.revenue*0.005)) w.push('매출총이익 ≠ 매출액 − 매출원가');
   if(d.gross && Math.abs((d.gross-d.sga)-d.op) > Math.max(1, d.revenue*0.005)) w.push('영업이익 ≠ 매출총이익 − 판관비');
-  if(d.revenue>0 && d.cogs===0) w.push('매출원가(매입)가 0이다 — 원가 없이는 손익 분석 불가. [지정] 버튼으로 시트에서 직접 선택할 것');
+  if(d.revenue>0 && d.cogs===0 && d.purchase>0) w.push('매출원가가 0이고 매입액만 있다 — 재고 변동이 없다면 [매입→원가 적용] 버튼을 사용할 것 (매입액은 취득액, 매출원가는 판매분 원가로 별개 계정이다)');
+  else if(d.revenue>0 && d.cogs===0) w.push('매출원가가 0이다 — 원가 없이는 손익 분석 불가. [지정] 버튼으로 시트에서 직접 선택할 것');
   if(d.revenue>0 && d.cogs===0 && d.sga>0) w.push('현재 영업이익은 매출액 − 판관비로만 계산된 값이다');
   if(d.revenue>0 && d.labor===0 && d.sga>0) w.push('인건비가 0이다 — 시트 항목명이 급여·임금·노무비 등인지 확인 후 [지정]으로 선택할 것');
   if(d.revenue>0 && d.cogs>d.revenue) w.push('매출원가('+fmt(d.cogs)+')가 매출액('+fmt(d.revenue)+')보다 크다 — 열 지정 오류 가능성');
+  if(d.purchase>0 && d.cogs>0 && Math.abs(d.purchase-d.cogs)>Math.max(1,d.revenue*0.3)) w.push('매입액과 매출원가 차이가 크다 — 재고 변동분인지 확인할 것');
   if(d.revenue>0 && d.labor>d.revenue) w.push('인건비가 매출액을 초과한다 — 값 확인 필요');
   if(d.revenue>0 && Math.abs(ratio(d.gross,d.revenue))>100) w.push('매출총이익률 절대값 100% 초과 — 값 확인 필요');
   var om = ratio(d.op,d.revenue);
@@ -1277,9 +1315,12 @@ function kpiBlock(d,m){
   '</div>';
 }
 function plTable(d,m){
-  var r=[['매출액',d.revenue,100],['매출원가',d.cogs,ratio(d.cogs,d.revenue)],['매출총이익',d.gross,m.gm],
-         ['판관비',d.sga,m.sgaR],['영업이익',d.op,m.om],['영업외손익',d.nonop,ratio(d.nonop,d.revenue)],
-         ['당기순이익',d.net,m.nm],['인건비',d.labor,m.laborR],['외주비',d.outsrc,m.outR]];
+  var r=[['매출액',d.revenue,100],['기타수익',d.etcrev,ratio(d.etcrev,d.revenue)],
+         ['매입액',d.purchase,ratio(d.purchase,d.revenue)],['매출원가',d.cogs,ratio(d.cogs,d.revenue)],
+         ['매출총이익',d.gross,m.gm],
+         ['판매비와관리비',d.sga,m.sgaR],['  인건비',d.labor,m.laborR],['  외주비',d.outsrc,m.outR],
+         ['영업이익',d.op,m.om],['영업외손익',d.nonop,ratio(d.nonop,d.revenue)],
+         ['당기순이익',d.net,m.nm]];
   return '<div class="tw"><table><tr><th class="l">항목</th><th>금액('+UN()+')</th><th>매출대비</th></tr>'+
     r.map(function(x){
       var em = ['매출총이익','영업이익','당기순이익'].indexOf(x[0])>=0;
