@@ -141,7 +141,7 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
         <button id="vP" onclick="setView('pc')">PC</button>
       </div>
       <span class="ver" id="fbStat">연결중</span>
-      <span class="ver" id="verTag">v1.7</span>
+      <span class="ver" id="verTag">v1.8</span>
     </div>
   </div>
 </div>
@@ -247,7 +247,7 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
       <div class="row" style="margin-top:9px">
         <button class="btn" onclick="saveRec()">저장</button>
         <button class="btn gray sm" onclick="autoCalc()">자동 계산</button>
-        <button class="btn gray sm" onclick="clearFields()">입력 초기화</button>
+        <button class="btn gray sm" onclick="clearFields()">입력 전체 지우기</button>
         <button class="btn dan sm" onclick="delRec()">이 월 데이터 삭제</button>
       </div>
     </div>
@@ -395,7 +395,7 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
   </div>
 
   <div class="foot">
-    인시스 AI혁신 연구개발실 &nbsp;|&nbsp; pl.html <span id="verFoot">v1.7</span><br>
+    인시스 AI혁신 연구개발실 &nbsp;|&nbsp; pl.html <span id="verFoot">v1.8</span><br>
     금액 단위: <span id="unitFoot">원</span> &nbsp;|&nbsp; 음수 표기: △ &nbsp;|&nbsp; 저장: Firestore insys_pl
   </div>
 </div>
@@ -407,7 +407,7 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
    인시스 계열사 손익분석 대시보드  v1.0
    인시스 AI혁신 연구개발실
    ========================================================= */
-var VERSION = 'v1.7';
+var VERSION = 'v1.8';
 var LS_DATA = 'insys_pl_data_v1';
 var LS_CO   = 'insys_pl_co_v1';
 var LS_KEY  = 'insys_pl_key_v1';
@@ -722,9 +722,32 @@ function fmtInput(el){
 function bindFmt(){
   FIELDS.forEach(function(f){
     var el=$('f_'+f.k); if(!el) return;
+    el.addEventListener('keydown', function(e){
+      var st=el.selectionStart, en=el.selectionEnd, v=el.value;
+      // 콤마 앞에서 백스페이스 → 콤마 건너뛰고 숫자 삭제
+      if(e.key==='Backspace' && st===en && st>1 && v.charAt(st-1)===','){
+        e.preventDefault();
+        el.value=v.slice(0,st-2)+v.slice(st);
+        try{ el.setSelectionRange(st-2,st-2); }catch(err){}
+        fmtInput(el); return;
+      }
+      // 콤마 뒤에서 Delete → 콤마 건너뛰고 숫자 삭제
+      if(e.key==='Delete' && st===en && v.charAt(st)===','){
+        e.preventDefault();
+        el.value=v.slice(0,st)+v.slice(st+2);
+        try{ el.setSelectionRange(st,st); }catch(err){}
+        fmtInput(el); return;
+      }
+      // ESC → 해당 항목 비우기
+      if(e.key==='Escape'){
+        e.preventDefault(); el.value='';
+        try{ el.setSelectionRange(0,0); }catch(err){}
+        return;
+      }
+    });
     el.addEventListener('input', function(){ fmtInput(el); });
     el.addEventListener('blur', function(){
-      if(el.value==='' || el.value==='-'){ el.value='0'; return; }
+      if(el.value==='' || el.value==='-' || el.value==='.'){ el.value='0'; return; }
       fmtInput(el);
     });
     el.addEventListener('focus', function(){ setTimeout(function(){ try{ el.select(); }catch(e){} },0); });
@@ -815,16 +838,33 @@ function refreshStatus(){
   var rows = COS.filter(function(c){ return mon[c]; });
   if(!rows.length){ $('tblMonth').innerHTML='<tr><td class="c" style="color:#8494A4;padding:12px">등록된 데이터가 없다</td></tr>'; return; }
   var tot = agg(rows.map(function(c){ return mon[c]; }));
-  var h='<tr><th class="l">계열사</th><th>매출액</th><th>영업이익</th><th>영업이익률</th><th>당기순이익</th></tr>';
+  var h='<tr><th class="l">계열사</th><th>매출액</th><th>영업이익</th><th>영업이익률</th><th>당기순이익</th><th class="c">관리</th></tr>';
   h+= rows.map(function(c){
-    var d=mon[c], m=metrics(d);
-    return '<tr><td class="l">'+esc(c)+'</td><td>'+fmt(d.revenue)+'</td><td class="'+cls(d.op)+'">'+fmt(d.op)+'</td><td class="'+cls(d.op)+'">'+pct(m.om)+'</td><td class="'+cls(d.net)+'">'+fmt(d.net)+'</td></tr>';
+    var d=mon[c], m=metrics(d), q=esc(c).replace(/'/g,"&#39;");
+    return '<tr><td class="l">'+esc(c)+'</td><td>'+fmt(d.revenue)+'</td><td class="'+cls(d.op)+'">'+fmt(d.op)+'</td><td class="'+cls(d.op)+'">'+pct(m.om)+'</td><td class="'+cls(d.net)+'">'+fmt(d.net)+'</td>'+
+      '<td class="c" style="white-space:nowrap"><button class="fbtn" onclick="editRec(\''+q+'\')">수정</button> '+
+      '<button class="fbtn" style="color:#B4232A;border-color:#E5B9BC" onclick="delRecAt(\''+q+'\')">삭제</button></td></tr>';
   }).join('');
   var tm=metrics(tot);
-  h+='<tr class="sum"><td class="l">합계 ('+rows.length+'/'+COS.length+'사)</td><td>'+fmt(tot.revenue)+'</td><td class="'+cls(tot.op)+'">'+fmt(tot.op)+'</td><td class="'+cls(tot.op)+'">'+pct(tm.om)+'</td><td class="'+cls(tot.net)+'">'+fmt(tot.net)+'</td></tr>';
+  h+='<tr class="sum"><td class="l">합계 ('+rows.length+'/'+COS.length+'사)</td><td>'+fmt(tot.revenue)+'</td><td class="'+cls(tot.op)+'">'+fmt(tot.op)+'</td><td class="'+cls(tot.op)+'">'+pct(tm.om)+'</td><td class="'+cls(tot.net)+'">'+fmt(tot.net)+'</td><td></td></tr>';
   $('tblMonth').innerHTML=h;
 }
 function pickCo(c){ $('inCo').value=c; onCoChange(); }
+function editRec(c){
+  $('inCo').value=c; onCoChange();
+  toast(c+' 불러옴 — 값 수정 후 저장');
+  try{ if($('fields').scrollIntoView) $('fields').scrollIntoView({behavior:'smooth',block:'center'}); }catch(e){}
+}
+function delRecAt(c){
+  var ym=$('inYm').value;
+  if(!getRec(ym,c)){ toast('삭제할 데이터가 없다'); return; }
+  if(!confirm(ymLabel(ym)+' / '+c+' 데이터를 삭제할까?')) return;
+  delete DB[ym][c]; if(!Object.keys(DB[ym]).length) delete DB[ym];
+  saveAll(); refreshStatus(); refreshAllSel();
+  if($('inCo').value===c) clearFields();
+  fsDel(ym,c).then(function(){ fbStatus('ok','Firebase 반영됨'); toast(c+' 삭제 완료'); })
+    .catch(function(e){ fbStatus('off','미동기화'); toast('로컬만 삭제됨'); });
+}
 function onCoChange(){
   var ym=$('inYm').value, co=$('inCo').value;
   var r=getRec(ym,co);
