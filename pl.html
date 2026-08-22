@@ -111,6 +111,20 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
 .legend{display:flex;gap:10px;flex-wrap:wrap;font-size:10.5px;color:var(--gray);margin-top:5px}
 .legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:3px;vertical-align:-1px}
 .rank{font-size:10px;background:var(--pastel);color:var(--accent);border-radius:8px;padding:1px 6px;font-weight:600}
+.pv{max-height:300px;overflow:auto;border:1px solid var(--line);border-radius:7px;margin-top:7px;background:#fff}
+.pv table{font-size:10.5px;border-collapse:collapse;min-width:100%}
+.pv td{border:1px solid #EEF2F7;padding:2px 5px;white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis}
+.pv td.rn{background:var(--pastel2);color:var(--mute);text-align:center;position:sticky;left:0;font-size:9px}
+.pv td.txt{text-align:left;color:var(--ink)}
+.pv td.numc{text-align:right;color:var(--accent);cursor:pointer}
+.pv td.numc:hover{background:#FBF3DE;font-weight:700}
+.pv td.used{background:#E4F0E9;font-weight:700;color:#1E5A38}
+.pv.map td.numc{background:#FDF9EF}
+.pv.map td.numc:hover{background:#F6E3A8}
+.mapon{background:#C9A227!important;color:#fff!important;border-color:#C9A227!important}
+.fbtn{font-family:inherit;font-size:10px;font-weight:600;border:1px solid var(--line);background:#fff;color:var(--gray);border-radius:5px;padding:0 7px;cursor:pointer;flex:0 0 auto}
+.finp{display:flex;gap:4px;align-items:stretch}
+.finp input{flex:1;min-width:0}
 </style>
 </head>
 <body class="mobile">
@@ -127,7 +141,7 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
         <button id="vP" onclick="setView('pc')">PC</button>
       </div>
       <span class="ver" id="fbStat">연결중</span>
-      <span class="ver" id="verTag">v1.4</span>
+      <span class="ver" id="verTag">v1.5</span>
     </div>
   </div>
 </div>
@@ -204,8 +218,25 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
         <div class="note" style="margin-top:4px">설정 탭에 Claude API 키 입력 시 캡처화면 자동 판독이 가능하다.</div>
       </div>
       <div id="sheetPick" class="hide" style="margin-top:8px">
-        <label class="lb">시트 선택</label>
-        <select id="sheetSel"></select>
+        <div class="row">
+          <div style="flex:1;min-width:130px"><label class="lb">시트 선택</label><select id="sheetSel"></select></div>
+          <div style="flex:1;min-width:110px"><label class="lb">값 열 (숫자 기준)</label>
+            <select id="valCol">
+              <option value="auto">자동 (첫 숫자)</option>
+              <option value="0">1번째 숫자</option>
+              <option value="1">2번째 숫자</option>
+              <option value="2">3번째 숫자</option>
+              <option value="3">4번째 숫자</option>
+              <option value="4">5번째 숫자</option>
+              <option value="5">6번째 숫자</option>
+            </select>
+          </div>
+        </div>
+        <div class="row" style="margin-top:6px">
+          <button class="btn sec sm" onclick="togglePrev()">원본 시트 보기 · 셀 직접 지정</button>
+          <span class="note" id="mapHint">당월/누계 열이 섞여 있으면 값 열을 바꾸거나 셀을 직접 지정할 것</span>
+        </div>
+        <div id="prevWrap" class="hide"></div>
       </div>
     </div>
 
@@ -357,7 +388,7 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
   </div>
 
   <div class="foot">
-    인시스 AI혁신 연구개발실 &nbsp;|&nbsp; pl.html <span id="verFoot">v1.4</span><br>
+    인시스 AI혁신 연구개발실 &nbsp;|&nbsp; pl.html <span id="verFoot">v1.5</span><br>
     금액 단위: <span id="unitFoot">원</span> &nbsp;|&nbsp; 음수 표기: △ &nbsp;|&nbsp; 저장: Firestore insys_pl
   </div>
 </div>
@@ -369,22 +400,32 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
    인시스 계열사 손익분석 대시보드  v1.0
    인시스 AI혁신 연구개발실
    ========================================================= */
-var VERSION = 'v1.4';
+var VERSION = 'v1.5';
 var LS_DATA = 'insys_pl_data_v1';
 var LS_CO   = 'insys_pl_co_v1';
 var LS_KEY  = 'insys_pl_key_v1';
 
 var FIELDS = [
-  {k:'revenue',  n:'매출액',      kw:['매출액','총매출','매출총액','매출 합계','매출']},
-  {k:'cogs',     n:'매출원가',    kw:['매출원가','제조원가','매출 원가']},
-  {k:'gross',    n:'매출총이익',  kw:['매출총이익','매출총손익','매출 총이익']},
-  {k:'sga',      n:'판관비',      kw:['판매비와관리비','판매비및관리비','판매관리비','판관비']},
-  {k:'op',       n:'영업이익',    kw:['영업이익','영업손익','영업 이익']},
-  {k:'nonop',    n:'영업외손익',  kw:['영업외손익','영업외수익','영업외비용','영업외']},
-  {k:'net',      n:'당기순이익',  kw:['당기순이익','당기순손익','순이익','당기 순이익']},
-  {k:'head',     n:'인원수(명)',  kw:['인원수','총인원','인원','평균인원']},
-  {k:'labor',    n:'인건비',      kw:['인건비','급여','노무비']},
-  {k:'outsrc',   n:'외주비',      kw:['외주가공비','외주비','외주']}
+  {k:'revenue',  n:'매출액',      kw:['매출액','매출총액','총매출','매출합계','매출'],
+                 ex:['원가','총이익','총손익','채권','할인','에누리','환입','원가율','이익률','비율','증감','구성']},
+  {k:'cogs',     n:'매출원가',    kw:['매출원가','제조원가','상품매출원가','원가'],
+                 ex:['율','비율','증감','구성','총이익']},
+  {k:'gross',    n:'매출총이익',  kw:['매출총이익','매출총손익','총이익'],
+                 ex:['율','비율','증감','구성']},
+  {k:'sga',      n:'판매비와관리비',kw:['판매비와관리비','판매비및관리비','판매관리비','판관비','판매비'],
+                 ex:['율','비율','증감','구성']},
+  {k:'op',       n:'영업이익',    kw:['영업이익','영업손익'],
+                 ex:['율','비율','증감','구성','외','전기','전년']},
+  {k:'nonop',    n:'영업외손익',  kw:['영업외손익','영업외수익','영업외비용','영업외'],
+                 ex:['율','비율','증감','구성']},
+  {k:'net',      n:'당기순이익',  kw:['당기순이익','당기순손익','당기순','순이익'],
+                 ex:['율','비율','증감','구성','전기','전년','법인세']},
+  {k:'head',     n:'인원수(명)',  kw:['인원수','총인원','평균인원','인원'],
+                 ex:['비','율','증감']},
+  {k:'labor',    n:'인건비',      kw:['인건비','노무비','급여총액','급여'],
+                 ex:['율','비율','증감','구성','상여충당','퇴직급여충당']},
+  {k:'outsrc',   n:'외주비',      kw:['외주가공비','외주용역비','외주비','외주'],
+                 ex:['율','비율','증감','구성']}
 ];
 
 var DEF_CO = ['인시스','(주)파인','(주)이레','(주)챈스','(주)코어시스템','(주)인텍코리아','우리스틸산업','(주)바른엔피엘자산대부'];
@@ -394,6 +435,10 @@ var COS = [];
 var charts = {};
 var shotData = null;
 var wb = null;
+var sheetRows = [];
+var sheetScale = 1;
+var mapTarget = null;
+var usedCell = {};
 
 /* ---------- 저장 계층 (Firestore 교체 지점) ---------- */
 var mem = {};
@@ -636,12 +681,19 @@ function fillYmSel(el){
 function buildFields(){
   $('fields').innerHTML = FIELDS.map(function(f){
     var suf = f.k==='head'? '' : ' ('+DU_NAME+')';
-    return '<div><label class="lb">'+f.n.replace('(명)','')+suf+(f.k==='head'?' (명)':'')+'</label><input type="number" step="any" id="f_'+f.k+'" value="0"></div>';
+    return '<div><label class="lb">'+f.n.replace('(명)','')+suf+(f.k==='head'?' (명)':'')+'</label>'+
+      '<div class="finp"><input type="number" step="any" id="f_'+f.k+'" value="0">'+
+      '<button class="fbtn" id="mb_'+f.k+'" onclick="startMap(\''+f.k+'\')" title="원본 시트에서 셀 선택">지정</button></div></div>';
   }).join('');
 }
 function readFields(){ var o={}; FIELDS.forEach(function(f){ var v=num($('f_'+f.k).value); o[f.k]= f.k==='head'? Math.round(v) : Math.round(v*DU); }); return o; }
 function writeFields(d){ FIELDS.forEach(function(f){ var v=(d&&d[f.k]!==undefined)?d[f.k]:0; $('f_'+f.k).value = f.k==='head'? Math.round(v) : Math.round(v/DU*100)/100; }); }
-function clearFields(){ writeFields(blank()); $('vErr').innerHTML=''; $('parseInfo').innerHTML=''; }
+function clearFields(){
+  writeFields(blank()); $('vErr').innerHTML=''; $('parseInfo').innerHTML='';
+  usedCell={}; mapTarget=null;
+  FIELDS.forEach(function(f){ var b=$('mb_'+f.k); if(b) b.classList.remove('mapon'); });
+  if(sheetRows.length) renderPrev();
+}
 var LS_IU='insys_pl_iu_v1';
 function autoDetect(vals){
   var mx=0; vals.forEach(function(v){ if(Math.abs(v)>mx) mx=Math.abs(v); });
@@ -676,6 +728,9 @@ function validate(d){
   var w=[];
   if(d.revenue && Math.abs((d.revenue-d.cogs)-d.gross) > Math.max(1, d.revenue*0.005)) w.push('매출총이익 ≠ 매출액 − 매출원가');
   if(d.gross && Math.abs((d.gross-d.sga)-d.op) > Math.max(1, d.revenue*0.005)) w.push('영업이익 ≠ 매출총이익 − 판관비');
+  if(d.revenue>0 && d.cogs>d.revenue) w.push('매출원가('+fmt(d.cogs)+')가 매출액('+fmt(d.revenue)+')보다 크다 — 열 지정 오류 가능성');
+  if(d.revenue>0 && d.labor>d.revenue) w.push('인건비가 매출액을 초과한다 — 값 확인 필요');
+  if(d.revenue>0 && Math.abs(ratio(d.gross,d.revenue))>100) w.push('매출총이익률 절대값 100% 초과 — 값 확인 필요');
   var om = ratio(d.op,d.revenue);
   if(om!==null && Math.abs(om)>30) w.push('영업이익률 '+pct(om)+' — 이상치 검토 필요');
   if(d.head && d.revenue && (d.revenue/d.head)>500000000) w.push('인당 매출액 과다 — 입력자료 단위 확인 필요');
@@ -766,37 +821,139 @@ function handleFile(f){
   };
   fr.readAsArrayBuffer(f);
 }
+function normLab(t){ return String(t==null?'':t).replace(/[\s\u00a0.,:·\-_()\[\]{}]/g,''); }
+function cellNum(v){
+  if(typeof v==='number') return isFinite(v)? v : null;
+  if(typeof v!=='string') return null;
+  var t=v.trim(); if(!t) return null;
+  var neg=/^\(.*\)$/.test(t) || /^△/.test(t) || /^▲/.test(t);
+  t=t.replace(/^[(（]|[)）]$/g,'').replace(/^[△▲]/,'').replace(/[,\s원]/g,'');
+  if(!/^-?\d+(\.\d+)?$/.test(t)) return null;
+  var n=parseFloat(t); if(!isFinite(n)) return null;
+  return neg? -Math.abs(n) : n;
+}
+function rowNums(r){
+  var out=[];
+  for(var c=0;c<r.length;c++){
+    var n=cellNum(r[c]);
+    if(n!==null) out.push({c:c, v:n});
+  }
+  return out;
+}
+function scoreLab(lab, f){
+  if(!lab) return 0;
+  var ex=f.ex||[];
+  for(var i=0;i<ex.length;i++){ if(lab.indexOf(normLab(ex[i]))>=0) return 0; }
+  for(var j=0;j<f.kw.length;j++){
+    var k=normLab(f.kw[j]);
+    if(lab===k) return 100-j;
+    if(lab.indexOf(k)===0) return 70-j;
+    if(lab.indexOf(k)>=0) return 40-j;
+  }
+  return 0;
+}
 function parseSheet(){
   if(!wb) return;
   var ws = wb.Sheets[$('sheetSel').value];
   if(!ws){ toast('시트를 찾을 수 없다'); return; }
-  var rows = XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:''});
-  var found={}, raw=[];
+  sheetRows = XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:''});
+  var vcRaw = $('valCol').value;
+  var vc = vcRaw==='auto'? 0 : parseInt(vcRaw,10);
+
+  var found={}, raw=[], hitCell={};
   FIELDS.forEach(function(f){
-    for(var i=0;i<rows.length && found[f.k]===undefined;i++){
-      var r=rows[i];
+    var best={sc:0};
+    for(var i=0;i<sheetRows.length;i++){
+      var r=sheetRows[i]||[];
+      var nums=rowNums(r);
+      if(!nums.length) continue;
       for(var j=0;j<r.length;j++){
-        var t=String(r[j]==null?'':r[j]).replace(/\s/g,'');
-        if(!t) continue;
-        var hit = f.kw.some(function(k){ return t.indexOf(k.replace(/\s/g,''))>=0; });
-        if(!hit) continue;
-        for(var c=j+1;c<r.length;c++){
-          var v=r[c];
-          if(typeof v==='number' && v!==0){ found[f.k]=v; raw.push(v); break; }
-          if(typeof v==='string' && /^[\-(]?[\d,]+\.?\d*\)?$/.test(v.trim()) && v.trim()!==''){
-            var n=num(v.replace(/^\((.*)\)$/,'-$1')); if(n!==0){ found[f.k]=n; raw.push(n); break; }
-          }
+        var lab=normLab(r[j]);
+        if(!lab || cellNum(r[j])!==null) continue;
+        var sc=scoreLab(lab,f);
+        if(sc>best.sc){
+          var pick = nums.filter(function(x){ return x.c>j; });
+          if(!pick.length) continue;
+          var t = pick[Math.min(vc, pick.length-1)];
+          best={sc:sc, r:i, c:t.c, v:t.v, lab:lab, avail:pick.length};
         }
-        if(found[f.k]!==undefined) break;
       }
     }
+    if(best.sc>0){ found[f.k]=best.v; raw.push(best.v); hitCell[f.k]=best.r+'_'+best.c; }
   });
-  if(!Object.keys(found).length){ toast('항목을 찾지 못했다. 수동 입력 요망'); return; }
+
+  if(!Object.keys(found).length){ toast('항목을 찾지 못했다. 원본 시트 보기로 직접 지정할 것'); renderPrev(); $('prevWrap').classList.remove('hide'); return; }
+
   var sc = unitScale(raw);
+  sheetScale = sc;
   var d = blank();
   Object.keys(found).forEach(function(k){ d[k] = k==='head'? Math.round(found[k]) : Math.round(found[k]*sc); });
+  usedCell = hitCell;
   writeFields(d); validate(d); showParse(sc, raw, d, Object.keys(found).length);
+  renderPrev();
   toast(Object.keys(found).length+'개 항목 인식 (단위: '+({1:'원',1000:'천원',1000000:'백만원'}[sc]||'원')+')');
+}
+
+/* ---------- 원본 시트 미리보기 · 셀 직접 지정 ---------- */
+function togglePrev(){
+  var w=$('prevWrap');
+  if(w.classList.contains('hide')){ renderPrev(); w.classList.remove('hide'); }
+  else { w.classList.add('hide'); mapTarget=null; }
+}
+function renderPrev(){
+  var w=$('prevWrap'); if(!w) return;
+  if(!sheetRows.length){ w.innerHTML='<div class="note" style="margin-top:6px">엑셀을 먼저 업로드하라.</div>'; return; }
+  var maxR=Math.min(sheetRows.length, 120), maxC=0;
+  for(var i=0;i<maxR;i++) maxC=Math.max(maxC,(sheetRows[i]||[]).length);
+  maxC=Math.min(maxC,20);
+  var used={}; Object.keys(usedCell).forEach(function(k){ used[usedCell[k]]=k; });
+  var h='<div class="pv'+(mapTarget?' map':'')+'" id="pvBox"><table>';
+  for(var r=0;r<maxR;r++){
+    var row=sheetRows[r]||[]; var cells='';
+    var empty=true;
+    for(var c=0;c<maxC;c++){
+      var v=row[c], n=cellNum(v);
+      var t=String(v==null?'':v);
+      if(t!=='') empty=false;
+      if(n!==null){
+        var uk=used[r+'_'+c];
+        cells+='<td class="numc'+(uk?' used':'')+'" data-r="'+r+'" data-c="'+c+'"'+(uk?' title="'+uk+'"':'')+'>'+comma(n)+'</td>';
+      } else {
+        cells+='<td class="txt">'+esc(t.length>24? t.slice(0,24)+'…' : t)+'</td>';
+      }
+    }
+    if(empty) continue;
+    h+='<tr><td class="rn">'+(r+1)+'</td>'+cells+'</tr>';
+  }
+  h+='</table></div>';
+  w.innerHTML=h;
+  var box=$('pvBox');
+  box.addEventListener('click', function(e){
+    var td=e.target;
+    if(!td || td.className.indexOf('numc')<0) return;
+    var r=+td.getAttribute('data-r'), c=+td.getAttribute('data-c');
+    var n=cellNum(sheetRows[r][c]);
+    if(n===null) return;
+    if(!mapTarget){ toast('먼저 항목의 [지정] 버튼을 누른 뒤 셀을 클릭하라'); return; }
+    var k=mapTarget;
+    $('f_'+k).value = k==='head'? Math.round(n) : Math.round(n*sheetScale)/DU;
+    usedCell[k]=r+'_'+c;
+    var btn=$('mb_'+k); if(btn) btn.classList.remove('mapon');
+    mapTarget=null;
+    $('mapHint').textContent='지정 완료 — '+(FIELDS.filter(function(f){return f.k===k;})[0].n)+' = '+comma(n)+' (시트값)';
+    validate(readFields()); renderPrev();
+  });
+}
+function startMap(k){
+  FIELDS.forEach(function(f){ var b=$('mb_'+f.k); if(b) b.classList.remove('mapon'); });
+  if(mapTarget===k){ mapTarget=null; $('mapHint').textContent='지정 취소됨'; renderPrev(); return; }
+  mapTarget=k;
+  var b=$('mb_'+k); if(b) b.classList.add('mapon');
+  if(!sheetRows.length){ toast('엑셀을 먼저 업로드하라'); mapTarget=null; return; }
+  $('prevWrap').classList.remove('hide');
+  $('mapHint').textContent='아래 시트에서 '+(FIELDS.filter(function(f){return f.k===k;})[0].n)+' 값을 클릭하라';
+  renderPrev();
+  try{ if($('prevWrap').scrollIntoView) $('prevWrap').scrollIntoView({behavior:'smooth',block:'nearest'}); }catch(e){}
 }
 
 /* ---------- 캡처화면 ---------- */
@@ -1370,7 +1527,8 @@ function init(){
   $('inCo').onchange=onCoChange;
   $('dispUnit').onchange=function(){ setDisp(this.value); toast('표시 단위: '+DU_NAME); };
   $('inUnit').onchange=function(){ lsSet(LS_IU, this.value); if(wb) parseSheet(); };
-  $('sheetSel').onchange=parseSheet;
+  $('sheetSel').onchange=function(){ usedCell={}; parseSheet(); };
+  $('valCol').onchange=function(){ usedCell={}; parseSheet(); };
   $('sgCo').onchange=renderSingle; $('sgYm').onchange=renderSingle;
   $('cpYm').onchange=renderCompare;
   $('gpYm').onchange=renderGroup;
