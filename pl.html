@@ -59,6 +59,13 @@ select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent2)
 .drop.hot{border-color:var(--accent);background:var(--pastel)}
 .drop .t{font-size:12px;font-weight:600;color:var(--accent)}
 .drop .s{font-size:10.5px;color:var(--mute);margin-top:3px}
+.pbox{border:2px dashed #C9B37A;border-radius:9px;padding:16px 10px;text-align:center;background:#FDF9EF;cursor:text;outline:none;min-height:78px;overflow:hidden}
+.pbox.focus{border-color:#C9A227;background:#FBF3DE;box-shadow:0 0 0 3px rgba(201,162,39,.16)}
+.pbox.hot{border-color:#C9A227;background:#FBF3DE}
+.pbox .t{font-size:12px;font-weight:600;color:#8A6D1F}
+.pbox .s{font-size:10.5px;color:#A08B54;margin-top:3px;line-height:1.5}
+.pbox *{pointer-events:none}
+.pbox button{pointer-events:auto}
 table{width:100%;border-collapse:collapse;font-size:11.5px}
 th,td{border:1px solid var(--line);padding:4px 6px;text-align:right;color:var(--ink)}
 th{background:var(--pastel);color:var(--navy);font-weight:700;text-align:center;font-size:11px}
@@ -120,7 +127,7 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
         <button id="vP" onclick="setView('pc')">PC</button>
       </div>
       <span class="ver" id="fbStat">연결중</span>
-      <span class="ver" id="verTag">v1.1</span>
+      <span class="ver" id="verTag">v1.2</span>
     </div>
   </div>
 </div>
@@ -163,11 +170,22 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
 
     <div class="card">
       <h3>2. 자료 업로드 <span class="badge">엑셀 · 캡처화면</span></h3>
-      <div class="drop" id="drop">
-        <div class="t">엑셀 파일을 끌어놓거나 클릭</div>
-        <div class="s">.xlsx / .xls / .csv &nbsp;|&nbsp; 캡처화면은 Ctrl+V 붙여넣기</div>
+      <div class="grid2">
+        <div class="drop" id="drop">
+          <div class="t">① 엑셀 파일</div>
+          <div class="s">클릭하여 선택 또는 드래그<br>.xlsx / .xls / .csv</div>
+        </div>
+        <div class="pbox" id="pasteBox" contenteditable="true" spellcheck="false">
+          <div class="t">② 캡처 화면 붙여넣기</div>
+          <div class="s" id="pasteMsg">여기를 한 번 클릭한 뒤 <b>Ctrl+V</b><br>(모바일은 길게 눌러 붙여넣기)</div>
+        </div>
       </div>
-      <input type="file" id="file" accept=".xlsx,.xls,.csv,image/*" class="hide">
+      <div class="row" style="margin-top:6px">
+        <button class="btn gray sm" onclick="document.getElementById('imgFile').click()">이미지 파일 선택</button>
+        <span class="note">캡처를 파일로 저장했거나 모바일 사진첩에서 가져올 때 사용</span>
+      </div>
+      <input type="file" id="file" accept=".xlsx,.xls,.csv" class="hide">
+      <input type="file" id="imgFile" accept="image/*" class="hide">
       <div id="shotBox" class="hide">
         <img id="shot" class="prev">
         <div class="row" style="margin-top:6px">
@@ -328,7 +346,7 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
   </div>
 
   <div class="foot">
-    인시스 AI혁신 연구개발실 &nbsp;|&nbsp; pl.html <span id="verFoot">v1.1</span><br>
+    인시스 AI혁신 연구개발실 &nbsp;|&nbsp; pl.html <span id="verFoot">v1.2</span><br>
     금액 단위: 백만원 &nbsp;|&nbsp; 음수 표기: △
   </div>
 </div>
@@ -340,7 +358,7 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
    인시스 계열사 손익분석 대시보드  v1.0
    인시스 AI혁신 연구개발실
    ========================================================= */
-var VERSION = 'v1.1';
+var VERSION = 'v1.2';
 var LS_DATA = 'insys_pl_data_v1';
 var LS_CO   = 'insys_pl_co_v1';
 var LS_KEY  = 'insys_pl_key_v1';
@@ -719,11 +737,31 @@ function readShot(f){
     shotData = e.target.result;
     $('shot').src = shotData;
     $('shotBox').classList.remove('hide');
+    pasteMsg('② 캡처 등록 완료', '아래 [AI로 숫자 읽기] 버튼을 누르면 판독된다');
     toast('이미지 등록됨 — AI로 숫자 읽기 실행');
   };
   fr.readAsDataURL(f);
 }
-function clearShot(){ shotData=null; $('shotBox').classList.add('hide'); $('shot').src=''; }
+function clearShot(){ shotData=null; $('shotBox').classList.add('hide'); $('shot').src=''; resetPaste(); }
+function resetPaste(){
+  var b=$('pasteBox'); if(!b) return;
+  b.innerHTML='<div class="t">② 캡처 화면 붙여넣기</div>'+
+    '<div class="s" id="pasteMsg">여기를 한 번 클릭한 뒤 <b>Ctrl+V</b><br>(모바일은 길게 눌러 붙여넣기)</div>';
+}
+function pasteMsg(t,sub){
+  var b=$('pasteBox'); if(!b) return;
+  b.innerHTML='<div class="t">'+t+'</div><div class="s">'+sub+'</div>';
+}
+function grabImage(items){
+  for(var i=0;i<items.length;i++){
+    var it=items[i];
+    if(it.kind==='file' && String(it.type).indexOf('image')===0){
+      var f=it.getAsFile();
+      if(f){ readShot(f); return true; }
+    }
+  }
+  return false;
+}
 
 /* ---------- Claude API ---------- */
 function getKey(){ return lsGet(LS_KEY)||''; }
@@ -1268,9 +1306,43 @@ function init(){
   dp.ondragleave=function(){ dp.classList.remove('hot'); };
   dp.ondrop=function(e){ e.preventDefault(); dp.classList.remove('hot'); handleFile(e.dataTransfer.files[0]); };
   $('file').onchange=function(e){ handleFile(e.target.files[0]); e.target.value=''; };
+  $('imgFile').onchange=function(e){ if(e.target.files[0]) readShot(e.target.files[0]); e.target.value=''; };
+
+  // 캡처 붙여넣기 전용 박스 (파일탐색기 열리지 않음)
+  var pb=$('pasteBox');
+  pb.addEventListener('focus', function(){
+    pb.classList.add('focus');
+    pasteMsg('② 붙여넣기 대기 중', '지금 <b>Ctrl+V</b> 를 누르면 캡처 화면이 등록된다');
+  });
+  pb.addEventListener('blur', function(){
+    pb.classList.remove('focus');
+    if(!shotData) resetPaste();
+  });
+  pb.addEventListener('paste', function(e){
+    e.preventDefault();
+    var cd=e.clipboardData||window.clipboardData;
+    var ok=cd? grabImage(cd.items||[]) : false;
+    if(!ok){ pasteMsg('② 이미지가 아니다', '클립보드에 이미지가 없다. 화면을 다시 캡처한 뒤 붙여넣기'); }
+    setTimeout(function(){ pb.blur(); },50);
+  });
+  pb.addEventListener('keydown', function(e){
+    if(e.ctrlKey||e.metaKey) return;
+    e.preventDefault();   // 텍스트 입력 차단
+  });
+  pb.ondragover=function(e){ e.preventDefault(); pb.classList.add('hot'); };
+  pb.ondragleave=function(){ pb.classList.remove('hot'); };
+  pb.ondrop=function(e){
+    e.preventDefault(); pb.classList.remove('hot');
+    var f=e.dataTransfer.files[0];
+    if(f && /^image\//.test(f.type)) readShot(f);
+    else pasteMsg('② 이미지가 아니다','이미지 파일만 등록 가능하다');
+  };
+
+  // 문서 전역 붙여넣기 (박스 밖에서도 동작)
   document.addEventListener('paste', function(e){
-    var it=(e.clipboardData||{}).items||[];
-    for(var i=0;i<it.length;i++){ if(it[i].type.indexOf('image')===0){ readShot(it[i].getAsFile()); e.preventDefault(); return; } }
+    if(e.target===pb || pb.contains(e.target)) return;
+    var cd=e.clipboardData||window.clipboardData; if(!cd) return;
+    if(grabImage(cd.items||[])) e.preventDefault();
   });
   $('impFile').onchange=function(e){
     var f=e.target.files[0]; if(!f) return;
