@@ -127,7 +127,7 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
         <button id="vP" onclick="setView('pc')">PC</button>
       </div>
       <span class="ver" id="fbStat">연결중</span>
-      <span class="ver" id="verTag">v1.2</span>
+      <span class="ver" id="verTag">v1.3</span>
     </div>
   </div>
 </div>
@@ -155,8 +155,8 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
           <label class="lb">계열사</label>
           <select id="inCo"></select>
         </div>
-        <div style="flex:1;min-width:110px">
-          <label class="lb">금액 단위</label>
+        <div style="flex:1;min-width:104px">
+          <label class="lb">입력자료 단위</label>
           <select id="inUnit">
             <option value="auto">자동 판별</option>
             <option value="1">원</option>
@@ -164,8 +164,17 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
             <option value="1000000">백만원</option>
           </select>
         </div>
+        <div style="flex:1;min-width:104px">
+          <label class="lb">화면 표시 단위</label>
+          <select id="dispUnit">
+            <option value="1">원</option>
+            <option value="1000">천원</option>
+            <option value="1000000">백만원</option>
+            <option value="100000000">억원</option>
+          </select>
+        </div>
       </div>
-      <div class="note" style="margin-top:6px">저장 단위는 백만원. 원/천원 입력 시 자동 환산된다.</div>
+      <div class="note" style="margin-top:6px"><b>입력자료 단위</b>=업로드한 엑셀·캡처의 단위 / <b>화면 표시 단위</b>=모든 탭의 금액 표기 방식. 저장은 항상 <b>원</b> 단위로 이루어진다.</div>
     </div>
 
     <div class="card">
@@ -302,6 +311,7 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
       <div class="row" style="margin-top:7px">
         <button class="btn sm" onclick="syncDown()">Firebase에서 불러오기</button>
         <button class="btn sec sm" onclick="syncUp()">로컬 → Firebase 전체 업로드</button>
+        <button class="btn gray sm" onclick="migrateMW()">백만원 → 원 일괄 변환</button>
       </div>
       <div class="note" style="margin-top:6px">모든 손익 데이터는 Firestore <b>insys_pl</b> 컬렉션에 저장된다. 네트워크 장애 시 로컬에 임시 보관 후 상단 배지가 "오프라인"으로 바뀌며, 복구 후 전체 업로드로 동기화하면 된다.</div>
     </div>
@@ -346,8 +356,8 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
   </div>
 
   <div class="foot">
-    인시스 AI혁신 연구개발실 &nbsp;|&nbsp; pl.html <span id="verFoot">v1.2</span><br>
-    금액 단위: 백만원 &nbsp;|&nbsp; 음수 표기: △
+    인시스 AI혁신 연구개발실 &nbsp;|&nbsp; pl.html <span id="verFoot">v1.3</span><br>
+    금액 단위: <span id="unitFoot">원</span> &nbsp;|&nbsp; 음수 표기: △ &nbsp;|&nbsp; 저장: Firestore insys_pl
   </div>
 </div>
 
@@ -358,7 +368,7 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
    인시스 계열사 손익분석 대시보드  v1.0
    인시스 AI혁신 연구개발실
    ========================================================= */
-var VERSION = 'v1.2';
+var VERSION = 'v1.3';
 var LS_DATA = 'insys_pl_data_v1';
 var LS_CO   = 'insys_pl_co_v1';
 var LS_KEY  = 'insys_pl_key_v1';
@@ -474,6 +484,17 @@ function markPending(ym,co){ PENDING[ym+'||'+co]=1; lsSet('insys_pl_pending_v1',
 function clearPending(){ PENDING={}; lsDel('insys_pl_pending_v1'); }
 function pendCount(){ return Object.keys(PENDING).length; }
 
+function migrateMW(){
+  var n=0; allYms().forEach(function(y){ n+=Object.keys(DB[y]).length; });
+  if(!n){ toast('변환할 데이터가 없다'); return; }
+  if(!confirm('저장된 '+n+'건의 금액을 1,000,000배 하여 백만원→원 으로 변환할까?\n\n이미 원 단위로 저장된 데이터에는 실행하지 말 것.')) return;
+  allYms().forEach(function(y){ Object.keys(DB[y]).forEach(function(c){
+    var d=DB[y][c];
+    FIELDS.forEach(function(f){ if(f.k!=='head') d[f.k]=Math.round(num(d[f.k])*1000000); });
+  });});
+  saveAll(); refreshAllSel(); refreshStatus();
+  toast('변환 완료 — Firebase 전체 업로드 실행 권장');
+}
 function syncDown(){
   fbStatus('sync','불러오는 중');
   fsLoad().then(function(res){
@@ -518,7 +539,33 @@ function $(id){ return document.getElementById(id); }
 function toast(m){ var t=$('toast'); t.textContent=m; t.classList.add('on'); setTimeout(function(){t.classList.remove('on');},2200); }
 function num(v){ var n=parseFloat(String(v==null?'':v).replace(/[^0-9.\-]/g,'')); return isNaN(n)?0:n; }
 function comma(n){ return (Math.round(n)).toString().replace(/\B(?=(\d{3})+(?!\d))/g,','); }
-function fmt(n){ if(n===null||n===undefined||isNaN(n)) return '-'; return n<0 ? '△'+comma(Math.abs(n)) : comma(n); }
+var LS_DU='insys_pl_du_v1';
+var DU_NAMES={'1':'원','1000':'천원','1000000':'백만원','100000000':'억원'};
+var DU=1, DU_NAME='원';
+function UN(){ return DU_NAME; }
+function nfmt(v,dec){
+  var p=Math.abs(v).toFixed(dec).split('.');
+  p[0]=p[0].replace(/\B(?=(\d{3})+(?!\d))/g,',');
+  return p.join('.');
+}
+function fmt(n){
+  if(n===null||n===undefined||isNaN(n)) return '-';
+  var v=n/DU;
+  var dec = DU>=100000000?2 : DU>=1000000?1 : DU>=1000?1 : 0;
+  if(dec>0 && Math.abs(v)>=10000) dec=0;
+  return (v<0?'△':'')+nfmt(v,dec);
+}
+function setDisp(u,skip){
+  var cur = skip? null : readFields();
+  DU=parseFloat(u); DU_NAME=DU_NAMES[String(u)]||'원';
+  lsSet(LS_DU,String(u));
+  var e=$('unitFoot'); if(e) e.textContent=DU_NAME;
+  buildFields();
+  if(cur) writeFields(cur);
+  refreshStatus();
+  var t=['input','single','compare','group','period','setup'].filter(function(x){ return !$('p-'+x).classList.contains('hide'); })[0];
+  if(t && t!=='input') setTab(t);
+}
 function pct(n){ if(n===null||n===undefined||!isFinite(n)) return '-'; return (n<0?'△':'')+Math.abs(n).toFixed(1)+'%'; }
 function cls(n){ return n<0?'neg':'pos'; }
 function ratio(a,b){ return (b&&isFinite(a/b))? a/b*100 : null; }
@@ -587,11 +634,12 @@ function fillYmSel(el){
    ========================================================= */
 function buildFields(){
   $('fields').innerHTML = FIELDS.map(function(f){
-    return '<div><label class="lb">'+f.n+'</label><input type="number" step="0.1" id="f_'+f.k+'" value="0"></div>';
+    var suf = f.k==='head'? '' : ' ('+DU_NAME+')';
+    return '<div><label class="lb">'+f.n.replace('(명)','')+suf+(f.k==='head'?' (명)':'')+'</label><input type="number" step="any" id="f_'+f.k+'" value="0"></div>';
   }).join('');
 }
-function readFields(){ var o={}; FIELDS.forEach(function(f){ o[f.k]=num($('f_'+f.k).value); }); return o; }
-function writeFields(d){ FIELDS.forEach(function(f){ $('f_'+f.k).value = d&&d[f.k]!==undefined? d[f.k] : 0; }); }
+function readFields(){ var o={}; FIELDS.forEach(function(f){ var v=num($('f_'+f.k).value); o[f.k]= f.k==='head'? Math.round(v) : Math.round(v*DU); }); return o; }
+function writeFields(d){ FIELDS.forEach(function(f){ var v=(d&&d[f.k]!==undefined)?d[f.k]:0; $('f_'+f.k).value = f.k==='head'? Math.round(v) : Math.round(v/DU*100)/100; }); }
 function clearFields(){ writeFields(blank()); $('vErr').innerHTML=''; }
 
 function autoCalc(){
@@ -609,18 +657,18 @@ function validate(d){
   if(d.gross && Math.abs((d.gross-d.sga)-d.op) > Math.max(1, d.revenue*0.005)) w.push('영업이익 ≠ 매출총이익 − 판관비');
   var om = ratio(d.op,d.revenue);
   if(om!==null && Math.abs(om)>30) w.push('영업이익률 '+pct(om)+' — 이상치 검토 필요');
-  if(d.head && d.revenue && (d.revenue/d.head)>500) w.push('인당 매출액 과다 — 단위 확인 필요');
+  if(d.head && d.revenue && (d.revenue/d.head)>500000000) w.push('인당 매출액 과다 — 입력자료 단위 확인 필요');
   $('vErr').innerHTML = w.length? '<div class="alert"><div class="h">확인 필요</div><ul>'+w.map(function(x){return '<li>· '+esc(x)+'</li>';}).join('')+'</ul></div>' : '';
   return w;
 }
 
 function unitScale(vals){
   var u = $('inUnit').value;
-  if(u!=='auto') return 1/parseFloat(u)*1;
+  if(u!=='auto') return parseFloat(u);
   var mx = 0; vals.forEach(function(v){ if(Math.abs(v)>mx) mx=Math.abs(v); });
-  if(mx >= 100000000) return 1/1000000;
-  if(mx >= 100000) return 1/1000;
-  return 1;
+  if(mx >= 100000000) return 1;         // 이미 원 단위
+  if(mx >= 100000) return 1000;         // 천원 단위
+  return 1000000;                       // 백만원 단위
 }
 
 function saveRec(){
@@ -725,7 +773,7 @@ function parseSheet(){
   if(!Object.keys(found).length){ toast('항목을 찾지 못했다. 수동 입력 요망'); return; }
   var sc = unitScale(raw);
   var d = blank();
-  Object.keys(found).forEach(function(k){ d[k] = k==='head'? Math.round(found[k]) : Math.round(found[k]*sc*10)/10; });
+  Object.keys(found).forEach(function(k){ d[k] = k==='head'? Math.round(found[k]) : Math.round(found[k]*sc); });
   writeFields(d); validate(d);
   toast(Object.keys(found).length+'개 항목 자동 인식');
 }
@@ -807,7 +855,7 @@ $('btnOcr') && ($('btnOcr').onclick = function(){
       var j=JSON.parse(txt.replace(/```json|```/g,'').trim());
       var raw=Object.keys(j).map(function(k){ return num(j[k]); });
       var sc=unitScale(raw); var d=blank();
-      Object.keys(j).forEach(function(k){ if(d[k]!==undefined) d[k] = k==='head'? Math.round(num(j[k])) : Math.round(num(j[k])*sc*10)/10; });
+      Object.keys(j).forEach(function(k){ if(d[k]!==undefined) d[k] = k==='head'? Math.round(num(j[k])) : Math.round(num(j[k])*sc); });
       writeFields(d); validate(d); toast('AI 판독 완료 — 값 확인 후 저장');
     })
     .catch(function(e){ toast(e.message==='NOKEY'?'API 키 필요':'판독 실패: '+e.message); })
@@ -832,11 +880,11 @@ var SYS_ADV='너는 한국 중견 제조·아웃소싱 그룹의 CFO 자문역�
    ========================================================= */
 function insightSingle(co, d, prev, yoy, groupAvgOm){
   var m=metrics(d), out=[];
-  out.push('매출 '+fmt(d.revenue)+'백만원, 영업이익 '+fmt(d.op)+'백만원(영업이익률 '+pct(m.om)+')');
+  out.push('매출 '+fmt(d.revenue)+''+UN()+', 영업이익 '+fmt(d.op)+''+UN()+'(영업이익률 '+pct(m.om)+')');
   if(prev){
     var dr = ratio(d.revenue-prev.revenue, prev.revenue);
     var doo = d.op - prev.op;
-    out.push('전월 대비 매출 '+pct(dr)+', 영업이익 '+(doo>=0?'+':'△')+comma(Math.abs(doo))+'백만원');
+    out.push('전월 대비 매출 '+pct(dr)+', 영업이익 '+(doo>=0?'+':'△')+fmt(Math.abs(doo))+UN());
     if(prev.op>=0 && d.op<0) out.push('전월 흑자에서 적자 전환 — 원가·판관비 구조 즉시 점검 필요');
     if(prev.op<0 && d.op>=0) out.push('전월 적자에서 흑자 전환 — 개선 요인 표준화 및 유지 관리 필요');
     if(dr!==null && Math.abs(dr)>40) out.push('매출 변동폭 '+pct(dr)+'로 이상치 수준 — 일회성 요인 여부 확인 필요');
@@ -858,10 +906,10 @@ function insightSingle(co, d, prev, yoy, groupAvgOm){
   if(m.gm!==null && m.gm<10) out.push('매출총이익률 '+pct(m.gm)+' — 원가율 개선이 최우선 과제');
   if(m.laborR!==null && m.laborR>35) out.push('인건비율 '+pct(m.laborR)+' — 인력 운영 효율화 또는 자동화 투자 검토');
   if(m.outR!==null && m.outR>30) out.push('외주비율 '+pct(m.outR)+' — 내재화 시 원가 절감 여지 존재');
-  if(m.perHead!==null) out.push('인당 매출액 '+fmt(m.perHead)+'백만원 (인원 '+comma(d.head)+'명)');
+  if(m.perHead!==null) out.push('인당 매출액 '+fmt(m.perHead)+''+UN()+' (인원 '+comma(d.head)+'명)');
   if(d.op!==0 && d.sga){
     var cm = ratio(d.gross, d.revenue);
-    if(cm) out.push('손익분기 추정 매출액 '+fmt(d.sga/(cm/100))+'백만원 — 현 매출 대비 '+pct(ratio(d.revenue-(d.sga/(cm/100)), d.sga/(cm/100)))+' 여유');
+    if(cm) out.push('손익분기 추정 매출액 '+fmt(d.sga/(cm/100))+''+UN()+' — 현 매출 대비 '+pct(ratio(d.revenue-(d.sga/(cm/100)), d.sga/(cm/100)))+' 여유');
   }
   return out;
 }
@@ -871,17 +919,17 @@ function insightCompare(items, tot){
   var sorted = items.slice().sort(function(a,b){ return b.m.om - a.m.om; });
   var top=sorted[0], bot=sorted[sorted.length-1];
   var tm=metrics(tot);
-  out.push('선택 '+items.length+'개사 합산 매출 '+fmt(tot.revenue)+'백만원, 영업이익 '+fmt(tot.op)+'백만원(이익률 '+pct(tm.om)+')');
+  out.push('선택 '+items.length+'개사 합산 매출 '+fmt(tot.revenue)+''+UN()+', 영업이익 '+fmt(tot.op)+''+UN()+'(이익률 '+pct(tm.om)+')');
   out.push('수익성 최상위 '+top.co+' '+pct(top.m.om)+' vs 최하위 '+bot.co+' '+pct(bot.m.om)+' — 격차 '+(top.m.om-bot.m.om).toFixed(1)+'%p');
   var loss = items.filter(function(x){ return x.d.op<0; });
-  if(loss.length) out.push('적자 계열사 '+loss.length+'개사('+loss.map(function(x){return x.co;}).join(', ')+') — 합산 영업손실 '+fmt(Math.abs(loss.reduce(function(s,x){return s+x.d.op;},0)))+'백만원');
+  if(loss.length) out.push('적자 계열사 '+loss.length+'개사('+loss.map(function(x){return x.co;}).join(', ')+') — 합산 영업손실 '+fmt(Math.abs(loss.reduce(function(s,x){return s+x.d.op;},0)))+''+UN()+'');
   var maxRev = items.slice().sort(function(a,b){ return b.d.revenue-a.d.revenue; })[0];
   var conc = ratio(maxRev.d.revenue, tot.revenue);
   out.push('매출 최대 '+maxRev.co+'가 선택군 매출의 '+pct(conc)+' 차지'+(conc>50?' — 의존도 집중 리스크 관리 필요':''));
   var contrib = items.filter(function(x){ return x.d.op>0; }).sort(function(a,b){ return b.d.op-a.d.op; })[0];
-  if(contrib) out.push('이익 기여 1위 '+contrib.co+' '+fmt(contrib.d.op)+'백만원 ('+pct(ratio(contrib.d.op, Math.max(tot.op,1)))+')');
+  if(contrib) out.push('이익 기여 1위 '+contrib.co+' '+fmt(contrib.d.op)+''+UN()+' ('+pct(ratio(contrib.d.op, Math.max(tot.op,1)))+')');
   var ph = items.filter(function(x){ return x.m.perHead; }).sort(function(a,b){ return b.m.perHead-a.m.perHead; });
-  if(ph.length>1) out.push('인당 매출 '+ph[0].co+' '+fmt(ph[0].m.perHead)+' vs '+ph[ph.length-1].co+' '+fmt(ph[ph.length-1].m.perHead)+'백만원 — 인력 재배치 검토 여지');
+  if(ph.length>1) out.push('인당 매출 '+ph[0].co+' '+fmt(ph[0].m.perHead)+' vs '+ph[ph.length-1].co+' '+fmt(ph[ph.length-1].m.perHead)+''+UN()+' — 인력 재배치 검토 여지');
   if(top.m.om - bot.m.om > 10) out.push(top.co+'의 원가·판관비 운영방식을 '+bot.co+'에 이식하는 교차 벤치마킹 권고');
   var sgaHigh = items.filter(function(x){ return x.m.sgaR>22; });
   if(sgaHigh.length>=2) out.push('판관비율 22% 초과 '+sgaHigh.length+'개사 — 공통 간접비의 그룹 통합 운영(구매·물류·총무) 검토');
@@ -890,8 +938,8 @@ function insightCompare(items, tot){
 
 function insightGroup(items, tot, prevTot){
   var out=[], tm=metrics(tot);
-  out.push('그룹 합산 매출 '+fmt(tot.revenue)+'백만원, 영업이익 '+fmt(tot.op)+'백만원(이익률 '+pct(tm.om)+'), 순이익 '+fmt(tot.net)+'백만원');
-  out.push('집계 대상 '+items.length+'개사 / 등록 계열사 '+COS.length+'개사, 총 인원 '+comma(tot.head)+'명, 인당 매출 '+fmt(tm.perHead)+'백만원');
+  out.push('그룹 합산 매출 '+fmt(tot.revenue)+''+UN()+', 영업이익 '+fmt(tot.op)+''+UN()+'(이익률 '+pct(tm.om)+'), 순이익 '+fmt(tot.net)+''+UN()+'');
+  out.push('집계 대상 '+items.length+'개사 / 등록 계열사 '+COS.length+'개사, 총 인원 '+comma(tot.head)+'명, 인당 매출 '+fmt(tm.perHead)+''+UN()+'');
   if(prevTot){
     var dr=ratio(tot.revenue-prevTot.revenue, prevTot.revenue);
     var pm=metrics(prevTot);
@@ -903,7 +951,7 @@ function insightGroup(items, tot, prevTot){
   var loss=items.filter(function(x){ return x.d.op<0; });
   if(loss.length){
     out.push('적자 '+loss.length+'개사 — '+loss.map(function(x){ return x.co+'('+fmt(x.d.op)+')'; }).join(', ')+' / 흑자사 이익으로 상쇄 중');
-    out.push('적자 계열사 정상화 시 그룹 영업이익 '+fmt(tot.op+Math.abs(loss.reduce(function(s,x){return s+x.d.op;},0)))+'백만원까지 개선 가능');
+    out.push('적자 계열사 정상화 시 그룹 영업이익 '+fmt(tot.op+Math.abs(loss.reduce(function(s,x){return s+x.d.op;},0)))+''+UN()+'까지 개선 가능');
   } else {
     out.push('전 계열사 영업흑자 — 성장 투자 및 신규 사업 재원 확보 가능 국면');
   }
@@ -927,8 +975,8 @@ function insightPeriod(series, co){
   var totRev = revs.reduce(function(a,b){return a+b;},0);
   var totOp = series.reduce(function(s,x){ return s+x.d.op; },0);
 
-  out.push('['+co+'] 분석 구간 '+series.length+'개, 누적 매출 '+fmt(totRev)+'백만원, 누적 영업이익 '+fmt(totOp)+'백만원(평균 이익률 '+pct(avgOm)+')');
-  out.push(first.label+' → '+last.label+' 매출 '+pct(growth)+' '+(growth>=0?'성장':'감소')+', 영업이익 '+fmt(first.d.op)+' → '+fmt(last.d.op)+'백만원');
+  out.push('['+co+'] 분석 구간 '+series.length+'개, 누적 매출 '+fmt(totRev)+''+UN()+', 누적 영업이익 '+fmt(totOp)+''+UN()+'(평균 이익률 '+pct(avgOm)+')');
+  out.push(first.label+' → '+last.label+' 매출 '+pct(growth)+' '+(growth>=0?'성장':'감소')+', 영업이익 '+fmt(first.d.op)+' → '+fmt(last.d.op)+''+UN()+'');
   out.push('매출 변동계수 '+cv.toFixed(1)+'% — '+(cv>25?'변동성이 커 수주 파이프라인 안정화가 시급':cv>12?'중간 변동성, 계절요인 관리 필요':'안정적 매출 흐름'));
   var best=series.slice().sort(function(a,b){ return (ratio(b.d.op,b.d.revenue)||0)-(ratio(a.d.op,a.d.revenue)||0); })[0];
   var worst=series.slice().sort(function(a,b){ return (ratio(a.d.op,a.d.revenue)||0)-(ratio(b.d.op,b.d.revenue)||0); })[0];
@@ -952,7 +1000,7 @@ function insBlock(title, arr){
 }
 function kpiBlock(d,m){
   return '<div class="kpis">'+
-    '<div class="kpi"><div class="k">매출액</div><div class="v">'+fmt(d.revenue)+'</div><div class="d">백만원</div></div>'+
+    '<div class="kpi"><div class="k">매출액</div><div class="v">'+fmt(d.revenue)+'</div><div class="d">'+UN()+'</div></div>'+
     '<div class="kpi"><div class="k">영업이익</div><div class="v '+cls(d.op)+'">'+fmt(d.op)+'</div><div class="d">이익률 '+pct(m.om)+'</div></div>'+
     '<div class="kpi"><div class="k">당기순이익</div><div class="v '+cls(d.net)+'">'+fmt(d.net)+'</div><div class="d">순이익률 '+pct(m.nm)+'</div></div>'+
     '<div class="kpi"><div class="k">인당 매출액</div><div class="v">'+fmt(m.perHead)+'</div><div class="d">인원 '+comma(d.head)+'명</div></div>'+
@@ -962,7 +1010,7 @@ function plTable(d,m){
   var r=[['매출액',d.revenue,100],['매출원가',d.cogs,ratio(d.cogs,d.revenue)],['매출총이익',d.gross,m.gm],
          ['판관비',d.sga,m.sgaR],['영업이익',d.op,m.om],['영업외손익',d.nonop,ratio(d.nonop,d.revenue)],
          ['당기순이익',d.net,m.nm],['인건비',d.labor,m.laborR],['외주비',d.outsrc,m.outR]];
-  return '<div class="tw"><table><tr><th class="l">항목</th><th>금액(백만원)</th><th>매출대비</th></tr>'+
+  return '<div class="tw"><table><tr><th class="l">항목</th><th>금액('+UN()+')</th><th>매출대비</th></tr>'+
     r.map(function(x){
       var em = ['매출총이익','영업이익','당기순이익'].indexOf(x[0])>=0;
       return '<tr'+(em?' class="sub"':'')+'><td class="l">'+(em?'<b>'+x[0]+'</b>':x[0])+'</td><td class="'+(x[1]<0?'neg':'')+'">'+fmt(x[1])+'</td><td>'+pct(x[2])+'</td></tr>';
@@ -1001,12 +1049,12 @@ function renderSingle(){
 
   if(hist.length>1){
     mkChart('cSg',{type:'bar',data:{labels:hist.map(function(h){return ymLabel(h.y);}),
-      datasets:[{label:'매출액',data:hist.map(function(h){return h.r.revenue;}),backgroundColor:C_MAIN,order:2},
-                {label:'영업이익',data:hist.map(function(h){return h.r.op;}),type:'line',borderColor:C_SUB,backgroundColor:C_SUB,tension:.3,order:1}]},
+      datasets:[{label:'매출액',data:hist.map(function(h){return h.r.revenue/DU;}),backgroundColor:C_MAIN,order:2},
+                {label:'영업이익',data:hist.map(function(h){return h.r.op/DU;}),type:'line',borderColor:C_SUB,backgroundColor:C_SUB,tension:.3,order:1}]},
       options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
         scales:{y:{ticks:{font:{size:10},color:'#5A6B7B'},grid:{color:'#EEF2F7'}},x:{ticks:{font:{size:9},color:'#5A6B7B'},grid:{display:false}}}}});
   }
-  aiBox('sgAi','다음은 인시스 그룹 계열사 '+co+'의 '+ymLabel(ym)+' 손익 데이터다(단위 백만원). '+JSON.stringify(d)+
+  aiBox('sgAi','다음은 인시스 그룹 계열사 '+co+'의 '+ymLabel(ym)+' 손익 데이터다(단위 '+UN()+'). '+JSON.stringify(d)+
     (prev?' 전월: '+JSON.stringify(prev):'')+(yoy?' 전년동월: '+JSON.stringify(yoy):'')+
     ' 그룹 평균 영업이익률은 '+pct(gOm)+'이다. 이 회사의 경영자가 이번 달에 실행해야 할 조치를 우선순위 순으로 제시하라.', SYS_ADV);
 }
@@ -1052,14 +1100,14 @@ function drawCompare(){
     '<div class="card"><h3>관계사간 시사점</h3>'+insBlock('규칙기반 분석', insightCompare(items,tot))+'<div id="cpAi"></div></div>';
 
   mkChart('cCp',{type:'bar',data:{labels:items.map(function(x){return x.co;}),
-    datasets:[{label:'매출액',data:items.map(function(x){return x.d.revenue;}),backgroundColor:C_MAIN,yAxisID:'y'},
+    datasets:[{label:'매출액',data:items.map(function(x){return x.d.revenue/DU;}),backgroundColor:C_MAIN,yAxisID:'y'},
               {label:'영업이익률(%)',data:items.map(function(x){return x.m.om;}),type:'line',borderColor:'#C9A227',backgroundColor:'#C9A227',tension:.3,yAxisID:'y1'}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:10},color:'#5A6B7B'}}},
       scales:{y:{ticks:{font:{size:9},color:'#5A6B7B'},grid:{color:'#EEF2F7'}},
               y1:{position:'right',ticks:{font:{size:9},color:'#5A6B7B'},grid:{display:false}},
               x:{ticks:{font:{size:9},color:'#5A6B7B'},grid:{display:false}}}}});
 
-  aiBox('cpAi','인시스 그룹의 '+ymLabel(ym)+' 관계사 손익 비교 데이터다(백만원). '+
+  aiBox('cpAi','인시스 그룹의 '+ymLabel(ym)+' 관계사 손익 비교 데이터다('+UN()+'). '+
     JSON.stringify(items.map(function(x){ return {회사:x.co, 손익:x.d}; }))+
     ' 이 관계사들 사이의 구조적 차이, 시너지 기회, 교차 벤치마킹 포인트를 제시하라.', SYS_ADV);
 }
@@ -1102,18 +1150,18 @@ function renderGroup(){
     '<div class="card"><h3>그룹 종합 시사점</h3>'+insBlock('규칙기반 분석', insightGroup(items,tot,prevTot))+'<div id="gpAi"></div></div>';
 
   mkChart('cGp1',{type:'doughnut',data:{labels:items.map(function(x){return x.co;}),
-    datasets:[{data:items.map(function(x){return x.d.revenue;}),backgroundColor:PALETTE,borderWidth:1,borderColor:'#fff'}]},
+    datasets:[{data:items.map(function(x){return x.d.revenue/DU;}),backgroundColor:PALETTE,borderWidth:1,borderColor:'#fff'}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:9},color:'#5A6B7B',boxWidth:9}}}}});
 
   if(hist.length>1){
     mkChart('cGp2',{type:'bar',data:{labels:hist.map(function(h){return ymLabel(h.y);}),
-      datasets:[{label:'매출액',data:hist.map(function(h){return h.t.revenue;}),backgroundColor:C_MAIN},
-                {label:'영업이익',data:hist.map(function(h){return h.t.op;}),type:'line',borderColor:'#C9A227',backgroundColor:'#C9A227',tension:.3}]},
+      datasets:[{label:'매출액',data:hist.map(function(h){return h.t.revenue/DU;}),backgroundColor:C_MAIN},
+                {label:'영업이익',data:hist.map(function(h){return h.t.op/DU;}),type:'line',borderColor:'#C9A227',backgroundColor:'#C9A227',tension:.3}]},
       options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:10},color:'#5A6B7B'}}},
         scales:{y:{ticks:{font:{size:9},color:'#5A6B7B'},grid:{color:'#EEF2F7'}},x:{ticks:{font:{size:9},color:'#5A6B7B'},grid:{display:false}}}}});
   }
 
-  aiBox('gpAi','인시스 그룹('+items.length+'개 계열사) '+ymLabel(ym)+' 통합 손익이다(백만원). 계열사별: '+
+  aiBox('gpAi','인시스 그룹('+items.length+'개 계열사) '+ymLabel(ym)+' 통합 손익이다('+UN()+'). 계열사별: '+
     JSON.stringify(items.map(function(x){ return {회사:x.co, 손익:x.d}; }))+' 그룹합계: '+JSON.stringify(tot)+
     ' 그룹 차원의 포트폴리오 진단과 향후 3~6개월 사업 방향을 제시하라.', SYS_ADV);
 }
@@ -1180,15 +1228,15 @@ function drawPeriod(){
     '<div class="card"><h3>기간 종합 분석 및 사업 방향</h3>'+insBlock('규칙기반 분석', insightPeriod(series,coName))+'<div id="pdAi"></div></div>';
 
   mkChart('cPd',{type:'bar',data:{labels:series.map(function(s){return s.label;}),
-    datasets:[{label:'매출액',data:series.map(function(s){return s.d.revenue;}),backgroundColor:C_MAIN},
-              {label:'영업이익',data:series.map(function(s){return s.d.op;}),backgroundColor:'#93B7D6'},
+    datasets:[{label:'매출액',data:series.map(function(s){return s.d.revenue/DU;}),backgroundColor:C_MAIN},
+              {label:'영업이익',data:series.map(function(s){return s.d.op/DU;}),backgroundColor:'#93B7D6'},
               {label:'영업이익률(%)',data:series.map(function(s){return metrics(s.d).om;}),type:'line',borderColor:'#C9A227',backgroundColor:'#C9A227',tension:.3,yAxisID:'y1'}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:10},color:'#5A6B7B'}}},
       scales:{y:{ticks:{font:{size:9},color:'#5A6B7B'},grid:{color:'#EEF2F7'}},
               y1:{position:'right',ticks:{font:{size:9},color:'#5A6B7B'},grid:{display:false}},
               x:{ticks:{font:{size:9},color:'#5A6B7B'},grid:{display:false}}}}});
 
-  aiBox('pdAi','인시스 그룹 '+coName+'의 기간별 누적 손익 추이다(백만원). '+
+  aiBox('pdAi','인시스 그룹 '+coName+'의 기간별 누적 손익 추이다('+UN()+'). '+
     JSON.stringify(series.map(function(s){ return {구간:s.label, 손익:s.d}; }))+
     ' 추세 진단과 향후 1년 사업 방향(투자·구조조정·신사업)을 구체적으로 제시하라.', SYS_ADV);
 }
@@ -1269,7 +1317,11 @@ function refreshAllSel(){
 }
 function init(){
   $('verTag').textContent=VERSION; $('verFoot').textContent=VERSION;
-  loadAll(); buildFields();
+  loadAll();
+  var du=lsGet(LS_DU)||'1';
+  DU=parseFloat(du); DU_NAME=DU_NAMES[du]||'원';
+  $('dispUnit').value=du; $('unitFoot').textContent=DU_NAME;
+  buildFields();
   $('inYm').value = ymNow();
   refreshAllSel(); refreshStatus(); onCoChange();
 
@@ -1293,6 +1345,7 @@ function init(){
   Array.prototype.forEach.call($('tabs').children, function(b){ b.onclick=function(){ setTab(b.dataset.t); }; });
   $('inYm').onchange=function(){ refreshStatus(); onCoChange(); };
   $('inCo').onchange=onCoChange;
+  $('dispUnit').onchange=function(){ setDisp(this.value); toast('표시 단위: '+DU_NAME); };
   $('sheetSel').onchange=parseSheet;
   $('sgCo').onchange=renderSingle; $('sgYm').onchange=renderSingle;
   $('cpYm').onchange=renderCompare;
