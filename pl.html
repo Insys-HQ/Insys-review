@@ -143,7 +143,7 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
         <button id="vP" onclick="setView('pc')">PC</button>
       </div>
       <span class="ver" id="fbStat">연결중</span>
-      <span class="ver" id="verTag">v2.0</span>
+      <span class="ver" id="verTag">v2.1</span>
     </div>
   </div>
 </div>
@@ -377,6 +377,14 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
         <input type="text" id="newCo" placeholder="추가할 계열사명" style="flex:1;min-width:140px">
         <button class="btn sm" onclick="addCo()">추가</button>
       </div>
+      <div style="margin-top:8px">
+        <label class="lb">여러 계열사 일괄 등록 (줄바꿈 또는 쉼표로 구분)</label>
+        <textarea id="bulkCo" rows="4" placeholder="(주)파인&#10;(주)이레&#10;(주)챈스&#10;우리스틸산업"></textarea>
+        <div class="row" style="margin-top:6px">
+          <button class="btn sec sm" onclick="addCoBulk()">일괄 추가</button>
+          <span class="note">이미 등록된 회사는 자동으로 건너뛴다</span>
+        </div>
+      </div>
     </div>
 
     <div class="card">
@@ -398,7 +406,7 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
   </div>
 
   <div class="foot">
-    인시스 AI혁신 연구개발실 &nbsp;|&nbsp; pl.html <span id="verFoot">v2.0</span><br>
+    인시스 AI혁신 연구개발실 &nbsp;|&nbsp; pl.html <span id="verFoot">v2.1</span><br>
     금액 단위: <span id="unitFoot">원</span> &nbsp;|&nbsp; 음수 표기: △ &nbsp;|&nbsp; 저장: Firestore insys_pl
   </div>
 </div>
@@ -410,7 +418,7 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
    인시스 계열사 손익분석 대시보드  v1.0
    인시스 AI혁신 연구개발실
    ========================================================= */
-var VERSION = 'v2.0';
+var VERSION = 'v2.1';
 var LS_DATA = 'insys_pl_data_v1';
 var LS_CO   = 'insys_pl_co_v1';
 var LS_KEY  = 'insys_pl_key_v1';
@@ -932,6 +940,7 @@ function onCoChange(){
 /* ---------- 엑셀 파싱 ---------- */
 function handleFile(f){
   if(!f) return;
+  lastFile = f.name || '';
   if(/^image\//.test(f.type)){ readShot(f); return; }
   var fr=new FileReader();
   fr.onload=function(e){
@@ -946,6 +955,68 @@ function handleFile(f){
     }catch(err){ toast('엑셀 읽기 실패: '+err.message); }
   };
   fr.readAsArrayBuffer(f);
+}
+/* ---------- 계열사명 자동 인식 · 자동 등록 ---------- */
+var lastFile = '';
+var CO_RE = /(?:주식회사|㈜|\(주\)|유한회사|\(유\))\s*[가-힣A-Za-z0-9]{1,20}|[가-힣A-Za-z0-9]{1,20}\s*(?:주식회사|㈜|\(주\)|\(유\))/;
+function normCo(t){
+  return String(t||'').replace(/\s+/g,'')
+    .replace(/주식회사/g,'(주)').replace(/㈜/g,'(주)')
+    .replace(/유한회사/g,'(유)');
+}
+function coKey(t){
+  return String(t||'').replace(/\s+/g,'').replace(/\(주\)|\(유\)|주식회사|유한회사|㈜/g,'').toLowerCase();
+}
+function findCo(name){
+  var k=coKey(name);
+  for(var i=0;i<COS.length;i++){ if(coKey(COS[i])===k) return COS[i]; }
+  return null;
+}
+function detectCo(){
+  // 1) 시트 상단 10행에서 회사명 패턴 탐색
+  for(var r=0;r<Math.min(sheetRows.length,10);r++){
+    var row=sheetRows[r]||[];
+    for(var c=0;c<row.length;c++){
+      var t=String(row[c]==null?'':row[c]).trim();
+      if(!t || t.length>30 || cellNum(t)!==null) continue;
+      var m=t.match(CO_RE);
+      if(m) return normCo(m[0]);
+    }
+  }
+  // 2) 파일명에서 탐색
+  if(lastFile){
+    var m2=lastFile.replace(/\.[a-z]+$/i,'').match(CO_RE);
+    if(m2) return normCo(m2[0]);
+  }
+  return null;
+}
+function autoAddCo(){
+  var nm=detectCo();
+  if(!nm) return null;
+  var hit=findCo(nm);
+  if(!hit){
+    COS.push(nm); saveAll(); refreshAllSel();
+    fsMeta(COS).catch(function(){});
+    toast('신규 계열사 자동 추가: '+nm);
+    hit=nm;
+  }
+  $('inCo').value=hit;
+  return hit;
+}
+function addCoBulk(){
+  var raw=$('bulkCo').value||'';
+  var list=raw.split(/[\n,;\t]+/).map(function(x){ return normCo(x.trim()); }).filter(function(x){ return x.length>0; });
+  if(!list.length){ toast('입력된 계열사명이 없다'); return; }
+  var added=[], dup=[];
+  list.forEach(function(n){
+    if(findCo(n) || added.indexOf(n)>=0){ dup.push(n); return; }
+    COS.push(n); added.push(n);
+  });
+  if(!added.length){ toast('모두 이미 등록된 계열사다 ('+dup.length+'건)'); return; }
+  saveAll(); refreshAllSel(); renderSetup(); refreshStatus();
+  $('bulkCo').value='';
+  fsMeta(COS).then(function(){ toast(added.length+'개사 추가 완료 (중복 '+dup.length+'건 제외) — Firebase 반영'); })
+    .catch(function(){ toast(added.length+'개사 추가 (로컬)'); });
 }
 function normLab(t){ return String(t==null?'':t).replace(/[\s\u00a0.,:·\-_()\[\]{}]/g,''); }
 function cellNum(v){
@@ -1010,6 +1081,7 @@ function parseSheet(){
 
   if(!Object.keys(found).length){ toast('항목을 찾지 못했다. 원본 시트 보기로 직접 지정할 것'); renderPrev(); $('prevWrap').classList.remove('hide'); return; }
 
+  autoAddCo();
   var sc = unitScale(raw);
   sheetScale = sc;
   var d = blank();
@@ -1585,7 +1657,8 @@ function renderSetup(){
 function addCo(){
   var n=$('newCo').value.trim();
   if(!n){ toast('계열사명을 입력하라'); return; }
-  if(COS.indexOf(n)>=0){ toast('이미 등록된 계열사다'); return; }
+  n=normCo(n);
+  if(findCo(n)){ toast('이미 등록된 계열사다'); return; }
   COS.push(n); saveAll(); $('newCo').value=''; refreshAllSel(); renderSetup(); refreshStatus();
   fsMeta(COS).then(function(){ toast(n+' 추가 — Firebase 반영'); }).catch(function(){ toast(n+' 추가 (로컬)'); });
 }
