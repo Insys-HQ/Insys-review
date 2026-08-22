@@ -125,6 +125,7 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
 .fbtn{font-family:inherit;font-size:10px;font-weight:600;border:1px solid var(--line);background:#fff;color:var(--gray);border-radius:5px;padding:0 7px;cursor:pointer;flex:0 0 auto}
 .finp{display:flex;gap:4px;align-items:stretch}
 .finp input{flex:1;min-width:0;text-align:right;font-variant-numeric:tabular-nums;letter-spacing:.2px}
+.finp select{flex:1;min-width:0}
 .finp input.miss{background:#FDF6E8;border-color:#D9C078}
 .miss-tag{font-size:9.5px;color:#8A6D1F;font-weight:700;background:#FBF3DE;border-radius:7px;padding:0 5px;margin-left:4px}
 </style>
@@ -143,7 +144,7 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
         <button id="vP" onclick="setView('pc')">PC</button>
       </div>
       <span class="ver" id="fbStat">연결중</span>
-      <span class="ver" id="verTag">v2.1</span>
+      <span class="ver" id="verTag">v2.2</span>
     </div>
   </div>
 </div>
@@ -167,9 +168,9 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
           <label class="lb">기준 연월</label>
           <input type="month" id="inYm">
         </div>
-        <div style="flex:1;min-width:120px">
+        <div style="flex:1;min-width:150px">
           <label class="lb">계열사</label>
-          <select id="inCo"></select>
+          <div class="finp"><select id="inCo"></select><button class="fbtn" onclick="quickAddCo()">＋신규</button></div>
         </div>
         <div style="flex:1;min-width:104px">
           <label class="lb">입력자료 단위</label>
@@ -406,7 +407,7 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
   </div>
 
   <div class="foot">
-    인시스 AI혁신 연구개발실 &nbsp;|&nbsp; pl.html <span id="verFoot">v2.1</span><br>
+    인시스 AI혁신 연구개발실 &nbsp;|&nbsp; pl.html <span id="verFoot">v2.2</span><br>
     금액 단위: <span id="unitFoot">원</span> &nbsp;|&nbsp; 음수 표기: △ &nbsp;|&nbsp; 저장: Firestore insys_pl
   </div>
 </div>
@@ -418,7 +419,7 @@ body.pc .fields{grid-template-columns:repeat(4,1fr)}
    인시스 계열사 손익분석 대시보드  v1.0
    인시스 AI혁신 연구개발실
    ========================================================= */
-var VERSION = 'v2.1';
+var VERSION = 'v2.2';
 var LS_DATA = 'insys_pl_data_v1';
 var LS_CO   = 'insys_pl_co_v1';
 var LS_KEY  = 'insys_pl_key_v1';
@@ -958,14 +959,17 @@ function handleFile(f){
 }
 /* ---------- 계열사명 자동 인식 · 자동 등록 ---------- */
 var lastFile = '';
-var CO_RE = /(?:주식회사|㈜|\(주\)|유한회사|\(유\))\s*[가-힣A-Za-z0-9]{1,20}|[가-힣A-Za-z0-9]{1,20}\s*(?:주식회사|㈜|\(주\)|\(유\))/;
+var CO_RE = /(?:주식회사|유한회사|유한책임회사|합자회사|㈜|㈲|\(주\)|\(유\)|\(합\)|\(재\)|\(사\))\s*[가-힣A-Za-z0-9]{1,20}|[가-힣A-Za-z0-9]{1,20}\s*(?:주식회사|유한회사|㈜|㈲|\(주\)|\(유\))/;
 function normCo(t){
   return String(t||'').replace(/\s+/g,'')
     .replace(/주식회사/g,'(주)').replace(/㈜/g,'(주)')
-    .replace(/유한회사/g,'(유)');
+    .replace(/유한책임회사|유한회사/g,'(유)').replace(/㈲/g,'(유)')
+    .replace(/합자회사/g,'(합)');
 }
 function coKey(t){
-  return String(t||'').replace(/\s+/g,'').replace(/\(주\)|\(유\)|주식회사|유한회사|㈜/g,'').toLowerCase();
+  return String(t||'').replace(/\s+/g,'')
+    .replace(/\(주\)|\(유\)|\(합\)|\(재\)|\(사\)|주식회사|유한책임회사|유한회사|합자회사|㈜|㈲/g,'')
+    .toLowerCase();
 }
 function findCo(name){
   var k=coKey(name);
@@ -990,18 +994,34 @@ function detectCo(){
   }
   return null;
 }
-function autoAddCo(){
-  var nm=detectCo();
-  if(!nm) return null;
+function autoAddCoName(nm){
+  nm=normCo(nm||'');
+  if(!nm || nm.length<2) return null;
   var hit=findCo(nm);
   if(!hit){
     COS.push(nm); saveAll(); refreshAllSel();
+    try{ renderSetup(); }catch(e){}
     fsMeta(COS).catch(function(){});
     toast('신규 계열사 자동 추가: '+nm);
     hit=nm;
   }
   $('inCo').value=hit;
+  refreshStatus();
   return hit;
+}
+function autoAddCo(){ return autoAddCoName(detectCo()); }
+function quickAddCo(){
+  var n=window.prompt('추가할 계열사명을 입력하라\n예: (유)스타타워 / (주)파인 / 우리스틸산업','');
+  if(!n) return;
+  var nm=normCo(n.trim());
+  if(nm.length<2){ toast('계열사명이 너무 짧다'); return; }
+  var hit=findCo(nm);
+  if(hit){ $('inCo').value=hit; onCoChange(); toast('이미 등록된 계열사다 — '+hit+' 선택'); return; }
+  COS.push(nm); saveAll(); refreshAllSel(); refreshStatus();
+  try{ renderSetup(); }catch(e){}
+  $('inCo').value=nm; onCoChange();
+  fsMeta(COS).then(function(){ toast(nm+' 추가 완료 — Firebase 반영'); })
+    .catch(function(){ toast(nm+' 추가 (로컬)'); });
 }
 function addCoBulk(){
   var raw=$('bulkCo').value||'';
@@ -1225,12 +1245,15 @@ $('btnOcr') && ($('btnOcr').onclick = function(){
   var b=this; b.disabled=true; b.innerHTML='<span class="spin"></span>판독 중';
   var m = shotData.match(/^data:(image\/\w+);base64,(.+)$/);
   if(!m){ toast('이미지 형식 오류'); b.disabled=false; b.textContent='AI로 숫자 읽기'; return; }
-  var sys='너는 한국 기업 재무제표 판독기다. 이미지에서 손익 항목을 찾아 JSON만 출력한다. 설명·마크다운·백틱 금지.';
-  var ask='이미지에서 다음 항목의 금액을 추출해 JSON으로만 답하라. 단위는 원본 그대로. 없으면 0.\n'+
-    '{"revenue":매출액,"cogs":매출원가,"gross":매출총이익,"sga":판관비,"op":영업이익,"nonop":영업외손익,"net":당기순이익,"head":인원수,"labor":인건비,"outsrc":외주비}';
+  var sys='너는 한국 기업 재무제표 판독기다. 이미지에서 회사명과 손익 항목을 찾아 JSON만 출력한다. 설명·마크다운·백틱 금지.';
+  var ask='이미지에서 회사명과 각 항목 금액을 추출해 JSON으로만 답하라. 단위는 원본 그대로. 없으면 0.\n'+
+    'company: 문서 상단의 회사명. 주식회사·㈜·(주)·(유)·유한회사 표기를 포함해 그대로. 없으면 빈 문자열.\n'+
+    'purchase(매입액)와 cogs(매출원가)는 별개 계정이니 구분할 것. etcrev는 기타수익.\n'+
+    '{"company":"회사명","revenue":매출액,"etcrev":기타수익,"purchase":매입액,"cogs":매출원가,"gross":매출총이익,"sga":판매비와관리비,"labor":인건비,"outsrc":외주비,"op":영업이익,"nonop":영업외손익,"net":당기순이익,"head":인원수}';
   callClaude([{type:'image',source:{type:'base64',media_type:m[1],data:m[2]}},{type:'text',text:ask}], sys, 800)
     .then(function(txt){
       var j=JSON.parse(txt.replace(/```json|```/g,'').trim());
+      if(j.company){ autoAddCoName(j.company); delete j.company; }
       var raw=Object.keys(j).map(function(k){ return num(j[k]); });
       var sc=unitScale(raw); var d=blank();
       Object.keys(j).forEach(function(k){ if(d[k]!==undefined) d[k] = k==='head'? Math.round(num(j[k])) : Math.round(num(j[k])*sc); });
