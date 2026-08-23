@@ -2,6 +2,10 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PCB 비전 검사 시뮬레이터</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -496,6 +500,33 @@
 
   draw(); renderSteps(); updateSigBtns();
   addLog('비전 검사 시뮬레이터 v1.0 준비 완료. "자동 운전 시작"을 누르세요.');
+</script>
+
+<!-- 최신버전 자동 감지: 서버 파일이 바뀌면 새로고침 없이 자동 반영 -->
+<script>
+(function(){
+  if(location.protocol==='file:') return;          // 로컬 파일은 미적용
+  var cur=null, TICK=30000;                        // 30초마다 확인
+  function fetchSelf(cb){
+    fetch(location.pathname+'?_cb='+Date.now(), {cache:'no-store'})
+      .then(function(r){return r.ok?r.text():null;})
+      .then(function(t){ if(t) cb(hash(t)); })
+      .catch(function(){});
+  }
+  function hash(s){ var h=0; for(var i=0;i<s.length;i++){h=(h*31+s.charCodeAt(i))|0;} return h; }
+  function banner(){
+    if(document.getElementById('__upd')) return;
+    var d=document.createElement('div'); d.id='__upd';
+    d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:9999;background:#1E3A5F;color:#fff;'+
+      'font-family:"Noto Sans KR",sans-serif;font-size:13px;font-weight:700;padding:10px;text-align:center;cursor:pointer';
+    d.textContent='새 버전이 있습니다 — 지금 적용하려면 여기를 누르세요';
+    d.onclick=function(){ location.replace(location.pathname+'?v='+Date.now()); };
+    document.body.appendChild(d);
+    setTimeout(function(){ location.replace(location.pathname+'?v='+Date.now()); }, 5000); // 5초 후 자동 적용
+  }
+  fetchSelf(function(h){ cur=h; });
+  setInterval(function(){ fetchSelf(function(h){ if(cur!==null && h!==cur) banner(); }); }, TICK);
+})();
 </script>
 </body>
 </html>
