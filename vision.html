@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PCB 비전 검사 시뮬레이터</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#1E3A5F; --navy-dark:#122540; --text:#2B3648; --text-light:#5B6472;
+    --bg:#F3F5F9; --card-bg:#FFFFFF; --card-header-bg:#E7EFFA; --border:#E1E6ED;
+    --accent:#2D5C99; --success:#16A34A; --danger:#DC2626; --warning:#C2740A; --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.45;}
+  header.cover{background:linear-gradient(135deg,var(--navy),var(--navy-dark));color:#F4F7FB;padding:14px 20px;}
+  header.cover .inner{max-width:1200px;margin:0 auto;text-align:center;}
+  header.cover h1{font-size:21px;font-weight:900;margin:0 0 4px;}
+  header.cover p{margin:0;font-size:12.5px;color:#C7D4E6;}
+  .container{max-width:1200px;margin:0 auto;padding:16px 20px 50px;}
+  .card{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:0 1px 2px rgba(20,40,63,.05);margin-bottom:16px;}
+  .card-header{background:var(--card-header-bg);padding:11px 16px;font-weight:700;color:var(--navy-dark);font-size:14.5px;border-bottom:1px solid var(--border);}
+  .card-body{padding:14px 16px;}
+  .grid2{display:grid;grid-template-columns:1.35fr .65fr;gap:16px;align-items:start;}
+  .left-col{display:flex;flex-direction:column;}
+  @media (max-width:900px){.grid2{grid-template-columns:1fr;}}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+  button{font-family:inherit;font-size:13.5px;font-weight:700;padding:10px 15px;border-radius:8px;border:1px solid var(--border);background:#F5F7FA;color:var(--navy-dark);cursor:pointer;}
+  button:hover{background:#EAF0F8;}
+  button:disabled{opacity:.45;cursor:not-allowed;}
+  button.primary{background:var(--navy);color:#fff;border-color:var(--navy);}
+  button.primary:hover{background:var(--navy-dark);}
+  button.sig{background:#FDF3E3;color:#8A5407;border-color:#E6C79A;}
+  button.sig:not(:disabled){background:var(--warning);color:#fff;border-color:var(--warning);animation:sigPulse 1.1s ease-in-out infinite;}
+  button.resume:not(:disabled){background:var(--danger);color:#fff;border-color:var(--danger);animation:sigPulse .8s ease-in-out infinite;}
+  @keyframes sigPulse{0%,100%{box-shadow:0 0 0 0 rgba(194,116,10,.5);}50%{box-shadow:0 0 0 7px rgba(194,116,10,0);}}
+  button.danger{background:#FCEBEA;color:var(--danger);border-color:#F4C6C3;}
+  select,input[type=range]{font-family:inherit;font-size:13.5px;}
+  select{padding:9px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--text);}
+  .hint{font-size:12px;color:var(--text-light);margin-top:8px;}
+  svg{width:100%;height:auto;display:block;}
+  .statechips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px;}
+  .chip{font-size:11.5px;font-weight:700;padding:5px 10px;border-radius:20px;border:1px solid var(--border);color:var(--text-light);background:#F7F9FC;}
+  .chip b{color:var(--navy-dark);}
+  .chip.on{background:var(--success);color:#fff;border-color:var(--success);}
+  .chip.on b{color:#fff;}
+  .chip.focus{background:#EAF1FB;border-color:#BCD3EF;}
+  .chip.focus b{color:var(--accent);}
+  .verdict-box{display:flex;gap:14px;align-items:center;margin-bottom:10px;}
+  .verdict-lamp{flex:0 0 auto;width:82px;height:54px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:21px;font-weight:900;color:#fff;background:#C9CDD3;letter-spacing:1px;}
+  .verdict-lamp.ok{background:var(--success);}
+  .verdict-lamp.ng{background:var(--danger);}
+  .mes-ind{font-size:12.5px;font-weight:700;color:var(--text-light);}
+  .mes-ind.sending{color:var(--accent);}
+  .mes-ind .dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#C9CDD3;margin-right:5px;}
+  .mes-ind.sending .dot{background:var(--accent);animation:sigPulse 1s infinite;}
+  .alarm-banner{display:none;background:var(--danger);color:#fff;font-weight:900;text-align:center;padding:10px;border-radius:8px;margin-bottom:10px;animation:alarmBlink .7s step-end infinite;}
+  .alarm-banner.show{display:block;}
+  @keyframes alarmBlink{0%,100%{opacity:1;}50%{opacity:.55;}}
+  .blinkRed{animation:alarmBlink .7s step-end infinite;}
+  .steps{overflow:visible;}
+  .step{display:flex;gap:9px;align-items:flex-start;padding:6px 9px;border-radius:7px;font-size:12px;border:1px solid transparent;}
+  .step .no{flex:0 0 20px;height:20px;border-radius:50%;background:#EDEFF3;color:var(--text-light);font-weight:700;font-size:10.5px;display:flex;align-items:center;justify-content:center;}
+  .step.done .no{background:var(--success);color:#fff;}
+  .step.cur{background:#EAF1FB;border-color:#BCD3EF;}
+  .step.cur .no{background:var(--navy);color:#fff;}
+  .step.wait.cur{background:#FBF1DF;border-color:#E6C79A;}
+  .step.wait.cur .no{background:var(--warning);color:#fff;}
+  .phase-h{font-size:11.5px;font-weight:900;color:var(--navy-dark);margin:10px 0 4px;padding-left:4px;}
+  .phase-h:first-child{margin-top:0;}
+  .log-card pre{margin:0;max-height:150px;overflow-y:auto;background:#F8F9FB;border:1px solid var(--border);border-radius:8px;padding:10px;font-family:'Noto Sans KR',monospace;font-size:12px;white-space:pre-wrap;word-break:break-all;}
+  label.ck{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--navy-dark);cursor:pointer;}
+  footer{text-align:center;padding:14px 20px 26px;font-size:12px;color:var(--text-light);}
+  .counter{font-size:13px;font-weight:700;color:var(--navy-dark);}
+</style>
+</head>
+<body>
+
+<header class="cover">
+  <div class="inner">
+    <h1>PCB 비전 검사 시뮬레이터</h1>
+    <p>6축 로봇 + Cognex 카메라·돔조명 · 직각 정렬 · 초점 300mm 유지 · NG 알람 중단 · v1.0 (하드웨어 미연결)</p>
+  </div>
+</header>
+
+<main class="container">
+  <div class="grid2">
+    <div class="left-col">
+    <section class="card">
+      <div class="card-header">동작 애니메이션 (정면 상단 뷰 · 로봇은 컨베이어 뒤)</div>
+      <div class="card-body">
+        <div id="alarmBanner" class="alarm-banner">⚠ NG 발생 — 검사 중단! NG품 제거 후 [검사 계속]을 누르세요</div>
+        <div class="statechips">
+          <span class="chip focus">초점거리: <b id="focalVal">-</b></span>
+          <span class="chip focus">PCB 기울기: <b id="tiltVal">-</b></span>
+          <span class="chip focus">카메라 정렬: <b id="alignVal">-</b></span>
+          <span class="chip" id="chipLamp">돔조명: <b id="lampVal">OFF</b></span>
+          <span class="chip" id="chipSen">검사위치 센서: <b id="senVal">OFF</b></span>
+        </div>
+
+        <div class="verdict-box">
+          <div class="verdict-lamp" id="verdictLamp">--</div>
+          <div>
+            <div style="font-size:12px;color:var(--text-light);">비전 검사 판정</div>
+            <div class="mes-ind" id="mesInd"><span class="dot"></span>MES 전송: 대기</div>
+          </div>
+          <div style="margin-left:auto;">
+            <div style="font-size:11.5px;color:var(--text-light);margin-bottom:4px;">데모 판정값</div>
+            <select id="verdictSel">
+              <option value="auto">자동(교대)</option>
+              <option value="OK">항상 OK</option>
+              <option value="NG">항상 NG</option>
+            </select>
+          </div>
+        </div>
+
+        <svg viewBox="0 0 700 400" id="scene"></svg>
+        <div class="row" style="margin-top:6px;">
+          <span class="counter">검사 완료: <span id="cycleCount">0</span></span>
+          <span class="counter" style="color:var(--success);">OK: <span id="okCount">0</span></span>
+          <span class="counter" style="color:var(--danger);">NG: <span id="ngCount">0</span></span>
+        </div>
+        <p class="hint" id="curStateText"></p>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-header">운전 / 신호 제어</div>
+      <div class="card-body">
+        <div class="row" style="margin-bottom:12px;">
+          <button id="btnRun" class="primary">▶ 자동 운전 시작</button>
+          <button id="btnStop" class="danger">■ 정지</button>
+          <button id="btnReset">↺ 초기화</button>
+          <label class="ck"><input type="checkbox" id="autoSig" checked> 신호 자동 발생(데모)</label>
+          <span style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+            <span style="font-size:12px;color:var(--text-light);">속도</span>
+            <input type="range" id="speed" min="1" max="10" value="6" style="width:130px;">
+          </span>
+        </div>
+        <div class="row">
+          <button id="sigStart" class="sig" disabled>START 신호 (운전 시작)</button>
+          <button id="btnResume" class="resume" disabled>검사 계속 (NG 제거 완료)</button>
+        </div>
+        <p class="hint">NG 판정 시 알람과 함께 검사가 중단됩니다. 작업자가 NG품을 제거한 뒤 <b>[검사 계속]</b>을 누르면 다음 PCB부터 검사가 재개됩니다. 로봇은 PCB를 집지 않고, 기울어진 PCB 표면에 카메라를 직각으로 정렬해 초점거리 300mm를 유지하며 검사합니다.</p>
+      </div>
+    </section>
+    </div><!-- /left-col -->
+
+    <section class="card">
+      <div class="card-header">전체 로직 플로우</div>
+      <div class="card-body"><div class="steps" id="stepList"></div></div>
+    </section>
+  </div>
+
+  <section class="card log-card">
+    <div class="card-header">동작 로그</div>
+    <div class="card-body">
+      <div class="row" style="margin-bottom:10px;"><button id="clearLog">로그 지우기</button></div>
+      <pre id="logBox"></pre>
+    </div>
+  </section>
+</main>
+
+<footer>인시스 AI혁신 연구개발실 · 작성자 ys.kim@in-sys.co.kr · v1.0 · 비전검사 로직 시뮬레이터(하드웨어 미연결)</footer>
+
+<script>
+  // ===== 좌표 (정면 약간 상단 뷰) =====
+  const BELT_X0=40, BELT_X1=660, BELT_TOP=318, BELT_H=34;   // 벨트 본체
+  const RAIL=8;                                              // 알루미늄 프레임 두께
+  const INSPECT_X=330;                                       // 검사위치(PCB 정지 x)
+  const PCB_Y=306;                                           // PCB 중심 y (벨트 위)
+  const FOCUS_PX=90, FOCUS_MM=300;                           // 90px ≙ 300mm
+  const S={x:470,y:196};                                     // 로봇 어깨 관절(컨베이어 뒤)
+  const L1=118, L2=104;                                      // 링크 길이
+  const HOME={lx:508,ly:112,cam:0};                          // 대기 자세(렌즈 위치/카메라각)
+
+  // ===== 로직 플로우 =====
+  const STATES=[
+    { phase:'대기', type:'wait', signal:'START', label:'START 대기 (운전 시작)' },
+    // LOOP_START = 1
+    { phase:'투입', type:'convIn', label:'컨베이어: PCB 투입(좌→검사위치) 후 정지 · 기울기 랜덤' },
+    { phase:'투입', type:'sensor', on:true, label:'검사위치 센서 감지 → 컨베이어 정지' },
+    { phase:'비전 정렬', type:'pose', to:'inspect', label:'로봇: 카메라 접근 + PCB 기울기에 직각 정렬' },
+    { phase:'비전 정렬', type:'aligned', label:'직각 정렬 완료 · 초점거리 300mm 유지' },
+    { phase:'비전 검사', type:'light', on:true, label:'돔 조명 ON' },
+    { phase:'비전 검사', type:'scan', label:'비전 검사 (스캔)' },
+    { phase:'판정', type:'verdict', label:'OK/NG 판정 + MES 전송' },
+    { phase:'판정', type:'alarmwait', cond:'ng', signal:'RESUME', label:'NG: 알람·검사 중단 → 작업자 제거 후 [검사 계속]' },
+    { phase:'배출', type:'light', on:false, label:'돔 조명 OFF' },
+    { phase:'배출', type:'convOut', cond:'ok', label:'컨베이어: OK품 우측 배출' },
+    { phase:'배출', type:'pose', to:'home', label:'로봇: 대기 자세 복귀 (반복)' }
+  ];
+  const LOOP_START=1;
+
+  // ===== 런타임 =====
+  let idx=0, running=false, waitingSignal=null;
+  let pcbOn=false, pcbX=INSPECT_X, tiltDeg=0;   // PCB 상태
+  let convActive=false, beltPhase=0;
+  let lensX=HOME.lx, lensY=HOME.ly, camDeg=HOME.cam;  // 카메라 렌즈/각도
+  let lightOn=false, scanT=-1, s_in=false, alarm=false;
+  let verdict=null, autoTog=0, cycleCount=0, okCount=0, ngCount=0;
+  let animToken=0, autoTimer=null;
+
+  const $=id=>document.getElementById(id);
+  const logBox=$('logBox');
+  function addLog(m){const t=new Date().toLocaleTimeString('ko-KR');logBox.textContent+='['+t+'] '+m+'\n';logBox.scrollTop=logBox.scrollHeight;}
+
+  // ===== 그리기 =====
+  function pcbAsm(cx,cy,tdeg){
+    return `<g transform="translate(${cx},${cy}) rotate(${-tdeg}) scale(1.25)">
+      <path d="M-58,0 C-80,4 -92,16 -102,24" stroke="#22262B" stroke-width="5.5" fill="none"/>
+      <path d="M-58,0 C-80,4 -92,16 -102,24" stroke="#5A6068" stroke-width="5.5" fill="none" stroke-dasharray="2 3"/>
+      <rect x="-122" y="18" width="20" height="14" rx="2" fill="#B7BCC4" stroke="#7C8896"/>
+      <rect x="-117" y="21" width="9" height="8" fill="#F08C1E"/>
+      <rect x="-60" y="-8" width="120" height="16" rx="8" fill="#23272C" stroke="#101215"/>
+      <rect x="-46" y="-11" width="92" height="7" rx="2" fill="#B9BFC7" stroke="#8B939E"/>
+      <rect x="-33" y="-15" width="66" height="6" rx="1" fill="#2E7D36" stroke="#1F5C22"/>
+      <rect x="-22" y="-14" width="6" height="3.5" fill="#C9A227"/>
+      <rect x="-6" y="-14" width="9" height="3.5" fill="#39434F"/>
+      <rect x="13" y="-14" width="5" height="3.5" fill="#B03A2E"/>
+    </g>`;
+  }
+  function pcbTop(){ // PCB 상면 중심(카메라 초점 목표)
+    return {x:pcbX, y:PCB_Y-12};
+  }
+  function ikElbow(W){
+    let dx=W.x-S.x, dy=W.y-S.y, d=Math.hypot(dx,dy);
+    d=Math.max(Math.abs(L1-L2)+2, Math.min(L1+L2-2, d));
+    const a=Math.atan2(dy,dx);
+    const cosA=(L1*L1+d*d-L2*L2)/(2*L1*d);
+    const A=Math.acos(Math.max(-1,Math.min(1,cosA)));
+    const E1={x:S.x+L1*Math.cos(a-A), y:S.y+L1*Math.sin(a-A)};
+    const E2={x:S.x+L1*Math.cos(a+A), y:S.y+L1*Math.sin(a+A)};
+    return (E1.y<E2.y)?E1:E2;   // 팔꿈치 위쪽 해
+  }
+
+  const scene=$('scene');
+  function draw(){
+    let s='';
+    const t=pcbTop();
+    // ── 로봇 (컨베이어 뒤: 먼저 그려 벨트가 하부를 가림) ──
+    s+=`<ellipse cx="470" cy="300" rx="46" ry="12" fill="#C6CBD2" stroke="#9AA3AE"/>`;                 // 받침 원반
+    s+=`<rect x="447" y="220" width="46" height="80" rx="13" fill="#F6F7F9" stroke="#C2C8D0" stroke-width="2"/>`; // 베이스 기둥
+    s+=`<rect x="447" y="224" width="46" height="7" rx="3.5" fill="#2A2F3A"/>`;                        // 다크 링
+    // 손목 위치 = 렌즈에서 카메라 몸체만큼 뒤
+    const rad=(-camDeg)*Math.PI/180;
+    const ax=Math.sin(rad), ay=Math.cos(rad);       // 카메라 광축(렌즈→PCB 방향 단위벡터)
+    const W={x:lensX-ax*30, y:lensY-ay*30};
+    const E=ikElbow(W);
+    // 링크1 (어깨→팔꿈치)
+    s+=`<line x1="${S.x}" y1="${S.y}" x2="${E.x}" y2="${E.y}" stroke="#C8CDD5" stroke-width="27" stroke-linecap="round"/>`;
+    s+=`<line x1="${S.x}" y1="${S.y}" x2="${E.x}" y2="${E.y}" stroke="#F6F7F9" stroke-width="20" stroke-linecap="round"/>`;
+    // 링크2 (팔꿈치→손목)
+    s+=`<line x1="${E.x}" y1="${E.y}" x2="${W.x}" y2="${W.y}" stroke="#C8CDD5" stroke-width="22" stroke-linecap="round"/>`;
+    s+=`<line x1="${E.x}" y1="${E.y}" x2="${W.x}" y2="${W.y}" stroke="#F6F7F9" stroke-width="16" stroke-linecap="round"/>`;
+    // 관절
+    s+=`<circle cx="${S.x}" cy="${S.y}" r="17" fill="#F6F7F9" stroke="#C2C8D0" stroke-width="2"/><circle cx="${S.x}" cy="${S.y}" r="6" fill="#2A2F3A"/>`;
+    s+=`<circle cx="${E.x}" cy="${E.y}" r="13" fill="#F6F7F9" stroke="#C2C8D0" stroke-width="2"/><circle cx="${E.x}" cy="${E.y}" r="5" fill="#3C74B5"/>`;
+    s+=`<circle cx="${W.x}" cy="${W.y}" r="10" fill="#F6F7F9" stroke="#C2C8D0" stroke-width="2"/><circle cx="${W.x}" cy="${W.y}" r="4" fill="#3C74B5"/>`;
+    // 카메라 + 돔조명 (렌즈 기준 회전)
+    s+=`<g transform="translate(${lensX},${lensY}) rotate(${camDeg})">`;
+    s+=`<rect x="-11" y="-36" width="22" height="30" rx="3" fill="#3B4552" stroke="#20262E"/>`;         // Cognex 카메라 몸체
+    s+=`<rect x="-8" y="-33" width="16" height="6" rx="1.5" fill="#5C7EA6"/>`;                          // 카메라 표시부
+    s+=`<text x="0" y="-13" text-anchor="middle" font-size="6.5" fill="#DDE4EC" font-weight="700">COGNEX</text>`;
+    s+=`<path d="M-16,0 A16,16 0 0 0 16,0 Z" fill="${lightOn?'#FFEFA8':'#EDE6C8'}" stroke="#C9A227" stroke-width="1.5" opacity="${lightOn?0.95:0.55}"/>`; // 돔 조명
+    s+=`<rect x="-5" y="-7" width="10" height="7" rx="2" fill="#20262E"/>`;                             // 렌즈
+    s+=`</g>`;
+    // 조명 빔 + 초점축 (검사 자세일 때)
+    if(lightOn){
+      const px1=lensX+(-ay)*14, py1=lensY+(ax)*14, px2=lensX+(ay)*14, py2=lensY+(-ax)*14;
+      s+=`<polygon points="${px1},${py1} ${px2},${py2} ${t.x+38},${t.y} ${t.x-38},${t.y}" fill="rgba(255,214,64,0.22)"/>`;
+    }
+    if(pcbOn && !convActive){
+      s+=`<line x1="${lensX}" y1="${lensY}" x2="${t.x}" y2="${t.y}" stroke="#2D5C99" stroke-width="1.5" stroke-dasharray="4 4"/>`;
+      const mid={x:(lensX+t.x)/2, y:(lensY+t.y)/2};
+      const mm=(Math.hypot(t.x-lensX,t.y-lensY)/FOCUS_PX*FOCUS_MM);
+      s+=`<text x="${mid.x+12}" y="${mid.y}" font-size="10.5" font-weight="900" fill="#2D5C99">${mm.toFixed(0)}mm</text>`;
+    }
+    // 스캔 라인
+    if(scanT>=0 && pcbOn){
+      const sx=pcbX-55+110*scanT;
+      s+=`<line x1="${sx}" y1="${PCB_Y-24}" x2="${sx}" y2="${PCB_Y+6}" stroke="#E5484D" stroke-width="2"/>`;
+    }
+    // ── 컨베이어 (정면, 로봇 앞에 그려 하부 가림) ──
+    const top=BELT_TOP, bot=BELT_TOP+BELT_H;
+    s+=`<rect x="${BELT_X0+40}" y="${bot+RAIL}" width="14" height="34" fill="#98A1AC"/>`;   // 다리
+    s+=`<rect x="${BELT_X1-54}" y="${bot+RAIL}" width="14" height="34" fill="#98A1AC"/>`;
+    s+=`<rect x="${BELT_X0}" y="${top-RAIL}" width="${BELT_X1-BELT_X0}" height="${RAIL}" fill="#AEB7C2" stroke="#7C8896"/>`; // 상부 AL 프레임
+    s+=`<rect x="${BELT_X0}" y="${top-RAIL}" width="${BELT_X1-BELT_X0}" height="2" fill="#D5DCE4"/>`;
+    s+=`<rect x="${BELT_X0}" y="${top}" width="${BELT_X1-BELT_X0}" height="${BELT_H}" fill="#3A4048" stroke="#2A2F35"/>`;   // 벨트(직각)
+    s+=`<rect x="${BELT_X0}" y="${bot}" width="${BELT_X1-BELT_X0}" height="${RAIL}" fill="#AEB7C2" stroke="#7C8896"/>`;     // 하부 AL 프레임
+    s+=`<rect x="${BELT_X0}" y="${bot}" width="${BELT_X1-BELT_X0}" height="2" fill="#D5DCE4"/>`;
+    const sp=26, off=((beltPhase%sp)+sp)%sp;
+    for(let rx=BELT_X0+14+off-sp; rx<BELT_X1-2; rx+=sp){ if(rx<=BELT_X0+3)continue;
+      s+=`<line x1="${rx}" y1="${top}" x2="${rx}" y2="${bot}" stroke="#4C535C"/>`; }
+    s+=`<circle cx="${BELT_X0}" cy="${top+BELT_H/2}" r="17" fill="#8A929C" stroke="#6B7480"/>`;  // 풀리
+    s+=`<circle cx="${BELT_X1}" cy="${top+BELT_H/2}" r="17" fill="#8A929C" stroke="#6B7480"/>`;
+    // 방향 화살표
+    s+=`<polygon points="120,${top-26} 150,${top-26} 150,${top-32} 168,${top-19} 150,${top-6} 150,${top-12} 120,${top-12}" fill="#F2C200" stroke="#B99400"/>`;
+    // 검사위치 센서
+    s+=`<rect x="${INSPECT_X-46}" y="${top-20}" width="9" height="14" rx="2" fill="#59616C"/>`;
+    s+=`<circle cx="${INSPECT_X-41.5}" cy="${top-23}" r="4" fill="${s_in?'#16A34A':'#C9CDD3'}"/>`;
+    s+=`<text x="${INSPECT_X-60}" y="${top+58}" font-size="10" fill="#5B6472">검사위치</text>`;
+    // 경광등 (우측)
+    s+=`<rect x="636" y="${top-64}" width="4" height="44" fill="#7C8896"/>`;
+    s+=`<rect x="628" y="${top-84}" width="20" height="22" rx="4" fill="#F3D6D3" stroke="#B24A42"/>`;
+    s+=`<circle cx="638" cy="${top-73}" r="6.5" fill="${alarm?'#DC2626':'#E4B7B2'}" class="${alarm?'blinkRed':''}"/>`;
+    s+=`<rect x="628" y="${top-62}" width="20" height="20" rx="4" fill="#D6EBDA" stroke="#3F7A4A"/>`;
+    s+=`<circle cx="638" cy="${top-52}" r="6.5" fill="${(running&&!alarm)?'#16A34A':'#B9D6BF'}"/>`;
+    // ── PCB (벨트 위, 기울어짐) ──
+    if(pcbOn) s+=pcbAsm(pcbX, PCB_Y, tiltDeg);
+
+    scene.innerHTML=s;
+    // 수치 표시
+    const mmNow = pcbOn ? (Math.hypot(t.x-lensX,t.y-lensY)/FOCUS_PX*FOCUS_MM) : null;
+    $('focalVal').textContent = mmNow? (mmNow.toFixed(1)+' mm'+(Math.abs(mmNow-300)<1?' (300 유지)':'')) : '-';
+    $('tiltVal').textContent = pcbOn? ((tiltDeg>=0?'+':'')+tiltDeg.toFixed(1)+'°') : '-';
+    const aligned = pcbOn && Math.abs(camDeg-tiltDeg)<0.6 && Math.abs((mmNow||0)-300)<1;
+    $('alignVal').textContent = pcbOn? (aligned? '⊥ 직각 ('+(camDeg>=0?'+':'')+camDeg.toFixed(1)+'°)' : (camDeg>=0?'+':'')+camDeg.toFixed(1)+'°') : '-';
+    $('lampVal').textContent = lightOn?'ON':'OFF';
+    $('chipLamp').classList.toggle('on',lightOn);
+    $('senVal').textContent = s_in?'ON':'OFF';
+    $('chipSen').classList.toggle('on',s_in);
+  }
+
+  const stepList=$('stepList');
+  function renderSteps(){
+    let html='',last=null;
+    STATES.forEach((st,i)=>{
+      if(st.phase!==last){html+=`<div class="phase-h">${st.phase}</div>`;last=st.phase;}
+      const cls=(i<idx?'done ':'')+(i===idx?'cur ':'')+((st.type==='wait'||st.type==='alarmwait')?'wait ':'');
+      html+=`<div class="step ${cls}"><span class="no">${i+1}</span><span>${st.label}</span></div>`;
+    });
+    stepList.innerHTML=html;
+    const c=stepList.querySelector('.step.cur'); if(c)c.scrollIntoView({block:'nearest',behavior:'smooth'});
+  }
+
+  function durs(){const v=parseInt($('speed').value||6,10);return {move:1600-v*120, act:650-v*42};}
+
+  function tweenPose(tl, tCam, done){   // 렌즈 위치+카메라각 보간 (IK는 draw에서)
+    const my=++animToken, sx=lensX, sy=lensY, sc=camDeg, dur=durs().move, t0=performance.now();
+    function f(now){ if(my!==animToken)return;
+      let k=Math.min((now-t0)/dur,1); const e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
+      lensX=sx+(tl.x-sx)*e; lensY=sy+(tl.y-sy)*e; camDeg=sc+(tCam-sc)*e; draw();
+      if(k<1)requestAnimationFrame(f); else {lensX=tl.x;lensY=tl.y;camDeg=tCam;draw();done&&done();} }
+    requestAnimationFrame(f);
+  }
+  function tweenConv(fromX, toX, spawn, done){  // PCB 이송(벨트 동일 속도 연동)
+    const my=++animToken, dur=durs().move, t0=performance.now();
+    if(spawn){ pcbOn=true; tiltDeg=(Math.random()<0.5?-1:1)*(2+Math.random()*4); tiltDeg=Math.round(tiltDeg*10)/10; }
+    convActive=true; let lastX=fromX; pcbX=fromX;
+    function f(now){ if(my!==animToken)return;
+      let k=Math.min((now-t0)/dur,1); const e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
+      pcbX=fromX+(toX-fromX)*e;
+      beltPhase += (pcbX-lastX); lastX=pcbX;
+      draw();
+      if(k<1)requestAnimationFrame(f); else {convActive=false; draw(); done&&done();} }
+    requestAnimationFrame(f);
+  }
+  function pause(ms,done){const my=++animToken;setTimeout(()=>{if(my===animToken)done&&done();},ms);}
+
+  function inspectPose(){  // PCB 상면에 직각·300mm 렌즈 위치
+    const t=pcbTop(), r=tiltDeg*Math.PI/180;
+    const nx=Math.sin(r), ny=-Math.cos(r);   // 상면 법선(위쪽)
+    return { l:{x:t.x+nx*FOCUS_PX, y:t.y+ny*FOCUS_PX}, cam:tiltDeg };
+  }
+
+  function runState(){
+    if(!running)return; renderSteps();
+    const st=STATES[idx]; $('curStateText').textContent='진행: '+st.label;
+    if(st.cond==='ng' && verdict!=='NG'){ return next(); }
+    if(st.cond==='ok' && verdict!=='OK'){ return next(); }
+    if(st.type==='convIn'){
+      addLog('[컨베이어] '+st.label); tweenConv(-70, INSPECT_X, true, ()=>{ addLog('[투입] PCB 기울기 '+(tiltDeg>=0?'+':'')+tiltDeg.toFixed(1)+'° 로 안착'); next(); });
+    } else if(st.type==='sensor'){
+      s_in=st.on; addLog('[센서] '+st.label); draw(); pause(durs().act,next);
+    } else if(st.type==='pose'){
+      if(st.to==='inspect'){ const p=inspectPose(); addLog('[로봇] '+st.label); tweenPose(p.l, p.cam, next); }
+      else { addLog('[로봇] '+st.label); tweenPose({x:HOME.lx,y:HOME.ly}, HOME.cam, next); }
+    } else if(st.type==='aligned'){
+      addLog('[정렬] 카메라 '+(camDeg>=0?'+':'')+camDeg.toFixed(1)+'° = PCB 기울기 → 직각 · 초점 300mm 유지'); draw(); pause(durs().act,next);
+    } else if(st.type==='light'){
+      lightOn=st.on; addLog('[조명] '+st.label); draw(); pause(durs().act,next);
+    } else if(st.type==='scan'){
+      addLog('[비전] 검사 스캔 시작');
+      const my=++animToken, dur=durs().move+300, t0=performance.now();
+      (function f(now){ if(my!==animToken)return;
+        let k=Math.min(((now||performance.now())-t0)/dur,1); scanT=k; draw();
+        if(k<1)requestAnimationFrame(f); else {scanT=-1; draw(); next();} })(performance.now());
+    } else if(st.type==='verdict'){
+      const sel=$('verdictSel').value;
+      if(sel==='OK')verdict='OK'; else if(sel==='NG')verdict='NG'; else {verdict=(autoTog%3===2)?'NG':'OK';autoTog++;}
+      $('verdictLamp').textContent=verdict; $('verdictLamp').className='verdict-lamp '+(verdict==='OK'?'ok':'ng');
+      addLog('[판정] 비전 검사 결과: '+verdict);
+      $('mesInd').className='mes-ind sending'; $('mesInd').innerHTML='<span class="dot"></span>MES 전송 중... ('+verdict+')'; draw();
+      pause(durs().act+300,()=>{ $('mesInd').className='mes-ind'; $('mesInd').innerHTML='<span class="dot"></span>MES 전송 완료 ('+verdict+')'; addLog('[MES] '+verdict+' 전송 완료'); next(); });
+    } else if(st.type==='alarmwait'){
+      alarm=true; $('alarmBanner').classList.add('show');
+      waitingSignal='RESUME'; updateSigBtns(); draw();
+      addLog('⚠ [알람] NG 발생 — 검사 중단. NG품 제거 후 [검사 계속]');
+      if($('autoSig').checked) autoTimer=setTimeout(()=>fireSignal('RESUME',true),2600);
+    } else if(st.type==='convOut'){
+      s_in=false; addLog('[컨베이어] '+st.label);
+      tweenConv(pcbX, BELT_X1+120, false, ()=>{ pcbOn=false; draw(); next(); });
+    } else if(st.type==='wait'){
+      waitingSignal=st.signal; addLog('[대기] START 신호 대기...'); updateSigBtns(); draw();
+      if($('autoSig').checked) autoTimer=setTimeout(()=>fireSignal(st.signal,true),1200);
+    }
+  }
+
+  function next(){
+    idx++;
+    if(idx>=STATES.length){
+      idx=LOOP_START; cycleCount++; $('cycleCount').textContent=cycleCount;
+      if(verdict==='OK'){okCount++;$('okCount').textContent=okCount;} else if(verdict==='NG'){ngCount++;$('ngCount').textContent=ngCount;}
+      addLog('=== 1개 검사 완료 (총 '+cycleCount+'개) ===');
+    }
+    if(running) runState();
+  }
+
+  function updateSigBtns(){ $('sigStart').disabled=(waitingSignal!=='START'); $('btnResume').disabled=(waitingSignal!=='RESUME'); }
+  function fireSignal(sig,auto){
+    if(waitingSignal!==sig)return;
+    if(sig==='RESUME'){ pcbOn=false; s_in=false; alarm=false; $('alarmBanner').classList.remove('show'); addLog((auto?'[자동신호] ':'[신호입력] ')+'작업자 NG품 제거 확인 → 검사 재개'); }
+    else { addLog((auto?'[자동신호] ':'[신호입력] ')+'START 수신 → 운전 개시'); }
+    waitingSignal=null; updateSigBtns(); if(autoTimer){clearTimeout(autoTimer);autoTimer=null;} next();
+  }
+
+  $('btnRun').addEventListener('click',()=>{ if(running)return; running=true; $('btnRun').disabled=true; addLog('▶ 자동 운전 시작'); runState(); });
+  $('btnStop').addEventListener('click',()=>{ running=false; animToken++; if(autoTimer){clearTimeout(autoTimer);autoTimer=null;} $('btnRun').disabled=false; addLog('■ 정지'); });
+  $('btnReset').addEventListener('click',()=>{
+    running=false; animToken++; if(autoTimer){clearTimeout(autoTimer);autoTimer=null;}
+    idx=0; waitingSignal=null; pcbOn=false; pcbX=INSPECT_X; tiltDeg=0; convActive=false; beltPhase=0;
+    lensX=HOME.lx; lensY=HOME.ly; camDeg=HOME.cam; lightOn=false; scanT=-1; s_in=false; alarm=false;
+    verdict=null; $('alarmBanner').classList.remove('show');
+    $('verdictLamp').textContent='--'; $('verdictLamp').className='verdict-lamp';
+    $('mesInd').className='mes-ind'; $('mesInd').innerHTML='<span class="dot"></span>MES 전송: 대기';
+    $('btnRun').disabled=false; updateSigBtns(); draw(); renderSteps(); $('curStateText').textContent=''; addLog('↺ 초기화');
+  });
+  $('sigStart').addEventListener('click',()=>fireSignal('START',false));
+  $('btnResume').addEventListener('click',()=>fireSignal('RESUME',false));
+  $('clearLog').addEventListener('click',()=>logBox.textContent='');
+  $('autoSig').addEventListener('change',()=>{ if($('autoSig').checked&&running&&waitingSignal) autoTimer=setTimeout(()=>fireSignal(waitingSignal,true),1200); });
+
+  draw(); renderSteps(); updateSigBtns();
+  addLog('비전 검사 시뮬레이터 v1.0 준비 완료. "자동 운전 시작"을 누르세요.');
+</script>
+</body>
+</html>
