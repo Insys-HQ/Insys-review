@@ -71,8 +71,51 @@
   .phase-h:first-child{margin-top:0;}
   .log-card pre{margin:0;max-height:150px;overflow-y:auto;background:#F8F9FB;border:1px solid var(--border);border-radius:8px;padding:10px;font-family:'Noto Sans KR',monospace;font-size:12px;white-space:pre-wrap;word-break:break-all;}
   label.ck{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--navy-dark);cursor:pointer;}
-  footer{text-align:center;padding:14px 20px 26px;font-size:12px;color:var(--text-light);}
-  .counter{font-size:13px;font-weight:700;color:var(--navy-dark);}
+  footer{text-align:center;padding:10px 20px 18px;font-size:11.5px;color:var(--text-light);}
+  .counter{font-size:12.5px;font-weight:700;color:var(--navy-dark);}
+
+  /* ===== 여백 축소 ===== */
+  header.cover{padding:9px 16px;}
+  header.cover h1{font-size:18px;margin:0;}
+  .container{padding:10px 14px 24px;}
+  .card{margin-bottom:10px;}
+  .card-header{padding:7px 12px;font-size:13.5px;}
+  .card-body{padding:9px 12px;}
+  .grid2{gap:10px;}
+  .statechips{gap:5px;margin-bottom:7px;}
+  .chip{font-size:11px;padding:4px 8px;}
+  .verdict-box{gap:10px;margin-bottom:7px;}
+  .verdict-lamp{width:66px;height:44px;font-size:18px;}
+  .alarm-banner{padding:8px;margin-bottom:7px;font-size:13px;}
+  button{padding:8px 13px;font-size:13px;}
+  .step{padding:4px 8px;}
+  .phase-h{margin:7px 0 3px;}
+
+  /* ===== 모바일: 애니메이션 상단 고정 + 진행 스텝 1줄 ===== */
+  .step-mobile{display:none;}
+  @media (max-width:900px){
+    .grid2{grid-template-columns:1fr;}
+    .left-col{position:sticky;top:0;z-index:20;background:var(--bg);padding-top:2px;}
+    .left-col .card:first-child{margin-bottom:6px;}
+    /* 전체 플로우 목록은 감추고, 현재 진행 1줄만 표시 */
+    .flow-card{display:none;}
+    .step-mobile{
+      display:flex;align-items:center;gap:8px;
+      background:#EAF1FB;border:1px solid #BCD3EF;border-radius:8px;
+      padding:7px 10px;margin-bottom:6px;font-size:12.5px;font-weight:700;color:var(--navy-dark);
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    }
+    .step-mobile .no{flex:0 0 20px;height:20px;border-radius:50%;background:var(--navy);color:#fff;
+      font-size:10.5px;display:flex;align-items:center;justify-content:center;}
+    .step-mobile.wait{background:#FBF1DF;border-color:#E6C79A;}
+    .step-mobile.wait .no{background:var(--warning);}
+    .step-mobile.alarm{background:#FCEBEA;border-color:#F4C6C3;color:var(--danger);}
+    .step-mobile.alarm .no{background:var(--danger);}
+    .container{padding:8px 10px 20px;}
+    .verdict-lamp{width:58px;height:40px;font-size:16px;}
+    .log-card pre{max-height:110px;}
+    #curStateText{display:none;}
+  }
 </style>
 </head>
 <body>
@@ -80,7 +123,6 @@
 <header class="cover">
   <div class="inner">
     <h1>PCB 비전 검사 시뮬레이터</h1>
-    <p>6축 로봇 + Cognex 카메라·돔조명 · 직각 정렬 · 초점 300mm 유지 · NG 알람 중단 · v1.0 (하드웨어 미연결)</p>
   </div>
 </header>
 
@@ -88,27 +130,28 @@
   <div class="grid2">
     <div class="left-col">
     <section class="card">
-      <div class="card-header">동작 애니메이션 (정면 상단 뷰 · 로봇은 컨베이어 뒤)</div>
+      <div class="card-header">동작 애니메이션</div>
       <div class="card-body">
-        <div id="alarmBanner" class="alarm-banner">⚠ NG 발생 — 검사 중단! NG품 제거 후 [검사 계속]을 누르세요</div>
+        <div id="stepMobile" class="step-mobile"><span class="no">1</span><span id="stepMobileText">START 대기</span></div>
+        <div id="alarmBanner" class="alarm-banner">⚠ NG 검사 중단 — NG품 제거 후 [검사 계속]</div>
         <div class="statechips">
-          <span class="chip focus">초점거리: <b id="focalVal">-</b></span>
-          <span class="chip focus">PCB 기울기: <b id="tiltVal">-</b></span>
-          <span class="chip focus">카메라 정렬: <b id="alignVal">-</b></span>
-          <span class="chip" id="chipLamp">돔조명: <b id="lampVal">OFF</b></span>
-          <span class="chip" id="chipSen">검사위치 센서: <b id="senVal">OFF</b></span>
+          <span class="chip focus">초점 <b id="focalVal">-</b></span>
+          <span class="chip focus">기울기 <b id="tiltVal">-</b></span>
+          <span class="chip focus">정렬 <b id="alignVal">-</b></span>
+          <span class="chip" id="chipLamp">조명 <b id="lampVal">OFF</b></span>
+          <span class="chip" id="chipSen">센서 <b id="senVal">OFF</b></span>
         </div>
 
         <div class="verdict-box">
           <div class="verdict-lamp" id="verdictLamp">--</div>
           <div>
-            <div style="font-size:12px;color:var(--text-light);">비전 검사 판정</div>
+            <div style="font-size:11.5px;color:var(--text-light);">판정</div>
             <div class="mes-ind" id="mesInd"><span class="dot"></span>MES 전송: 대기</div>
           </div>
           <div style="margin-left:auto;">
-            <div style="font-size:11.5px;color:var(--text-light);margin-bottom:4px;">데모 판정값</div>
+            <div style="font-size:11px;color:var(--text-light);margin-bottom:3px;">데모</div>
             <select id="verdictSel">
-              <option value="auto">자동(교대)</option>
+              <option value="auto">자동</option>
               <option value="OK">항상 OK</option>
               <option value="NG">항상 NG</option>
             </select>
@@ -117,9 +160,9 @@
 
         <svg viewBox="0 0 700 400" id="scene"></svg>
         <div class="row" style="margin-top:6px;">
-          <span class="counter">검사 완료: <span id="cycleCount">0</span></span>
-          <span class="counter" style="color:var(--success);">OK: <span id="okCount">0</span></span>
-          <span class="counter" style="color:var(--danger);">NG: <span id="ngCount">0</span></span>
+          <span class="counter">완료 <span id="cycleCount">0</span></span>
+          <span class="counter" style="color:var(--success);">OK <span id="okCount">0</span></span>
+          <span class="counter" style="color:var(--danger);">NG <span id="ngCount">0</span></span>
         </div>
         <p class="hint" id="curStateText"></p>
       </div>
@@ -132,22 +175,21 @@
           <button id="btnRun" class="primary">▶ 자동 운전 시작</button>
           <button id="btnStop" class="danger">■ 정지</button>
           <button id="btnReset">↺ 초기화</button>
-          <label class="ck"><input type="checkbox" id="autoSig" checked> 신호 자동 발생(데모)</label>
+          <label class="ck"><input type="checkbox" id="autoSig" checked> 자동신호</label>
           <span style="margin-left:auto;display:flex;align-items:center;gap:8px;">
             <span style="font-size:12px;color:var(--text-light);">속도</span>
             <input type="range" id="speed" min="1" max="10" value="6" style="width:130px;">
           </span>
         </div>
         <div class="row">
-          <button id="sigStart" class="sig" disabled>START 신호 (운전 시작)</button>
-          <button id="btnResume" class="resume" disabled>검사 계속 (NG 제거 완료)</button>
+          <button id="sigStart" class="sig" disabled>START</button>
+          <button id="btnResume" class="resume" disabled>검사 계속</button>
         </div>
-        <p class="hint">NG 판정 시 알람과 함께 검사가 중단됩니다. 작업자가 NG품을 제거한 뒤 <b>[검사 계속]</b>을 누르면 다음 PCB부터 검사가 재개됩니다. 로봇은 PCB를 집지 않고, 기울어진 PCB 표면에 카메라를 직각으로 정렬해 초점거리 300mm를 유지하며 검사합니다.</p>
       </div>
     </section>
     </div><!-- /left-col -->
 
-    <section class="card">
+    <section class="card flow-card">
       <div class="card-header">전체 로직 플로우</div>
       <div class="card-body"><div class="steps" id="stepList"></div></div>
     </section>
@@ -162,7 +204,7 @@
   </section>
 </main>
 
-<footer>인시스 AI혁신 연구개발실 · 작성자 ys.kim@in-sys.co.kr · v1.0 · 비전검사 로직 시뮬레이터(하드웨어 미연결)</footer>
+<footer>인시스 AI혁신 연구개발실 · ys.kim@in-sys.co.kr · v1.1</footer>
 
 <script>
   // ===== 좌표 (정면 약간 상단 뷰) =====
@@ -177,19 +219,19 @@
 
   // ===== 로직 플로우 =====
   const STATES=[
-    { phase:'대기', type:'wait', signal:'START', label:'START 대기 (운전 시작)' },
+    { phase:'대기', type:'wait', signal:'START', label:'START 대기' },
     // LOOP_START = 1
-    { phase:'투입', type:'convIn', label:'컨베이어: PCB 투입(좌→검사위치) 후 정지 · 기울기 랜덤' },
-    { phase:'투입', type:'sensor', on:true, label:'검사위치 센서 감지 → 컨베이어 정지' },
-    { phase:'비전 정렬', type:'pose', to:'inspect', label:'로봇: 카메라 접근 + PCB 기울기에 직각 정렬' },
-    { phase:'비전 정렬', type:'aligned', label:'직각 정렬 완료 · 초점거리 300mm 유지' },
+    { phase:'투입', type:'convIn', label:'PCB 투입 → 검사위치 정지' },
+    { phase:'투입', type:'sensor', on:true, label:'검사위치 센서 감지' },
+    { phase:'비전 정렬', type:'pose', to:'inspect', label:'카메라 접근 · 직각 정렬' },
+    { phase:'비전 정렬', type:'aligned', label:'정렬 완료 · 초점 300mm' },
     { phase:'비전 검사', type:'light', on:true, label:'돔 조명 ON' },
-    { phase:'비전 검사', type:'scan', label:'비전 검사 (스캔)' },
-    { phase:'판정', type:'verdict', label:'OK/NG 판정 + MES 전송' },
-    { phase:'판정', type:'alarmwait', cond:'ng', signal:'RESUME', label:'NG: 알람·검사 중단 → 작업자 제거 후 [검사 계속]' },
+    { phase:'비전 검사', type:'scan', label:'비전 스캔' },
+    { phase:'판정', type:'verdict', label:'판정 + MES 전송' },
+    { phase:'판정', type:'alarmwait', cond:'ng', signal:'RESUME', label:'NG 알람 · 제거 대기' },
     { phase:'배출', type:'light', on:false, label:'돔 조명 OFF' },
-    { phase:'배출', type:'convOut', cond:'ok', label:'컨베이어: OK품 우측 배출' },
-    { phase:'배출', type:'pose', to:'home', label:'로봇: 대기 자세 복귀 (반복)' }
+    { phase:'배출', type:'convOut', cond:'ok', label:'OK품 우측 배출' },
+    { phase:'배출', type:'pose', to:'home', label:'대기 자세 복귀' }
   ];
   const LOOP_START=1;
 
@@ -334,6 +376,15 @@
     });
     stepList.innerHTML=html;
     const c=stepList.querySelector('.step.cur'); if(c)c.scrollIntoView({block:'nearest',behavior:'smooth'});
+    // 모바일 1줄 진행 표시
+    const cs=STATES[idx];
+    if(cs){
+      $('stepMobileText').textContent=cs.label;
+      $('stepMobile').querySelector('.no').textContent=(idx+1);
+      const m=$('stepMobile');
+      m.classList.toggle('wait', cs.type==='wait');
+      m.classList.toggle('alarm', cs.type==='alarmwait');
+    }
   }
 
   function durs(){const v=parseInt($('speed').value||6,10);return {move:1600-v*120, act:650-v*42};}
