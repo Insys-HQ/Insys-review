@@ -162,13 +162,13 @@
           </div>
         </div>
 
-        <svg viewBox="20 -112 660 478" id="scene"></svg>
-        <div class="row" style="margin-top:4px;gap:8px;">
+        <svg viewBox="20 -126 660 456" id="scene"></svg>
+        <div class="row" style="margin-top:4px;gap:6px;flex-wrap:nowrap;">
           <span style="font-size:12px;color:var(--text-light);white-space:nowrap;">시점 <b id="yawVal" style="color:var(--navy-dark);">35°</b></span>
-          <input type="range" id="viewYaw" min="0" max="90" value="35" style="flex:1;min-width:120px;">
-          <button id="btnFront" style="padding:4px 9px;font-size:11.5px;">정면</button>
-          <button id="btnIso" style="padding:4px 9px;font-size:11.5px;">45°</button>
-          <button id="btnSide" style="padding:4px 9px;font-size:11.5px;">측면</button>
+          <input type="range" id="viewYaw" min="0" max="90" value="35" style="flex:0 1 140px;min-width:70px;">
+          <button id="btnFront" style="padding:4px 8px;font-size:11.5px;flex:0 0 auto;white-space:nowrap;">정면</button>
+          <button id="btnIso" style="padding:4px 8px;font-size:11.5px;flex:0 0 auto;white-space:nowrap;">45°</button>
+          <button id="btnSide" style="padding:4px 8px;font-size:11.5px;flex:0 0 auto;white-space:nowrap;">측면</button>
         </div>
         <div class="row" style="margin-top:6px;">
           <span class="counter">완료 <span id="cycleCount">0</span></span>
@@ -215,7 +215,7 @@
   </section>
 </main>
 
-<footer>인시스 AI혁신 연구개발실 · ys.kim@in-sys.co.kr · v1.5</footer>
+<footer>인시스 AI혁신 연구개발실 · ys.kim@in-sys.co.kr · v1.6</footer>
 
 <script>
   // ===== 3D 월드 좌표 (X:컨베이어 방향, Y:안쪽 깊이, Z:높이) =====
@@ -227,7 +227,7 @@
   const PCB_Z=BELT_Z+3, PCB_YC=(BELT_Y0+BELT_Y1)/2;
   const FOCUS_PX=90, FOCUS_MM=300;        // 90 world unit ≙ 300mm
   const S3={X:470, Y:190, Z:150};         // 로봇 어깨(컨베이어 뒤쪽)
-  const L1=125, L2=115;                   // 링크 길이
+  const L1=137, L2=126;                   // 링크 길이(10% 확대)
   const HOME={X:470, Y:120, Z:205, cam:0};// 대기 자세(렌즈 위치/카메라 기울기)
   // 시점(축측 투영): yaw 0°=정면, 90°=측면
   const VIEW={yaw:35, pitch:22};
@@ -339,8 +339,10 @@
 
   function pcbCenter(){ return {X:pcbX, Y:PCB_YC, Z:PCB_Z}; }
   function pcbNormal(deg){ const t=(deg===undefined?tiltDeg:deg)*Math.PI/180; return {X:-Math.sin(t), Y:0, Z:Math.cos(t)}; }
-  function pcbPt(u,v,dz){
-    const t=tiltDeg*Math.PI/180, c=pcbCenter(), n=pcbNormal(), h=dz||0;
+  const PS=1.1;                              // PCB 10% 확대
+  function pcbPt(u0,v0,dz){
+    const u=u0*PS, v=v0*PS, h=(dz||0)*PS;
+    const t=tiltDeg*Math.PI/180, c=pcbCenter(), n=pcbNormal();
     return {X:c.X+u*Math.cos(t)+n.X*h, Y:c.Y+v, Z:c.Z+u*Math.sin(t)+n.Z*h};
   }
   const PJ=(o)=>P(o.X,o.Y,o.Z);
@@ -367,7 +369,7 @@
   function draw(){
     let s=DEFS;
     const nc=pcbNormal(camDeg);
-    const W3={X:lens.X+nc.X*32, Y:lens.Y+nc.Y*32, Z:lens.Z+nc.Z*32};
+    const W3={X:lens.X+nc.X*35, Y:lens.Y+nc.Y*35, Z:lens.Z+nc.Z*35};
     const E3=ikElbow(W3);
     const c=pcbCenter();
     const pS=P(S3.X,S3.Y,S3.Z), pE=PJ(E3), pW=PJ(W3), pL=PJ(lens);
@@ -390,13 +392,13 @@
 
     // ── 로봇 베이스/기둥 ──
     const b0=P(S3.X,S3.Y,0), b1=P(S3.X,S3.Y,S3.Z);
-    const ry=(48*Math.sin(VIEW.pitch*Math.PI/180)).toFixed(1);
-    s+=`<ellipse cx="${b0.x.toFixed(1)}" cy="${b0.y.toFixed(1)}" rx="48" ry="${ry}" fill="url(#gAluT)" stroke="#8A94A1"/>`;
-    s+=`<ellipse cx="${b0.x.toFixed(1)}" cy="${(b0.y-3).toFixed(1)}" rx="40" ry="${(ry*0.8).toFixed(1)}" fill="url(#gAluB)" opacity=".55"/>`;
-    s+=`<rect x="${(b1.x-23).toFixed(1)}" y="${b1.y.toFixed(1)}" width="46" height="${(b0.y-b1.y).toFixed(1)}" rx="14" fill="url(#gWhite)" stroke="#AEB7C3" stroke-width="1.2"/>`;
-    s+=`<rect x="${(b1.x-17).toFixed(1)}" y="${(b1.y+6).toFixed(1)}" width="8" height="${(b0.y-b1.y-16).toFixed(1)}" rx="4" fill="#FFFFFF" opacity=".65"/>`;
-    s+=`<rect x="${(b1.x-23).toFixed(1)}" y="${(b1.y+7).toFixed(1)}" width="46" height="8" rx="4" fill="#242A33"/>`;
-    s+=`<rect x="${(b1.x-23).toFixed(1)}" y="${(b1.y+7).toFixed(1)}" width="46" height="2.5" rx="1.2" fill="#5FA8D8" opacity=".8"/>`;
+    const ry=(53*Math.sin(VIEW.pitch*Math.PI/180)).toFixed(1);
+    s+=`<ellipse cx="${b0.x.toFixed(1)}" cy="${b0.y.toFixed(1)}" rx="53" ry="${ry}" fill="url(#gAluT)" stroke="#8A94A1"/>`;
+    s+=`<ellipse cx="${b0.x.toFixed(1)}" cy="${(b0.y-3).toFixed(1)}" rx="44" ry="${(ry*0.8).toFixed(1)}" fill="url(#gAluB)" opacity=".55"/>`;
+    s+=`<rect x="${(b1.x-25).toFixed(1)}" y="${b1.y.toFixed(1)}" width="50" height="${(b0.y-b1.y).toFixed(1)}" rx="14" fill="url(#gWhite)" stroke="#AEB7C3" stroke-width="1.2"/>`;
+    s+=`<rect x="${(b1.x-18).toFixed(1)}" y="${(b1.y+6).toFixed(1)}" width="9" height="${(b0.y-b1.y-16).toFixed(1)}" rx="4" fill="#FFFFFF" opacity=".65"/>`;
+    s+=`<rect x="${(b1.x-25).toFixed(1)}" y="${(b1.y+7).toFixed(1)}" width="50" height="9" rx="4" fill="#242A33"/>`;
+    s+=`<rect x="${(b1.x-25).toFixed(1)}" y="${(b1.y+7).toFixed(1)}" width="50" height="2.8" rx="1.2" fill="#5FA8D8" opacity=".8"/>`;
 
     // ── 컨베이어 ──
     const yA=BELT_Y0+RAIL_W, yB=BELT_Y1-RAIL_W;
@@ -454,7 +456,7 @@
     // ── PCB ──
     if(pcbOn){
       const shc=P(c.X+4,c.Y+6,BELT_Z+.5);
-      s+=`<ellipse cx="${shc.x.toFixed(1)}" cy="${shc.y.toFixed(1)}" rx="66" ry="20" fill="#0C1014" opacity=".38" filter="url(#fBlurS)"/>`;
+      s+=`<ellipse cx="${shc.x.toFixed(1)}" cy="${shc.y.toFixed(1)}" rx="73" ry="22" fill="#0C1014" opacity=".38" filter="url(#fBlurS)"/>`;
       s+=quad(PJ(pcbPt(-62,-17)),PJ(pcbPt(62,-17)),PJ(pcbPt(62,17)),PJ(pcbPt(-62,17)),'url(#gCase)','#0B0E11',1.2);
       s+=quad(PJ(pcbPt(-58,-14,7)),PJ(pcbPt(58,-14,7)),PJ(pcbPt(58,14,7)),PJ(pcbPt(-58,14,7)),'url(#gCase)','#0B0E11',1.2);
       s+=quad(PJ(pcbPt(-52,-12,7.4)),PJ(pcbPt(52,-12,7.4)),PJ(pcbPt(52,-8,7.4)),PJ(pcbPt(-52,-8,7.4)),'#8D97A4','',0).replace('/>',' opacity=".35"/>');
@@ -465,33 +467,33 @@
         s+=`<line x1="${t1.x.toFixed(1)}" y1="${t1.y.toFixed(1)}" x2="${t2.x.toFixed(1)}" y2="${t2.y.toFixed(1)}" stroke="#7FC98A" stroke-width=".7" opacity=".33"/>`; }
       [[-24,-3,'#E3B93C',6],[-8,-3,'#48535F',9],[12,-3,'#C0463A',5]].forEach(q=>{
         s+=quad(PJ(pcbPt(q[0],q[1],12)),PJ(pcbPt(q[0]+q[3],q[1],12)),PJ(pcbPt(q[0]+q[3],q[1]+5,12)),PJ(pcbPt(q[0],q[1]+5,12)),q[2],'#00000033',.6); });
-      const cb=[pcbPt(-58,0,4), {X:pcbX-92,Y:PCB_YC-6,Z:BELT_Z+8}, {X:pcbX-118,Y:PCB_YC-14,Z:BELT_Z+4}].map(PJ);
+      const cb=[pcbPt(-58,0,4), {X:pcbX-101,Y:PCB_YC-7,Z:BELT_Z+9}, {X:pcbX-130,Y:PCB_YC-15,Z:BELT_Z+4}].map(PJ);
       s+=`<path d="M${pt(cb[0])} Q${pt(cb[1])} ${pt(cb[2])}" stroke="#0E1114" stroke-width="7.5" fill="none" stroke-linecap="round"/>`;
       s+=`<path d="M${pt(cb[0])} Q${pt(cb[1])} ${pt(cb[2])}" stroke="#3A424C" stroke-width="4" fill="none" stroke-linecap="round" opacity=".75"/>`;
-      const cn=P(pcbX-130,PCB_YC-16,BELT_Z+4);
-      s+=`<rect x="${(cn.x-11).toFixed(1)}" y="${(cn.y-8).toFixed(1)}" width="22" height="16" rx="2.5" fill="url(#gCover)" stroke="#6F7986"/>`;
+      const cn=P(pcbX-143,PCB_YC-17,BELT_Z+4);
+      s+=`<rect x="${(cn.x-11).toFixed(1)}" y="${(cn.y-8).toFixed(1)}" width="24" height="18" rx="2.5" fill="url(#gCover)" stroke="#6F7986"/>`;
       s+=`<rect x="${(cn.x-5).toFixed(1)}" y="${(cn.y-4).toFixed(1)}" width="10" height="9" rx="1" fill="#F58B1F" stroke="#B2600F" stroke-width=".7"/>`;
     }
 
     // ── 로봇 팔 + 카메라 ──
     s+=`<g filter="url(#fDrop)">`;
-    s+=seg(pS,pE,24,'url(#gWhiteL)');
-    s+=seg(pE,pW,19,'url(#gWhiteL)');
+    s+=seg(pS,pE,26,'url(#gWhiteL)');
+    s+=seg(pE,pW,21,'url(#gWhiteL)');
     s+=`</g>`;
-    s+=`<circle cx="${pS.x.toFixed(1)}" cy="${pS.y.toFixed(1)}" r="17" fill="url(#gWhite)" stroke="#AEB7C3" stroke-width="1.5"/>`;
-    s+=`<circle cx="${pS.x.toFixed(1)}" cy="${pS.y.toFixed(1)}" r="8" fill="#2A313A"/><circle cx="${(pS.x-2.5).toFixed(1)}" cy="${(pS.y-2.5).toFixed(1)}" r="3" fill="#6E7A88" opacity=".8"/>`;
-    s+=`<circle cx="${pE.x.toFixed(1)}" cy="${pE.y.toFixed(1)}" r="13" fill="url(#gWhite)" stroke="#AEB7C3" stroke-width="1.5"/>`;
-    s+=`<circle cx="${pE.x.toFixed(1)}" cy="${pE.y.toFixed(1)}" r="5.5" fill="#4E8CC9"/>`;
+    s+=`<circle cx="${pS.x.toFixed(1)}" cy="${pS.y.toFixed(1)}" r="19" fill="url(#gWhite)" stroke="#AEB7C3" stroke-width="1.5"/>`;
+    s+=`<circle cx="${pS.x.toFixed(1)}" cy="${pS.y.toFixed(1)}" r="9" fill="#2A313A"/><circle cx="${(pS.x-2.5).toFixed(1)}" cy="${(pS.y-2.5).toFixed(1)}" r="3" fill="#6E7A88" opacity=".8"/>`;
+    s+=`<circle cx="${pE.x.toFixed(1)}" cy="${pE.y.toFixed(1)}" r="14" fill="url(#gWhite)" stroke="#AEB7C3" stroke-width="1.5"/>`;
+    s+=`<circle cx="${pE.x.toFixed(1)}" cy="${pE.y.toFixed(1)}" r="6" fill="#4E8CC9"/>`;
     // 카메라
-    s+=seg(pL,pW,20,'url(#gCam)','butt');
-    s+=`<circle cx="${pW.x.toFixed(1)}" cy="${pW.y.toFixed(1)}" r="11" fill="url(#gWhite)" stroke="#AEB7C3" stroke-width="1.5"/>`;
+    s+=seg(pL,pW,22,'url(#gCam)','butt');
+    s+=`<circle cx="${pW.x.toFixed(1)}" cy="${pW.y.toFixed(1)}" r="12" fill="url(#gWhite)" stroke="#AEB7C3" stroke-width="1.5"/>`;
     { const t=camDeg*Math.PI/180;
-      const e1=PJ({X:lens.X+Math.cos(t)*18, Y:lens.Y, Z:lens.Z+Math.sin(t)*18});
-      const e2=PJ({X:lens.X-Math.cos(t)*18, Y:lens.Y, Z:lens.Z-Math.sin(t)*18});
-      const e3=PJ({X:lens.X, Y:lens.Y+18, Z:lens.Z});
-      const e4=PJ({X:lens.X, Y:lens.Y-18, Z:lens.Z});
+      const e1=PJ({X:lens.X+Math.cos(t)*20, Y:lens.Y, Z:lens.Z+Math.sin(t)*20});
+      const e2=PJ({X:lens.X-Math.cos(t)*20, Y:lens.Y, Z:lens.Z-Math.sin(t)*20});
+      const e3=PJ({X:lens.X, Y:lens.Y+20, Z:lens.Z});
+      const e4=PJ({X:lens.X, Y:lens.Y-20, Z:lens.Z});
       s+=`<polygon points="${pt(e1)} ${pt(e3)} ${pt(e2)} ${pt(e4)}" fill="${lightOn?'url(#gDomeOn)':'url(#gDomeOff)'}" stroke="#B99B34" stroke-width="1.2"${lightOn?' filter="url(#fGlow)"':''}/>`;
-      s+=`<circle cx="${pL.x.toFixed(1)}" cy="${pL.y.toFixed(1)}" r="6" fill="#12161B" stroke="#3C4652"/>`;
+      s+=`<circle cx="${pL.x.toFixed(1)}" cy="${pL.y.toFixed(1)}" r="7" fill="#12161B" stroke="#3C4652"/>`;
       s+=`<circle cx="${(pL.x-1.8).toFixed(1)}" cy="${(pL.y-1.8).toFixed(1)}" r="2" fill="#7FB4E6" opacity=".85"/>`;
       s+=`<text x="${pW.x.toFixed(1)}" y="${(pW.y-16).toFixed(1)}" text-anchor="middle" font-size="7.5" font-weight="900" fill="#33404E">COGNEX</text>`;
     }
@@ -660,7 +662,7 @@
   $('btnSide').addEventListener('click',()=>setYaw(90));
 
   draw(); renderSteps(); updateSigBtns();
-  addLog('비전 검사 시뮬레이터 v1.5 준비 완료. "자동 운전 시작"을 누르세요.');
+  addLog('비전 검사 시뮬레이터 v1.6 준비 완료. "자동 운전 시작"을 누르세요.');
 </script>
 
 <!-- 최신버전 자동 감지: 서버 파일이 바뀌면 새로고침 없이 자동 반영 -->
