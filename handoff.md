@@ -1,5 +1,6 @@
 # 인수인계 문서 — PCB 검사 시뮬레이터 / 스텝모터 제어
 
+> **문서 버전: v1.1** · 최종 갱신 2026-08-24
 > **사용법**: 새 채팅 첫 메시지에 이 문서 전체를 붙여넣으면 이어서 작업 가능합니다.
 > 담당: 인시스 AI혁신 연구개발실 · ys.kim@in-sys.co.kr
 
@@ -21,16 +22,25 @@
 
 ### GitHub 업로드 방법
 - Claude가 직접 `git push` 수행. **토큰이 그 대화에 없으면 1회만 요청**, 이후 같은 대화에서 재사용.
+- 토큰은 **프로젝트 지침에 상주**시켜 두었음. 단 지침 변경은 **저장 이후 새로 시작하는 대화부터** 적용되므로, 지침 수정 직후 대화에서는 반영되지 않을 수 있음.
 - 토큰 형식: `ghp_...` (classic PAT, `repo` 권한)
+  - ⚠ classic PAT는 계정의 **모든 리포지토리에 쓰기 권한**이 열림. `Insys-review` 하나만 묶은 **fine-grained PAT**(Contents = Read and write, 만료 90일)로 교체 권장.
 - 명령 예시:
 ```bash
-git clone https://<TOKEN>@github.com/Insys-HQ/Insys-review.git up
-cd up && cp /mnt/user-data/outputs/파일명 . 
-git add 파일명 && git commit -m "메시지" && git push origin HEAD
+git clone --depth 1 "https://x-access-token:<TOKEN>@github.com/Insys-HQ/Insys-review.git" up
+cd up && cp /mnt/user-data/outputs/파일명 .
+git -c user.name="Insys AI Lab" -c user.email="ys.kim@in-sys.co.kr" add 파일명
+git -c user.name="Insys AI Lab" -c user.email="ys.kim@in-sys.co.kr" commit -m "메시지"
+git push origin HEAD
 ```
 - 업로드 후 **항상 링크 첨부**:
   - 소스: `https://github.com/Insys-HQ/Insys-review/blob/main/<파일명>`
   - 실행: `https://insys-hq.github.io/Insys-review/<파일명>`
+- 반영에 1~2분 소요. 구버전이 보이면 `Ctrl+F5`.
+
+### 기존 공유분 취급 원칙 (2026-08-24 추가)
+- 이미 **외부 공유된 HTML은 소급 수정하지 않는 것이 기본**. 신규 작업분에만 새 규칙 적용.
+- 단, 사용자가 명시적으로 지시하면 기존 파일도 수정 (컨베이어 라운드 건이 이 케이스).
 
 ---
 
@@ -40,9 +50,9 @@ git add 파일명 && git commit -m "메시지" && git push origin HEAD
 |---|---|---|---|
 | `3Motor.html` | v5.5 | 스텝모터 3축 웹 제어 대시보드 | **실제 연결** (아두이노) |
 | `pnp_flow.html` | v3.6 | PCB 픽앤플레이스 반송 시뮬레이터 | 미연결(시뮬레이션) |
-| `vision.html` | v1.6 | 비전 검사 — **6축 다관절 로봇** | 미연결 |
-| `vision3.html` | v3.4 | 비전 검사 — **갠트리 5축 스테이지** | 미연결 |
-| `Vision-H1.html` | v1.1 | 비전 검사 — **헥사포드 6축** (최신 컨셉) | 미연결 |
+| `vision.html` | **v1.7** | 비전 검사 — **6축 다관절 로봇** | 미연결 |
+| `vision3.html` | **v3.5** | 비전 검사 — **갠트리 5축 스테이지** | 미연결 |
+| `Vision-H1.html` | **v1.2** | 비전 검사 — **헥사포드 6축** (최신 컨셉) | 미연결 |
 
 실행 링크: `https://insys-hq.github.io/Insys-review/<파일명>`
 
@@ -64,26 +74,30 @@ git add 파일명 && git commit -m "메시지" && git push origin HEAD
 - **파이프라인 흐름**: 3번 안착 시 새 PCB가 1번 등장 → 검사 중 1→2 이동 대기 → 배출 시 이미 2번에 대기
 - 컨베이어는 **PCB 이송 시에만** 동일 속도로 회전, OK품은 다음 이송 때 우측으로 배출
 - 텔레스코픽 팔(회전+신축)
+- ※ 컨베이어 라운드 마감 **미적용** (필요 시 4-1 코드 이식)
 
-### 3-3. `vision.html` (v1.6) — 6축 로봇 비전 검사
+### 3-3. `vision.html` (v1.7) — 6축 로봇 비전 검사
 - 로봇이 PCB를 **집지 않고**, 컨베이어 위 PCB를 그대로 검사
 - 6축 로봇 끝단에 Cognex 카메라 + 돔 조명
 - 기울어진 PCB에 카메라를 **직각 정렬**, **초점거리 300mm 유지**
 - NG 시 알람+검사 중단 → 작업자 제거 후 [검사 계속]로 재개
 - 3D 축측투영, 시점 슬라이더 0°(정면)~90°(측면)
+- **v1.7**: 컨베이어 양끝 라운드 마감 적용 + 기존 **원형 풀리(r=15) 2개 제거**
 
-### 3-4. `vision3.html` (v3.4) — 갠트리 5축 스테이지
+### 3-4. `vision3.html` (v3.5) — 갠트리 5축 스테이지
 - **고정 N형 브릿지**(앞뒤 기둥 1개씩) 상단에 X·Y 스테이지가 이동
 - 5축: X, Y, Z, θ, φ — 상단에 mm/도 실시간 표시(구동 중 노랑, 정렬 완료 초록)
 - **위치확인 카메라**(수직 하향)로 PCB 중심·기울기 측정 → 축 구동
-- 컨베이어 벨트 그레이, 양끝 원(풀리) 제거, θ·φ 틸트 요크로 기울기 가시화, Z 스트로크 최소화
+- 컨베이어 벨트 그레이, θ·φ 틸트 요크로 기울기 가시화, Z 스트로크 최소화
+- **v3.5**: 컨베이어 양끝 라운드 마감 적용 (평면 마감 캡 제거). X 좌표 표시는 `BELT_X0` 기준이라 측정값 변동 없음
 
-### 3-5. `Vision-H1.html` (v1.1) — 헥사포드 6축 ★최신 컨셉
+### 3-5. `Vision-H1.html` (v1.2) — 헥사포드 6축 ★최신 컨셉
 - **N형 브릿지 400mm** + 상부 브라켓 + **역설치 헥사포드**(베이스 위 / 무빙 플랫폼 아래, HEGOA 형태를 상하 반전)
 - 6개 액추에이터 스트럿이 실제 길이 변화하며 **X·Y·Z·Rx·Ry** 구동
 - 무빙 플랫폼 하부 브라켓에 **비전 카메라 + 돔 조명**
 - **비전 카메라 엣지 신호**로 PCB 외곽 검출 → 중심 좌표·기울기 산출(녹색 엣지/십자 마커) → 헥사포드가 항상 **PCB 중심 + 직각 + 초점 300mm** 유지
 - 흐름: 투입 → 센서 → 조명 ON → 엣지 검출 → X·Y 정렬 → Rx·Ry 직각 → Z 초점 → 스캔 → 판정/MES → (NG 알람·재개) → 원점 복귀 → OK 배출
+- **v1.2**: 컨베이어 양끝 라운드 마감 최초 적용
 
 ---
 
@@ -93,6 +107,40 @@ git add 파일명 && git commit -m "메시지" && git push origin HEAD
 - 3D 축측 투영: X=컨베이어 방향, Y=깊이, Z=높이
 - 시점: yaw 0~90° 슬라이더 + 정면/45°/측면 버튼, pitch 22° 고정
 - 스케일: **90 unit ≙ 300mm** (1 unit ≈ 3.333mm)
+- 컨베이어 기준값: `BELT_X0=133, BELT_X1=567, BELT_Y0=0, BELT_Y1=70, BELT_Z=60, BELT_TH=18, RAIL_W=9, RAIL_Z=64`
+
+### 4-1. 컨베이어 양끝 라운드 마감 ★신규 표준
+> 원형 풀리를 그리는 방식이 아니라 **벨트 끝 반원 노즈** 마감. 신규 컨베이어 작업 시 기본 적용.
+
+```javascript
+const NR=(RAIL_Z-(BELT_Z-BELT_TH))/2, NZC=(RAIL_Z+(BELT_Z-BELT_TH))/2; // 프레임 노즈 r≈11u(37mm)
+const NXL=BELT_X0+NR, NXR=BELT_X1-NR;                                   // 노즈 중심 X
+const BWR=BELT_TH/2, BWZ=BELT_Z-BWR;                                    // 벨트 랩 r=9u (프레임보다 2u 안쪽)
+
+function framePath(Y){ const N=14, ps=[];
+  for(let i=0;i<=N;i++){ const a=(-90+180*i/N)*Math.PI/180; ps.push(P(NXR+NR*Math.cos(a),Y,NZC+NR*Math.sin(a))); }
+  for(let i=0;i<=N;i++){ const a=( 90+180*i/N)*Math.PI/180; ps.push(P(NXL+NR*Math.cos(a),Y,NZC+NR*Math.sin(a))); }
+  return ps.map(pt).join(' '); }
+
+function wrapFace(cx,rr,zc,dir,y1,y2,fill,stroke){ const N=12, u=[], v=[];
+  for(let i=0;i<=N;i++){ const a=(90-180*i/N)*Math.PI/180, X=cx+dir*rr*Math.cos(a), Z=zc+rr*Math.sin(a);
+    u.push(P(X,y1,Z)); v.push(P(X,y2,Z)); }
+  return `<polygon points="${u.concat(v.reverse()).map(pt).join(' ')}" fill="${fill}" stroke="${stroke}" stroke-width="1"/>`; }
+```
+
+**드로우 순서 (가림 순서 정확도에 필수)**
+1. 프레임 측면 `framePath(BELT_Y0)` → `framePath(BELT_Y1)`
+2. **후면 레일 노즈 랩** `wrapFace(..., yB, BELT_Y1)` ← 벨트보다 먼저
+3. 벨트 상면 (`NXL~NXR`로 축소)
+4. 벨트 노즈 랩 좌/우 (`BWR`, `BWZ`)
+5. 트레드 선 (`for(let rx=NXL+off-sp; rx<NXR; rx+=sp)`)
+6. 레일 상면 전/후 (`NXL~NXR`로 축소)
+7. **전면 레일 노즈 랩** `wrapFace(..., BELT_Y0, yA)`
+
+**주의**
+- 3D 아크를 샘플링해 `P()`로 투영 → 시점 0~90° 전 구간 자동 대응
+- 벨트 상면 위에 얹은 하이라이트/광택 스트립도 `NXL~NXR`로 축소해야 노즈를 침범하지 않음
+- 벨트 색상이 파일마다 다름: `vision.html`은 검정(`#1B1F24`), 나머지는 그레이(`#7E8792`) → 랩 스트로크도 각 파일 색에 맞출 것
 
 ### 렌더링 (실사풍)
 - SVG `<defs>` 그라데이션: 알루미늄/스틸/벨트/케이스/기판/돔조명/바닥
@@ -107,18 +155,16 @@ git add 파일명 && git commit -m "메시지" && git push origin HEAD
 
 ---
 
-## 5. 이어서 할 작업 (미완료)
+## 5. 이어서 할 작업
 
-1. **[진행 중] 컨베이어 양끝 둥글게 처리**
-   - 현재 `Vision-H1.html`의 컨베이어 시작/끝이 직각 절단면으로 처리되어 있음
-   - 요청: 실제 벨트 컨베이어처럼 **양끝을 둥글게(반원형 노즈)** 마감
-   - 수정 위치: `Vision-H1.html` draw() 내 컨베이어 블록
-     - 측면 프레임 면(front/back)을 라운드 프로파일 폴리곤으로
-     - 벨트 상면을 `X0+r ~ X1-r`로 줄이고 양끝에 곡면 랩(wrap) 스트립 추가
-     - 반경 `r = (RAIL_Z - (BELT_Z-BELT_TH))/2` 약 11 unit
-   - 참고: 이전에 원형 풀리를 그렸다가 "어울리지 않는다"고 제거한 이력 있음 → **원(풀리)이 아니라 벨트 끝 라운드 마감**으로 처리할 것
+### 완료 (2026-08-24)
+- [x] `Vision-H1.html` 컨베이어 양끝 라운드 처리 → v1.2
+- [x] 동일 처리를 `vision3.html`(v3.5), `vision.html`(v1.7)에 적용해 3종 통일
 
-2. (선택) 동일한 라운드 처리를 `vision3.html`, `vision.html`에도 적용해 통일
+### 미착수 (후보)
+- [ ] `pnp_flow.html` 컨베이어에도 라운드 마감 적용 (현재 미적용, 4-1 코드 이식)
+- [ ] classic PAT → fine-grained PAT 교체 (`Insys-review` 단일 범위)
+- [ ] 3종 시뮬레이터 데이터의 Firebase 연동 (검사 카운터·판정 이력)
 
 ---
 
@@ -133,8 +179,10 @@ ms=re.findall(r'<script>(.*?)</script>',html,re.S)
 open('/tmp/x.js','w').write('\n;\n'.join(ms))
 " && node --check /tmp/x.js
 
-# 헤드리스 렌더 확인 (puppeteer-core)
+# 헤드리스 렌더 확인 (puppeteer-core, 작업 폴더에서 npm install puppeteer-core)
 # chrome: /home/claude/.cache/puppeteer/chrome/linux-131.0.6778.204/chrome-linux64/chrome
 ```
 - 렌더 후 SVG 요소 bbox로 **잘림 여부** 확인 (정면/45°/측면 3시점)
+- `pageerror` 리스너로 런타임 오류 0건 확인
+- `#btnRun` 클릭 후 15초 구동 → 로그 텍스트로 **1사이클 완주** 확인
 - 축 값·초점거리 표시가 정상인지 DOM 텍스트로 확인
