@@ -186,7 +186,7 @@
   </section>
 </main>
 
-<footer>인시스 AI혁신 연구개발실 · ys.kim@in-sys.co.kr · Vision-JIG v1.3</footer>
+<footer>인시스 AI혁신 연구개발실 · ys.kim@in-sys.co.kr · Vision-JIG v1.4</footer>
 
 <script>
   // ===== 3D 월드 (X:이송방향, Y:깊이, Z:높이) · 90 unit ≙ 300mm =====
@@ -199,6 +199,7 @@
   const JIG_HW=30, JIG_HD=24, JIG_TH=6;       // 지그 반폭 / 반깊이 / 두께
   const PCB_HW=23, PCB_HD=12;                 // PCB 반폭 / 반깊이
   const CAM_X=442, CAM_RUN=24;                // 래치 해제 캠 위치 / 작용 구간
+  const SAFE_GAP=2*30+16;                     // 지그 간 최소 안전 간격(unit)
   const CHUTE_X0=TBL_X1-34, CHUTE_X1=TBL_X1+70, CHUTE_DROP=22;
   const PCB_TOP=UP_Z+JIG_TH;                  // 지그 상면 = PCB 하면
   const PCB_SURF=PCB_TOP+8;                   // PCB 기판 상면
@@ -248,15 +249,15 @@
     { phase:'대기',      type:'wait',      signal:'START', label:'START 대기' },
     { phase:'지그 순환', type:'lift',      label:'1번 지그 상승 (하부 리턴면 → 상부 이송면)' },
     { phase:'투입',      type:'load',      label:'작업자 PCB 안착 → 딸깍 래치 고정' },
-    { phase:'투입',      type:'feed',      label:'검사 지그 이송 → 검사위치 (동시: 대기 지그 하부 리턴)' },
+    { phase:'투입',      type:'feed',      label:'검사 지그 안착위치 → 검사위치 이송' },
     { phase:'투입',      type:'sensor', on:true, label:'검사위치 센서 감지' },
-    { phase:'선행 대기', type:'standby',   label:'대기 지그 안착부위에서 PCB 안착 · 딸깍 고정' },
+    { phase:'선행 대기', type:'standby',   label:'대기 지그 안착위치 상승 · PCB 안착 · 딸깍 고정' },
     { phase:'비전 검사', type:'light',  on:true, label:'돔 조명 ON' },
     { phase:'비전 검사', type:'scan',      label:'고정 비전 헤드 스캔 (초점 300mm)' },
     { phase:'판정',      type:'verdict',   label:'판정 + MES 전송' },
     { phase:'판정',      type:'alarmwait', cond:'ng', signal:'RESUME', label:'NG 알람 · 제거 대기' },
     { phase:'배출',      type:'light',  on:false, label:'돔 조명 OFF' },
-    { phase:'배출',      type:'release',   label:'배출 이송 → 해제 캠 접촉 → 래치 개방' },
+    { phase:'배출',      type:'release',   label:'검사 지그 배출위치 이동 (동시: 대기 지그 → 검사위치)' },
     { phase:'배출',      type:'strip',     label:'수직구간 진입 → 지그 하강 · PCB 분리' },
     { phase:'배출',      type:'discharge', label:'PCB 배출 (동시: 빈 지그 즉시 안착위치로 하부 리턴)' },
     { phase:'지그 순환', type:'swap',      label:'지그 교대 — 대기 지그가 다음 검사 지그로' }
@@ -613,6 +614,7 @@
 
     } else if(st.type==='feed'){
       const a=A(), b=B();
+      if(isUp(a) && Math.abs(a.x-INSPECT_X)<2){ addLog('[이송] 지그'+a.id+' 이미 검사위치 — 이송 생략'); return next(); }
       addLog('[이송] '+st.label);
       const bx0=b.x, bRet=(!isUp(b) && Math.abs(b.x-LIFT_L)>4);
       if(bRet) addLog('[리턴] 지그'+b.id+' 하부 리턴 이송 (우 → 좌)');
@@ -660,10 +662,14 @@
       if($('autoSig').checked) autoTimer=setTimeout(()=>fireSignal('RESUME',true),2600);
 
     } else if(st.type==='release'){
-      const a=A();
+      const a=A(), b=B();
       addLog('[배출 이송] '+st.label);
       s_in=false;
-      const x0=a.x; let logged=false;
+      const x0=a.x, bx0=b.x;
+      const bReady = isUp(b) && b.pcb && Math.abs(b.x-LIFT_L)<8;
+      let held=false, logged=false;
+      if(bReady) addLog('[선행 이송] 지그'+b.id+' 안착위치 → 검사위치 동시 이동');
+      else       addLog('[대기] 지그'+b.id+' 안착위치에서 대기 (준비 미완)');
       anim(durs().move*1.25, e=>{
         a.x=x0+(LIFT_R-x0)*e;
         if(a.pcb||a.latch>0){
@@ -671,7 +677,14 @@
           if(nl<a.latch) a.latch=nl;
           if(!logged && a.latch<0.99){ logged=true; addLog('[캠 접촉] 지그'+a.id+' 롤러가 해제 캠에 닿음 → 래치 개방 시작'); }
         }
-      }, ()=>{ a.latch=0; addLog('[래치] 개방 완료 — PCB 구속 해제'); next(); });
+        if(bReady){                                  // 안전 간격 내로 접근하면 안착위치에서 대기
+          const want=bx0+(INSPECT_X-bx0)*e, lim=a.x-SAFE_GAP;
+          if(want>lim){ b.x=Math.max(bx0,lim); if(!held){held=true; addLog('[간섭 회피] 지그'+b.id+' 안전간격 확보 위해 감속 대기');} }
+          else b.x=want;
+        }
+      }, ()=>{ a.x=LIFT_R; a.latch=0;
+        if(bReady){ b.x=INSPECT_X; addLog('[선행 이송] 지그'+b.id+' 검사위치 도착'); }
+        addLog('[래치] 개방 완료 — PCB 구속 해제'); next(); });
 
     } else if(st.type==='strip'){
       const a=A();
@@ -750,7 +763,7 @@
   $('btnSide').addEventListener('click',()=>setYaw(90));
 
   draw(); renderSteps(); updateSigBtns();
-  addLog('안착지그 2대 순환식 비전 검사 시뮬레이터 Vision-JIG v1.3 준비 완료.');
+  addLog('안착지그 2대 순환식 비전 검사 시뮬레이터 Vision-JIG v1.4 준비 완료.');
 </script>
 <script>
 (function(){
