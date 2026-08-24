@@ -110,7 +110,7 @@
           <div class="ax" id="axX"><div class="k">지그 이송위치</div><div class="v" id="vX">-</div></div>
           <div class="ax" id="axZ"><div class="k">지그 높이</div><div class="v" id="vZ">-</div></div>
           <div class="ax" id="axL"><div class="k">래치</div><div class="v" id="vL">-</div></div>
-          <div class="ax" id="axF"><div class="k">초점거리</div><div class="v" id="vF">300 mm</div></div>
+          <div class="ax" id="axF"><div class="k">조명~PCB (WD)</div><div class="v" id="vF">250 mm</div></div>
         </div>
 
         <div class="statechips">
@@ -185,7 +185,7 @@
   </section>
 </main>
 
-<footer>인시스 AI혁신 연구개발실 · ys.kim@in-sys.co.kr · Vision-JIG v1.0</footer>
+<footer>인시스 AI혁신 연구개발실 · ys.kim@in-sys.co.kr · Vision-JIG v1.1</footer>
 
 <script>
   // ===== 3D 월드 (X:이송방향, Y:깊이, Z:높이) · 90 unit ≙ 300mm =====
@@ -199,10 +199,14 @@
   const PCB_HW=23, PCB_HD=12;                 // PCB 반폭 / 반깊이
   const CAM_X=442, CAM_RUN=24;                // 래치 해제 캠 위치 / 작용 구간
   const CHUTE_X0=TBL_X1-34, CHUTE_X1=TBL_X1+70, CHUTE_DROP=22;
-  const FOCUS=90, FOCUS_MM=300;               // 초점거리 300mm
-  const PCB_TOP=UP_Z+JIG_TH;                  // 상부 이송면 PCB 하면 높이
-  const LENS_Z=PCB_TOP+FOCUS;                 // 고정 렌즈 높이
-  const PORTAL_X=INSPECT_X, PORTAL_Z=LENS_Z+34;
+  const PCB_TOP=UP_Z+JIG_TH;                  // 지그 상면 = PCB 하면
+  const PCB_SURF=PCB_TOP+8;                   // PCB 기판 상면
+  const WD_MM=250, WD=WD_MM/U2MM;             // 조명 끝단 ~ PCB 상면 = 250mm
+  const HEAD_MM=200, HEAD_H=HEAD_MM/U2MM;     // 카메라+렌즈+조명 설치높이 = 200mm
+  const DOME_Z=PCB_SURF+WD;                   // 조명 끝단(최하단) 높이
+  const LENS_Z=DOME_Z+HEAD_H*0.24;            // 렌즈 중심
+  const HEAD_TOP=DOME_Z+HEAD_H;               // 헤드 어셈블리 상단
+  const PORTAL_X=INSPECT_X, PORTAL_Z=HEAD_TOP+11;   // 브릿지 높이는 헤드에 종속(제한 없음)
   const GY_F=-34, GY_B=122;
   const VIEW={yaw:35, pitch:28};
   const VCX=350, VCY=250, VOX=340, VOY=72;
@@ -403,7 +407,7 @@
     if(lightOn && pcbOn && onUpper){
       const lp=P(jigX,TBL_YC,PCB_TOP+1);
       s+=`<ellipse cx="${lp.x.toFixed(1)}" cy="${lp.y.toFixed(1)}" rx="66" ry="24" fill="url(#gPool)"/>`;
-      const l0=P(PORTAL_X,TBL_YC,LENS_Z-4);
+      const l0=P(PORTAL_X,TBL_YC,DOME_Z);
       const c1=P(jigX-PCB_HW-8,TBL_YC-PCB_HD-6,PCB_TOP+1), c2=P(jigX+PCB_HW+8,TBL_YC+PCB_HD+6,PCB_TOP+1);
       s+=`<polygon points="${pt(l0)} ${pt(c1)} ${pt(c2)}" fill="url(#gBeam)"/>`;
     }
@@ -416,20 +420,31 @@
     { const q=P(PORTAL_X,GY_B+14,PORTAL_Z);
       s+=`<text x="${q.x.toFixed(1)}" y="${(q.y-12).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="900" fill="#2D5C99">고정 브릿지</text>`; }
     // 헤드 브라켓 + 카메라 본체 + 돔 조명
-    s+=slab(PORTAL_X-24,PORTAL_X+24,TBL_YC-22,TBL_YC+22,PORTAL_Z-11,5,'url(#gAluT)','url(#gAluF)','url(#gAluB)','#7C8896');
-    s+=slab(PORTAL_X-12,PORTAL_X+12,TBL_YC-12,TBL_YC+12,PORTAL_Z-16,(PORTAL_Z-16)-(LENS_Z+5),'url(#gCam)','url(#gCase)','url(#gCase)','#20262E');
-    { const q=P(PORTAL_X-30,TBL_YC-24,PORTAL_Z-30);
-      s+=`<text x="${(q.x-6).toFixed(1)}" y="${q.y.toFixed(1)}" text-anchor="end" font-size="9.5" font-weight="900" fill="#2D5C99">고정 비전 헤드</text>`; }
-    // 돔 조명(링)
-    { const d=P(PORTAL_X,TBL_YC,LENS_Z+2);
-      s+=`<ellipse cx="${d.x.toFixed(1)}" cy="${d.y.toFixed(1)}" rx="19" ry="7.4" fill="${lightOn?'url(#gDomeOn)':'url(#gDomeOff)'}" stroke="#9AA3AF" stroke-width="1"${lightOn?' filter="url(#fGlow)"':''}/>`;
-      const l=P(PORTAL_X,TBL_YC,LENS_Z-1);
-      s+=`<ellipse cx="${l.x.toFixed(1)}" cy="${l.y.toFixed(1)}" rx="7" ry="3.2" fill="#12161B" stroke="#3C4652"/>`;
+    s+=slab(PORTAL_X-25,PORTAL_X+25,TBL_YC-23,TBL_YC+23,PORTAL_Z-11,5,'url(#gAluT)','url(#gAluF)','url(#gAluB)','#7C8896');
+    // 헤드 어셈블리 200mm : 카메라 본체 → 렌즈 → 돔 조명 (조명 끝단 = DOME_Z)
+    { const camB=DOME_Z+HEAD_H*0.40;          // 카메라 본체 하단
+      s+=slab(PORTAL_X-13,PORTAL_X+13,TBL_YC-13,TBL_YC+13,HEAD_TOP,HEAD_TOP-camB,'url(#gCam)','url(#gCase)','url(#gCase)','#20262E');
+      s+=slab(PORTAL_X-8,PORTAL_X+8,TBL_YC-8,TBL_YC+8,camB,HEAD_H*0.18,'url(#gSteel)','url(#gCam)','url(#gCam)','#3C4652');   // 렌즈 경통
+      const dTop=DOME_Z+HEAD_H*0.22, dBot=DOME_Z;
+      const t1=P(PORTAL_X-11,TBL_YC,dTop), t2=P(PORTAL_X-22,TBL_YC,dBot);
+      const t3=P(PORTAL_X+22,TBL_YC,dBot), t4=P(PORTAL_X+11,TBL_YC,dTop);
+      s+=`<polygon points="${pt(t1)} ${pt(t2)} ${pt(t3)} ${pt(t4)}" fill="url(#gAluF)" stroke="#8A94A1" stroke-width=".9"/>`;
+      const d=P(PORTAL_X,TBL_YC,dBot);
+      s+=`<ellipse cx="${d.x.toFixed(1)}" cy="${d.y.toFixed(1)}" rx="22" ry="8.6" fill="${lightOn?'url(#gDomeOn)':'url(#gDomeOff)'}" stroke="#9AA3AF" stroke-width="1"${lightOn?' filter="url(#fGlow)"':''}/>`;
+      const l=P(PORTAL_X,TBL_YC,dBot+1.5);
+      s+=`<ellipse cx="${l.x.toFixed(1)}" cy="${l.y.toFixed(1)}" rx="7.5" ry="3.4" fill="#12161B" stroke="#3C4652"/>`;
       s+=`<circle cx="${l.x.toFixed(1)}" cy="${l.y.toFixed(1)}" r="2.6" fill="#4E8CC9"/>`; }
-    // 초점거리 표시
-    { const a=P(PORTAL_X+34,TBL_YC,LENS_Z), b=P(PORTAL_X+34,TBL_YC,PCB_TOP);
-      s+=`<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="#2D5C99" stroke-width="1" stroke-dasharray="4 3"/>`;
-      s+=`<text x="${(a.x+6).toFixed(1)}" y="${((a.y+b.y)/2).toFixed(1)}" font-size="10" font-weight="900" fill="#2D5C99">${FOCUS_MM}mm</text>`; }
+    { const q=P(PORTAL_X-58,TBL_YC-30,HEAD_TOP+2);
+      s+=`<text x="${(q.x-6).toFixed(1)}" y="${q.y.toFixed(1)}" text-anchor="end" font-size="9.5" font-weight="900" fill="#2D5C99">고정 비전 헤드</text>`; }
+    // 치수선 : 헤드 설치높이 200mm / 조명 끝단~PCB 250mm
+    function dimLine(dx,z0,z1,txt,col){
+      const a=P(PORTAL_X+dx,TBL_YC,z1), b=P(PORTAL_X+dx,TBL_YC,z0);
+      let o=`<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="${col}" stroke-width="1" stroke-dasharray="4 3"/>`;
+      [a,b].forEach(q=>{ o+=`<line x1="${(q.x-4).toFixed(1)}" y1="${q.y.toFixed(1)}" x2="${(q.x+4).toFixed(1)}" y2="${q.y.toFixed(1)}" stroke="${col}" stroke-width="1"/>`; });
+      o+=`<text x="${(a.x+6).toFixed(1)}" y="${((a.y+b.y)/2+3).toFixed(1)}" font-size="10" font-weight="900" fill="${col}">${txt}</text>`;
+      return o; }
+    s+=dimLine(32,DOME_Z,HEAD_TOP,HEAD_MM+'mm (헤드)','#7A3E9D');
+    s+=dimLine(32,PCB_SURF,DOME_Z,WD_MM+'mm (WD)','#2D5C99');
 
     // ── 스캔 라인 ──
     if(scanT>=0 && pcbOn && onUpper){
@@ -590,7 +605,7 @@
       lightOn=st.on; addLog('[조명] '+st.label); draw(); pause(durs().act,next);
 
     } else if(st.type==='scan'){
-      addLog('[비전] 고정 헤드 스캔 시작 — 초점 '+FOCUS_MM+'mm 고정');
+      addLog('[비전] 고정 헤드 스캔 시작 — 헤드 '+HEAD_MM+'mm · WD '+WD_MM+'mm 고정');
       anim(durs().move+320, e=>{ scanT=e; }, ()=>{ scanT=-1; draw(); next(); });
 
     } else if(st.type==='verdict'){
@@ -688,7 +703,7 @@
   $('btnSide').addEventListener('click',()=>setYaw(90));
 
   draw(); renderSteps(); updateSigBtns();
-  addLog('안착지그 순환식 비전 검사 시뮬레이터 Vision-JIG v1.0 준비 완료.');
+  addLog('안착지그 순환식 비전 검사 시뮬레이터 Vision-JIG v1.1 준비 완료.');
 </script>
 <script>
 (function(){
