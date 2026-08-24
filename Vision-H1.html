@@ -89,7 +89,7 @@
   <div class="grid2">
     <div class="left-col">
     <section class="card">
-      <div class="card-header">동작 애니메이션 · N형 브릿지 400mm + 역설치 헥사포드</div>
+      <div class="card-header">동작 애니메이션 · N형 브릿지 600mm + 역설치 헥사포드</div>
       <div class="card-body">
         <div id="stepMobile" class="step-mobile"><span class="no">1</span><span id="stepMobileText">START 대기</span></div>
         <div id="alarmBanner" class="alarm-banner">⚠ NG 검사 중단 — NG품 제거 후 [검사 계속]</div>
@@ -176,7 +176,7 @@
   </section>
 </main>
 
-<footer>인시스 AI혁신 연구개발실 · ys.kim@in-sys.co.kr · Vision-H1 v1.2</footer>
+<footer>인시스 AI혁신 연구개발실 · ys.kim@in-sys.co.kr · Vision-H1 v1.3</footer>
 
 <script>
   // ===== 3D 월드 (90 unit ≙ 300mm) =====
@@ -185,13 +185,14 @@
   const BELT_Z=60, BELT_TH=18, RAIL_W=9, RAIL_Z=64;
   const INSPECT_X=340, PCB_Z=BELT_Z+3, PCB_YC=(BELT_Y0+BELT_Y1)/2;
   const FOCUS=90, FOCUS_MM=300;                 // 초점거리 300mm 고정
-  const BRIDGE_MM=400, BRIDGE_Z=BELT_Z+BRIDGE_MM/U2MM;   // 브릿지 400mm
+  const BRIDGE_MM=600, BRIDGE_Z=BELT_Z+BRIDGE_MM/U2MM;   // 브릿지 600mm (스트럿 가동 확보)
   const GY_F=-30, GY_B=100;
   const BRIDGE_X=INSPECT_X;
-  const BASE_Z=BRIDGE_Z-3;                      // 헥사포드 고정 베이스(상부)
+  const BRK_Z=BRIDGE_Z-8;                       // 상부 브라켓(브릿지 빔 하단 밀착)
+  const BASE_Z=BRK_Z-3;                         // 헥사포드 고정 베이스(브라켓 바로 아래)
   const RB=31, RP=14;                           // 베이스/무빙 플랫폼 반경
   const HEAD=7;                                 // 플랫폼 ~ 렌즈 거리
-  const HOME={px:INSPECT_X, py:PCB_YC, pz:BASE_Z-14, rx:0, ry:0};
+  const HOME={px:INSPECT_X, py:PCB_YC, pz:BASE_Z-52, rx:0, ry:0};   // 스트럿 수축 원점
   const VIEW={yaw:35, pitch:22};
   const VCX=350, VCY=236, VOX=340, VOY=60;
   function P(X,Y,Z){
@@ -317,7 +318,7 @@
     const yA=BELT_Y0+RAIL_W, yB=BELT_Y1-RAIL_W;
     [BELT_X0+52, BELT_X1-52].forEach(lx=>{ const t1=P(lx,PCB_YC,BELT_Z-BELT_TH), t2=P(lx,PCB_YC,0);
       s+=`<rect x="${(t1.x-7).toFixed(1)}" y="${t1.y.toFixed(1)}" width="14" height="${(t2.y-t1.y).toFixed(1)}" fill="url(#gAluF)" stroke="#7E8996" stroke-width=".8"/>`; });
-    // --- v1.2 : 양끝 라운드(반원 노즈) 마감 ---
+    // --- v1.3 : 양끝 라운드(반원 노즈) 마감 ---
     const NR=(RAIL_Z-(BELT_Z-BELT_TH))/2, NZC=(RAIL_Z+(BELT_Z-BELT_TH))/2;  // 프레임 노즈 반경/중심Z
     const NXL=BELT_X0+NR, NXR=BELT_X1-NR;                                    // 노즈 중심 X (좌/우)
     const BWR=BELT_TH/2, BWZ=BELT_Z-BWR;                                     // 벨트 랩 반경/중심Z
@@ -398,9 +399,11 @@
     s+=`<g filter="url(#fDrop)">`;
     s+=bar(P(BRIDGE_X,GY_F,BRIDGE_Z),P(BRIDGE_X,GY_B,BRIDGE_Z),15,'url(#gSteel)');
     s+=`</g>`;
-    // 상부 브라켓(빔 ↔ 헥사포드 베이스)
-    s+=quad(P(BRIDGE_X-40,PCB_YC-40,BRIDGE_Z-3),P(BRIDGE_X+40,PCB_YC-40,BRIDGE_Z-3),P(BRIDGE_X+40,PCB_YC+40,BRIDGE_Z-3),P(BRIDGE_X-40,PCB_YC+40,BRIDGE_Z-3),'url(#gAluT)','#7C8896',1.2);
-    const bl=P(BRIDGE_X+52,PCB_YC+44,BRIDGE_Z);
+    // 상부 브라켓(브릿지 빔 하단에 헥사포드 베이스를 체결)
+    s+=quad(P(BRIDGE_X-38,PCB_YC-38,BRK_Z),P(BRIDGE_X+38,PCB_YC-38,BRK_Z),P(BRIDGE_X+38,PCB_YC+38,BRK_Z),P(BRIDGE_X-38,PCB_YC+38,BRK_Z),'url(#gAluT)','#7C8896',1.2);
+    [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(([sx,sy])=>{ const q=P(BRIDGE_X+sx*27,PCB_YC+sy*27,BRK_Z);
+      s+=`<circle cx="${q.x.toFixed(1)}" cy="${q.y.toFixed(1)}" r="2.6" fill="#7E8996" stroke="#525C69" stroke-width=".7"/>`; });
+    const bl=P(BRIDGE_X+52,PCB_YC+44,BRK_Z);
     s+=`<text x="${bl.x.toFixed(1)}" y="${(bl.y-10).toFixed(1)}" font-size="9.5" font-weight="900" fill="#2D5C99">상부 브라켓</text>`;
 
     // ── 헥사포드 (역설치: 베이스 상부 / 무빙 플랫폼 하부) ──
@@ -626,7 +629,7 @@
   $('btnSide').addEventListener('click',()=>setYaw(90));
 
   draw(); renderSteps(); updateSigBtns();
-  addLog('헥사포드 비전 검사 시뮬레이터 Vision-H1 v1.2 준비 완료.');
+  addLog('헥사포드 비전 검사 시뮬레이터 Vision-H1 v1.3 준비 완료.');
 </script>
 
 <script>
