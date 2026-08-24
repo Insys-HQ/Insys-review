@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PCB 비전 검사기 (500×500×1600 프레임)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#1E3A5F; --navy-dark:#122540; --text:#2B3648; --text-light:#5B6472;
+    --bg:#F3F5F9; --card-bg:#FFFFFF; --card-header-bg:#E7EFFA; --border:#E1E6ED;
+    --accent:#2D5C99; --success:#16A34A; --danger:#DC2626; --warning:#C2740A; --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.45;}
+  header.cover{background:linear-gradient(135deg,var(--navy),var(--navy-dark));color:#F4F7FB;padding:9px 16px;}
+  header.cover .inner{max-width:1200px;margin:0 auto;text-align:center;}
+  header.cover h1{font-size:18px;font-weight:900;margin:0;}
+  .container{max-width:1200px;margin:0 auto;padding:10px 14px 24px;}
+  .card{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:0 1px 2px rgba(20,40,63,.05);margin-bottom:10px;}
+  .card-header{background:var(--card-header-bg);padding:7px 12px;font-weight:700;color:var(--navy-dark);font-size:13.5px;border-bottom:1px solid var(--border);}
+  .card-body{padding:9px 12px;}
+  .grid2{display:grid;grid-template-columns:1.35fr .65fr;gap:10px;align-items:start;}
+  .left-col{display:flex;flex-direction:column;}
+  @media (max-width:900px){.grid2{grid-template-columns:1fr;}}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  button{font-family:inherit;font-size:13px;font-weight:700;padding:8px 13px;border-radius:8px;border:1px solid var(--border);background:#F5F7FA;color:var(--navy-dark);cursor:pointer;}
+  button:hover{background:#EAF0F8;}
+  button:disabled{opacity:.45;cursor:not-allowed;}
+  button.primary{background:var(--navy);color:#fff;border-color:var(--navy);}
+  button.sig:not(:disabled){background:var(--warning);color:#fff;border-color:var(--warning);animation:sigPulse 1.1s ease-in-out infinite;}
+  button.sig:disabled{background:#FDF3E3;color:#8A5407;border-color:#E6C79A;}
+  button.resume:not(:disabled){background:var(--danger);color:#fff;border-color:var(--danger);animation:sigPulse .8s ease-in-out infinite;}
+  @keyframes sigPulse{0%,100%{box-shadow:0 0 0 0 rgba(194,116,10,.5);}50%{box-shadow:0 0 0 7px rgba(194,116,10,0);}}
+  button.danger{background:#FCEBEA;color:var(--danger);border-color:#F4C6C3;}
+  select{font-family:inherit;font-size:13px;padding:8px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--text);}
+  .hint{font-size:12px;color:var(--text-light);margin-top:6px;}
+  svg{width:100%;height:auto;display:block;}
+  .axisbar{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-bottom:7px;}
+  @media (max-width:600px){.axisbar{grid-template-columns:repeat(3,1fr);}}
+  .ax{background:#F2F6FC;border:1px solid #D3E0F0;border-radius:7px;padding:4px 6px;text-align:center;}
+  .ax .k{font-size:10px;color:var(--text-light);font-weight:700;}
+  .ax .v{font-size:12.5px;font-weight:900;color:var(--navy-dark);white-space:nowrap;}
+  .ax.mv{background:#FFF4DE;border-color:#EDCF95;}
+  .ax.ok{background:#E7F7EC;border-color:#A9DDB8;}
+  .statechips{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px;}
+  .chip{font-size:11px;font-weight:700;padding:4px 8px;border-radius:20px;border:1px solid var(--border);color:var(--text-light);background:#F7F9FC;}
+  .chip b{color:var(--navy-dark);}
+  .chip.on{background:var(--success);color:#fff;border-color:var(--success);}
+  .chip.on b{color:#fff;}
+  .verdict-box{display:flex;gap:10px;align-items:center;margin-bottom:7px;}
+  .verdict-lamp{flex:0 0 auto;width:66px;height:44px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;color:#fff;background:#C9CDD3;letter-spacing:1px;}
+  .verdict-lamp.ok{background:var(--success);} .verdict-lamp.ng{background:var(--danger);}
+  .mes-ind{font-size:12.5px;font-weight:700;color:var(--text-light);}
+  .mes-ind.sending{color:var(--accent);}
+  .mes-ind .dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#C9CDD3;margin-right:5px;}
+  .mes-ind.sending .dot{background:var(--accent);animation:sigPulse 1s infinite;}
+  .alarm-banner{display:none;background:var(--danger);color:#fff;font-weight:900;text-align:center;padding:8px;border-radius:8px;margin-bottom:7px;font-size:13px;animation:alarmBlink .7s step-end infinite;}
+  .alarm-banner.show{display:block;}
+  @keyframes alarmBlink{0%,100%{opacity:1;}50%{opacity:.55;}}
+  .blinkRed{animation:alarmBlink .7s step-end infinite;}
+  .steps{overflow:visible;}
+  .step{display:flex;gap:9px;align-items:flex-start;padding:4px 8px;border-radius:7px;font-size:12px;border:1px solid transparent;}
+  .step .no{flex:0 0 20px;height:20px;border-radius:50%;background:#EDEFF3;color:var(--text-light);font-weight:700;font-size:10.5px;display:flex;align-items:center;justify-content:center;}
+  .step.done .no{background:var(--success);color:#fff;}
+  .step.cur{background:#EAF1FB;border-color:#BCD3EF;}
+  .step.cur .no{background:var(--navy);color:#fff;}
+  .step.wait.cur{background:#FBF1DF;border-color:#E6C79A;}
+  .step.wait.cur .no{background:var(--warning);color:#fff;}
+  .phase-h{font-size:11.5px;font-weight:900;color:var(--navy-dark);margin:7px 0 3px;padding-left:4px;}
+  .phase-h:first-child{margin-top:0;}
+  .log-card pre{margin:0;max-height:140px;overflow-y:auto;background:#F8F9FB;border:1px solid var(--border);border-radius:8px;padding:10px;font-family:'Noto Sans KR',monospace;font-size:12px;white-space:pre-wrap;word-break:break-all;}
+  label.ck{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--navy-dark);cursor:pointer;}
+  footer{text-align:center;padding:10px 20px 18px;font-size:11.5px;color:var(--text-light);}
+  .counter{font-size:12.5px;font-weight:700;color:var(--navy-dark);}
+  .step-mobile{display:none;}
+  @media (max-width:900px){
+    .left-col{position:sticky;top:0;z-index:20;background:var(--bg);padding-top:2px;}
+    .left-col .card:first-child{margin-bottom:6px;}
+    .flow-card{display:none;}
+    .step-mobile{display:flex;align-items:center;gap:8px;background:#EAF1FB;border:1px solid #BCD3EF;border-radius:8px;
+      padding:7px 10px;margin-bottom:6px;font-size:12.5px;font-weight:700;color:var(--navy-dark);
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .step-mobile .no{flex:0 0 20px;height:20px;border-radius:50%;background:var(--navy);color:#fff;font-size:10.5px;display:flex;align-items:center;justify-content:center;}
+    .step-mobile.wait{background:#FBF1DF;border-color:#E6C79A;} .step-mobile.wait .no{background:var(--warning);}
+    .step-mobile.alarm{background:#FCEBEA;border-color:#F4C6C3;color:var(--danger);} .step-mobile.alarm .no{background:var(--danger);}
+    .container{padding:8px 10px 20px;}
+    #curStateText{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<header class="cover"><div class="inner"><h1>PCB 비전 검사기 (500×500×1600 프레임)</h1></div></header>
+
+<main class="container">
+  <div class="grid2">
+    <div class="left-col">
+    <section class="card">
+      <div class="card-header">동작 애니메이션 · 사각 프레임 검사기 · 컨베이어 H700</div>
+      <div class="card-body">
+        <div id="stepMobile" class="step-mobile"><span class="no">1</span><span id="stepMobileText">START 대기</span></div>
+        <div id="alarmBanner" class="alarm-banner">⚠ NG 검사 중단 — NG품 제거 후 [검사 계속]</div>
+
+        <div class="axisbar" style="grid-template-columns:repeat(4,1fr);">
+          <div class="ax" id="axL"><div class="k">프레임 (L×W×H)</div><div class="v" id="vL">-</div></div>
+          <div class="ax" id="axC"><div class="k">컨베이어 높이</div><div class="v" id="vC">700 mm</div></div>
+          <div class="ax" id="axO"><div class="k">투입/배출 돌출</div><div class="v" id="vO">100 / 100 mm</div></div>
+          <div class="ax" id="axF"><div class="k">조명~PCB (WD)</div><div class="v" id="vF">250 mm</div></div>
+        </div>
+
+        <div class="statechips">
+          <span class="chip" id="chipPos">PCB <b id="posVal">대기</b></span>
+          <span class="chip" id="chipStop">스토퍼 <b id="stopVal">하강</b></span>
+          <span class="chip" id="chipLamp">돔조명 <b id="lampVal">OFF</b></span>
+          <span class="chip" id="chipSen">검사센서 <b id="senVal">OFF</b></span>
+          <span class="chip" id="chipDoor">안전커버 <b id="doorVal">닫힘</b></span>
+        </div>
+
+        <div class="verdict-box">
+          <div class="verdict-lamp" id="verdictLamp">--</div>
+          <div>
+            <div style="font-size:11.5px;color:var(--text-light);">판정</div>
+            <div class="mes-ind" id="mesInd"><span class="dot"></span>MES 전송: 대기</div>
+          </div>
+          <div style="margin-left:auto;">
+            <div style="font-size:11px;color:var(--text-light);margin-bottom:3px;">데모</div>
+            <select id="verdictSel"><option value="auto">자동</option><option value="OK">항상 OK</option><option value="NG">항상 NG</option></select>
+          </div>
+        </div>
+
+        <svg viewBox="112 30 384 634" id="scene"></svg>
+        <div class="row" style="margin-top:4px;gap:6px;flex-wrap:nowrap;">
+          <span style="font-size:12px;color:var(--text-light);white-space:nowrap;">시점 <b id="yawVal" style="color:var(--navy-dark);">35°</b></span>
+          <input type="range" id="viewYaw" min="0" max="90" value="35" style="flex:0 1 130px;min-width:70px;">
+          <button id="btnFront" style="padding:4px 8px;font-size:11.5px;flex:0 0 auto;white-space:nowrap;">정면</button>
+          <button id="btnIso" style="padding:4px 8px;font-size:11.5px;flex:0 0 auto;white-space:nowrap;">45°</button>
+          <button id="btnSide" style="padding:4px 8px;font-size:11.5px;flex:0 0 auto;white-space:nowrap;">측면</button>
+          <label class="ck" style="margin-left:auto;"><input type="checkbox" id="ckCover" checked> 커버</label>
+        </div>
+        <div class="row" style="margin-top:5px;">
+          <span class="counter">완료 <span id="cycleCount">0</span></span>
+          <span class="counter" style="color:var(--success);">OK <span id="okCount">0</span></span>
+          <span class="counter" style="color:var(--danger);">NG <span id="ngCount">0</span></span>
+        </div>
+        <p class="hint" id="curStateText"></p>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-header">운전 / 신호 제어</div>
+      <div class="card-body">
+        <div class="row" style="margin-bottom:10px;">
+          <button id="btnRun" class="primary">▶ 자동 운전 시작</button>
+          <button id="btnStop" class="danger">■ 정지</button>
+          <button id="btnReset">↺ 초기화</button>
+          <label class="ck"><input type="checkbox" id="autoSig" checked> 자동신호</label>
+          <span style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+            <span style="font-size:12px;color:var(--text-light);">검사시간</span>
+            <input type="range" id="speed" min="1" max="10" value="6" style="width:110px;">
+          </span>
+        </div>
+        <div class="row">
+          <button id="sigStart" class="sig" disabled>START</button>
+          <button id="btnResume" class="resume" disabled>검사 계속</button>
+        </div>
+      </div>
+    </section>
+    </div>
+
+    <section class="card flow-card">
+      <div class="card-header">전체 로직 플로우</div>
+      <div class="card-body"><div class="steps" id="stepList"></div></div>
+    </section>
+  </div>
+
+  <section class="card log-card">
+    <div class="card-header">동작 로그</div>
+    <div class="card-body">
+      <div class="row" style="margin-bottom:8px;"><button id="clearLog">로그 지우기</button></div>
+      <pre id="logBox"></pre>
+    </div>
+  </section>
+</main>
+
+<footer>인시스 AI혁신 연구개발실 · ys.kim@in-sys.co.kr · FRAME v1.0</footer>
+
+<script>
+  // ===== 3D 월드 · 90 unit ≙ 300mm =====
+  const U2MM=300/90, MM=v=>v/U2MM;
+  const FL_MM=500, FW_MM=500, FH_MM=1600, CONV_MM=700, OVR_MM=100;
+  const FX0=282, FX1=FX0+MM(FL_MM), FY0=0, FY1=FY0+MM(FW_MM), FZ=MM(FH_MM);
+  const PROF=13;                                   // 40×40 알루미늄 프로파일
+  const CONV_Z=MM(CONV_MM), OVR=MM(OVR_MM);
+  const CX0=FX0-OVR, CX1=FX1+OVR;                  // 컨베이어 전장 (돌출 포함)
+  const CY0=FY0+42, CY1=FY1-42, CYC=(CY0+CY1)/2;   // 벨트 폭
+  const BELT_TH=11, NR=BELT_TH/2;
+  const RAIL_L=CONV_Z-9, RAIL_H=6;                 // 사이드 레일
+  const INSPECT_X=(FX0+FX1)/2;
+  const SLOT_Z0=CONV_Z-30, SLOT_Z1=CONV_Z+34;      // 측면 패널 개구부
+  const CAB_Z0=18, CAB_Z1=SLOT_Z0;                 // 하부 캐비닛
+  const UP_Z0=SLOT_Z1, UP_Z1=FZ-PROF;              // 상부 안전커버
+  const PCB_HW=20, PCB_HD=11, PCB_SURF=CONV_Z+8;
+  const WD_MM=250, HEAD_MM=200;
+  const DOME_Z=PCB_SURF+MM(WD_MM), HEAD_TOP=DOME_Z+MM(HEAD_MM);
+  const VIEW={yaw:35, pitch:28};
+  const VCX=310, VCY=560, VOX=(FX0+FX1)/2, VOY=(FY0+FY1)/2;
+  function P(X,Y,Z){
+    const ty=VIEW.yaw*Math.PI/180, tp=VIEW.pitch*Math.PI/180;
+    const x0=X-VOX, y0=Y-VOY;
+    const dep=x0*Math.sin(ty)+y0*Math.cos(ty);
+    return {x:VCX + x0*Math.cos(ty) - y0*Math.sin(ty),
+            y:VCY - Z*Math.cos(tp) - dep*Math.sin(tp), d:dep};
+  }
+  const pt=p=>p.x.toFixed(1)+','+p.y.toFixed(1);
+  function quad(a,b,c,d,fill,stroke,sw,extra){
+    return `<polygon points="${pt(a)} ${pt(b)} ${pt(c)} ${pt(d)}" fill="${fill}"${stroke?` stroke="${stroke}" stroke-width="${sw||1}"`:''}${extra||''}/>`;
+  }
+  function bar(a,b,w,fill,stroke){
+    return `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="${stroke||'#8A94A1'}" stroke-width="${w+3}" stroke-linecap="round"/>`+
+           `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="${fill}" stroke-width="${w}" stroke-linecap="round"/>`;
+  }
+  // 3D 박스 : 가까운 면(-X, -Y) + 윗면
+  function box(x0,x1,y0,y1,z0,z1,fT,fF,fS,st,sw){
+    let o='';
+    o+=quad(P(x0,y0,z1),P(x1,y0,z1),P(x1,y0,z0),P(x0,y0,z0),fF,st,sw||1);
+    o+=quad(P(x0,y0,z1),P(x0,y1,z1),P(x0,y1,z0),P(x0,y0,z0),fS,st,sw||1);
+    o+=quad(P(x0,y0,z1),P(x1,y0,z1),P(x1,y1,z1),P(x0,y1,z1),fT,st,sw||1);
+    return o;
+  }
+  const ALU=['url(#gAluT)','url(#gAluF)','url(#gAluB)','#7C8896'];
+  function beamX(x0,x1,y,z,w){ return box(x0,x1,y-w/2,y+w/2,z-w/2,z+w/2,...ALU); }
+  function beamY(x,y0,y1,z,w){ return box(x-w/2,x+w/2,y0,y1,z-w/2,z+w/2,...ALU); }
+  function postV(x,y,z0,z1,w){ return box(x-w/2,x+w/2,y-w/2,y+w/2,z0,z1,...ALU); }
+  function panel(pts,fill,op,st){
+    return `<polygon points="${pts.map(pt).join(' ')}" fill="${fill}" opacity="${op}" stroke="${st||'#93A3B5'}" stroke-width="1"/>`;
+  }
+  function stadium(Y,x0,x1,zc,r,N){
+    N=N||14; const ps=[];
+    for(let i=0;i<=N;i++){ const a=(-90+180*i/N)*Math.PI/180; ps.push(P(x1+r*Math.cos(a),Y,zc+r*Math.sin(a))); }
+    for(let i=0;i<=N;i++){ const a=( 90+180*i/N)*Math.PI/180; ps.push(P(x0+r*Math.cos(a),Y,zc+r*Math.sin(a))); }
+    return ps;
+  }
+  function wrapFace(cx,rr,zc,dir,y1,y2,fill,stroke){
+    const N=12,u=[],v=[];
+    for(let i=0;i<=N;i++){ const a=(90-180*i/N)*Math.PI/180, X=cx+dir*rr*Math.cos(a), Z=zc+rr*Math.sin(a);
+      u.push(P(X,y1,Z)); v.push(P(X,y2,Z)); }
+    return `<polygon points="${u.concat(v.reverse()).map(pt).join(' ')}" fill="${fill}" stroke="${stroke}" stroke-width="1"/>`;
+  }
+  function dimV(x,y,z0,z1,txt,col,side){
+    const a=P(x,y,z1), b=P(x,y,z0); let o='';
+    o+=`<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="${col}" stroke-width="1" stroke-dasharray="4 3"/>`;
+    [a,b].forEach(q=>{ o+=`<line x1="${(q.x-4).toFixed(1)}" y1="${q.y.toFixed(1)}" x2="${(q.x+4).toFixed(1)}" y2="${q.y.toFixed(1)}" stroke="${col}" stroke-width="1"/>`; });
+    o+=`<text x="${(a.x+(side||6)).toFixed(1)}" y="${((a.y+b.y)/2+3).toFixed(1)}" text-anchor="${side<0?'end':'start'}" font-size="10" font-weight="900" fill="${col}" paint-order="stroke" stroke="#FFFFFF" stroke-width="3.4" stroke-linejoin="round">${txt}</text>`;
+    return o;
+  }
+  function dimY(y0,y1,x,z,txt,col,dy){
+    const a=P(x,y0,z), b=P(x,y1,z); let o='';
+    o+=`<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="${col}" stroke-width="1" stroke-dasharray="4 3"/>`;
+    [a,b].forEach(q=>{ o+=`<line x1="${q.x.toFixed(1)}" y1="${(q.y-4).toFixed(1)}" x2="${q.x.toFixed(1)}" y2="${(q.y+4).toFixed(1)}" stroke="${col}" stroke-width="1"/>`; });
+    o+=`<text x="${((a.x+b.x)/2+14).toFixed(1)}" y="${((a.y+b.y)/2+(dy||6)).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="900" fill="${col}" paint-order="stroke" stroke="#FFFFFF" stroke-width="3.4" stroke-linejoin="round">${txt}</text>`;
+    return o;
+  }
+  function dimH(x0,x1,y,z,txt,col,dy){
+    const a=P(x0,y,z), b=P(x1,y,z); let o='';
+    o+=`<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="${col}" stroke-width="1" stroke-dasharray="4 3"/>`;
+    [a,b].forEach(q=>{ o+=`<line x1="${q.x.toFixed(1)}" y1="${(q.y-4).toFixed(1)}" x2="${q.x.toFixed(1)}" y2="${(q.y+4).toFixed(1)}" stroke="${col}" stroke-width="1"/>`; });
+    o+=`<text x="${((a.x+b.x)/2).toFixed(1)}" y="${((a.y+b.y)/2+(dy||-6)).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="900" fill="${col}" paint-order="stroke" stroke="#FFFFFF" stroke-width="3.4" stroke-linejoin="round">${txt}</text>`;
+    return o;
+  }
+  const DEFS=`<defs>
+    <linearGradient id="gAluT" x1="0" y1="0" x2="0.35" y2="1"><stop offset="0" stop-color="#FAFCFE"/><stop offset=".28" stop-color="#DCE3EB"/><stop offset=".62" stop-color="#BFC8D3"/><stop offset="1" stop-color="#A5AFBC"/></linearGradient>
+    <linearGradient id="gAluF" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E9EEF4"/><stop offset=".22" stop-color="#C3CCD7"/><stop offset=".7" stop-color="#9BA6B3"/><stop offset="1" stop-color="#7E8996"/></linearGradient>
+    <linearGradient id="gAluB" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#B8C1CC"/><stop offset="1" stop-color="#6E7885"/></linearGradient>
+    <linearGradient id="gSteel" x1="0" y1="0" x2="0.3" y2="1"><stop offset="0" stop-color="#F0F4F8"/><stop offset=".4" stop-color="#CAD3DD"/><stop offset="1" stop-color="#94A0AE"/></linearGradient>
+    <linearGradient id="gBelt" x1="0" y1="0" x2="0.3" y2="1"><stop offset="0" stop-color="#C8CED6"/><stop offset=".45" stop-color="#AEB5BE"/><stop offset="1" stop-color="#949BA5"/></linearGradient>
+    <linearGradient id="gCam" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="#5E6A79"/><stop offset=".45" stop-color="#3A4451"/><stop offset="1" stop-color="#1E242C"/></linearGradient>
+    <linearGradient id="gCase" x1="0" y1="0" x2="0.3" y2="1"><stop offset="0" stop-color="#3B424A"/><stop offset=".5" stop-color="#24292F"/><stop offset="1" stop-color="#101317"/></linearGradient>
+    <linearGradient id="gPcb" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="#4C9E53"/><stop offset=".5" stop-color="#2E7D36"/><stop offset="1" stop-color="#1C5E24"/></linearGradient>
+    <linearGradient id="gCover" x1="0" y1="0" x2="0.3" y2="1"><stop offset="0" stop-color="#E3E8EE"/><stop offset=".45" stop-color="#B7C0CA"/><stop offset="1" stop-color="#8F99A5"/></linearGradient>
+    <radialGradient id="gFloor" cx="0.5" cy="0.45" r="0.75"><stop offset="0" stop-color="#F4F6F9"/><stop offset=".65" stop-color="#E5E9EF"/><stop offset="1" stop-color="#D3D9E1"/></radialGradient>
+    <radialGradient id="gDomeOn" cx="0.5" cy="0.42" r="0.62"><stop offset="0" stop-color="#FFFDF0"/><stop offset=".55" stop-color="#FFE68A"/><stop offset="1" stop-color="#E9B93C"/></radialGradient>
+    <radialGradient id="gDomeOff" cx="0.5" cy="0.42" r="0.62"><stop offset="0" stop-color="#F4F1E2"/><stop offset="1" stop-color="#CFC8AC"/></radialGradient>
+    <radialGradient id="gPulley" cx="0.35" cy="0.32" r="0.8"><stop offset="0" stop-color="#D8DEE6"/><stop offset=".55" stop-color="#98A2AE"/><stop offset="1" stop-color="#616B78"/></radialGradient>
+    <linearGradient id="gBeam" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFF3C4" stop-opacity=".62"/><stop offset="1" stop-color="#FFD84A" stop-opacity=".10"/></linearGradient>
+    <radialGradient id="gPool" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#FFF6CC" stop-opacity=".75"/><stop offset="1" stop-color="#FFE07A" stop-opacity="0"/></radialGradient>
+    <filter id="fBlur" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="7"/></filter>
+    <filter id="fBlurS" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="3"/></filter>
+    <filter id="fGlow" x="-70%" y="-70%" width="240%" height="240%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="fDrop" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="2" dy="4" stdDeviation="4" flood-color="#233046" flood-opacity=".33"/></filter>
+  </defs>`;
+
+  // ===== 로직 =====
+  const STATES=[
+    { phase:'대기',      type:'wait', signal:'START', label:'START 대기' },
+    { phase:'투입',      type:'infeed',    label:'투입구 진입 — 컨베이어 이송' },
+    { phase:'투입',      type:'stopper', on:true, label:'스토퍼 상승 → 검사위치 정지' },
+    { phase:'투입',      type:'sensor', on:true, label:'검사위치 센서 감지' },
+    { phase:'비전 검사', type:'light',  on:true, label:'돔 조명 ON' },
+    { phase:'비전 검사', type:'scan',      label:'고정 비전 헤드 스캔' },
+    { phase:'판정',      type:'verdict',   label:'판정 + MES 전송' },
+    { phase:'판정',      type:'alarmwait', cond:'ng', signal:'RESUME', label:'NG 알람 · 안전커버 개방 · 제거 대기' },
+    { phase:'배출',      type:'light',  on:false, label:'돔 조명 OFF' },
+    { phase:'배출',      type:'stopper', on:false, label:'스토퍼 하강' },
+    { phase:'배출',      type:'outfeed',   label:'배출구 이송 → 다음 공정' }
+  ];
+  const LOOP_START=1;
+
+  let idx=0, running=false, waitingSignal=null;
+  let pcbX=null, stopper=0, lightOn=false, scanT=-1, s_in=false, alarm=false, doorOpen=0, beltPhase=0, beltRun=false;
+  let verdict=null, autoTog=0, cycleCount=0, okCount=0, ngCount=0;
+  let animToken=0, autoTimer=null;
+  const $=id=>document.getElementById(id);
+  const logBox=$('logBox'), stepList=$('stepList');
+  function addLog(m){const t=new Date().toLocaleTimeString('ko-KR');logBox.textContent+='['+t+'] '+m+'\n';logBox.scrollTop=logBox.scrollHeight;}
+
+  const scene=$('scene');
+  function draw(){
+    let s=DEFS;
+    const cover=$('ckCover').checked;
+
+    // ── 바닥 ──
+    s+=quad(P(CX0-70,FY0-80,0),P(CX1+70,FY0-80,0),P(CX1+70,FY1+80,0),P(CX0-70,FY1+80,0),'url(#gFloor)','#C9D0D9',1);
+    for(let gx=CX0-70; gx<=CX1+70; gx+=64){ const a=P(gx,FY0-80,0), b=P(gx,FY1+80,0);
+      s+=`<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="#D8DEE6"/>`; }
+    for(let gy=FY0-80; gy<=FY1+80; gy+=64){ const a=P(CX0-70,gy,0), b=P(CX1+70,gy,0);
+      s+=`<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="#D8DEE6"/>`; }
+    s+=`<g filter="url(#fBlur)" opacity=".3">`;
+    s+=quad(P(FX0-4,FY0+10,0),P(FX1+4,FY0+10,0),P(FX1+4,FY1+16,0),P(FX0-4,FY1+16,0),'#3E4A59','',0);
+    s+=`</g>`;
+
+    // ── 레벨링 풋 + 뒤쪽 기둥 ──
+    [[FX0,FY1],[FX1,FY1],[FX0,FY0],[FX1,FY0]].forEach(([px,py])=>{
+      const b=P(px,py,0);
+      s+=`<ellipse cx="${b.x.toFixed(1)}" cy="${b.y.toFixed(1)}" rx="11" ry="4" fill="url(#gAluT)" stroke="#8A94A1"/>`;
+      s+=bar(P(px,py,0),P(px,py,CAB_Z0),6,'url(#gSteel)','#6E7885'); });
+    s+=postV(FX0,FY1,CAB_Z0,FZ,PROF);
+    s+=postV(FX1,FY1,CAB_Z0,FZ,PROF);
+
+    // ── 뒤/좌우 상부 가로 프레임 ──
+    s+=beamX(FX0,FX1,FY1,FZ-PROF/2,PROF);
+    s+=beamY(FX0,FY0,FY1,FZ-PROF/2,PROF);
+    s+=beamY(FX1,FY0,FY1,FZ-PROF/2,PROF);
+    s+=beamX(FX0,FX1,FY1,CAB_Z1,PROF);
+    s+=beamY(FX0,FY0,FY1,CAB_Z1,PROF);
+    s+=beamY(FX1,FY0,FY1,CAB_Z1,PROF);
+    s+=beamX(FX0,FX1,FY1,CAB_Z0,PROF);
+    s+=beamY(FX0,FY0,FY1,CAB_Z0,PROF);
+    s+=beamY(FX1,FY0,FY1,CAB_Z0,PROF);
+    s+=beamX(FX0,FX1,FY1,SLOT_Z1,PROF);
+
+    // ── 뒤/좌우 패널 (하부 캐비닛) ──
+    s+=panel([P(FX0,FY1,CAB_Z1),P(FX1,FY1,CAB_Z1),P(FX1,FY1,CAB_Z0),P(FX0,FY1,CAB_Z0)],'url(#gAluB)',1,'#7C8896');
+    // 상부 뒤 패널
+    s+=panel([P(FX0,FY1,UP_Z1),P(FX1,FY1,UP_Z1),P(FX1,FY1,UP_Z0),P(FX0,FY1,UP_Z0)],'#DCE3EB',1,'#9AA6B4');
+
+    // ── 컨베이어 (H700, 양끝 라운드 마감) ──
+    const ZC=CONV_Z-NR;
+    s+=`<path d="M${stadium(CY1,CX0+NR,CX1-NR,ZC,NR).map(pt).join(' L')} Z" fill="url(#gAluB)" stroke="#6E7885" stroke-width="1"/>`;
+    s+=quad(P(CX0+NR,CY0,CONV_Z),P(CX1-NR,CY0,CONV_Z),P(CX1-NR,CY1,CONV_Z),P(CX0+NR,CY1,CONV_Z),'url(#gBelt)','#7E8792',1);
+    s+=wrapFace(CX0+NR,NR,ZC,-1,CY0,CY1,'url(#gBelt)','#7E8792');
+    s+=wrapFace(CX1-NR,NR,ZC, 1,CY0,CY1,'url(#gBelt)','#7E8792');
+    { const sp=22, off=((beltPhase%sp)+sp)%sp;
+      for(let x=CX0+NR+off; x<CX1-NR; x+=sp){ const a=P(x,CY0,CONV_Z+.4), b=P(x,CY1,CONV_Z+.4);
+        s+=`<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="#8B939D" stroke-width="1.4" opacity=".75"/>`; } }
+    // 사이드 가이드 레일
+    [CY0-4,CY1+4].forEach(yy=>{ s+=box(CX0+NR,CX1-NR,yy-2,yy+2,RAIL_L,CONV_Z+RAIL_H,...ALU); });
+    s+=`<path d="M${stadium(CY0-9,CX0+NR,CX1-NR,ZC,NR+4).map(pt).join(' L')} Z" fill="url(#gAluF)" stroke="#78838F" stroke-width="1"/>`;
+
+    // ── 스토퍼 ──
+    { const sz=CONV_Z-6+stopper*13;
+      s+=box(INSPECT_X+PCB_HW+2,INSPECT_X+PCB_HW+7,CYC-9,CYC+9,CONV_Z-14,sz,'url(#gSteel)','url(#gSteel)','url(#gSteel)','#5A6470',1); }
+
+    // ── PCB ──
+    if(pcbX!==null) s+=pcbBody(pcbX,CONV_Z);
+
+    // ── 검사위치 센서 ──
+    { const s1=P(INSPECT_X-40,CY0-14,CONV_Z+2), s2=P(INSPECT_X-40,CY0-14,CONV_Z+22);
+      s+=`<rect x="${(s2.x-4.5).toFixed(1)}" y="${s2.y.toFixed(1)}" width="9" height="${(s1.y-s2.y).toFixed(1)}" rx="2" fill="url(#gAluF)" stroke="#69737F" stroke-width=".8"/>`;
+      s+=`<circle cx="${s2.x.toFixed(1)}" cy="${s2.y.toFixed(1)}" r="4.5" fill="${s_in?'#22C55E':'#C4C9D0'}"${s_in?' filter="url(#fGlow)"':''}/>`; }
+
+    // ── 조명 풀 / 빔 ──
+    if(lightOn && pcbX!==null && Math.abs(pcbX-INSPECT_X)<3){
+      const lp=P(INSPECT_X,CYC,CONV_Z+1);
+      s+=`<ellipse cx="${lp.x.toFixed(1)}" cy="${lp.y.toFixed(1)}" rx="52" ry="19" fill="url(#gPool)"/>`;
+      s+=`<polygon points="${pt(P(INSPECT_X,CYC,DOME_Z))} ${pt(P(INSPECT_X-PCB_HW-8,CY0+4,CONV_Z+1))} ${pt(P(INSPECT_X+PCB_HW+8,CY1-4,CONV_Z+1))}" fill="url(#gBeam)"/>`;
+    }
+
+    // ── 비전 헤드 (상부 프레임에 브래킷 고정) ──
+    s+=box(INSPECT_X-7,INSPECT_X+7,CYC-7,CYC+7,HEAD_TOP,FZ-PROF,'url(#gSteel)','url(#gAluF)','url(#gAluB)','#7C8896',1);
+    s+=box(INSPECT_X-24,INSPECT_X+24,CYC-22,CYC+22,HEAD_TOP-4,HEAD_TOP,'url(#gAluT)','url(#gAluF)','url(#gAluB)','#7C8896',1);
+    { const camB=DOME_Z+MM(HEAD_MM)*0.40;
+      s+=box(INSPECT_X-12,INSPECT_X+12,CYC-12,CYC+12,camB,HEAD_TOP-4,'url(#gCam)','url(#gCase)','url(#gCase)','#20262E',1);
+      s+=box(INSPECT_X-7,INSPECT_X+7,CYC-7,CYC+7,DOME_Z+MM(HEAD_MM)*0.22,camB,'url(#gSteel)','url(#gCam)','url(#gCam)','#3C4652',1);
+      const dTop=DOME_Z+MM(HEAD_MM)*0.22;
+      s+=`<polygon points="${pt(P(INSPECT_X-10,CYC,dTop))} ${pt(P(INSPECT_X-20,CYC,DOME_Z))} ${pt(P(INSPECT_X+20,CYC,DOME_Z))} ${pt(P(INSPECT_X+10,CYC,dTop))}" fill="url(#gAluF)" stroke="#8A94A1" stroke-width=".9"/>`;
+      const d=P(INSPECT_X,CYC,DOME_Z);
+      s+=`<ellipse cx="${d.x.toFixed(1)}" cy="${d.y.toFixed(1)}" rx="20" ry="7.8" fill="${lightOn?'url(#gDomeOn)':'url(#gDomeOff)'}" stroke="#9AA3AF" stroke-width="1"${lightOn?' filter="url(#fGlow)"':''}/>`;
+      const l=P(INSPECT_X,CYC,DOME_Z+1.4);
+      s+=`<ellipse cx="${l.x.toFixed(1)}" cy="${l.y.toFixed(1)}" rx="7" ry="3.2" fill="#12161B" stroke="#3C4652"/>`;
+      s+=`<circle cx="${l.x.toFixed(1)}" cy="${l.y.toFixed(1)}" r="2.4" fill="#4E8CC9"/>`; }
+
+    // ── 스캔 라인 ──
+    if(scanT>=0 && pcbX!==null){
+      const sx=INSPECT_X-PCB_HW+2*PCB_HW*scanT;
+      const a=P(sx,CYC-PCB_HD,CONV_Z+9.5), b=P(sx,CYC+PCB_HD,CONV_Z+9.5);
+      s+=`<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="#E5484D" stroke-width="2.4" filter="url(#fGlow)"/>`;
+    }
+
+    // ── 앞쪽 기둥 + 가로 프레임 ──
+    s+=postV(FX0,FY0,CAB_Z0,FZ,PROF);
+    s+=postV(FX1,FY0,CAB_Z0,FZ,PROF);
+    s+=beamX(FX0,FX1,FY0,CAB_Z0,PROF);
+    s+=beamX(FX0,FX1,FY0,CAB_Z1,PROF);
+    s+=beamX(FX0,FX1,FY0,SLOT_Z1,PROF);
+    s+=beamX(FX0,FX1,FY0,FZ-PROF/2,PROF);
+
+    // ── 하부 캐비닛 앞 도어 ──
+    s+=panel([P(FX0,FY0,CAB_Z1),P(FX1,FY0,CAB_Z1),P(FX1,FY0,CAB_Z0),P(FX0,FY0,CAB_Z0)],'url(#gAluF)',1,'#78838F');
+    { const h1=P(FX1-22,FY0-1,(CAB_Z0+CAB_Z1)/2+8), h2=P(FX1-22,FY0-1,(CAB_Z0+CAB_Z1)/2-8);
+      s+=bar(h1,h2,5,'url(#gSteel)','#5A6470');
+      const t=P(FX0+40,FY0-1,CAB_Z1-24);
+      s+=`<text x="${t.x.toFixed(1)}" y="${t.y.toFixed(1)}" text-anchor="middle" font-size="11" font-weight="900" fill="#2D5C99" letter-spacing="1">INSYS</text>`;
+      const t2=P(FX0+52,FY0-1,CAB_Z1-40);
+      s+=`<text x="${t2.x.toFixed(1)}" y="${t2.y.toFixed(1)}" text-anchor="middle" font-size="7.5" font-weight="700" fill="#7A8492" letter-spacing=".5">PCB VISION INSPECTION</text>`;
+      // 환기 그릴
+      for(let k=0;k<5;k++){ const a=P(FX0+16,FY0-1,CAB_Z0+14+k*7), b=P(FX0+58,FY0-1,CAB_Z0+14+k*7);
+        s+=`<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="#9AA6B4" stroke-width="1.6"/>`; } }
+
+    // ── 상부 안전커버 (아크릴) ──
+    if(cover){
+      const op=doorOpen>0.5?0.10:0.24;
+      s+=panel([P(FX0,FY0,UP_Z1),P(FX1,FY0,UP_Z1),P(FX1,FY0,UP_Z0),P(FX0,FY0,UP_Z0)],'#9EC6E8',op,'#8FA9C2');
+      s+=panel([P(FX0,FY0,UP_Z0),P(FX0,FY1,UP_Z0),P(FX0,FY1,UP_Z1),P(FX0,FY0,UP_Z1)],'#9EC6E8',op*0.8,'#8FA9C2');
+      s+=panel([P(FX0,FY0,FZ-PROF),P(FX1,FY0,FZ-PROF),P(FX1,FY1,FZ-PROF),P(FX0,FY1,FZ-PROF)],'#B7D3EC',op*0.7,'#8FA9C2');
+      const hd=P(FX1-30,FY0-2,(UP_Z0+UP_Z1)/2);
+      s+=bar(P(FX1-30,FY0-2,(UP_Z0+UP_Z1)/2+10),P(FX1-30,FY0-2,(UP_Z0+UP_Z1)/2-10),4.5,'url(#gSteel)','#5A6470');
+      const lb=P(INSPECT_X,FY0-2,UP_Z1-16);
+      s+=`<text x="${lb.x.toFixed(1)}" y="${lb.y.toFixed(1)}" text-anchor="middle" font-size="8" font-weight="700" fill="#5B6472" opacity=".8">SAFETY COVER${doorOpen>0.5?' — OPEN':''}</text>`;
+    }
+
+    // ── HMI 조작반 ──
+    { const hx=FX1-42, hz=CAB_Z1-30;
+      s+=box(hx-24,hx+24,FY0-16,FY0-2,hz-18,hz+18,'url(#gAluT)','url(#gCase)','url(#gAluB)','#5A6470',1);
+      const p1=P(hx-19,FY0-16,hz+13), p2=P(hx+19,FY0-16,hz+13), p3=P(hx+19,FY0-16,hz-9), p4=P(hx-19,FY0-16,hz-9);
+      s+=`<polygon points="${pt(p1)} ${pt(p2)} ${pt(p3)} ${pt(p4)}" fill="${alarm?'#3B1D1D':'#16202B'}" stroke="#0D141B"/>`;
+      const tv=P(hx,FY0-17,hz+4);
+      s+=`<text x="${tv.x.toFixed(1)}" y="${tv.y.toFixed(1)}" text-anchor="middle" font-size="9" font-weight="900" fill="${verdict==='NG'?'#F87171':(verdict==='OK'?'#4ADE80':'#7C8896')}">${verdict||'READY'}</text>`;
+      [[-12,'#DC2626'],[0,'#16A34A'],[12,'#C7CDD6']].forEach(([dx,c])=>{
+        const q=P(hx+dx,FY0-16,hz-14);
+        s+=`<circle cx="${q.x.toFixed(1)}" cy="${q.y.toFixed(1)}" r="3.6" fill="${c}" stroke="#4B5563" stroke-width=".7"/>`; }); }
+
+    // ── 경광등 ──
+    { const bx=FX1-16, by=FY1-16;
+      s+=bar(P(bx,by,FZ),P(bx,by,FZ+16),6,'url(#gAluF)','#7C8896');
+      const t=P(bx,by,FZ+16);
+      const red=alarm, grn=!alarm && verdict==='OK';
+      s+=`<rect x="${(t.x-10).toFixed(1)}" y="${(t.y-38).toFixed(1)}" width="20" height="19" rx="4" fill="${red?'#DC2626':'#F1D2D0'}" stroke="#B4483F"${red?' filter="url(#fGlow)"':''}/>`;
+      s+=`<rect x="${(t.x-10).toFixed(1)}" y="${(t.y-19).toFixed(1)}" width="20" height="19" rx="4" fill="${grn?'#16A34A':'#D3E6D6'}" stroke="#4B8B58"${grn?' filter="url(#fGlow)"':''}/>`; }
+
+    // ── 치수 ──
+    s+=dimV(CX0-14,FY1+54,0,FZ,FH_MM+'','#2D5C99',9);
+    s+=dimH(FX0,FX1,FY0-52,0,FL_MM+'','#2D5C99',20);
+    s+=dimY(FY0,FY1,CX1+30,0,FW_MM+'','#2D5C99',12);
+    s+=dimH(CX0,FX0,FY0-34,CONV_Z+18,OVR_MM+'','#B45309',-8);
+    s+=dimH(FX1,CX1,FY0-34,CONV_Z+18,OVR_MM+'','#B45309',-8);
+    s+=dimV(CX1+18,FY0-22,0,CONV_Z,CONV_MM+'','#B45309',6);
+    // 라벨
+    { const a=P(CX0-2,FY0-34,CONV_Z+46);
+      s+=`<text x="${a.x.toFixed(1)}" y="${a.y.toFixed(1)}" text-anchor="middle" font-size="9.5" font-weight="900" fill="#5B6472" paint-order="stroke" stroke="#FFFFFF" stroke-width="3.4" stroke-linejoin="round">투입구</text>`;
+      const b=P(CX1+2,FY0-34,CONV_Z+46);
+      s+=`<text x="${b.x.toFixed(1)}" y="${b.y.toFixed(1)}" text-anchor="middle" font-size="9.5" font-weight="900" fill="#5B6472" paint-order="stroke" stroke="#FFFFFF" stroke-width="3.4" stroke-linejoin="round">배출구</text>`; }
+
+    scene.innerHTML=s;
+    updHUD();
+  }
+
+  function pcbBody(cx,zb){
+    let o='';
+    o+=box(cx-PCB_HW,cx+PCB_HW,CYC-PCB_HD,CYC+PCB_HD,zb,zb+3,'url(#gCase)','url(#gCase)','url(#gCase)','#0B0E11',1.1);
+    o+=box(cx-PCB_HW+3,cx+PCB_HW-3,CYC-PCB_HD+3,CYC+PCB_HD-3,zb+3,zb+5,'url(#gCover)','url(#gCover)','url(#gCover)','#828C99',.9);
+    o+=box(cx-PCB_HW+7,cx+PCB_HW-7,CYC-PCB_HD+5,CYC+PCB_HD-5,zb+5,zb+6.8,'url(#gPcb)','url(#gPcb)','url(#gPcb)','#17501E',.9);
+    [[-8,'#E3B93C',4],[0,'#48535F',6],[8,'#C0463A',3]].forEach(q=>{
+      o+=box(cx+q[0],cx+q[0]+q[2],CYC-3,CYC+2,zb+6.8,zb+8.2,q[1],q[1],q[1],'#00000033',.5); });
+    return o;
+  }
+
+  function updHUD(){
+    $('vL').textContent=FL_MM+'×'+FW_MM+'×'+FH_MM;
+    $('posVal').textContent = pcbX===null?'없음':(Math.abs(pcbX-INSPECT_X)<3?'검사위치':'이송 중');
+    $('chipPos').className='chip'+(pcbX!==null?' on':'');
+    $('stopVal').textContent = stopper>0.5?'상승':'하강';
+    $('chipStop').className='chip'+(stopper>0.5?' on':'');
+    $('lampVal').textContent=lightOn?'ON':'OFF';
+    $('chipLamp').className='chip'+(lightOn?' on':'');
+    $('senVal').textContent=s_in?'ON':'OFF';
+    $('chipSen').className='chip'+(s_in?' on':'');
+    $('doorVal').textContent=doorOpen>0.5?'개방':'닫힘';
+    $('chipDoor').className='chip'+(doorOpen>0.5?' on':'');
+  }
+
+  function renderSteps(){
+    let html='',last=null;
+    STATES.forEach((st,i)=>{
+      if(st.phase!==last){html+=`<div class="phase-h">${st.phase}</div>`;last=st.phase;}
+      const cls=(i<idx?'done ':'')+(i===idx?'cur ':'')+((st.type==='wait'||st.type==='alarmwait')?'wait ':'');
+      html+=`<div class="step ${cls}"><span class="no">${i+1}</span><span>${st.label}</span></div>`;
+    });
+    stepList.innerHTML=html;
+    const cur=stepList.querySelector('.step.cur'); if(cur)cur.scrollIntoView({block:'nearest',behavior:'smooth'});
+    const cs=STATES[idx];
+    if(cs){ $('stepMobileText').textContent=cs.label; $('stepMobile').querySelector('.no').textContent=(idx+1);
+      const m=$('stepMobile'); m.classList.toggle('wait',cs.type==='wait'); m.classList.toggle('alarm',cs.type==='alarmwait'); }
+  }
+  function durs(){ const v=parseInt($('speed').value||6,10);
+    return { scan:Math.round(3000-(v-1)*222), move:1150, act:340 }; }
+  function anim(dur,step,done){
+    const my=++animToken, t0=performance.now();
+    (function f(now){ if(my!==animToken)return;
+      const k=Math.min(((now||performance.now())-t0)/dur,1);
+      const e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
+      step(e,k); draw();
+      if(k<1)requestAnimationFrame(f); else { step(1,1); draw(); done&&done(); } })(performance.now());
+  }
+  function pause(ms,done){const my=++animToken;setTimeout(()=>{if(my===animToken)done&&done();},ms);}
+
+  function runState(){
+    if(!running)return; renderSteps();
+    const st=STATES[idx]; $('curStateText').textContent='진행: '+st.label;
+    if(st.cond==='ng' && verdict!=='NG') return next();
+
+    if(st.type==='infeed'){
+      addLog('[투입] '+st.label);
+      const x0=CX0-6, x1=INSPECT_X; pcbX=x0;
+      anim(durs().move*1.25, e=>{ pcbX=x0+(x1-x0)*e; beltPhase+=2.2; }, ()=>{ addLog('[투입] 검사위치 도달'); next(); });
+
+    } else if(st.type==='stopper'){
+      addLog('[스토퍼] '+st.label);
+      const s0=stopper, s1=st.on?1:0;
+      anim(durs().act*1.2, e=>{ stopper=s0+(s1-s0)*e; }, next);
+
+    } else if(st.type==='sensor'){
+      s_in=st.on; addLog('[센서] '+st.label); draw(); pause(durs().act,next);
+
+    } else if(st.type==='light'){
+      lightOn=st.on; addLog('[조명] '+st.label); draw(); pause(durs().act,next);
+
+    } else if(st.type==='scan'){
+      addLog('[비전] 스캔 시작 — 검사시간 '+(durs().scan/1000).toFixed(1)+'초 · 헤드 '+HEAD_MM+'mm · WD '+WD_MM+'mm');
+      anim(durs().scan, e=>{ scanT=e; }, ()=>{ scanT=-1; draw(); next(); });
+
+    } else if(st.type==='verdict'){
+      const sel=$('verdictSel').value;
+      if(sel==='OK')verdict='OK'; else if(sel==='NG')verdict='NG'; else {verdict=(autoTog%3===2)?'NG':'OK';autoTog++;}
+      $('verdictLamp').textContent=verdict; $('verdictLamp').className='verdict-lamp '+(verdict==='OK'?'ok':'ng');
+      addLog('[판정] '+verdict);
+      $('mesInd').className='mes-ind sending'; $('mesInd').innerHTML='<span class="dot"></span>MES 전송 중... ('+verdict+')'; draw();
+      pause(durs().act+260,()=>{ $('mesInd').className='mes-ind'; $('mesInd').innerHTML='<span class="dot"></span>MES 전송 완료 ('+verdict+')'; addLog('[MES] '+verdict+' 전송 완료'); next(); });
+
+    } else if(st.type==='alarmwait'){
+      alarm=true; doorOpen=1; $('alarmBanner').classList.add('show'); waitingSignal='RESUME'; updateSigBtns(); draw();
+      addLog('⚠ [알람] NG 발생 — 안전커버 인터록 해제 · NG품 제거 대기');
+      if($('autoSig').checked) autoTimer=setTimeout(()=>fireSignal('RESUME',true),2400);
+
+    } else if(st.type==='outfeed'){
+      addLog('[배출] '+st.label);
+      s_in=false;
+      if(pcbX===null) return next();
+      const x0=pcbX, x1=CX1+30;
+      anim(durs().move*1.3, e=>{ pcbX=x0+(x1-x0)*e; beltPhase+=2.2; }, ()=>{
+        pcbX=null; addLog('[배출 완료] 다음 공정으로 이송'); draw(); pause(durs().act,next); });
+
+    } else if(st.type==='wait'){
+      waitingSignal=st.signal; addLog('[대기] START 신호 대기...'); updateSigBtns(); draw();
+      if($('autoSig').checked) autoTimer=setTimeout(()=>fireSignal(st.signal,true),1100);
+    }
+  }
+
+  function next(){
+    idx++;
+    if(idx>=STATES.length){
+      idx=LOOP_START; cycleCount++; $('cycleCount').textContent=cycleCount;
+      if(verdict==='OK'){okCount++;$('okCount').textContent=okCount;} else if(verdict==='NG'){ngCount++;$('ngCount').textContent=ngCount;}
+      addLog('=== 1개 검사 완료 (총 '+cycleCount+'개) ===');
+    }
+    if(running) runState();
+  }
+
+  function updateSigBtns(){ $('sigStart').disabled=(waitingSignal!=='START'); $('btnResume').disabled=(waitingSignal!=='RESUME'); }
+  function fireSignal(sig,auto){
+    if(waitingSignal!==sig)return;
+    if(sig==='RESUME'){ pcbX=null; s_in=false; alarm=false; doorOpen=0; $('alarmBanner').classList.remove('show');
+      addLog((auto?'[자동신호] ':'[신호입력] ')+'NG품 제거 · 안전커버 재폐쇄 → 검사 재개'); }
+    else addLog((auto?'[자동신호] ':'[신호입력] ')+'START 수신 → 운전 개시');
+    waitingSignal=null; updateSigBtns(); if(autoTimer){clearTimeout(autoTimer);autoTimer=null;} next();
+  }
+
+  $('btnRun').addEventListener('click',()=>{ if(running)return; running=true; $('btnRun').disabled=true; addLog('▶ 자동 운전 시작'); runState(); });
+  $('btnStop').addEventListener('click',()=>{ running=false; animToken++; if(autoTimer){clearTimeout(autoTimer);autoTimer=null;} $('btnRun').disabled=false; addLog('■ 정지'); draw(); });
+  $('btnReset').addEventListener('click',()=>{
+    running=false; animToken++; if(autoTimer){clearTimeout(autoTimer);autoTimer=null;}
+    idx=0; waitingSignal=null; pcbX=null; stopper=0; lightOn=false; scanT=-1; s_in=false; alarm=false; doorOpen=0; verdict=null;
+    $('alarmBanner').classList.remove('show');
+    $('verdictLamp').textContent='--'; $('verdictLamp').className='verdict-lamp';
+    $('mesInd').className='mes-ind'; $('mesInd').innerHTML='<span class="dot"></span>MES 전송: 대기';
+    $('btnRun').disabled=false; updateSigBtns(); draw(); renderSteps(); $('curStateText').textContent=''; addLog('↺ 초기화');
+  });
+  $('sigStart').addEventListener('click',()=>fireSignal('START',false));
+  $('btnResume').addEventListener('click',()=>fireSignal('RESUME',false));
+  $('clearLog').addEventListener('click',()=>logBox.textContent='');
+  $('ckCover').addEventListener('change',draw);
+  $('autoSig').addEventListener('change',()=>{ if($('autoSig').checked&&running&&waitingSignal) autoTimer=setTimeout(()=>fireSignal(waitingSignal,true),1100); });
+
+  function setYaw(v){ VIEW.yaw=+v; $('viewYaw').value=v; $('yawVal').textContent=(+v).toFixed(0)+'°'; draw(); }
+  $('viewYaw').addEventListener('input',e=>setYaw(e.target.value));
+  $('btnFront').addEventListener('click',()=>setYaw(0));
+  $('btnIso').addEventListener('click',()=>setYaw(45));
+  $('btnSide').addEventListener('click',()=>setYaw(90));
+
+  draw(); renderSteps(); updateSigBtns();
+  addLog('사각 프레임 PCB 비전 검사기 시뮬레이터 FRAME v1.0 준비 완료. (프레임 '+FL_MM+'×'+FW_MM+'×'+FH_MM+' · 컨베이어 H'+CONV_MM+' · 돌출 '+OVR_MM+'/'+OVR_MM+')');
+</script>
+<script>
+(function(){
+  if(location.protocol==='file:') return;
+  var cur=null, TICK=30000;
+  function hash(s){ var h=0; for(var i=0;i<s.length;i++){h=(h*31+s.charCodeAt(i))|0;} return h; }
+  function fetchSelf(cb){ fetch(location.pathname+'?_cb='+Date.now(),{cache:'no-store'})
+    .then(function(r){return r.ok?r.text():null;}).then(function(t){ if(t) cb(hash(t)); }).catch(function(){}); }
+  function banner(){ if(document.getElementById('__upd'))return;
+    var d=document.createElement('div'); d.id='__upd';
+    d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:9999;background:#1E3A5F;color:#fff;font-family:"Noto Sans KR",sans-serif;font-size:13px;font-weight:700;padding:10px;text-align:center;cursor:pointer';
+    d.textContent='새 버전이 있습니다 — 지금 적용하려면 여기를 누르세요';
+    d.onclick=function(){ location.replace(location.pathname+'?v='+Date.now()); };
+    document.body.appendChild(d);
+    setTimeout(function(){ location.replace(location.pathname+'?v='+Date.now()); },5000); }
+  fetchSelf(function(h){cur=h;});
+  setInterval(function(){ fetchSelf(function(h){ if(cur!==null&&h!==cur) banner(); }); },TICK);
+})();
+</script>
+</body>
+</html>
