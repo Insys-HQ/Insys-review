@@ -101,7 +101,7 @@
   <div class="grid2">
     <div class="left-col">
     <section class="card">
-      <div class="card-header">동작 애니메이션 · 브릿지 5축 전동 스테이지</div>
+      <div class="card-header">동작 애니메이션 · 4주 갠트리 5축 전동 스테이지</div>
       <div class="card-body">
         <div id="stepMobile" class="step-mobile"><span class="no">1</span><span id="stepMobileText">START 대기</span></div>
         <div id="alarmBanner" class="alarm-banner">⚠ NG 검사 중단 — NG품 제거 후 [검사 계속]</div>
@@ -187,7 +187,7 @@
   </section>
 </main>
 
-<footer>인시스 AI혁신 연구개발실 · ys.kim@in-sys.co.kr · v3.5</footer>
+<footer>인시스 AI혁신 연구개발실 · ys.kim@in-sys.co.kr · v3.6</footer>
 
 <script>
   // ===== 3D 월드 (X:컨베이어, Y:깊이, Z:높이) · 90 unit ≙ 300mm =====
@@ -200,9 +200,10 @@
   const GY_F=-30, GY_B=100;              // 갠트리 레일 Y(앞/뒤)
   const GX0=BELT_X0-6, GX1=BELT_X1+6;    // 레일 X 범위
   const HEAD=35;                         // 기울기 피벗 ~ 렌즈 거리
-  const BRIDGE_X=INSPECT_X;              // 고정 브릿지 X 위치
-  const XR=72;                           // X축 스테이지 스트로크(±)
-  const XZ=15;                           // X축 스테이지 높이(빔 위)
+  const BRIDGE_X=INSPECT_X;              // 갠트리 중심 X 위치
+  const XR=34;                           // X축 유효 스트로크(±113mm) — 실제 이동 ±26unit
+  const GXS=58;                          // 갠트리 기둥 X 간격(±) — 모든 축은 기둥 안쪽에서만 이동
+  const XZ=13;                           // 이동 브릿지 높이(X레일 위)
   const HOME={ax:INSPECT_X, ay:PCB_YC, az:BRIDGE_Z-10, th:0, ph:0};
   const VIEW={yaw:35, pitch:22};
   const VCX=350, VCY=236, VOX=340, VOY=60;
@@ -320,14 +321,14 @@
       return `<rect x="${(t.x-6.5).toFixed(1)}" y="${t.y.toFixed(1)}" width="13" height="${(b.y-t.y).toFixed(1)}" fill="url(#gAluF)" stroke="#78838F" stroke-width=".8"/>`+
              `<rect x="${(t.x-3).toFixed(1)}" y="${(t.y+4).toFixed(1)}" width="3.5" height="${(b.y-t.y-10).toFixed(1)}" fill="#FFFFFF" opacity=".5"/>`+
              `<ellipse cx="${b.x.toFixed(1)}" cy="${b.y.toFixed(1)}" rx="14" ry="5" fill="url(#gAluT)" stroke="#8A94A1"/>`; }
-    // 고정 브릿지 뒤 기둥
-    s+=post(BRIDGE_X,GY_B);
+    // 갠트리 뒤 기둥 2개
+    s+=post(BRIDGE_X-GXS,GY_B)+post(BRIDGE_X+GXS,GY_B);
 
     // ── 컨베이어 ──
     const yA=BELT_Y0+RAIL_W, yB=BELT_Y1-RAIL_W;
     [BELT_X0+52, BELT_X1-52].forEach(lx=>{ const t1=P(lx,PCB_YC,BELT_Z-BELT_TH), t2=P(lx,PCB_YC,0);
       s+=`<rect x="${(t1.x-7).toFixed(1)}" y="${t1.y.toFixed(1)}" width="14" height="${(t2.y-t1.y).toFixed(1)}" fill="url(#gAluF)" stroke="#7E8996" stroke-width=".8"/>`; });
-    // ── vv3.5 : 컨베이어 양끝 라운드(반원 노즈) 마감 ──
+    // ── vv3.6 : 컨베이어 양끝 라운드(반원 노즈) 마감 ──
     const NR=(RAIL_Z-(BELT_Z-BELT_TH))/2, NZC=(RAIL_Z+(BELT_Z-BELT_TH))/2;  // 프레임 노즈 반경/중심Z
     const NXL=BELT_X0+NR, NXR=BELT_X1-NR;                                    // 노즈 중심 X (좌/우)
     const BWR=BELT_TH/2, BWZ=BELT_Z-BWR;                                     // 벨트 랩 반경/중심Z
@@ -390,43 +391,47 @@
       s+=`<rect x="${(cn.x-5).toFixed(1)}" y="${(cn.y-4).toFixed(1)}" width="10" height="9" rx="1" fill="#F58B1F" stroke="#B2600F" stroke-width=".7"/>`;
     }
 
-    // ── 이동식 브릿지 앞 기둥(시야 확보 위해 반투명) ──
-    s+=`<g opacity=".82">`+post(BRIDGE_X,GY_F)+`</g>`;
+    // ── 갠트리 앞 기둥 2개(시야 확보 위해 반투명) ──
+    s+=`<g opacity=".62">`+post(BRIDGE_X-GXS,GY_F)+post(BRIDGE_X+GXS,GY_F)+`</g>`;
     { // 500mm 높이 표시
-      const d1=P(BRIDGE_X-52,GY_F,BELT_Z), d2=P(BRIDGE_X-52,GY_F,BRIDGE_Z);
+      const d1=P(BRIDGE_X-GXS-26,GY_F,BELT_Z), d2=P(BRIDGE_X-GXS-26,GY_F,BRIDGE_Z);
       s+=`<line x1="${d1.x.toFixed(1)}" y1="${d1.y.toFixed(1)}" x2="${d2.x.toFixed(1)}" y2="${d2.y.toFixed(1)}" stroke="#2D5C99" stroke-width="1" stroke-dasharray="4 3"/>`;
       s+=`<text x="${(d2.x-6).toFixed(1)}" y="${((d1.y+d2.y)/2).toFixed(1)}" text-anchor="end" font-size="10" font-weight="900" fill="#2D5C99">500mm</text>`;
     }
 
-    // ── 고정 브릿지 빔 = Y축 레일 ──
-    s+=`<g filter="url(#fDrop)">`;
-    s+=bar(P(BRIDGE_X,GY_F,BRIDGE_Z),P(BRIDGE_X,GY_B,BRIDGE_Z),15,'url(#gSteel)');
-    s+=`</g>`;
-    [GY_F,GY_B].forEach(yy=>{ const q=P(BRIDGE_X,yy,BRIDGE_Z);
-      s+=`<rect x="${(q.x-11).toFixed(1)}" y="${(q.y-11).toFixed(1)}" width="22" height="22" rx="4" fill="url(#gSteel)" stroke="#7C8896"/>`; });
-    const yl=P(BRIDGE_X,GY_B+20,BRIDGE_Z);
-    s+=`<text x="${yl.x.toFixed(1)}" y="${(yl.y-16).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="900" fill="#2D5C99">Y축 레일</text>`;
+    // ── 상부 X축 레일 2줄(앞/뒤) : 기둥 사이 구간만 ──
+    // 각형 빔(3D 박스)으로 작도 — 정면/측면에서 bbox가 0이 되지 않도록
+    function beamX(x0,x1,yy,zc,hw,hh){
+      return quad(P(x0,yy-hw,zc+hh),P(x1,yy-hw,zc+hh),P(x1,yy+hw,zc+hh),P(x0,yy+hw,zc+hh),'url(#gAluT)','#7C8896',1)
+           + quad(P(x0,yy-hw,zc+hh),P(x1,yy-hw,zc+hh),P(x1,yy-hw,zc-hh),P(x0,yy-hw,zc-hh),'url(#gAluF)','#7C8896',1); }
+    function beamY(X,y0,y1,zc,hw,hh){
+      return quad(P(X-hw,y0,zc+hh),P(X+hw,y0,zc+hh),P(X+hw,y1,zc+hh),P(X-hw,y1,zc+hh),'url(#gSteel)','#7C8896',1)
+           + quad(P(X-hw,y0,zc+hh),P(X-hw,y1,zc+hh),P(X-hw,y1,zc-hh),P(X-hw,y0,zc-hh),'url(#gAluF)','#7C8896',1); }
+    [GY_B,GY_F].forEach(yy=>{
+      s+=beamX(BRIDGE_X-GXS,BRIDGE_X+GXS,yy,BRIDGE_Z,5,5.5);
+      [-GXS,GXS].forEach(dx=>{ const q=P(BRIDGE_X+dx,yy,BRIDGE_Z);
+        s+=`<rect x="${(q.x-7).toFixed(1)}" y="${(q.y-10).toFixed(1)}" width="14" height="20" rx="3" fill="url(#gSteel)" stroke="#7C8896"/>`; });
+      const q=P(ax,yy,BRIDGE_Z);   // X축 캐리지(기둥 안쪽에서만 이동)
+      s+=`<rect x="${(q.x-13).toFixed(1)}" y="${(q.y-12).toFixed(1)}" width="26" height="21" rx="4" fill="url(#gSteel)" stroke="#77838F" stroke-width="1.2"/>`;
+      s+=`<rect x="${(q.x-9).toFixed(1)}" y="${(q.y-9).toFixed(1)}" width="7" height="15" rx="3" fill="#FFFFFF" opacity=".55"/>`; });
+    { const xl=P(BRIDGE_X+GXS,GY_F,BRIDGE_Z);
+      s+=`<text x="${(xl.x+4).toFixed(1)}" y="${(xl.y+24).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="900" fill="#2D5C99">X축 레일</text>`; }
 
-    // ── Y축 캐리지 (빔 위 이동) ──
-    const cy0=P(BRIDGE_X,ay,BRIDGE_Z);
+    // ── 이동 브릿지 = Y축 레일 (X캐리지 위에서 함께 이동) ──
+    s+=beamY(ax,GY_F,GY_B,BRIDGE_Z+XZ,5.5,6);
+    [GY_F,GY_B].forEach(yy=>{ const q=P(ax,yy,BRIDGE_Z+XZ);
+      s+=`<rect x="${(q.x-10).toFixed(1)}" y="${(q.y-10).toFixed(1)}" width="20" height="20" rx="4" fill="url(#gSteel)" stroke="#7C8896"/>`; });
+    const yl=P(ax,GY_B+18,BRIDGE_Z+XZ);
+    s+=`<text x="${yl.x.toFixed(1)}" y="${(yl.y-14).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="900" fill="#2D5C99">Y축 레일</text>`;
+
+    // ── Y축 캐리지 (브릿지 위 이동) ──
+    const cy0=P(ax,ay,BRIDGE_Z+XZ);
     s+=`<rect x="${(cy0.x-16).toFixed(1)}" y="${(cy0.y-14).toFixed(1)}" width="32" height="24" rx="5" fill="url(#gSteel)" stroke="#77838F" stroke-width="1.2"/>`;
     s+=`<rect x="${(cy0.x-12).toFixed(1)}" y="${(cy0.y-11).toFixed(1)}" width="8" height="17" rx="3" fill="#FFFFFF" opacity=".55"/>`;
     s+=`<text x="${(cy0.x-24).toFixed(1)}" y="${(cy0.y+16).toFixed(1)}" text-anchor="end" font-size="10" font-weight="900" fill="#2D5C99">Y축</text>`;
 
-    // ── X축 스테이지 (Y캐리지 위, 컨베이어 방향) ──
-    s+=`<g filter="url(#fDrop)">`;
-    s+=bar(P(BRIDGE_X-XR,ay,BRIDGE_Z+XZ),P(BRIDGE_X+XR,ay,BRIDGE_Z+XZ),12,'url(#gAluT)');
-    s+=`</g>`;
-    [-XR,XR].forEach(dx=>{ const q=P(BRIDGE_X+dx,ay,BRIDGE_Z+XZ);
-      s+=`<rect x="${(q.x-6).toFixed(1)}" y="${(q.y-9).toFixed(1)}" width="12" height="18" rx="3" fill="url(#gSteel)" stroke="#7C8896"/>`; });
-    const xc=P(ax,ay,BRIDGE_Z+XZ);
-    s+=`<rect x="${(xc.x-15).toFixed(1)}" y="${(xc.y-13).toFixed(1)}" width="30" height="23" rx="5" fill="url(#gSteel)" stroke="#77838F" stroke-width="1.2"/>`;
-    s+=`<rect x="${(xc.x-11).toFixed(1)}" y="${(xc.y-10).toFixed(1)}" width="8" height="16" rx="3" fill="#FFFFFF" opacity=".55"/>`;
-    const xl=P(BRIDGE_X+XR+16,ay,BRIDGE_Z+XZ);
-    s+=`<text x="${xl.x.toFixed(1)}" y="${(xl.y-12).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="900" fill="#2D5C99">X축</text>`;
-
     // ── 위치확인 카메라 (X캐리지에 고정, 수직 하향) ──
-    const pcTop=P(ax+28,ay,BRIDGE_Z+XZ-8), pcBot=P(ax+28,ay,BRIDGE_Z+XZ-30);
+    const pcTop=P(ax+24,ay,BRIDGE_Z+XZ-8), pcBot=P(ax+24,ay,BRIDGE_Z+XZ-30);
     s+=bar(pcTop,pcBot,15,'url(#gCam)','#20262E');
     s+=`<circle cx="${pcBot.x.toFixed(1)}" cy="${pcBot.y.toFixed(1)}" r="5" fill="#12161B" stroke="#3C4652"/>`;
     s+=`<text x="${(pcTop.x+13).toFixed(1)}" y="${(pcTop.y-10).toFixed(1)}" font-size="8.5" font-weight="700" fill="#33404E">위치확인 카메라</text>`;
@@ -663,7 +668,7 @@
   $('btnSide').addEventListener('click',()=>setYaw(90));
 
   draw(); renderSteps(); updateSigBtns();
-  addLog('5축 갠트리 비전 검사 시뮬레이터 v3.5 준비 완료.');
+  addLog('5축 갠트리 비전 검사 시뮬레이터 v3.6 준비 완료.');
 </script>
 
 <script>
