@@ -186,7 +186,7 @@
   </section>
 </main>
 
-<footer>인시스 AI혁신 연구개발실 · ys.kim@in-sys.co.kr · Vision-JIG v1.2</footer>
+<footer>인시스 AI혁신 연구개발실 · ys.kim@in-sys.co.kr · Vision-JIG v1.3</footer>
 
 <script>
   // ===== 3D 월드 (X:이송방향, Y:깊이, Z:높이) · 90 unit ≙ 300mm =====
@@ -250,7 +250,7 @@
     { phase:'투입',      type:'load',      label:'작업자 PCB 안착 → 딸깍 래치 고정' },
     { phase:'투입',      type:'feed',      label:'검사 지그 이송 → 검사위치 (동시: 대기 지그 하부 리턴)' },
     { phase:'투입',      type:'sensor', on:true, label:'검사위치 센서 감지' },
-    { phase:'선행 대기', type:'standby',   label:'2번 지그 상승 → 안착부위 대기 · PCB 안착' },
+    { phase:'선행 대기', type:'standby',   label:'대기 지그 안착부위에서 PCB 안착 · 딸깍 고정' },
     { phase:'비전 검사', type:'light',  on:true, label:'돔 조명 ON' },
     { phase:'비전 검사', type:'scan',      label:'고정 비전 헤드 스캔 (초점 300mm)' },
     { phase:'판정',      type:'verdict',   label:'판정 + MES 전송' },
@@ -258,7 +258,7 @@
     { phase:'배출',      type:'light',  on:false, label:'돔 조명 OFF' },
     { phase:'배출',      type:'release',   label:'배출 이송 → 해제 캠 접촉 → 래치 개방' },
     { phase:'배출',      type:'strip',     label:'수직구간 진입 → 지그 하강 · PCB 분리' },
-    { phase:'배출',      type:'push',   cond:'ok', label:'PCB 배출 → 다음 공정 작업자' },
+    { phase:'배출',      type:'discharge', label:'PCB 배출 (동시: 빈 지그 즉시 안착위치로 하부 리턴)' },
     { phase:'지그 순환', type:'swap',      label:'지그 교대 — 대기 지그가 다음 검사 지그로' }
   ];
   const LOOP_START=1;
@@ -626,8 +626,10 @@
       if(isUp(b) && b.pcb) return next();
       addLog('[선행 대기] '+st.label);
       b.x=LIFT_L; b.latch=0;
-      anim(durs().move, e=>{ b.z=LO_Z+(UP_Z-LO_Z)*e; }, ()=>{
-        b.pcb=true; addLog('[작업자] 지그'+b.id+'에 PCB 안착'); draw();
+      const z0=b.z, rise=(UP_Z-z0)>1;
+      if(rise) addLog('[리프터 A] 지그'+b.id+' 상승 → 안착위치');
+      anim(rise?durs().move:1, e=>{ b.z=z0+(UP_Z-z0)*e; }, ()=>{
+        b.z=UP_Z; b.pcb=true; addLog('[작업자] 지그'+b.id+'에 PCB 안착'); draw();
         anim(durs().act*1.1, e=>{ b.latch=e; b.click=e; }, ()=>{
           b.click=-1; b.latch=1;
           addLog('[안착지그'+b.id+'] 딸깍 고정 — 안착부위에서 다음 검사 대기');
@@ -677,12 +679,19 @@
       if(a.pcb){ outX=LIFT_R; a.pcb=false; addLog('[분리] 스트리퍼 레일이 PCB를 잡아 지그'+a.id+'에서 분리'); }
       anim(durs().move, e=>{ a.z=UP_Z+(LO_Z-UP_Z)*e; }, ()=>{ addLog('[지그'+a.id+'] 하부 리턴면 도달'); next(); });
 
-    } else if(st.type==='push'){
-      addLog('[배출] 푸셔 전진 → PCB 슈트로 밀어냄');
-      pushOn=true;
-      const x0=LIFT_R, x1=CHUTE_X1-6;
-      anim(durs().move*1.2, e=>{ outX=x0+(x1-x0)*e; }, ()=>{
-        pushOn=false; addLog('[배출 완료] 다음 공정 작업자 앞으로 이송'); draw();
+    } else if(st.type==='discharge'){
+      const a=A(), has=(outX!==null);
+      if(has) addLog('[배출] 푸셔 전진 → PCB 슈트로 밀어냄');
+      addLog('[즉시 복귀] PCB 분리 완료 → 지그'+a.id+' 하부 리턴 개시 (우 → 좌)');
+      pushOn=has;
+      const px0=LIFT_R, px1=CHUTE_X1-6, jx0=a.x;
+      anim(durs().move*1.3, e=>{
+        if(has) outX=px0+(px1-px0)*Math.min(1,e/0.8);
+        a.x=jx0+(LIFT_L-jx0)*e; a.z=LO_Z;
+      }, ()=>{
+        a.x=LIFT_L; a.z=LO_Z; pushOn=false;
+        if(has) addLog('[배출 완료] 다음 공정 작업자 앞으로 이송');
+        addLog('[지그'+a.id+'] 안착위치 하부 도착 — 앞 지그 출발 후 상승'); draw();
         pause(durs().act,()=>{ outX=null; next(); }); });
 
     } else if(st.type==='swap'){
@@ -741,7 +750,7 @@
   $('btnSide').addEventListener('click',()=>setYaw(90));
 
   draw(); renderSteps(); updateSigBtns();
-  addLog('안착지그 2대 순환식 비전 검사 시뮬레이터 Vision-JIG v1.2 준비 완료.');
+  addLog('안착지그 2대 순환식 비전 검사 시뮬레이터 Vision-JIG v1.3 준비 완료.');
 </script>
 <script>
 (function(){
