@@ -133,7 +133,7 @@
           </div>
         </div>
 
-        <svg viewBox="112 30 384 634" id="scene"></svg>
+        <svg viewBox="104 28 404 636" id="scene"></svg>
         <div class="row" style="margin-top:4px;gap:6px;flex-wrap:nowrap;">
           <span style="font-size:12px;color:var(--text-light);white-space:nowrap;">시점 <b id="yawVal" style="color:var(--navy-dark);">35°</b></span>
           <input type="range" id="viewYaw" min="0" max="90" value="35" style="flex:0 1 130px;min-width:70px;">
@@ -187,17 +187,19 @@
   </section>
 </main>
 
-<footer>인시스 AI혁신 연구개발실 · ys.kim@in-sys.co.kr · FRAME v1.1</footer>
+<footer>인시스 AI혁신 연구개발실 · ys.kim@in-sys.co.kr · FRAME v1.2</footer>
 
 <script>
   // ===== 3D 월드 · 90 unit ≙ 300mm =====
   const U2MM=300/90, MM=v=>v/U2MM;
-  const FL_MM=500, FW_MM=500, FH_MM=1600, CONV_MM=700, OVR_MM=100;
+  const FL_MM=500, FW_MM=500, FH_MM=1500, CONV_MM=700, OVR_MM=150;
+  const BW_MM=200, FCV_MM=50, RCV_MM=150;          // 벨트폭 / 전면커버 / 후면커버
   const FX0=282, FX1=FX0+MM(FL_MM), FY0=0, FY1=FY0+MM(FW_MM), FZ=MM(FH_MM);
   const PROF=MM(30);                               // 30×30 알루미늄 프로파일
   const CONV_Z=MM(CONV_MM), OVR=MM(OVR_MM);
   const CX0=FX0-OVR, CX1=FX1+OVR;                  // 컨베이어 전장 (돌출 포함)
-  const CY0=FY0+34, CY1=FY1-34, CYC=(CY0+CY1)/2;   // 벨트 폭
+  const CY0=FY0+MM(FCV_MM), CY1=CY0+MM(BW_MM), CYC=(CY0+CY1)/2;   // 벨트 폭 200mm
+  const RCV_Y=CY1+MM(RCV_MM);                                     // 후면 커버 끝단
   // 벨트 루프 : 지그 7EA 고정
   const R=15, RMM=Math.round(R*U2MM);              // 풀리 반경 50mm
   const ZC=CONV_Z-R, LO_Z=ZC-R;
@@ -382,6 +384,9 @@
     // 상부 뒤 패널
     s+=panel([P(FX0,FY1,UP_Z1),P(FX1,FY1,UP_Z1),P(FX1,FY1,UP_Z0),P(FX0,FY1,UP_Z0)],'#DCE3EB',1,'#9AA6B4');
 
+    // 컨베이어 후면 150mm 커버 (벨트 뒤쪽 → 먼저 도시)
+    s+=box(CX0+2,CX1-2,CY1,RCV_Y,CONV_Z-5,CONV_Z+1,'url(#gAluT)','url(#gAluF)','url(#gAluB)','#7C8896',.9);
+
     // ── 컨베이어 벨트 루프 (H700) + 안착지그 7EA ──
     s+=`<path d="M${stadium(CY1+7,PX_L,PX_R,ZC,R+7).map(pt).join(' L')} Z" fill="url(#gAluB)" stroke="#6E7885" stroke-width="1"/>`;
     s+=quad(P(PX_L,CY0,LO_Z),P(PX_R,CY0,LO_Z),P(PX_R,CY1,LO_Z),P(PX_L,CY1,LO_Z),'url(#gBelt)','#7E8792',1);
@@ -400,10 +405,15 @@
     { const cy=CY0-13, z0=CONV_Z+2, z1=CONV_Z+9;   // 래치 해제 캠
       s+=`<polygon points="${pt(P(CAM_X-8,cy,z0))} ${pt(P(CAM_X+CAM_RUN,cy,z1))} ${pt(P(CAM_X+CAM_RUN+26,cy,z1))} ${pt(P(CAM_X+CAM_RUN+26,cy,z0))}" fill="url(#gAluT)" stroke="#7C8896" stroke-width=".9"/>`; }
     JIGS.forEach(j=>{ const q=beltPos(beltS+j.s0); if(q.nz>0.9) s+=drawJig(j,q); });
+    // 컨베이어 전면 50mm / 후면 150mm 커버
+    s+=box(CX0+2,CX1-2,FY0,CY0,CONV_Z-5,CONV_Z+1,'url(#gAluT)','url(#gAluF)','url(#gAluB)','#7C8896',.9);
+    { const a=P(CX0+22,(FY0+CY0)/2,CONV_Z+2), b=P(CX0+22,(CY1+RCV_Y)/2,CONV_Z+2);
+      s+=`<text x="${a.x.toFixed(1)}" y="${(a.y+3).toFixed(1)}" text-anchor="middle" font-size="7.5" font-weight="900" fill="#5B6472">50</text>`;
+      s+=`<text x="${b.x.toFixed(1)}" y="${(b.y+3).toFixed(1)}" text-anchor="middle" font-size="7.5" font-weight="900" fill="#5B6472">150</text>`; }
     [[LOAD_X,'안착'],[INSPECT_X,'검사'],[OUT_X,'배출']].forEach(([sx,lb])=>{
-      const a=P(sx,CY1+8,CONV_Z+2), b2=P(sx,CY1+22,CONV_Z+30);
+      const a=P(sx,CY0-1,CONV_Z+2), b2=P(sx,FY0-30,CONV_Z+24);
       s+=`<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b2.x.toFixed(1)}" y2="${b2.y.toFixed(1)}" stroke="#9AA6B4" stroke-width=".8" stroke-dasharray="3 2"/>`;
-      s+=`<text x="${b2.x.toFixed(1)}" y="${(b2.y-3).toFixed(1)}" text-anchor="middle" font-size="8.5" font-weight="900" fill="#5B6472">${lb}</text>`; });
+      s+=`<text x="${b2.x.toFixed(1)}" y="${(b2.y-3).toFixed(1)}" text-anchor="middle" font-size="8.5" font-weight="900" fill="#5B6472" paint-order="stroke" stroke="#FFFFFF" stroke-width="3" stroke-linejoin="round">${lb}위치</text>`; });
 
     // ── 배출 중인 PCB + 푸셔 ──
     if(outX!==null){
@@ -485,7 +495,6 @@
       const op=doorOpen>0.5?0.10:0.24;
       s+=panel([P(FX0,FY0,UP_Z1),P(FX1,FY0,UP_Z1),P(FX1,FY0,UP_Z0),P(FX0,FY0,UP_Z0)],'#9EC6E8',op,'#8FA9C2');
       s+=panel([P(FX0,FY0,UP_Z0),P(FX0,FY1,UP_Z0),P(FX0,FY1,UP_Z1),P(FX0,FY0,UP_Z1)],'#9EC6E8',op*0.8,'#8FA9C2');
-      s+=panel([P(FX0,FY0,FZ-PROF),P(FX1,FY0,FZ-PROF),P(FX1,FY1,FZ-PROF),P(FX0,FY1,FZ-PROF)],'#B7D3EC',op*0.7,'#8FA9C2');
       const hd=P(FX1-30,FY0-2,(UP_Z0+UP_Z1)/2);
       s+=bar(P(FX1-30,FY0-2,(UP_Z0+UP_Z1)/2+10),P(FX1-30,FY0-2,(UP_Z0+UP_Z1)/2-10),4.5,'url(#gSteel)','#5A6470');
       const lb=P(INSPECT_X,FY0-2,UP_Z1-16);
@@ -503,6 +512,12 @@
         const q=P(hx+dx,FY0-16,hz-14);
         s+=`<circle cx="${q.x.toFixed(1)}" cy="${q.y.toFixed(1)}" r="3.6" fill="${c}" stroke="#4B5563" stroke-width=".7"/>`; }); }
 
+    // ── 상단 4각 프레임 (재도시) ──
+    s+=beamY(FX0,FY0,FY1,FZ-PROF/2,PROF);
+    s+=beamY(FX1,FY0,FY1,FZ-PROF/2,PROF);
+    s+=beamX(FX0,FX1,FY1,FZ-PROF/2,PROF);
+    s+=beamX(FX0,FX1,FY0,FZ-PROF/2,PROF);
+
     // ── 경광등 ──
     { const bx=FX1-16, by=FY1-16;
       s+=bar(P(bx,by,FZ),P(bx,by,FZ+16),6,'url(#gAluF)','#7C8896');
@@ -515,6 +530,7 @@
     s+=dimV(CX0-14,FY1+54,0,FZ,FH_MM+'','#2D5C99',9);
     s+=dimH(FX0,FX1,FY0-52,0,FL_MM+'','#2D5C99',20);
     s+=dimY(FY0,FY1,CX1+30,0,FW_MM+'','#2D5C99',12);
+    s+=dimY(CY0,CY1,CX0-4,CONV_Z+30,BW_MM+'','#7A3E9D',10);
     s+=dimH(CX0,FX0,FY0-34,CONV_Z+18,OVR_MM+'','#B45309',-8);
     s+=dimH(FX1,CX1,FY0-34,CONV_Z+18,OVR_MM+'','#B45309',-8);
     s+=dimV(CX1+18,FY0-22,0,CONV_Z,CONV_MM+'','#B45309',6);
@@ -721,7 +737,7 @@
     if(jo){ jo.pcb=true; jo.latch=0; }
     lightOn=false; scanT=-1; s_in=false; alarm=false; doorOpen=0; verdict=null; }
   initLine(); draw(); renderSteps(); updateSigBtns();
-  addLog('사각 프레임 PCB 비전 검사기 시뮬레이터 FRAME v1.1 준비 완료. (프레임 '+FL_MM+'×'+FW_MM+'×'+FH_MM+' · 컨베이어 H'+CONV_MM+' · 돌출 '+OVR_MM+'/'+OVR_MM+')');
+  addLog('사각 프레임 PCB 비전 검사기 시뮬레이터 FRAME v1.2 준비 완료. (프레임 '+FL_MM+'×'+FW_MM+'×'+FH_MM+' · 컨베이어 H'+CONV_MM+' · 돌출 '+OVR_MM+'/'+OVR_MM+')');
 </script>
 <script>
 (function(){
