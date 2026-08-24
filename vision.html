@@ -215,7 +215,7 @@
   </section>
 </main>
 
-<footer>인시스 AI혁신 연구개발실 · ys.kim@in-sys.co.kr · v1.6</footer>
+<footer>인시스 AI혁신 연구개발실 · ys.kim@in-sys.co.kr · v1.7</footer>
 
 <script>
   // ===== 3D 월드 좌표 (X:컨베이어 방향, Y:안쪽 깊이, Z:높이) =====
@@ -407,27 +407,41 @@
       const t1=P(lx,PCB_YC,BELT_Z-BELT_TH), t2=P(lx,PCB_YC,0);
       s+=`<rect x="${(t1.x-7).toFixed(1)}" y="${t1.y.toFixed(1)}" width="14" height="${(t2.y-t1.y).toFixed(1)}" fill="url(#gAluF)" stroke="#7E8996" stroke-width=".8"/>`;
       s+=`<rect x="${(t1.x-3).toFixed(1)}" y="${(t1.y+3).toFixed(1)}" width="3" height="${(t2.y-t1.y-8).toFixed(1)}" fill="#FFFFFF" opacity=".5"/>`; });
-    // 벨트 측면(앞)
-    s+=quad(P(BELT_X0,BELT_Y0,RAIL_Z),P(BELT_X1,BELT_Y0,RAIL_Z),P(BELT_X1,BELT_Y0,BELT_Z-BELT_TH),P(BELT_X0,BELT_Y0,BELT_Z-BELT_TH),'url(#gAluF)','#78838F',1);
-    s+=quad(P(BELT_X0,BELT_Y0,RAIL_Z-3),P(BELT_X1,BELT_Y0,RAIL_Z-3),P(BELT_X1,BELT_Y0,RAIL_Z-6),P(BELT_X0,BELT_Y0,RAIL_Z-6),'#FFFFFF','',0);
-    s+=quad(P(BELT_X0,BELT_Y1,RAIL_Z),P(BELT_X1,BELT_Y1,RAIL_Z),P(BELT_X1,BELT_Y1,BELT_Z-BELT_TH),P(BELT_X0,BELT_Y1,BELT_Z-BELT_TH),'url(#gAluB)','#6E7885',1);
-    // 벨트 상면
-    s+=quad(P(BELT_X0,yA,BELT_Z),P(BELT_X1,yA,BELT_Z),P(BELT_X1,yB,BELT_Z),P(BELT_X0,yB,BELT_Z),'url(#gBelt)','#1B1F24',1);
+    // ── vv1.7 : 컨베이어 양끝 라운드(반원 노즈) 마감 ──
+    const NR=(RAIL_Z-(BELT_Z-BELT_TH))/2, NZC=(RAIL_Z+(BELT_Z-BELT_TH))/2;  // 프레임 노즈 반경/중심Z
+    const NXL=BELT_X0+NR, NXR=BELT_X1-NR;                                    // 노즈 중심 X (좌/우)
+    const BWR=BELT_TH/2, BWZ=BELT_Z-BWR;                                     // 벨트 랩 반경/중심Z
+    function framePath(Y){ const N=14, ps=[];
+      for(let i=0;i<=N;i++){ const a=(-90+180*i/N)*Math.PI/180; ps.push(P(NXR+NR*Math.cos(a),Y,NZC+NR*Math.sin(a))); }
+      for(let i=0;i<=N;i++){ const a=( 90+180*i/N)*Math.PI/180; ps.push(P(NXL+NR*Math.cos(a),Y,NZC+NR*Math.sin(a))); }
+      return ps.map(pt).join(' '); }
+    function wrapFace(cx,rr,zc,dir,y1,y2,fill,stroke){ const N=12, u=[], v=[];
+      for(let i=0;i<=N;i++){ const a=(90-180*i/N)*Math.PI/180, X=cx+dir*rr*Math.cos(a), Z=zc+rr*Math.sin(a);
+        u.push(P(X,y1,Z)); v.push(P(X,y2,Z)); }
+      return `<polygon points="${u.concat(v.reverse()).map(pt).join(' ')}" fill="${fill}" stroke="${stroke}" stroke-width="1"/>`; }
+    // 벨트 측면(앞/뒤) — 라운드 프로파일
+    s+=`<polygon points="${framePath(BELT_Y0)}" fill="url(#gAluF)" stroke="#78838F" stroke-width="1"/>`;
+    s+=quad(P(NXL,BELT_Y0,RAIL_Z-3),P(NXR,BELT_Y0,RAIL_Z-3),P(NXR,BELT_Y0,RAIL_Z-6),P(NXL,BELT_Y0,RAIL_Z-6),'#FFFFFF','',0);
+    s+=`<polygon points="${framePath(BELT_Y1)}" fill="url(#gAluB)" stroke="#6E7885" stroke-width="1"/>`;
+    s+=wrapFace(NXL,NR,NZC,-1,yB,BELT_Y1,'url(#gAluT)','#7C8896');
+    s+=wrapFace(NXR,NR,NZC, 1,yB,BELT_Y1,'url(#gAluT)','#7C8896');
+    // 벨트 상면 + 양끝 랩
+    s+=quad(P(NXL,yA,BELT_Z),P(NXR,yA,BELT_Z),P(NXR,yB,BELT_Z),P(NXL,yB,BELT_Z),'url(#gBelt)','#1B1F24',1);
+    s+=wrapFace(NXL,BWR,BWZ,-1,yA,yB,'url(#gBelt)','#1B1F24');
+    s+=wrapFace(NXR,BWR,BWZ, 1,yA,yB,'url(#gBelt)','#1B1F24');
     const sp=30, off=((beltPhase%sp)+sp)%sp;
-    for(let rx=BELT_X0+12+off-sp; rx<BELT_X1-2; rx+=sp){ if(rx<=BELT_X0+2) continue;
+    for(let rx=NXL+off-sp; rx<NXR; rx+=sp){ if(rx<=NXL) continue;
       const a1=P(rx,yA,BELT_Z), a2=P(rx,yB,BELT_Z);
       s+=`<line x1="${a1.x.toFixed(1)}" y1="${a1.y.toFixed(1)}" x2="${a2.x.toFixed(1)}" y2="${a2.y.toFixed(1)}" stroke="#5A626C" stroke-width="1.6" opacity=".75"/>`;
       const c1=P(rx+2,yA,BELT_Z), c2=P(rx+2,yB,BELT_Z);
       s+=`<line x1="${c1.x.toFixed(1)}" y1="${c1.y.toFixed(1)}" x2="${c2.x.toFixed(1)}" y2="${c2.y.toFixed(1)}" stroke="#14171B" stroke-width="1"/>`; }
     // 벨트 광택 스트립
-    s+=quad(P(BELT_X0,yA+6,BELT_Z+.3),P(BELT_X1,yA+6,BELT_Z+.3),P(BELT_X1,yA+16,BELT_Z+.3),P(BELT_X0,yA+16,BELT_Z+.3),'#8E97A3','',0).replace('/>',' opacity=".13"/>');
-    // 사이드 프레임(상면)
-    s+=quad(P(BELT_X0,BELT_Y0,RAIL_Z),P(BELT_X1,BELT_Y0,RAIL_Z),P(BELT_X1,yA,RAIL_Z),P(BELT_X0,yA,RAIL_Z),'url(#gAluT)','#8892A0',1);
-    s+=quad(P(BELT_X0,yB,RAIL_Z),P(BELT_X1,yB,RAIL_Z),P(BELT_X1,BELT_Y1,RAIL_Z),P(BELT_X0,BELT_Y1,RAIL_Z),'url(#gAluT)','#8892A0',1);
-    // 풀리
-    [BELT_X0,BELT_X1].forEach(px=>{ const q=P(px,PCB_YC,BELT_Z-BELT_TH/2);
-      s+=`<circle cx="${q.x.toFixed(1)}" cy="${q.y.toFixed(1)}" r="15" fill="url(#gPulley)" stroke="#5B6470"/>`;
-      s+=`<circle cx="${q.x.toFixed(1)}" cy="${q.y.toFixed(1)}" r="4.5" fill="#39424D"/>`; });
+    s+=quad(P(NXL,yA+6,BELT_Z+.3),P(NXR,yA+6,BELT_Z+.3),P(NXR,yA+16,BELT_Z+.3),P(NXL,yA+16,BELT_Z+.3),'#8E97A3','',0).replace('/>',' opacity=".13"/>');
+    // 사이드 프레임(상면) + 노즈 랩
+    s+=quad(P(NXL,BELT_Y0,RAIL_Z),P(NXR,BELT_Y0,RAIL_Z),P(NXR,yA,RAIL_Z),P(NXL,yA,RAIL_Z),'url(#gAluT)','#8892A0',1);
+    s+=quad(P(NXL,yB,RAIL_Z),P(NXR,yB,RAIL_Z),P(NXR,BELT_Y1,RAIL_Z),P(NXL,BELT_Y1,RAIL_Z),'url(#gAluT)','#8892A0',1);
+    s+=wrapFace(NXL,NR,NZC,-1,BELT_Y0,yA,'url(#gAluT)','#7C8896');
+    s+=wrapFace(NXR,NR,NZC, 1,BELT_Y0,yA,'url(#gAluT)','#7C8896');
     // 이송 방향 화살표
     const ar=[P(455,PCB_YC-8,BELT_Z+1),P(487,PCB_YC-8,BELT_Z+1),P(487,PCB_YC-17,BELT_Z+1),P(512,PCB_YC,BELT_Z+1),P(487,PCB_YC+17,BELT_Z+1),P(487,PCB_YC+8,BELT_Z+1),P(455,PCB_YC+8,BELT_Z+1)];
     s+=`<polygon points="${ar.map(pt).join(' ')}" fill="#F5C518" stroke="#A97F00" stroke-width="1.2" filter="url(#fBlurS)" opacity=".35"/>`;
@@ -662,7 +676,7 @@
   $('btnSide').addEventListener('click',()=>setYaw(90));
 
   draw(); renderSteps(); updateSigBtns();
-  addLog('비전 검사 시뮬레이터 v1.6 준비 완료. "자동 운전 시작"을 누르세요.');
+  addLog('비전 검사 시뮬레이터 v1.7 준비 완료. "자동 운전 시작"을 누르세요.');
 </script>
 
 <!-- 최신버전 자동 감지: 서버 파일이 바뀌면 새로고침 없이 자동 반영 -->
