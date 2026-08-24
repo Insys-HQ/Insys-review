@@ -109,7 +109,7 @@
         <div class="axisbar" style="grid-template-columns:repeat(4,1fr);">
           <div class="ax" id="axL"><div class="k">프레임 (L×W×H)</div><div class="v" id="vL">-</div></div>
           <div class="ax" id="axC"><div class="k">컨베이어 높이</div><div class="v" id="vC">700 mm</div></div>
-          <div class="ax" id="axO"><div class="k">투입/배출 돌출</div><div class="v" id="vO">100 / 100 mm</div></div>
+          <div class="ax" id="axO"><div class="k">컨베이어 전장</div><div class="v" id="vO">-</div></div>
           <div class="ax" id="axF"><div class="k">조명~PCB (WD)</div><div class="v" id="vF">250 mm</div></div>
         </div>
 
@@ -187,12 +187,12 @@
   </section>
 </main>
 
-<footer>인시스 AI혁신 연구개발실 · ys.kim@in-sys.co.kr · FRAME v1.5</footer>
+<footer>인시스 AI혁신 연구개발실 · ys.kim@in-sys.co.kr · FRAME v1.6</footer>
 
 <script>
   // ===== 3D 월드 · 90 unit ≙ 300mm =====
   const U2MM=300/90, MM=v=>v/U2MM;
-  const FL_MM=500, FW_MM=500, FH_MM=1500, CONV_MM=700, OVR_MM=150;
+  const FL_MM=500, FW_MM=500, FH_MM=1500, CONV_MM=700, OVR_MM=0;   // 모든 구조물 프레임 내부
   const BW_MM=200, FCV_MM=50, RCV_MM=250;          // 벨트폭 / 전면커버 / 후면커버 (50+200+250=500 폭 전체)
   const FX0=282, FX1=FX0+MM(FL_MM), FY0=0, FY1=FY0+MM(FW_MM), FZ=MM(FH_MM);
   const PROF=MM(30);                               // 30×30 알루미늄 프로파일
@@ -498,17 +498,10 @@
         const q=P(hx+dx,FY0-16,hz-14);
         s+=`<circle cx="${q.x.toFixed(1)}" cy="${q.y.toFixed(1)}" r="3.6" fill="${c}" stroke="#4B5563" stroke-width=".7"/>`; }); }
 
-    // ── 투입구/배출구 돌출 컨베이어 재도시 (커버 요철 통과부) ──
-    { const cy0=CY0-12, cy1=CY1+12, cz0=LO_Z-14, cz1=CONV_Z+16;
-      s+=boxClip('clipInF',CX0-6,FX0+1,cy0,cy1,cz0,cz1);
-      s+=boxClip('clipOutF',FX1-1,CX1+6,cy0,cy1,cz0,cz1);
-      const g=convDraw();
-      s+=`<g clip-path="url(#clipInF)">${g}</g>`;
-      s+=`<g clip-path="url(#clipOutF)">${g}</g>`;
-      // 커버 요철(파낸 개구부) 테두리 표시
-      [[FX0,-1],[FX1,1]].forEach(([fx,dir])=>{
-        const n1=P(fx,CY0-9,LO_Z-10), n2=P(fx,CY1+9,LO_Z-10), n3=P(fx,CY1+9,CONV_Z+7), n4=P(fx,CY0-9,CONV_Z+7);
-        s+=`<polygon points="${pt(n1)} ${pt(n2)} ${pt(n3)} ${pt(n4)}" fill="none" stroke="#9AA6B4" stroke-width="1.1" stroke-dasharray="3 2"/>`; }); }
+    // ── 컨베이어 통과 개구부(요철) 테두리 ──
+    [FX0,FX1].forEach(fx=>{
+      const n1=P(fx,CY0-8,LO_Z-9), n2=P(fx,CY1+8,LO_Z-9), n3=P(fx,CY1+8,CONV_Z+7), n4=P(fx,CY0-8,CONV_Z+7);
+      s+=`<polygon points="${pt(n1)} ${pt(n2)} ${pt(n3)} ${pt(n4)}" fill="none" stroke="#9AA6B4" stroke-width="1.1" stroke-dasharray="3 2"/>`; });
 
     // ── 상단 4각 프레임 (재도시) ──
     s+=beamY(FX0,FY0,FY1,FZ-PROF/2,PROF);
@@ -529,13 +522,12 @@
     s+=dimH(FX0,FX1,FY0-52,0,FL_MM+'','#2D5C99',20);
     s+=dimY(FY0,FY1,CX1+30,0,FW_MM+'','#2D5C99',12);
     s+=dimY(CY0,CY1,CX0-14,CONV_Z+46,BW_MM+'','#7A3E9D',10);
-    s+=dimH(CX0,FX0,FY0-34,CONV_Z+18,OVR_MM+'','#B45309',-8);
-    s+=dimH(FX1,CX1,FY0-34,CONV_Z+18,OVR_MM+'','#B45309',-8);
-    s+=dimV(CX1+18,FY0-22,0,CONV_Z,CONV_MM+'','#B45309',6);
+    s+=dimH(CX0,CX1,FY0-60,CONV_Z-4,(FL_MM)+'','#B45309',18);
+    s+=dimV(FX1+30,FY0-30,0,CONV_Z,CONV_MM+'','#B45309',6);
     // 라벨
-    { const a=P(CX0-6,FY0-40,CONV_Z-10);
+    { const a=P(FX0-4,FY0-60,CONV_Z+16);
       s+=`<text x="${a.x.toFixed(1)}" y="${a.y.toFixed(1)}" text-anchor="middle" font-size="9.5" font-weight="900" fill="#5B6472" paint-order="stroke" stroke="#FFFFFF" stroke-width="3.4" stroke-linejoin="round">투입구</text>`;
-      const b=P(CX1+6,FY0-40,CONV_Z-10);
+      const b=P(FX1+4,FY0-60,CONV_Z+16);
       s+=`<text x="${b.x.toFixed(1)}" y="${b.y.toFixed(1)}" text-anchor="middle" font-size="9.5" font-weight="900" fill="#5B6472" paint-order="stroke" stroke="#FFFFFF" stroke-width="3.4" stroke-linejoin="round">배출구</text>`; }
 
     scene.innerHTML=s;
@@ -619,6 +611,7 @@
 
   function updHUD(){
     $('vL').textContent=FL_MM+'×'+FW_MM+'×'+FH_MM;
+    $('vO').textContent=((CX1-CX0)*U2MM).toFixed(0)+' mm (프레임 내부)';
     const jl=jigAtLoad(), ji=jigAtIns(), jo=jigAtOut();
     $('posVal').textContent = ji?('J'+ji.id+(ji.pcb?' · PCB':' · 빈')):'없음';
     $('chipPos').className='chip'+((ji&&ji.pcb)?' on':'');
@@ -768,7 +761,7 @@
     if(jo){ jo.pcb=true; jo.latch=0; }
     lightOn=false; scanT=-1; s_in=false; alarm=false; doorOpen=0; verdict=null; }
   initLine(); draw(); renderSteps(); updateSigBtns();
-  addLog('사각 프레임 PCB 비전 검사기 시뮬레이터 FRAME v1.5 준비 완료. (프레임 '+FL_MM+'×'+FW_MM+'×'+FH_MM+' · 컨베이어 H'+CONV_MM+' · 돌출 '+OVR_MM+'/'+OVR_MM+')');
+  addLog('사각 프레임 PCB 비전 검사기 시뮬레이터 FRAME v1.6 준비 완료. (프레임 '+FL_MM+'×'+FW_MM+'×'+FH_MM+' · 컨베이어 H'+CONV_MM+' · 전 구조물 프레임 내부)');
 </script>
 <script>
 (function(){
