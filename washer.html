@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>세척기 설계 시뮬레이터 v3.12 | 인시스 AI혁신 R&D센터</title>
+<title>세척기 설계 시뮬레이터 v3.13 | 인시스 AI혁신 R&D센터</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -269,7 +269,7 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
        title="새 탭에서 열기">🔗 바로가기</a>
     <button class="vt on" id="bPC">PC</button>
     <button class="vt" id="bMB">Mobile</button>
-    <span class="vb">v3.12</span>
+    <span class="vb">v3.13</span>
   </div>
 </div><!-- /hdr-inner -->
 </div>
@@ -786,7 +786,7 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
 
 </div><!-- /rp -->
 </div><!-- /wrap -->
-<footer>인시스 AI혁신 R&D센터 | 세척기 설계 시뮬레이터 v3.12 | ys.kim@in-sys.co.kr</footer>
+<footer>인시스 AI혁신 R&D센터 | 세척기 설계 시뮬레이터 v3.13 | ys.kim@in-sys.co.kr</footer>
 
 <script>
 'use strict';
@@ -803,7 +803,7 @@ const DIRT={
   hole: [0,  3.0,  2.5,  2.5,  2.0,  1.8],
 };
 const HP_PER_KW=1.341;
-const LS_KEY='washer_v312_last'; // localStorage 키
+const LS_KEY='washer_v313_last'; // localStorage 키
 
 // ── SUS 배관 규격 (KS B 1501 / JIS B 2311 스케줄 10S 기준) ──
 const SUS_PIPES=[
@@ -1967,7 +1967,7 @@ function buildSpecTable(hole,press,nc,nr,gapX,gapY,manW,spPipeNm,spPipeID,suPipe
     ['펌프 유량',`${Math.round(pFlow)}LPM`,`${Math.round(OPT.totalQ||pFlow)}LPM`,'노즐합×1.15','Σ노즐유량','tg-g'],
     ['펌프 마력',`${pHP.toFixed(2)}HP`,'—','—','P=QΔP/η·1.341','tg-g'],
     ['펌프 출력',`${pKW.toFixed(2)}kW`,'—','—','P=QΔP/η','tg-g'],
-    ['공급배관 Ø',`${supPipe}mm`,`${Math.round(OPT.supPipe||supPipe)}mm`,'v=1.5m/s','Q=Av',Math.abs(supPipe-(OPT.supPipe||supPipe))>5?'tg-w':'tg-g'],
+    ['공급배관 내경',`${suPipeID}mm (${suPipeNm})`,'-','v≤1.8m/s','KS 규격 선택','tg-g'],
     ['컨베이어',`${cSpd}m/min`,`${OPT.spd||cSpd}m/min`,'처리량 역산','피치/속도',Math.abs(cSpd-(OPT.spd||cSpd))>1.5?'tg-w':'tg-g'],
     ['세척율',`${cr.toFixed(1)}%`,`${tgt}%`,'—','복합 모델',cr>=tgt?'tg-g':cr>=tgt-5?'tg-w':'tg-r'],
     ['커버리지',`${cov.toFixed(1)}%`,'80%+','—','기하 계산',cov>=80?'tg-g':cov>=60?'tg-w':'tg-r'],
@@ -2292,9 +2292,26 @@ async function fbLoadAll(){
     gi('fbConnSt').style.cssText = 'background:#d4edda;color:#155724;font-weight:700;';
     hideFS('fbSrchSt');
   }catch(e){
-    showFbSt('fbSrchSt','err','연결 실패: '+e.message);
-    gi('fbConnSt').textContent = '연결 오류';
-    gi('fbConnSt').style.cssText = 'background:#f8d7da;color:#721c24;';
+    const is403 = String(e.message).includes('403') || String(e.message).includes('PERMISSION_DENIED');
+    if(is403){
+      showFbSt('fbSrchSt','err','⚠️ Firebase 권한 설정 필요');
+      gi('fbConnSt').textContent = '권한 오류 (403)';
+      gi('fbConnSt').style.cssText = 'background:#fff3cd;color:#856404;font-weight:700;';
+      const list = gi('fbList');
+      if(list) list.innerHTML =
+        '<div style="padding:12px;font-size:11px;line-height:1.7;color:#721c24;background:#fff8f8;border:1px solid #f5c6cb;border-radius:8px;">'
+        +'<b>🔒 Firebase 저장소 권한 설정이 필요합니다.</b><br><br>'
+        +'<a href="https://console.firebase.google.com/project/insys-work/firestore/rules" target="_blank" style="color:#0d7fa8;font-weight:700;">Firebase 콘솔 규칙 페이지 열기 ↗</a><br><br>'
+        +'규칙 탭에서 아래를 붙여넣고 <b>게시</b>:<br>'
+        +'<code style="display:block;background:#2d2d2d;color:#a5e075;padding:8px;border-radius:5px;font-size:10px;white-space:pre;margin-top:6px;">rules_version = \'2\';\nservice cloud.firestore {\n  match /databases/{db}/documents {\n    match /washer_sessions/{doc} {\n      allow read, write: if true;\n    }\n  }\n}</code>'
+        +'<br>설정 후 새로고침하면 작동합니다.<br>'
+        +'<small style="color:#999;">※ 로컬 자동저장은 정상 작동 중 (새로고침 시 마지막 설정 유지)</small>'
+        +'</div>';
+    } else {
+      showFbSt('fbSrchSt','err','연결 실패: '+e.message);
+      gi('fbConnSt').textContent = '연결 오류';
+      gi('fbConnSt').style.cssText = 'background:#f8d7da;color:#721c24;';
+    }
     console.error('fbLoadAll 오류:', e);
   }
 }
