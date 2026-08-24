@@ -187,7 +187,7 @@
   </section>
 </main>
 
-<footer>인시스 AI혁신 연구개발실 · ys.kim@in-sys.co.kr · FRAME v1.4</footer>
+<footer>인시스 AI혁신 연구개발실 · ys.kim@in-sys.co.kr · FRAME v1.5</footer>
 
 <script>
   // ===== 3D 월드 · 90 unit ≙ 300mm =====
@@ -267,6 +267,18 @@
     [a,b].forEach(q=>{ o+=`<line x1="${(q.x-4).toFixed(1)}" y1="${q.y.toFixed(1)}" x2="${(q.x+4).toFixed(1)}" y2="${q.y.toFixed(1)}" stroke="${col}" stroke-width="1"/>`; });
     o+=`<text x="${(a.x+(side||6)).toFixed(1)}" y="${((a.y+b.y)/2+3).toFixed(1)}" text-anchor="${side<0?'end':'start'}" font-size="10" font-weight="900" fill="${col}" paint-order="stroke" stroke="#FFFFFF" stroke-width="3.4" stroke-linejoin="round">${txt}</text>`;
     return o;
+  }
+  function hull(ps){
+    const p=ps.slice().sort((a,b)=>a.x-b.x||a.y-b.y);
+    const cr=(o,a,b)=>(a.x-o.x)*(b.y-o.y)-(a.y-o.y)*(b.x-o.x);
+    const lo=[],up=[];
+    for(const q of p){ while(lo.length>=2&&cr(lo[lo.length-2],lo[lo.length-1],q)<=0)lo.pop(); lo.push(q); }
+    for(let i=p.length-1;i>=0;i--){ const q=p[i]; while(up.length>=2&&cr(up[up.length-2],up[up.length-1],q)<=0)up.pop(); up.push(q); }
+    lo.pop(); up.pop(); return lo.concat(up);
+  }
+  function boxClip(id,x0,x1,y0,y1,z0,z1){
+    const ps=[]; [x0,x1].forEach(X=>[y0,y1].forEach(Y=>[z0,z1].forEach(Z=>ps.push(P(X,Y,Z)))));
+    return `<clipPath id="${id}"><polygon points="${hull(ps).map(pt).join(' ')}"/></clipPath>`;
   }
   function beltPos(s){
     s=((s%PATH)+PATH)%PATH;
@@ -387,33 +399,7 @@
     // 컨베이어 후면 150mm 커버 (벨트 뒤쪽 → 먼저 도시)
     s+=box(FX0,FX1,CY1,RCV_Y,CONV_Z-5,CONV_Z+1,'url(#gAluT)','url(#gAluF)','url(#gAluB)','#7C8896',.9);
 
-    // ── 컨베이어 벨트 루프 (H700) + 안착지그 7EA ──
-    s+=`<path d="M${stadium(CY1+7,PX_L,PX_R,ZC,R+7).map(pt).join(' L')} Z" fill="url(#gAluB)" stroke="#6E7885" stroke-width="1"/>`;
-    s+=quad(P(PX_L,CY0,LO_Z),P(PX_R,CY0,LO_Z),P(PX_R,CY1,LO_Z),P(PX_L,CY1,LO_Z),'url(#gBelt)','#7E8792',1);
-    s+=wrapFace(PX_L,R,ZC,-1,CY0,CY1,'url(#gBelt)','#7E8792');
-    s+=wrapFace(PX_R,R,ZC, 1,CY0,CY1,'url(#gBelt)','#7E8792');
-    s+=quad(P(PX_L,CY0,CONV_Z),P(PX_R,CY0,CONV_Z),P(PX_R,CY1,CONV_Z),P(PX_L,CY1,CONV_Z),'url(#gBelt)','#7E8792',1);
-    { const sp=16, off=((beltS%sp)+sp)%sp;
-      for(let x=PX_L+off; x<PX_R; x+=sp){ const a=P(x,CY0,CONV_Z+.4), b=P(x,CY1,CONV_Z+.4);
-        s+=`<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="#8B939D" stroke-width="1.2" opacity=".7"/>`; } }
-    JIGS.forEach(j=>{ const q=beltPos(beltS+j.s0); if(q.nz<=0.9) s+=drawJig(j,q); });
-    { const o1=stadium(CY0-7,PX_L,PX_R,ZC,R+7), i1=stadium(CY0-7,PX_L,PX_R,ZC,R+1).reverse();
-      s+=`<path d="M${o1.map(pt).join(' L')} Z M${i1.map(pt).join(' L')} Z" fill="url(#gAluF)" fill-rule="evenodd" stroke="#78838F" stroke-width=".9"/>`; }
-    [PX_L,PX_R].forEach(px=>{ const c=P(px,CY0-7,ZC);
-      s+=`<circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="6.5" fill="url(#gPulley)" stroke="#5B6470" stroke-width=".9"/>`;
-      s+=`<circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="2.2" fill="#39424D"/>`; });
-    { const cy=CY0-13, z0=CONV_Z+2, z1=CONV_Z+9;   // 래치 해제 캠
-      s+=`<polygon points="${pt(P(CAM_X-8,cy,z0))} ${pt(P(CAM_X+CAM_RUN,cy,z1))} ${pt(P(CAM_X+CAM_RUN+26,cy,z1))} ${pt(P(CAM_X+CAM_RUN+26,cy,z0))}" fill="url(#gAluT)" stroke="#7C8896" stroke-width=".9"/>`; }
-    JIGS.forEach(j=>{ const q=beltPos(beltS+j.s0); if(q.nz>0.9) s+=drawJig(j,q); });
-    // 컨베이어 전면 50mm / 후면 150mm 커버
-    s+=box(FX0,FX1,FY0,CY0,CONV_Z-5,CONV_Z+1,'url(#gAluT)','url(#gAluF)','url(#gAluB)','#7C8896',.9);
-    { const a=P(FX0+22,(FY0+CY0)/2,CONV_Z+2), b=P(FX0+22,(CY1+RCV_Y)/2,CONV_Z+2);
-      s+=`<text x="${a.x.toFixed(1)}" y="${(a.y+3).toFixed(1)}" text-anchor="middle" font-size="8" font-weight="900" fill="#5B6472" paint-order="stroke" stroke="#FFFFFF" stroke-width="3" stroke-linejoin="round">${FCV_MM}</text>`;
-      s+=`<text x="${b.x.toFixed(1)}" y="${(b.y+3).toFixed(1)}" text-anchor="middle" font-size="8" font-weight="900" fill="#5B6472" paint-order="stroke" stroke="#FFFFFF" stroke-width="3" stroke-linejoin="round">${RCV_MM}</text>`; }
-    [[LOAD_X,'안착'],[INSPECT_X,'검사'],[OUT_X,'배출']].forEach(([sx,lb])=>{
-      const a=P(sx,CY0-1,CONV_Z+2), b2=P(sx,FY0-46,CONV_Z+40);
-      s+=`<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b2.x.toFixed(1)}" y2="${b2.y.toFixed(1)}" stroke="#9AA6B4" stroke-width=".8" stroke-dasharray="3 2"/>`;
-      s+=`<text x="${b2.x.toFixed(1)}" y="${(b2.y-3).toFixed(1)}" text-anchor="middle" font-size="8.5" font-weight="900" fill="#5B6472" paint-order="stroke" stroke="#FFFFFF" stroke-width="3" stroke-linejoin="round">${lb}위치</text>`; });
+    s+=convDraw();
 
     // ── 배출 중인 PCB + 푸셔 ──
     if(outX!==null){
@@ -512,6 +498,18 @@
         const q=P(hx+dx,FY0-16,hz-14);
         s+=`<circle cx="${q.x.toFixed(1)}" cy="${q.y.toFixed(1)}" r="3.6" fill="${c}" stroke="#4B5563" stroke-width=".7"/>`; }); }
 
+    // ── 투입구/배출구 돌출 컨베이어 재도시 (커버 요철 통과부) ──
+    { const cy0=CY0-12, cy1=CY1+12, cz0=LO_Z-14, cz1=CONV_Z+16;
+      s+=boxClip('clipInF',CX0-6,FX0+1,cy0,cy1,cz0,cz1);
+      s+=boxClip('clipOutF',FX1-1,CX1+6,cy0,cy1,cz0,cz1);
+      const g=convDraw();
+      s+=`<g clip-path="url(#clipInF)">${g}</g>`;
+      s+=`<g clip-path="url(#clipOutF)">${g}</g>`;
+      // 커버 요철(파낸 개구부) 테두리 표시
+      [[FX0,-1],[FX1,1]].forEach(([fx,dir])=>{
+        const n1=P(fx,CY0-9,LO_Z-10), n2=P(fx,CY1+9,LO_Z-10), n3=P(fx,CY1+9,CONV_Z+7), n4=P(fx,CY0-9,CONV_Z+7);
+        s+=`<polygon points="${pt(n1)} ${pt(n2)} ${pt(n3)} ${pt(n4)}" fill="none" stroke="#9AA6B4" stroke-width="1.1" stroke-dasharray="3 2"/>`; }); }
+
     // ── 상단 4각 프레임 (재도시) ──
     s+=beamY(FX0,FY0,FY1,FZ-PROF/2,PROF);
     s+=beamY(FX1,FY0,FY1,FZ-PROF/2,PROF);
@@ -551,6 +549,39 @@
     o+=box(cx-PCB_HW+7,cx+PCB_HW-7,CYC-PCB_HD+5,CYC+PCB_HD-5,zb+5,zb+6.8,'url(#gPcb)','url(#gPcb)','url(#gPcb)','#17501E',.9);
     [[-8,'#E3B93C',4],[0,'#48535F',6],[8,'#C0463A',3]].forEach(q=>{
       o+=box(cx+q[0],cx+q[0]+q[2],CYC-3,CYC+2,zb+6.8,zb+8.2,q[1],q[1],q[1],'#00000033',.5); });
+    return o;
+  }
+
+  function convDraw(){
+    let o='';
+    // ── 컨베이어 벨트 루프 (H700) + 안착지그 7EA ──
+      o+=`<path d="M${stadium(CY1+7,PX_L,PX_R,ZC,R+7).map(pt).join(' L')} Z" fill="url(#gAluB)" stroke="#6E7885" stroke-width="1"/>`;
+      o+=quad(P(PX_L,CY0,LO_Z),P(PX_R,CY0,LO_Z),P(PX_R,CY1,LO_Z),P(PX_L,CY1,LO_Z),'url(#gBelt)','#7E8792',1);
+      o+=wrapFace(PX_L,R,ZC,-1,CY0,CY1,'url(#gBelt)','#7E8792');
+      o+=wrapFace(PX_R,R,ZC, 1,CY0,CY1,'url(#gBelt)','#7E8792');
+      o+=quad(P(PX_L,CY0,CONV_Z),P(PX_R,CY0,CONV_Z),P(PX_R,CY1,CONV_Z),P(PX_L,CY1,CONV_Z),'url(#gBelt)','#7E8792',1);
+    { const sp=16, off=((beltS%sp)+sp)%sp;
+      for(let x=PX_L+off; x<PX_R; x+=sp){ const a=P(x,CY0,CONV_Z+.4), b=P(x,CY1,CONV_Z+.4);
+          o+=`<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="#8B939D" stroke-width="1.2" opacity=".7"/>`; } }
+    JIGS.forEach(j=>{ const q=beltPos(beltS+j.s0); if(q.nz<=0.9) o+=drawJig(j,q); });
+    { const o1=stadium(CY0-7,PX_L,PX_R,ZC,R+7), i1=stadium(CY0-7,PX_L,PX_R,ZC,R+1).reverse();
+        o+=`<path d="M${o1.map(pt).join(' L')} Z M${i1.map(pt).join(' L')} Z" fill="url(#gAluF)" fill-rule="evenodd" stroke="#78838F" stroke-width=".9"/>`; }
+    [PX_L,PX_R].forEach(px=>{ const c=P(px,CY0-7,ZC);
+        o+=`<circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="6.5" fill="url(#gPulley)" stroke="#5B6470" stroke-width=".9"/>`;
+        o+=`<circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="2.2" fill="#39424D"/>`; });
+    { const cy=CY0-13, z0=CONV_Z+2, z1=CONV_Z+9;   // 래치 해제 캠
+        o+=`<polygon points="${pt(P(CAM_X-8,cy,z0))} ${pt(P(CAM_X+CAM_RUN,cy,z1))} ${pt(P(CAM_X+CAM_RUN+26,cy,z1))} ${pt(P(CAM_X+CAM_RUN+26,cy,z0))}" fill="url(#gAluT)" stroke="#7C8896" stroke-width=".9"/>`; }
+    JIGS.forEach(j=>{ const q=beltPos(beltS+j.s0); if(q.nz>0.9) o+=drawJig(j,q); });
+    // 컨베이어 전면 50mm / 후면 150mm 커버
+      o+=box(FX0,FX1,FY0,CY0,CONV_Z-5,CONV_Z+1,'url(#gAluT)','url(#gAluF)','url(#gAluB)','#7C8896',.9);
+    { const a=P(FX0+22,(FY0+CY0)/2,CONV_Z+2), b=P(FX0+22,(CY1+RCV_Y)/2,CONV_Z+2);
+        o+=`<text x="${a.x.toFixed(1)}" y="${(a.y+3).toFixed(1)}" text-anchor="middle" font-size="8" font-weight="900" fill="#5B6472" paint-order="stroke" stroke="#FFFFFF" stroke-width="3" stroke-linejoin="round">${FCV_MM}</text>`;
+        o+=`<text x="${b.x.toFixed(1)}" y="${(b.y+3).toFixed(1)}" text-anchor="middle" font-size="8" font-weight="900" fill="#5B6472" paint-order="stroke" stroke="#FFFFFF" stroke-width="3" stroke-linejoin="round">${RCV_MM}</text>`; }
+    [[LOAD_X,'안착'],[INSPECT_X,'검사'],[OUT_X,'배출']].forEach(([sx,lb])=>{
+      const a=P(sx,CY0-1,CONV_Z+2), b2=P(sx+(sx<INSPECT_X?-14:(sx>INSPECT_X?14:0)),FY0-52,CONV_Z+46);
+        o+=`<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b2.x.toFixed(1)}" y2="${b2.y.toFixed(1)}" stroke="#9AA6B4" stroke-width=".8" stroke-dasharray="3 2"/>`;
+        o+=`<text x="${b2.x.toFixed(1)}" y="${(b2.y-3).toFixed(1)}" text-anchor="middle" font-size="8.5" font-weight="900" fill="#5B6472" paint-order="stroke" stroke="#FFFFFF" stroke-width="3" stroke-linejoin="round">${lb}위치</text>`; });
+
     return o;
   }
 
@@ -737,7 +768,7 @@
     if(jo){ jo.pcb=true; jo.latch=0; }
     lightOn=false; scanT=-1; s_in=false; alarm=false; doorOpen=0; verdict=null; }
   initLine(); draw(); renderSteps(); updateSigBtns();
-  addLog('사각 프레임 PCB 비전 검사기 시뮬레이터 FRAME v1.4 준비 완료. (프레임 '+FL_MM+'×'+FW_MM+'×'+FH_MM+' · 컨베이어 H'+CONV_MM+' · 돌출 '+OVR_MM+'/'+OVR_MM+')');
+  addLog('사각 프레임 PCB 비전 검사기 시뮬레이터 FRAME v1.5 준비 완료. (프레임 '+FL_MM+'×'+FW_MM+'×'+FH_MM+' · 컨베이어 H'+CONV_MM+' · 돌출 '+OVR_MM+'/'+OVR_MM+')');
 </script>
 <script>
 (function(){
