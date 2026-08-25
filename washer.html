@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>세척기 설계 시뮬레이터 v3.13 | 인시스 AI혁신 R&D센터</title>
+<title>세척기 설계 시뮬레이터 v3.14 | 인시스 AI혁신 R&D센터</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -188,6 +188,23 @@ body{font-family:'Noto Sans KR',sans-serif;background:#e9edf2;color:#1a2535;font
 
 footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
 
+/* ── 전기료 계산 박스 ── */
+.pcost-box{background:#fffdf5;border:1px solid #f0e4c0;border-radius:9px;padding:10px 12px;margin-top:10px;}
+.pcost-head{font-size:12px;font-weight:700;color:#8a6d00;margin-bottom:8px;}
+.pcost-head small{font-weight:400;color:#b0975a;font-size:10px;}
+.pcost-inputs{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:9px;}
+.pcost-fl{display:flex;align-items:center;gap:4px;}
+.pcost-fl label{font-size:11px;color:#6a5a2a;font-weight:600;}
+.pcost-fl input{width:56px;border:1.5px solid #e0d090;border-radius:6px;padding:3px 6px;font-size:12px;font-weight:700;text-align:right;font-family:inherit;color:#5a4a1a;background:#fff;}
+.pcost-fl span{font-size:10px;color:#9a8a5a;}
+.pcost-result{display:flex;gap:8px;flex-wrap:wrap;}
+.pcost-item{flex:1;min-width:90px;background:#fff;border:1px solid #ede0b8;border-radius:7px;padding:6px 8px;text-align:center;}
+.pcost-item.hl{background:#fff3cd;border-color:#ffc107;}
+.pcost-lbl{display:block;font-size:10px;color:#8a7a4a;margin-bottom:2px;}
+.pcost-val{display:block;font-size:14px;font-weight:800;color:#6a5310;}
+.pcost-item.hl .pcost-val{color:#b8860b;}
+.pcost-note{font-size:9px;color:#a89a6a;margin-top:6px;line-height:1.5;}
+
 /* ── 세척제 토글 ── */
 .det-box{background:#f5f8fb;border:1px solid #dde5ee;border-radius:9px;padding:10px 12px;margin-top:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
 .det-toggle{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;}
@@ -269,7 +286,7 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
        title="새 탭에서 열기">🔗 바로가기</a>
     <button class="vt on" id="bPC">PC</button>
     <button class="vt" id="bMB">Mobile</button>
-    <span class="vb">v3.13</span>
+    <span class="vb">v3.14</span>
   </div>
 </div><!-- /hdr-inner -->
 </div>
@@ -699,11 +716,38 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
         <div class="kcard kc1"><div class="kv" id="kC">—</div><div class="kl">세척율 (%)</div></div>
         <div class="kcard kc2"><div class="kv" id="kQ">—</div><div class="kl">처리량 (개/h)</div></div>
         <div class="kcard kc3"><div class="kv" id="kW">—</div><div class="kl">물사용 (L/h)</div></div>
-        <div class="kcard kc4"><div class="kv" id="kP">—</div><div class="kl">총전력 (kW)</div></div>
+        <div class="kcard kc4"><div class="kv" id="kP">—</div><div class="kl">총전력 정격/실운전 (kW)</div></div>
         <div class="kcard kc5"><div class="kv" id="kD">—</div><div class="kl">체류시간 (s)</div></div>
         <div class="kcard kc6"><div class="kv" id="kCov">—</div><div class="kl">커버리지 (%)</div></div>
       </div>
       <div id="alertBox"></div>
+      <!-- 전기료 계산 -->
+      <div class="pcost-box">
+        <div class="pcost-head">💡 전기료 예측 <small>(실운전 부하 기준)</small></div>
+        <div class="pcost-inputs">
+          <div class="pcost-fl">
+            <label>일 가동시간</label>
+            <input type="number" id="pcHours" value="8" min="1" max="24" step="1">
+            <span>h/일</span>
+          </div>
+          <div class="pcost-fl">
+            <label>월 가동일수</label>
+            <input type="number" id="pcDays" value="22" min="1" max="31" step="1">
+            <span>일/월</span>
+          </div>
+          <div class="pcost-fl">
+            <label>전력 단가</label>
+            <input type="number" id="pcRate" value="130" min="50" max="400" step="5">
+            <span>원/kWh</span>
+          </div>
+        </div>
+        <div class="pcost-result" id="pcResult">
+          <div class="pcost-item"><span class="pcost-lbl">일 소비</span><span class="pcost-val" id="pcDaily">—</span></div>
+          <div class="pcost-item"><span class="pcost-lbl">월 소비</span><span class="pcost-val" id="pcMonthly">—</span></div>
+          <div class="pcost-item hl"><span class="pcost-lbl">월 전기료</span><span class="pcost-val" id="pcCost">—</span></div>
+        </div>
+        <div class="pcost-note" id="pcNote">※ 실운전 부하(히터 가동률 40%+펌프 연속) 기준. 정격 대비 실제 요금은 계절·요금제에 따라 변동.</div>
+      </div>
     </div>
   </div>
 
@@ -786,7 +830,7 @@ footer{text-align:center;font-size:10px;color:#7a90a4;padding:10px;}
 
 </div><!-- /rp -->
 </div><!-- /wrap -->
-<footer>인시스 AI혁신 R&D센터 | 세척기 설계 시뮬레이터 v3.13 | ys.kim@in-sys.co.kr</footer>
+<footer>인시스 AI혁신 R&D센터 | 세척기 설계 시뮬레이터 v3.14 | ys.kim@in-sys.co.kr</footer>
 
 <script>
 'use strict';
@@ -803,7 +847,7 @@ const DIRT={
   hole: [0,  3.0,  2.5,  2.5,  2.0,  1.8],
 };
 const HP_PER_KW=1.341;
-const LS_KEY='washer_v313_last'; // localStorage 키
+const LS_KEY='washer_v314_last'; // localStorage 키
 
 // ── SUS 배관 규격 (KS B 1501 / JIS B 2311 스케줄 10S 기준) ──
 const SUS_PIPES=[
@@ -976,7 +1020,14 @@ function calcOptimal(){
   // 여유율 1.35: 방열손실(15%) + 기동부하(10%) + 유지 여유(10%)
   // ※ 이 값은 "탱크를 1시간 내 목표온도로 급속가열" 기준
   //   실제 운용 히터(온도 유지용)는 열손실량 기준이므로 더 작아질 수 있음
-  const heaterKW = (tankBase * 4.18 * (rTemp - 20)) / 3600 * 1.35;
+  // 히터 용량 — 유지전력 기준 (열손실 보상)
+  // 산업 세척조 유지히터: 탱크용량 × 열손실계수 × 온도비율
+  // 열손실계수 0.022 kW/L (수면 증발 + 벽면 전도, 보온 적용 기준)
+  // 500L, 60°C(ΔT40) → 500 × 0.022 × (40/40) = 11kW (현실적)
+  const dT = Math.max(0, rTemp - 20);
+  const heaterKW = tankBase * 0.022 * (dT / 40);
+  // 초기 급속가열용 별도 계산 (참고값, 총전력에는 미포함)
+  const heaterBoostKW = (tankBase * 4.18 * dT) / 3600 * 1.35;
   const chF=fmode==='2ch'?2:1;
   const pitchMm=iH+50;
   const rSpd=Math.min(12,(iqty/chF)*((pitchMm/1000)/60));
@@ -984,7 +1035,7 @@ function calcOptimal(){
   OPT={dlv,zcnt,iW,iD,iH,iqty,tgt,itype,fmode,
     hole:rHole,press:rPress,temp:rTemp,det:rDet,flux:rFlux,
     spd:+rSpd.toFixed(2),tank:tankBase,totalQ,qPerCh,ch,supPipe,sprayPipe,
-    heaterKW,faces:allFaces,facesPerCh,pitchMm};
+    heaterKW,heaterBoostKW,faces:allFaces,facesPerCh,pitchMm};
 
   // 추천값 세팅
   setRec('nHole',  rHole.toFixed(1));
@@ -1416,7 +1467,8 @@ function buildZonePanels(){
   const tA=[t0,Math.max(40,t0-10),Math.max(30,t0-20),25];
   const pA=[q0,q0*.9,q0*.75,q0*.5];
   const tkA=[tk0,tk0*.8,tk0*.65,tk0*.5];
-  const hA=[h0,h0*.7,h0*.5,0];
+  // 각 단 유지히터 (온도 비율 기반, h0는 1단 유지전력)
+  const hA=[h0, h0*0.75, h0*0.5, h0*0.3];
   const dA=[0,0,0,0];
 
   for(let i=0;i<4;i++){
@@ -1606,7 +1658,9 @@ function runSim(){
   const qPerCh = pFlow / Math.max(1, ch);
   const actualQty = Math.min(+gv('iqty')||200, Math.round(3600/secPerItem*ch));
 
-  let totalPow=0, totalWater=0, avgTemp=0;
+  let totalPow=0, totalPowReal=0, totalWater=0, avgTemp=0;
+  // 컨베이어 모터 전력 (기본 1.5kW)
+  const convKW = 1.5;
   const zRows=[];
   for(let i=0;i<zcnt;i++){
     const tank=+(gi('ztank'+i)?.value||500);
@@ -1623,7 +1677,10 @@ function runSim(){
     totalWater+=wH;
     const pkw=lpmToKW(pump,presKPa,pEff);
     const php=pkw*HP_PER_KW;
-    totalPow+=heat+pkw;
+    // 정격 = 히터 + 펌프
+    totalPow += heat + pkw;
+    // 실운전 부하: 히터 가동률 40%(ON/OFF 반복) + 펌프 100%(연속)
+    totalPowReal += heat*0.4 + pkw;
     avgTemp+=temp;
     if(gi('zhp'+i)) gi('zhp'+i).value=php.toFixed(1);
     let st='tg-g',sx='적정';
@@ -1679,7 +1736,13 @@ function runSim(){
   gi('kC').textContent=cr.toFixed(1)+'%';
   gi('kQ').textContent=actualQty.toLocaleString();
   gi('kW').textContent=Math.round(totalWater).toLocaleString();
-  gi('kP').textContent=totalPow.toFixed(1);
+  // 컨베이어 전력 포함
+  totalPow += convKW;
+  totalPowReal += convKW;
+  // 총전력 표시: 정격 (실운전)
+  gi('kP').innerHTML = totalPow.toFixed(1) + '<span style="font-size:11px;color:#5a7a5a;"> / ' + totalPowReal.toFixed(1) + '</span>';
+  // 전기료 계산 업데이트
+  updatePowerCost(totalPow, totalPowReal);
   gi('kD').textContent=totalDwell.toFixed(1);
   gi('kCov').textContent=avgCov.toFixed(1)+'%';
 
@@ -1739,6 +1802,28 @@ function runSim(){
 // ══════════════════════════════════════════════
 // 그래프 렌더러
 // ══════════════════════════════════════════════
+// ── 전기료 계산 ──
+let _lastPowReal = 0, _lastPowRated = 0;
+function updatePowerCost(rated, real){
+  _lastPowRated = rated; _lastPowReal = real;
+  const hours = +gv('pcHours')||8;
+  const days  = +gv('pcDays')||22;
+  const rate  = +gv('pcRate')||130;
+  const daily   = real * hours;          // kWh/일
+  const monthly = daily * days;          // kWh/월
+  const cost    = monthly * rate;        // 원/월
+  const setT=(id,t)=>{ const e=gi(id); if(e) e.textContent=t; };
+  setT('pcDaily',   Math.round(daily).toLocaleString()+' kWh');
+  setT('pcMonthly', Math.round(monthly).toLocaleString()+' kWh');
+  setT('pcCost',    Math.round(cost).toLocaleString()+' 원');
+}
+// 전기료 입력 변경 시 재계산
+['pcHours','pcDays','pcRate'].forEach(id=>{
+  document.addEventListener('input', e=>{
+    if(e.target && e.target.id===id) updatePowerCost(_lastPowRated, _lastPowReal);
+  });
+});
+
 function hbar(lbl,val,max,color,sub){
   const pct=Math.min(100,Math.max(0,val/max*100));
   const dk=pct<18;
