@@ -133,7 +133,7 @@
           </div>
         </div>
 
-        <svg viewBox="104 28 404 636" id="scene"></svg>
+        <svg viewBox="98 28 436 636" id="scene"></svg>
         <div class="row" style="margin-top:4px;gap:6px;flex-wrap:nowrap;">
           <span style="font-size:12px;color:var(--text-light);white-space:nowrap;">시점 <b id="yawVal" style="color:var(--navy-dark);">35°</b></span>
           <input type="range" id="viewYaw" min="0" max="90" value="35" style="flex:0 1 130px;min-width:70px;">
@@ -187,7 +187,7 @@
   </section>
 </main>
 
-<footer>인시스 AI혁신 연구개발실 · ys.kim@in-sys.co.kr · FRAME v1.7</footer>
+<footer>인시스 AI혁신 연구개발실 · ys.kim@in-sys.co.kr · FRAME v1.8</footer>
 
 <script>
   // ===== 3D 월드 · 90 unit ≙ 300mm =====
@@ -246,6 +246,12 @@
   function beamX(x0,x1,y,z,w){ return box(x0,x1,y-w/2,y+w/2,z-w/2,z+w/2,...ALU); }
   function beamY(x,y0,y1,z,w){ return box(x-w/2,x+w/2,y0,y1,z-w/2,z+w/2,...ALU); }
   function postV(x,y,z0,z1,w){ return box(x-w/2,x+w/2,y-w/2,y+w/2,z0,z1,...ALU); }
+  // 모서리 맞물림 : 기둥·가로대의 외곽면이 프레임 외곽선과 정확히 일치 (돌출 없음)
+  const pxs=sx=>sx<0?FX0:FX1-PROF, pys=sy=>sy<0?FY0:FY1-PROF;
+  function postF(sx,sy,z0,z1){ return box(pxs(sx),pxs(sx)+PROF,pys(sy),pys(sy)+PROF,z0,z1,...ALU); }
+  function railX(sy,z){ return box(FX0,FX1,pys(sy),pys(sy)+PROF,z-PROF,z,...ALU); }            // 좌우 방향 : 전장
+  function railY(sx,z){ return box(pxs(sx),pxs(sx)+PROF,FY0+PROF,FY1-PROF,z-PROF,z,...ALU); }  // 깊이 방향 : 사이에 맞물림
+  const FCX=sx=>pxs(sx)+PROF/2, FCY=sy=>pys(sy)+PROF/2;
   function panel(pts,fill,op,st){
     return `<polygon points="${pts.map(pt).join(' ')}" fill="${fill}" opacity="${op}" stroke="${st||'#93A3B5'}" stroke-width="1"/>`;
   }
@@ -372,24 +378,18 @@
     s+=`</g>`;
 
     // ── 레벨링 풋 + 뒤쪽 기둥 ──
-    [[FX0,FY1],[FX1,FY1],[FX0,FY0],[FX1,FY0]].forEach(([px,py])=>{
+    [[FCX(-1),FCY(1)],[FCX(1),FCY(1)],[FCX(-1),FCY(-1)],[FCX(1),FCY(-1)]].forEach(([px,py])=>{
       const b=P(px,py,0);
       s+=`<ellipse cx="${b.x.toFixed(1)}" cy="${b.y.toFixed(1)}" rx="11" ry="4" fill="url(#gAluT)" stroke="#8A94A1"/>`;
       s+=bar(P(px,py,0),P(px,py,CAB_Z0),6,'url(#gSteel)','#6E7885'); });
-    s+=postV(FX0,FY1,CAB_Z0,FZ,PROF);
-    s+=postV(FX1,FY1,CAB_Z0,FZ,PROF);
+    s+=postF(-1,1,CAB_Z0,FZ);
+    s+=postF( 1,1,CAB_Z0,FZ);
 
     // ── 뒤/좌우 상부 가로 프레임 ──
-    s+=beamX(FX0,FX1,FY1,FZ-PROF/2,PROF);
-    s+=beamY(FX0,FY0,FY1,FZ-PROF/2,PROF);
-    s+=beamY(FX1,FY0,FY1,FZ-PROF/2,PROF);
-    s+=beamX(FX0,FX1,FY1,CAB_Z1,PROF);
-    s+=beamY(FX0,FY0,FY1,CAB_Z1,PROF);
-    s+=beamY(FX1,FY0,FY1,CAB_Z1,PROF);
-    s+=beamX(FX0,FX1,FY1,CAB_Z0,PROF);
-    s+=beamY(FX0,FY0,FY1,CAB_Z0,PROF);
-    s+=beamY(FX1,FY0,FY1,CAB_Z0,PROF);
-    s+=beamX(FX0,FX1,FY1,SLOT_Z1,PROF);
+    s+=railX(1,FZ); s+=railY(-1,FZ); s+=railY(1,FZ);
+    s+=railX(1,CAB_Z1+PROF/2); s+=railY(-1,CAB_Z1+PROF/2); s+=railY(1,CAB_Z1+PROF/2);
+    s+=railX(1,CAB_Z0+PROF/2); s+=railY(-1,CAB_Z0+PROF/2); s+=railY(1,CAB_Z0+PROF/2);
+    s+=railX(1,SLOT_Z1+PROF/2);
 
     // ── 뒤/좌우 패널 (하부 캐비닛) ──
     s+=panel([P(FX0,FY1,CAB_Z1),P(FX1,FY1,CAB_Z1),P(FX1,FY1,CAB_Z0),P(FX0,FY1,CAB_Z0)],'url(#gIvoryS)',1,'#BCB09A');
@@ -441,12 +441,10 @@
     }
 
     // ── 앞쪽 기둥 + 가로 프레임 ──
-    s+=postV(FX0,FY0,CAB_Z0,FZ,PROF);
-    s+=postV(FX1,FY0,CAB_Z0,FZ,PROF);
-    s+=beamX(FX0,FX1,FY0,CAB_Z0,PROF);
-    s+=beamX(FX0,FX1,FY0,CAB_Z1,PROF);
-    s+=beamX(FX0,FX1,FY0,SLOT_Z1,PROF);
-    s+=beamX(FX0,FX1,FY0,FZ-PROF/2,PROF);
+    s+=postF(-1,-1,CAB_Z0,FZ);
+    s+=postF( 1,-1,CAB_Z0,FZ);
+    s+=railX(-1,CAB_Z0+PROF/2);
+    s+=railX(-1,FZ);
 
     // ── 하부 아이보리 커버 + 전면 양문형 도어 ──
     // 좌우 측면 아이보리 커버
@@ -506,20 +504,15 @@
       s+=`<g clip-path="url(#clipInF)">${g}</g>`;
       s+=`<g clip-path="url(#clipOutF)">${g}</g>`; }
     // ── 프레임 앞 기둥/가로대 재도시 (컨베이어가 프레임을 가리지 않도록) ──
-    s+=postV(FX0,FY0,CAB_Z0,FZ,PROF);
-    s+=postV(FX1,FY0,CAB_Z0,FZ,PROF);
-    s+=beamX(FX0,FX1,FY0,CAB_Z1,PROF);
-    s+=beamX(FX0,FX1,FY0,SLOT_Z1,PROF);
+    s+=postF(-1,-1,CAB_Z0,FZ);
+    s+=postF( 1,-1,CAB_Z0,FZ);
     // ── 컨베이어 통과 개구부(요철) 테두리 ──
     [FX0,FX1].forEach(fx=>{
       const n1=P(fx,CY0-8,LO_Z-9), n2=P(fx,CY1+8,LO_Z-9), n3=P(fx,CY1+8,CONV_Z+7), n4=P(fx,CY0-8,CONV_Z+7);
       s+=`<polygon points="${pt(n1)} ${pt(n2)} ${pt(n3)} ${pt(n4)}" fill="none" stroke="#9AA6B4" stroke-width="1" stroke-dasharray="3 2"/>`; });
 
     // ── 상단 4각 프레임 (재도시) ──
-    s+=beamY(FX0,FY0,FY1,FZ-PROF/2,PROF);
-    s+=beamY(FX1,FY0,FY1,FZ-PROF/2,PROF);
-    s+=beamX(FX0,FX1,FY1,FZ-PROF/2,PROF);
-    s+=beamX(FX0,FX1,FY0,FZ-PROF/2,PROF);
+    s+=railX(1,FZ); s+=railY(-1,FZ); s+=railY(1,FZ); s+=railX(-1,FZ);
 
     // ── 경광등 ──
     { const bx=FX1-16, by=FY1-16;
@@ -534,13 +527,13 @@
     s+=dimH(FX0,FX1,FY0-52,0,FL_MM+'','#2D5C99',20);
     s+=dimY(FY0,FY1,CX1+30,0,FW_MM+'','#2D5C99',12);
     s+=dimY(CY0,CY1,CX0-14,CONV_Z+46,BW_MM+'','#7A3E9D',10);
-    s+=dimH(CX0,FX0,FY0-70,CONV_Z-46,OVR_MM+'','#B45309',18);
-    s+=dimH(FX1,CX1,FY0-70,CONV_Z-46,OVR_MM+'','#B45309',18);
-    s+=dimV(FX1+30,FY0-30,0,CONV_Z,CONV_MM+'','#B45309',6);
+    s+=dimH(CX0,FX0,FY0-96,CONV_Z-70,OVR_MM+'','#B45309',-8);
+    s+=dimH(FX1,CX1,FY0-96,CONV_Z-70,OVR_MM+'','#B45309',-8);
+    s+=dimV(CX1+26,FY0-96,0,CONV_Z,CONV_MM+'','#B45309',6);
     // 라벨
-    { const a=P(CX0-4,FY0-70,CONV_Z-16);
+    { const a=P(CX0-10,FY0-96,CONV_Z-98);
       s+=`<text x="${a.x.toFixed(1)}" y="${a.y.toFixed(1)}" text-anchor="middle" font-size="9.5" font-weight="900" fill="#5B6472" paint-order="stroke" stroke="#FFFFFF" stroke-width="3.4" stroke-linejoin="round">투입구</text>`;
-      const b=P(CX1+4,FY0-70,CONV_Z-16);
+      const b=P(CX1-2,FY0-96,CONV_Z-104);
       s+=`<text x="${b.x.toFixed(1)}" y="${b.y.toFixed(1)}" text-anchor="middle" font-size="9.5" font-weight="900" fill="#5B6472" paint-order="stroke" stroke="#FFFFFF" stroke-width="3.4" stroke-linejoin="round">배출구</text>`; }
 
     scene.innerHTML=s;
@@ -774,7 +767,7 @@
     if(jo){ jo.pcb=true; jo.latch=0; }
     lightOn=false; scanT=-1; s_in=false; alarm=false; doorOpen=0; verdict=null; }
   initLine(); draw(); renderSteps(); updateSigBtns();
-  addLog('사각 프레임 PCB 비전 검사기 시뮬레이터 FRAME v1.7 준비 완료. (프레임 '+FL_MM+'×'+FW_MM+'×'+FH_MM+' · 컨베이어 H'+CONV_MM+' · 좌우 돌출 '+OVR_MM+'/'+OVR_MM+')');
+  addLog('사각 프레임 PCB 비전 검사기 시뮬레이터 FRAME v1.8 준비 완료. (프레임 '+FL_MM+'×'+FW_MM+'×'+FH_MM+' · 컨베이어 H'+CONV_MM+' · 좌우 돌출 '+OVR_MM+'/'+OVR_MM+')');
 </script>
 <script>
 (function(){
