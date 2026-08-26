@@ -272,6 +272,12 @@ body.mobile-mode .nav-tabs,body.mobile-mode .nav-top-inner{max-width:480px}
 body.pc-mode .page{max-width:1200px}
 
 
+
+/* 관리자 버튼 */
+.btn-admin{background:rgba(240,180,41,.18);border:none;color:#F0B429;width:29px;height:29px;border-radius:7px;font-size:14px;cursor:pointer;transition:all .2s;position:relative;flex-shrink:0;align-items:center;justify-content:center}
+.btn-admin:hover{background:rgba(240,180,41,.32)}
+.admin-badge{position:absolute;top:-4px;right:-4px;background:var(--red);color:#fff;font-size:12px;font-weight:700;border-radius:9px;min-width:16px;height:16px;line-height:16px;padding:0 4px;text-align:center}
+
 /* ── 결재 라인 ─────────────────────────────── */
 .approval-flow{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:8px;align-items:center}
 .appr-step{border:1.5px solid var(--line);border-radius:9px;padding:11px 13px;background:var(--silver);text-align:center;transition:all .25s}
@@ -468,15 +474,19 @@ body.ro-mode .ro-hide{display:none!important}
         <button class="auth-tab active" onclick="showAuthTab('signup')">계정 등록 요청</button>
       </div>
       <div class="alert alert-teal" style="margin-bottom:12px;font-size:13px">
-        ℹ️ 이메일을 입력하고 요청하면 <b>기본 비밀번호가 담긴 메일</b>이 발송됩니다. 로그인 후 프로필에서 비밀번호를 변경하세요.
+        ℹ️ 신청하면 <b>관리자 승인</b> 후 임시 비밀번호가 메일로 발송됩니다. 승인 전에는 로그인할 수 없습니다.
       </div>
       <div class="form-group" style="margin-bottom:10px">
         <label>이메일 *</label>
         <input type="email" id="su-email" placeholder="name@in-sys.co.kr" onkeydown="if(event.key==='Enter')requestAccount()">
       </div>
-      <div class="form-group" style="margin-bottom:14px">
+      <div class="form-group" style="margin-bottom:10px">
         <label>성명 *</label>
         <input id="su-name" placeholder="홍길동" onkeydown="if(event.key==='Enter')requestAccount()">
+      </div>
+      <div class="form-group" style="margin-bottom:14px">
+        <label>소속 · 직급 <span style="font-weight:400;color:var(--slate)">(선택)</span></label>
+        <input id="su-dept" placeholder="예: ㈜인시스 대리 / 셰플러 SQM팀" onkeydown="if(event.key==='Enter')requestAccount()">
       </div>
       <button class="btn btn-primary" style="width:100%;padding:11px" onclick="requestAccount()">📧 계정 등록 요청</button>
       <div id="su-msg" class="auth-msg"></div>
@@ -495,7 +505,7 @@ body.ro-mode .ro-hide{display:none!important}
         <div class="nav-brand-txt">
           <div class="nav-title">셰플러 이천공장 수입검사 업무관리 시스템</div>
           <div class="nav-sub">
-            <span class="nav-ver">v9.7</span>
+            <span class="nav-ver">v10.0</span>
             <span class="nav-org">Schaeffler Icheon · insys</span>
             <span id="fb-status" class="fb-chip">⏳ 연결 중</span>
           </div>
@@ -508,6 +518,7 @@ body.ro-mode .ro-hide{display:none!important}
           <button class="view-btn" id="btn-pc" onclick="setViewMode('pc')" title="PC 보기">🖥️</button>
         </div>
         <button class="btn-nav-refresh" onclick="hardRefresh()" title="새로고침">↻</button>
+        <button class="btn-admin" id="btn-admin" onclick="showPage('admin')" title="계정 관리" style="display:none">🔐<span class="admin-badge" id="admin-badge" style="display:none">0</span></button>
         <span class="user-chip" id="user-chip" onclick="showPage('profile')">-</span>
         <button class="btn-logout" onclick="doLogout()" title="로그아웃">⏻</button>
       </div>
@@ -533,6 +544,46 @@ body.ro-mode .ro-hide{display:none!important}
 
 <!-- ══ 대시보드 ══════════════════════════════════ -->
 <!-- ══ 내 프로필 ══════════════════════════════════ -->
+<!-- ══ 계정 관리 (관리자 전용) ══════════════════════ -->
+<div class="page" id="page-admin">
+  <div class="page-hdr">
+    <div class="page-hdr-left"><h2>🔐 계정 관리</h2>
+      <p>계정 등록 신청을 검토하고 소속을 지정하여 승인합니다  |  승인 시 임시 비밀번호가 신청자에게 발송됩니다</p></div>
+  </div>
+
+  <div class="card" id="pending-card" style="border-left:4px solid var(--amber)">
+    <div class="card-title"><span class="bar" style="background:var(--amber)"></span>승인 대기 신청
+      <span class="badge badge-amber" id="pending-count" style="margin-left:8px">0건</span>
+    </div>
+    <div id="pending-body"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="bar"></span>등록 계정 목록</div>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>성명</th><th>이메일</th><th>소속</th><th>권한</th><th>상태</th><th>신청일</th><th>관리</th></tr></thead>
+        <tbody id="users-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="bar"></span>권한 안내</div>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>메뉴</th><th>㈜인시스</th><th>셰플러</th></tr></thead>
+        <tbody>
+          <tr><td>품목 관리 · 측정의뢰</td><td><span class="badge badge-green">전체 권한</span></td><td><span class="badge badge-green">전체 권한</span></td></tr>
+          <tr><td>수입검사 · 부적합 · 일일보고</td><td><span class="badge badge-green">전체 권한</span></td><td><span class="badge badge-gray">열람만</span></td></tr>
+          <tr><td>교육·면담 · 업무지원</td><td><span class="badge badge-green">전체 권한</span></td><td><span class="badge badge-gray">열람만</span></td></tr>
+          <tr><td><b>계정 관리</b></td><td><span class="badge badge-blue">관리자만</span></td><td><span class="badge badge-red">접근 불가</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <div class="page" id="page-profile">
   <div class="page-hdr">
     <div class="page-hdr-left"><h2>👤 내 프로필</h2>
@@ -1555,7 +1606,7 @@ body.ro-mode .ro-hide{display:none!important}
 </div>
 
 <footer style="max-width:1200px;margin:20px auto 0;padding:12px 20px;text-align:center;font-size:12px;color:var(--slate);border-top:1px solid var(--line)">
-  인시스 AI혁신 연구개발실  ·  셰플러 이천공장 수입검사 업무관리 시스템 v9.7  ·  최종 수정 2026.08.07  ·  © (주)인시스
+  인시스 AI혁신 연구개발실  ·  셰플러 이천공장 수입검사 업무관리 시스템 v10.0  ·  최종 수정 2026.08.07  ·  © (주)인시스
 </footer>
 
 <!-- Firebase -->
@@ -1704,7 +1755,7 @@ async function startPolling(){
 // ══════════════════════════════════════════════════
 // 버전 업데이트 알림 모달
 // ══════════════════════════════════════════════════
-const APP_VERSION = 'v9.7';
+const APP_VERSION = 'v10.0';
 const APP_VER_DATE = '2026-08-05';
 const VER_KEY = 'ims-seen-version';
 
@@ -1797,6 +1848,7 @@ function showPage(p){
   if(!pg) return;
   pg.classList.add('active');
   if(p==='profile') renderProfile();
+  if(p==='admin') renderAdminPage();
   ['dash','items','measure','incoming','nonconf','report','edu','supply'].forEach((n,i)=>{
     if(n===p) document.querySelectorAll('.nav-tab')[i].classList.add('active');
   });
@@ -2322,7 +2374,7 @@ const ORG_LABEL = {insys:'㈜인시스', schaeffler:'셰플러'};
 // 셰플러 전체 권한 메뉴
 const SCHAEFFLER_FULL = ['items','measure'];
 // 전체 메뉴
-const ALL_PAGES = ['dash','profile','items','measure','incoming','nonconf','report','edu','supply'];
+const ALL_PAGES = ['dash','profile','admin','items','measure','incoming','nonconf','report','edu','supply'];
 
 function simpleHash(str){
   let h = 0;
@@ -2411,56 +2463,64 @@ function authMsg(id, text, type){
 }
 
 // ── 계정 등록 요청 ──────────────────────────────
+const ADMIN_EMAIL = 'ys.kim@in-sys.co.kr';
+const ADMIN_NAME  = '김양섭 이사';
+
 async function requestAccount(){
   const email=document.getElementById('su-email').value.trim().toLowerCase();
   const name =document.getElementById('su-name').value.trim();
+  const dept =document.getElementById('su-dept').value.trim();
   if(!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
     authMsg('su-msg','올바른 이메일 주소를 입력하세요.'); return;
   }
   if(!name){ authMsg('su-msg','성명을 입력하세요.'); return; }
 
-  // 중복 확인
+  await loadUsers();
   const dup=Object.values(userList).find(u=>u.email===email);
-  if(dup){ authMsg('su-msg','이미 등록된 이메일입니다. 로그인해 주세요.'); return; }
+  if(dup){
+    if(dup.status==='pending'){ authMsg('su-msg','이미 신청된 계정입니다. 관리자 승인을 기다려 주세요.','ok'); }
+    else { authMsg('su-msg','이미 등록된 계정입니다. 로그인해 주세요.'); }
+    return;
+  }
 
-  const pw = genPassword();
   const rec = {
-    email, name, org:'', pwHash:simpleHash(pw),
-    createdAt:new Date().toISOString(), pwChanged:false,
+    email, name, dept, org:'', pwHash:'',
+    status:'pending',                       // pending → approved → rejected
+    requestedAt:new Date().toISOString(),
+    pwChanged:false,
   };
 
   try{
     await fbPush('/ims/users', rec);
-    const subject = '[인시스] 수입검사 업무관리 시스템 계정 등록 안내';
-    const body = `${name} 님, 안녕하세요.
 
-셰플러 이천공장 수입검사 업무관리 시스템 계정이 등록되었습니다.
+    // 관리자에게 승인 요청 메일
+    const subject = `[승인요청] 수입검사 시스템 계정 등록 — ${name}`;
+    const body = `수입검사 업무관리 시스템 계정 등록 신청이 접수되었습니다.
 
-■ 접속 주소
-https://insys-hq.github.io/Insys-review/ims.html
+■ 신청 정보
+  성명   : ${name}
+  이메일 : ${email}
+  소속   : ${dept || '(미기재)'}
+  신청일 : ${new Date().toLocaleString('ko-KR')}
 
-■ 로그인 정보
-  이메일   : ${email}
-  기본 비밀번호 : ${pw}
+■ 승인 방법
+  1. 시스템 접속 → 로그인
+  2. 우측 상단 이름 클릭 → 계정 관리
+  3. 해당 신청 건의 소속(인시스/셰플러) 지정 후 「승인」 클릭
+  4. 승인 시 신청자에게 임시 비밀번호가 자동 발급됩니다
 
-■ 최초 로그인 후 반드시 아래 사항을 완료해 주세요.
-  1. 우측 상단 본인 이름 클릭 → 내 프로필
-  2. 소속 선택 (㈜인시스 / 셰플러) 후 저장
-  3. 비밀번호 변경
+■ 시스템 주소
+  https://insys-hq.github.io/Insys-review/ims.html
 
-■ 소속별 권한
-  ㈜인시스  : 전 메뉴 등록·수정·삭제 가능
-  셰플러    : 품목관리·측정의뢰 전체 권한, 그 외 메뉴는 열람만 가능
+㈜인시스 수입검사 업무관리 시스템`;
 
-문의: 인시스 AI혁신 연구개발실
-㈜인시스`;
-    window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    authMsg('su-msg', `✅ 계정이 등록되었습니다. 메일 앱이 실행됩니다.\n임시 비밀번호: ${pw}\n(메일 발송이 안 되면 위 비밀번호로 로그인하세요)`, 'ok');
-    document.getElementById('su-email').value='';
-    document.getElementById('su-name').value='';
+    window.location.href = `mailto:${ADMIN_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+    authMsg('su-msg', `✅ 계정 등록이 신청되었습니다.\n관리자(${ADMIN_NAME}) 승인 후 임시 비밀번호가 메일로 발송됩니다.\n승인까지 잠시 기다려 주세요.`, 'ok');
+    ['su-email','su-name','su-dept'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
     await loadUsers();
   }catch(e){
-    authMsg('su-msg','등록 실패: '+e.message);
+    authMsg('su-msg','신청 실패: '+e.message);
   }
 }
 
@@ -2475,6 +2535,15 @@ async function doLogin(){
   if(!entry){ authMsg('lg-msg','등록되지 않은 계정입니다. 계정 등록을 요청하세요.'); return; }
 
   const [uid,u]=entry;
+  if(u.status==='pending'){
+    authMsg('lg-msg',`⏳ 관리자 승인 대기 중입니다.\n승인이 완료되면 임시 비밀번호가 메일로 발송됩니다.\n문의: ${ADMIN_EMAIL}`);
+    return;
+  }
+  if(u.status==='rejected'){
+    authMsg('lg-msg',`❌ 계정 신청이 반려되었습니다.${u.rejectReason?'\n사유: '+u.rejectReason:''}\n문의: ${ADMIN_EMAIL}`);
+    return;
+  }
+  if(!u.pwHash){ authMsg('lg-msg','비밀번호가 아직 발급되지 않았습니다. 관리자에게 문의하세요.'); return; }
   if(u.pwHash !== simpleHash(pw)){ authMsg('lg-msg','비밀번호가 일치하지 않습니다.'); return; }
 
   currentUser={...u, uid};
@@ -2507,11 +2576,15 @@ function enterSystem(){
   applyPermissions();
   updateUserChip();
   // 소속 미설정 시 프로필로
-  if(!currentUser.org){
+  if(!currentUser.org && !isAdmin()){
     showPage('profile');
     toast('소속을 선택하고 저장해 주세요.', 4000);
   } else {
     showPage('dash');
+    if(isAdmin()){
+      const pend = Object.values(userList).filter(u=>u.status==='pending').length;
+      if(pend>0) toast(`🔐 승인 대기 중인 계정 신청이 ${pend}건 있습니다.`, 5000);
+    }
   }
   loadAllData();
 }
@@ -2519,13 +2592,23 @@ function enterSystem(){
 function updateUserChip(){
   const chip=document.getElementById('user-chip');
   if(!chip || !currentUser) return;
+  // 관리자 버튼
+  const ab=document.getElementById('btn-admin');
+  if(ab){
+    ab.style.display = isAdmin() ? 'inline-flex' : 'none';
+    const pend = Object.values(userList).filter(u=>u.status==='pending').length;
+    const badge=document.getElementById('admin-badge');
+    if(badge){ badge.textContent=pend; badge.style.display = pend>0 ? 'inline-block' : 'none'; }
+  }
   const org=currentUser.org ? `<span class="org">${ORG_LABEL[currentUser.org]}</span>` : '<span class="org">소속 미설정</span>';
   chip.innerHTML = (currentUser.name||currentUser.email) + org;
 }
 
 // ── 권한 적용 ──────────────────────────────────
 function canEdit(page){
-  if(!currentUser || !currentUser.org) return false;
+  if(!currentUser) return false;
+  if(page==='admin') return isAdmin();
+  if(!currentUser.org) return false;
   if(currentUser.org==='insys') return true;
   return SCHAEFFLER_FULL.includes(page);
 }
@@ -2539,6 +2622,7 @@ function applyPermissions(){
   ALL_PAGES.forEach(p=>{
     const pg=document.getElementById('page-'+p);
     if(!pg) return;
+    if(p==='admin'){ pg.dataset.adminOnly='1'; }
     const editable = canEdit(p) || p==='dash' || p==='profile';
 
     // 기존 안내 제거
@@ -2567,6 +2651,217 @@ function applyPermissions(){
       b.style.opacity = editable ? '' : '.45';
       b.style.cursor  = editable ? '' : 'not-allowed';
     });
+  });
+}
+
+
+// ══════════════════════════════════════════════════
+// 계정 관리 (관리자 전용)
+// ══════════════════════════════════════════════════
+function isAdmin(){
+  return currentUser && currentUser.email === ADMIN_EMAIL;
+}
+
+function renderAdminPage(){
+  renderPendingList();
+  renderUsersTable();
+}
+
+// 승인 대기 목록
+function renderPendingList(){
+  const el = document.getElementById('pending-body');
+  const cnt = document.getElementById('pending-count');
+  const card = document.getElementById('pending-card');
+  if(!el) return;
+
+  const pending = Object.entries(userList).filter(([,u])=>u.status==='pending');
+  if(cnt) cnt.textContent = pending.length + '건';
+  if(card) card.style.display = 'block';
+
+  if(!pending.length){
+    el.innerHTML = '<p style="font-size:13px;color:var(--slate);padding:8px 0">승인 대기 중인 신청이 없습니다.</p>';
+    return;
+  }
+
+  el.innerHTML = pending.map(([id,u])=>`
+    <div style="border:1px solid var(--line);border-radius:8px;padding:13px;margin-bottom:10px;background:var(--paper,#fff)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+        <div style="flex:1;min-width:200px">
+          <div style="font-size:15px;font-weight:700;color:var(--ink)">${u.name}</div>
+          <div style="font-size:13px;color:var(--slate);margin-top:3px">${u.email}</div>
+          ${u.dept?`<div style="font-size:12px;color:var(--slate);margin-top:2px">${u.dept}</div>`:''}
+          <div style="font-size:12px;color:var(--slate);margin-top:4px">신청: ${fmtDt(u.requestedAt)}</div>
+        </div>
+        <div style="display:flex;gap:7px;align-items:flex-end;flex-wrap:wrap">
+          <div class="form-group" style="margin:0;min-width:150px">
+            <label style="font-size:12px">소속 지정 *</label>
+            <select id="pa-org-${id}">
+              <option value="">— 선택 —</option>
+              <option value="insys">㈜인시스 (전체 권한)</option>
+              <option value="schaeffler">셰플러 (부분 권한)</option>
+            </select>
+          </div>
+          <button class="btn btn-green btn-sm" onclick="approveUser('${id}')">✅ 승인</button>
+          <button class="btn btn-red btn-sm" onclick="rejectUser('${id}')">❌ 반려</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+// 승인
+function approveUser(id){
+  const u = userList[id]; if(!u) return;
+  const org = document.getElementById('pa-org-'+id)?.value;
+  if(!org){ toast('⚠️ 소속을 지정하세요.'); return; }
+
+  const pw = genPassword();
+  const rec = {
+    ...u, org, status:'approved',
+    pwHash: simpleHash(pw),
+    approvedAt: new Date().toISOString(),
+    approvedBy: currentUser.name || currentUser.email,
+  };
+
+  fbSet('/ims/users/'+id, rec).then(()=>{
+    const orgLabel = ORG_LABEL[org];
+    const perm = org==='insys'
+      ? '전 메뉴 등록·수정·삭제 가능'
+      : '품목관리·측정의뢰 전체 권한 / 그 외 메뉴는 열람만 가능';
+
+    const subject = '[승인완료] 수입검사 업무관리 시스템 계정 안내';
+    const body = `${u.name} 님, 안녕하세요.
+
+신청하신 수입검사 업무관리 시스템 계정이 승인되었습니다.
+
+■ 접속 주소
+  https://insys-hq.github.io/Insys-review/ims.html
+
+■ 로그인 정보
+  이메일       : ${u.email}
+  임시 비밀번호 : ${pw}
+
+■ 부여된 권한
+  소속 : ${orgLabel}
+  권한 : ${perm}
+
+■ 최초 로그인 후 조치 사항
+  1. 우측 상단 본인 이름 클릭 → 내 프로필
+  2. 비밀번호 변경 (보안을 위해 반드시 변경해 주세요)
+
+승인자: ${currentUser.name || ADMIN_NAME}
+승인일: ${new Date().toLocaleString('ko-KR')}
+
+㈜인시스 수입검사 업무관리 시스템`;
+
+    window.location.href = `mailto:${u.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    toast(`✅ ${u.name} 님 계정이 승인되었습니다.\n임시 비밀번호: ${pw}`, 6000);
+    loadUsers().then(()=>renderAdminPage());
+  }).catch(e=>toast('❌ 승인 실패: '+e.message));
+}
+
+// 반려
+function rejectUser(id){
+  const u = userList[id]; if(!u) return;
+  const reason = prompt(`${u.name} 님의 계정 신청을 반려합니다.\n반려 사유를 입력하세요:`, '');
+  if(reason===null) return;
+
+  fbSet('/ims/users/'+id, {
+    ...u, status:'rejected', rejectReason:reason,
+    rejectedAt:new Date().toISOString(),
+    rejectedBy: currentUser.name || currentUser.email,
+  }).then(()=>{
+    const subject = '[반려] 수입검사 업무관리 시스템 계정 신청 안내';
+    const body = `${u.name} 님, 안녕하세요.
+
+신청하신 수입검사 업무관리 시스템 계정이 반려되었습니다.
+
+■ 반려 사유
+  ${reason || '(사유 미기재)'}
+
+문의사항은 아래로 연락 주시기 바랍니다.
+  ${ADMIN_EMAIL}
+
+㈜인시스 수입검사 업무관리 시스템`;
+    window.location.href = `mailto:${u.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    toast('반려 처리되었습니다.');
+    loadUsers().then(()=>renderAdminPage());
+  });
+}
+
+// 전체 계정 목록
+function renderUsersTable(){
+  const tb = document.getElementById('users-tbody'); if(!tb) return;
+  const arr = Object.entries(userList).sort((a,b)=>{
+    const order = {pending:0, approved:1, rejected:2};
+    const d = (order[a[1].status]??9) - (order[b[1].status]??9);
+    return d !== 0 ? d : (b[1].requestedAt||'').localeCompare(a[1].requestedAt||'');
+  });
+
+  const stBadge = s => s==='approved'?'badge-green':s==='pending'?'badge-amber':'badge-red';
+  const stText  = s => s==='approved'?'승인':s==='pending'?'대기':'반려';
+
+  tb.innerHTML = arr.length ? arr.map(([id,u])=>`<tr${u.status==='pending'?' style="background:#FFFDF5"':''}>
+    <td><b>${u.name}</b>${u.email===ADMIN_EMAIL?' <span class="badge badge-blue" style="font-size:12px">관리자</span>':''}</td>
+    <td style="font-size:12.5px">${u.email}</td>
+    <td style="font-size:12.5px">${u.dept||'-'}</td>
+    <td>${u.org?`<span class="badge ${u.org==='insys'?'badge-teal':'badge-gray'}">${ORG_LABEL[u.org]}</span>`:'-'}</td>
+    <td><span class="badge ${stBadge(u.status)}">${stText(u.status)}</span></td>
+    <td style="font-size:12px">${u.requestedAt?fmtD(u.requestedAt.slice(0,10)):'-'}</td>
+    <td>
+      ${u.status==='approved' && u.email!==ADMIN_EMAIL
+        ? `<button class="btn btn-outline btn-sm" onclick="changeUserOrg('${id}')">권한변경</button>
+           <button class="btn btn-outline btn-sm" onclick="resetUserPw('${id}')">비번초기화</button>`
+        : ''}
+      ${u.email!==ADMIN_EMAIL ? `<button class="btn btn-red btn-sm" onclick="deleteUser('${id}')">삭제</button>` : ''}
+    </td>
+  </tr>`).join('') : '<tr><td colspan="7" style="text-align:center;color:var(--slate);padding:16px">등록된 계정 없음</td></tr>';
+}
+
+// 권한 변경
+function changeUserOrg(id){
+  const u = userList[id]; if(!u) return;
+  const cur = u.org==='insys' ? '㈜인시스' : '셰플러';
+  const next = u.org==='insys' ? 'schaeffler' : 'insys';
+  const nextLabel = ORG_LABEL[next];
+  if(!confirm(`${u.name} 님의 소속을 변경합니다.\n${cur} → ${nextLabel}`)) return;
+  fbSet('/ims/users/'+id, {...u, org:next}).then(()=>{
+    toast(`✅ ${u.name} 님 소속이 ${nextLabel}(으)로 변경되었습니다.`);
+    loadUsers().then(()=>renderAdminPage());
+  });
+}
+
+// 비밀번호 초기화
+function resetUserPw(id){
+  const u = userList[id]; if(!u) return;
+  if(!confirm(`${u.name} 님의 비밀번호를 초기화합니다.\n새 임시 비밀번호가 메일로 발송됩니다.`)) return;
+  const pw = genPassword();
+  fbSet('/ims/users/'+id, {...u, pwHash:simpleHash(pw), pwChanged:false}).then(()=>{
+    const subject = '[비밀번호 초기화] 수입검사 업무관리 시스템';
+    const body = `${u.name} 님, 안녕하세요.
+
+수입검사 업무관리 시스템 비밀번호가 초기화되었습니다.
+
+■ 로그인 정보
+  이메일       : ${u.email}
+  임시 비밀번호 : ${pw}
+
+로그인 후 프로필에서 비밀번호를 변경해 주세요.
+  https://insys-hq.github.io/Insys-review/ims.html
+
+㈜인시스`;
+    window.location.href = `mailto:${u.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    toast(`✅ 비밀번호가 초기화되었습니다.\n임시 비밀번호: ${pw}`, 6000);
+    loadUsers().then(()=>renderAdminPage());
+  });
+}
+
+// 계정 삭제
+function deleteUser(id){
+  const u = userList[id]; if(!u) return;
+  if(!confirm(`${u.name} (${u.email}) 계정을 삭제합니다.\n삭제 후 복구할 수 없습니다.`)) return;
+  fbRemove('/ims/users/'+id).then(()=>{
+    toast('계정이 삭제되었습니다.');
+    loadUsers().then(()=>renderAdminPage());
   });
 }
 
