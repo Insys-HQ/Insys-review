@@ -6,7 +6,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>인시스 점심주문관리 v9.9</title>
+<title>인시스 점심주문관리 v10.0</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -593,12 +593,6 @@ main.narrow { max-width:420px; }
 /* 이력카드 별점 */
 .hist-stars { font-size:12px; color:#f59e0b; margin-left:6px; }
 
-/* ── 새로고침 안내 배너 ──────────────────────────────── */
-#refreshBanner {
-  background:#2d6a9f; color:#fff; font-size:12px;
-  position:sticky; top:56px; z-index:199;
-}
-
 /* ── 식사안함 버튼 ──────────────────────────────────── */
 .btn-skip {
   width:100%; background:var(--bg); color:var(--muted);
@@ -630,7 +624,6 @@ body.season-summer .rest-btn:hover,body.season-summer .rest-btn.active { backgro
 body.season-summer .tab-btn.active { background:#006064; border-color:#006064; }
 body.season-summer .group-header { background:#006064; }
 body.season-summer #noticeBanner { background:#00897b; }
-body.season-summer #refreshBanner { background:#004d40; }
 body.season-summer .float-add-btn { background:#00897b; box-shadow:0 3px 12px rgba(0,137,123,.4); }
 body.season-summer .slot-open-btn { background:#26a69a; }
 body.season-summer .rca-btn { background:#006064; }
@@ -761,7 +754,7 @@ body.season-warm {
   <div class="hd-inner">
     <div class="hd-left" style="display:flex;align-items:center;gap:10px">
       <h1>인시스 점심주문관리</h1>
-      <span class="ver-badge">v9.9</span>
+      <span class="ver-badge">v10.0</span>
       <button id="settingBtn" title="설정" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">⚙️</button>
     </div>
     <div class="hd-right">
@@ -772,12 +765,6 @@ body.season-warm {
   </div>
 </header>
 
-<div id="refreshBanner">
-  <div style="max-width:792px;margin:0 auto;padding:6px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px">
-    <span>🔄 최신 정보를 위해 사용 전 새로고침(Ctrl+Shift+R)을 눌러주세요</span>
-    <button id="refreshBannerClose" style="background:none;border:none;color:#fff;font-size:16px;cursor:pointer;padding:0 4px;opacity:.7">×</button>
-  </div>
-</div>
 <div id="noticeBanner">
   <strong>🍱 점심 주문 시간입니다!</strong>
   <p>지금 메뉴를 등록해 주세요</p>
@@ -1015,7 +1002,7 @@ body.season-warm {
     <div id="restaurantAdminList"></div>
   </div>
 
-  <div class="footer-info">점심주문관리 시스템 v9.9</div>
+  <div class="footer-info">점심주문관리 시스템 v10.0</div>
 
   <!-- ══ AI 추천 모달 ══ -->
   <div id="aiModal" class="modal-overlay hidden">
@@ -2266,16 +2253,6 @@ function bindEvents() {
     navigator.clipboard.writeText($('summaryText').textContent).then(()=>showToast('복사 완료!'));
   });
 
-  // 새로고침 안내 배너 닫기
-  $('refreshBannerClose').addEventListener('click', () => {
-    $('refreshBanner').style.display = 'none';
-    localStorage.setItem('insys_refresh_dismissed', new Date().toDateString());
-  });
-  // 오늘 이미 닫았으면 숨김
-  if (localStorage.getItem('insys_refresh_dismissed') === new Date().toDateString()) {
-    $('refreshBanner').style.display = 'none';
-  }
-
   // AI 추천 버튼
   $('aiRecBtn').addEventListener('click', () => openAiRec());
 
@@ -3444,6 +3421,7 @@ async function spinReel(reel, finalItem, items, duration) {
 (function() {
   var SETTING_KEY = 'insys_auto_open';
   var autoTimer = null;
+  var scheduledTime = null;   // 현재 예약된 시각(최종 설정 확인용)
 
   function loadSetting() {
     try { return JSON.parse(localStorage.getItem(SETTING_KEY)||'{}'); }
@@ -3461,16 +3439,25 @@ async function spinReel(reel, finalItem, items, duration) {
   }
 
   function scheduleAutoOpen(setting) {
-    if(autoTimer) clearTimeout(autoTimer);
-    if(!setting || !setting.enabled || !setting.time) return;
+    // 이전 예약 무조건 취소 (항상 최종 설정 1건만 유효)
+    if(autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
+    scheduledTime = null;
+    if(!setting || !setting.enabled || !setting.time) { console.log('자동열기 예약 해제'); return; }
     var now = new Date();
     if(now.getDay()===0 || now.getDay()===6) return;
     var p = setting.time.split(':');
     var target = new Date();
-    target.setHours(parseInt(p[0]), parseInt(p[1]), 0, 0);
+    target.setHours(parseInt(p[0],10), parseInt(p[1],10), 0, 0);
     var ms = target - now;
     if(ms <= 0) return;
+    scheduledTime = setting.time;
+    var planned = setting.time;
     autoTimer = setTimeout(function() {
+      autoTimer = null;
+      // 발동 순간 저장된 최종 설정을 다시 확인 (오래 열린 탭의 옛 예약 차단)
+      var cur = loadSetting();
+      if(!cur.enabled || cur.time !== planned) { scheduleAutoOpen(cur); return; }
+      scheduledTime = null;
       window.focus();
       if(typeof showToast === 'function') showToast('🍱 점심 주문 시간입니다!');
       if(window.Notification && Notification.permission==='granted') {
@@ -3479,6 +3466,18 @@ async function spinReel(reel, finalItem, items, duration) {
     }, ms);
     console.log('자동열기 예약:', setting.time, '('+Math.round(ms/60000)+'분 후)');
   }
+
+  // 다른 탭/창에서 설정을 바꾸면 즉시 최종 설정으로 재예약
+  window.addEventListener('storage', function(e) {
+    if(e.key === SETTING_KEY) scheduleAutoOpen(loadSetting());
+  });
+
+  // 30초마다 저장된 최종 설정과 예약 상태 일치 여부 확인
+  setInterval(function() {
+    var s = loadSetting();
+    var want = (s && s.enabled && s.time) ? s.time : null;
+    if(want !== scheduledTime) scheduleAutoOpen(s);
+  }, 30000);
 
   // DOM 준비 후 실행
   function initSetting() {
@@ -3514,9 +3513,12 @@ async function spinReel(reel, finalItem, items, duration) {
     });
 
     save.addEventListener('click', function() {
-      var setting = { enabled: chk.checked, time: time.value || '10:30' };
+      var setting = { enabled: chk.checked, time: time.value || '10:40', savedAt: Date.now() };
       localStorage.setItem(SETTING_KEY, JSON.stringify(setting));
-      if(saved) { saved.style.display='block'; }
+      if(saved) {
+        saved.style.display='block';
+        saved.textContent = setting.enabled ? ('✅ 저장 완료 — ' + setting.time + ' 예약됨') : '✅ 저장 완료 — 자동 알림 꺼짐';
+      }
       scheduleAutoOpen(setting);
       if(setting.enabled && window.Notification && Notification.permission==='default') {
         Notification.requestPermission();
