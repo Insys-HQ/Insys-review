@@ -185,7 +185,7 @@
   </section>
 </main>
 
-<footer>인시스 AI혁신 연구개발실 · ys.kim@in-sys.co.kr · v1.1</footer>
+<footer>인시스 AI혁신 연구개발실 · ys.kim@in-sys.co.kr · v1.2</footer>
 
 <script>
   // ===== 3D 월드 (X:컨베이어, Y:깊이, Z:높이) · 90 unit ≙ 300mm =====
@@ -298,6 +298,15 @@
     <filter id="fDrop" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="2" dy="4" stdDeviation="4" flood-color="#233046" flood-opacity=".33"/></filter>
   </defs>`;
 
+  // 깊이 정렬 3D 박스 (기울어진 헤드 좌표계에서도 가림이 정확)
+  function boxGen(M,u0,u1,v0,v1,n0,n1,fT,fS,st,sw){
+    const V=(u,v,n)=>PJ(M(u,v,n));
+    const c=[V(u0,v0,n0),V(u1,v0,n0),V(u1,v1,n0),V(u0,v1,n0),V(u0,v0,n1),V(u1,v0,n1),V(u1,v1,n1),V(u0,v1,n1)];
+    const F=[[0,1,2,3,fT],[7,6,5,4,fT],[0,1,5,4,fS],[3,2,6,7,fS],[0,3,7,4,fS],[1,2,6,5,fS]];
+    return F.map(f=>({d:(c[f[0]].d+c[f[1]].d+c[f[2]].d+c[f[3]].d)/4,
+                      s:quad(c[f[0]],c[f[1]],c[f[2]],c[f[3]],f[4],st,sw||1)}))
+            .sort((a,b)=>b.d-a.d).map(o=>o.s).join('');
+  }
   const scene=$('scene');
   function draw(){
     let s=DEFS;
@@ -364,7 +373,7 @@
     // ── 조명 풀/빔 (PCB 아래) ──
     if(lightOn && pcbOn){
       const lp=P(c.X,c.Y,BELT_Z+1);
-      s+=`<ellipse cx="${lp.x.toFixed(1)}" cy="${lp.y.toFixed(1)}" rx="74" ry="20" fill="url(#gPool)"/>`;
+      s+=`<ellipse cx="${lp.x.toFixed(1)}" cy="${lp.y.toFixed(1)}" rx="70" ry="19" fill="url(#gPool)"/>`;
       const cs=[pcbPt(-60,-14),pcbPt(60,-14),pcbPt(60,14),pcbPt(-60,14)].map(PJ);
       let mn=cs[0], mx=cs[0]; cs.forEach(q=>{ if(q.x<mn.x)mn=q; if(q.x>mx.x)mx=q; });
       s+=`<polygon points="${pt(pL)} ${pt(mn)} ${pt(mx)}" fill="url(#gBeam)"/>`;
@@ -439,43 +448,52 @@
       s+=`<ellipse cx="${tgt.x.toFixed(1)}" cy="${tgt.y.toFixed(1)}" rx="${r.toFixed(1)}" ry="${(r*0.34).toFixed(1)}" fill="none" stroke="#16A34A" stroke-width="1.6" opacity=".85"/>`;
     }
 
-    // ── Z축 (텔레스코픽) ──
-    const zTop=P(ax,ay,BRIDGE_Z+XZ-14), zMid=P(ax,ay,BRIDGE_Z-30), zBot=P(ax,ay,az);
-    s+=bar(zTop,zMid,26,'url(#gAluF)');           // 고정 컬럼(가이드)
-    s+=bar(zMid,zBot,18,'url(#gSteel)');          // 승강 램
-    { const g=P(ax,ay,BRIDGE_Z-30);               // LM 가이드 표시
-      for(let k=0;k<3;k++){ const a=P(ax-9,ay,BRIDGE_Z+XZ-24-k*11), b=P(ax+9,ay,BRIDGE_Z+XZ-24-k*11);
-        s+=`<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="#8A94A1" stroke-width="1.6"/>`; } }
-    s+=`<text x="${(zMid.x-30).toFixed(1)}" y="${(zMid.y-14).toFixed(1)}" text-anchor="end" font-size="11" font-weight="900" fill="#2D5C99" paint-order="stroke" stroke="#FFFFFF" stroke-width="3" stroke-linejoin="round">Z축 (승강 10mm)</text>`;
+    // ── Z축 리니어 액추에이터 (월드 수직) ──
+    const MW=(x,y,z)=>({X:ax+x, Y:ay+y, Z:z});
+    const zTopZ=BRIDGE_Z+XZ-6, zHousB=BRIDGE_Z-28;
+    s+=boxGen(MW,-8,8,-8,8,zTopZ+8,zTopZ+26,'url(#gCam)','url(#gCase)','#20262E',1);   // 서보 모터
+    { const q=P(ax,ay,zTopZ+27);
+      s+=`<ellipse cx="${q.x.toFixed(1)}" cy="${q.y.toFixed(1)}" rx="10" ry="4" fill="#39424D" stroke="#20262E" stroke-width=".8"/>`; }
+    s+=boxGen(MW,-14,14,-14,14,zHousB,zTopZ+8,'url(#gAluT)','url(#gAluF)','#7C8896',1); // 고정 하우징
+    for(let k=0;k<5;k++){ const a=P(ax-11,ay-14.2,zHousB+8+k*8), b=P(ax+11,ay-14.2,zHousB+8+k*8);  // LM 레일 눈금
+      s+=`<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="#98A2AE" stroke-width="1.3"/>`; }
+    s+=boxGen(MW,-9,9,-9,9,az+16,zHousB+2,'url(#gSteel)','url(#gSteel)','#77838F',1);  // 승강 램
+    { const zl=P(ax-28,ay-24,zHousB+18);
+      s+=`<text x="${(zl.x-16).toFixed(1)}" y="${zl.y.toFixed(1)}" text-anchor="end" font-size="11" font-weight="900" fill="#2D5C99" paint-order="stroke" stroke="#FFFFFF" stroke-width="3" stroke-linejoin="round">Z축 (승강 10mm)</text>`; }
 
-    // ── θ/φ 틸트 헤드 + 비전 카메라·돔조명 ──
+    // ── Rx·Ry 2축 짐벌 + 비전 카메라 ──
+    const MH=(u,v,n)=>({X:ax+B.u.X*u+B.v.X*v-B.n.X*n, Y:ay+B.u.Y*u+B.v.Y*v-B.n.Y*n, Z:az+B.u.Z*u+B.v.Z*v-B.n.Z*n});
     const pv=P(ax,ay,az);
-    s+=`<circle cx="${pv.x.toFixed(1)}" cy="${pv.y.toFixed(1)}" r="17" fill="url(#gSteel)" stroke="#77838F" stroke-width="1.6"/>`;
-    s+=`<circle cx="${pv.x.toFixed(1)}" cy="${pv.y.toFixed(1)}" r="7" fill="#4E8CC9"/>`;
-    s+=`<text x="${(pv.x+54).toFixed(1)}" y="${(pv.y-10).toFixed(1)}" font-size="11" font-weight="900" fill="#2D5C99">Rx·Ry축</text>`;
-    // 틸트 요크(짐벌): θ·φ 회전이 눈에 보이도록
-    { const A=42, arm=(sx)=>{
-        const a1=PJ({X:ax+B.u.X*sx*A, Y:ay+B.u.Y*sx*A, Z:az+B.u.Z*sx*A});
-        const a2=PJ({X:L.X+B.u.X*sx*A, Y:L.Y+B.u.Y*sx*A, Z:L.Z+B.u.Z*sx*A});
-        return bar(a1,a2,7,'url(#gSteel)'); };
-      s+=arm(1)+arm(-1);
-      const t1=PJ({X:ax+B.u.X*A, Y:ay+B.u.Y*A, Z:az+B.u.Z*A});
-      const t2=PJ({X:ax-B.u.X*A, Y:ay-B.u.Y*A, Z:az-B.u.Z*A});
-      s+=bar(t1,t2,9,'url(#gAluT)');
-      // θ 지시침
-      const ti=PJ({X:ax-B.n.X*26, Y:ay-B.n.Y*26, Z:az-B.n.Z*26});
-      s+=`<line x1="${pv.x.toFixed(1)}" y1="${pv.y.toFixed(1)}" x2="${ti.x.toFixed(1)}" y2="${ti.y.toFixed(1)}" stroke="#E5484D" stroke-width="2.4"/>`;
-      const vr=P(ax,ay,az-26);
-      s+=`<line x1="${pv.x.toFixed(1)}" y1="${pv.y.toFixed(1)}" x2="${vr.x.toFixed(1)}" y2="${vr.y.toFixed(1)}" stroke="#9AA6B4" stroke-width="1.2" stroke-dasharray="3 3"/>`;
-    }
-    s+=bar(pv,pL,30,'url(#gCam)','#20262E');
-    { const DR=31;
-      const e1=PJ({X:L.X+B.u.X*DR, Y:L.Y+B.u.Y*DR, Z:L.Z+B.u.Z*DR});
-      const e2=PJ({X:L.X-B.u.X*DR, Y:L.Y-B.u.Y*DR, Z:L.Z-B.u.Z*DR});
-      const e3=PJ({X:L.X+B.v.X*DR, Y:L.Y+B.v.Y*DR, Z:L.Z+B.v.Z*DR});
-      const e4=PJ({X:L.X-B.v.X*DR, Y:L.Y-B.v.Y*DR, Z:L.Z-B.v.Z*DR});
-      s+=`<polygon points="${pt(e1)} ${pt(e3)} ${pt(e2)} ${pt(e4)}" fill="${lightOn?'url(#gDomeOn)':'url(#gDomeOff)'}" stroke="#B99B34" stroke-width="1.2"${lightOn?' filter="url(#fGlow)"':''}/>`;
-      s+=`<circle cx="${pL.x.toFixed(1)}" cy="${pL.y.toFixed(1)}" r="11" fill="#12161B" stroke="#3C4652" stroke-width="1.4"/>`;
+    { const ti=PJ(MH(0,0,58)), vr=P(ax,ay,az-58);   // 수직 기준선 / 광축(기울기 지시)
+      s+=`<line x1="${pv.x.toFixed(1)}" y1="${pv.y.toFixed(1)}" x2="${vr.x.toFixed(1)}" y2="${vr.y.toFixed(1)}" stroke="#9AA6B4" stroke-width="1.1" stroke-dasharray="3 3"/>`;
+      s+=`<line x1="${pv.x.toFixed(1)}" y1="${pv.y.toFixed(1)}" x2="${ti.x.toFixed(1)}" y2="${ti.y.toFixed(1)}" stroke="#E5484D" stroke-width="1.8" opacity=".55"/>`; }
+    s+=boxGen(MH,-13,13,-13,13,-16,-2,'url(#gAluT)','url(#gAluF)','#7C8896',1);        // 틸트 베이스(램 연결)
+    s+=boxGen(MH,-33,33,-15,15,-4,3,'url(#gSteel)','url(#gAluF)','#77838F',1.2);       // Rx 요크 상단 바
+    [-1,1].forEach(sx=>{ s+=boxGen(MH,sx*24,sx*33,-15,15,3,25,'url(#gSteel)','url(#gAluF)','#77838F',1.1); });  // Rx 요크 암
+    s+=boxGen(MH,-22,22,-17,17,4,27,'url(#gCam)','url(#gCase)','#20262E',1.2);         // 카메라 본체
+    { const rb=PJ(MH(-16,-17.4,10)), rb2=PJ(MH(16,-17.4,10));                          // 본체 방열핀
+      for(let k=0;k<4;k++){ const a=PJ(MH(-16,-17.4,9+k*4)), b=PJ(MH(16,-17.4,9+k*4));
+        s+=`<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="#3A434E" stroke-width="1.3"/>`; } }
+    [-1,1].forEach(sx=>{ const q=PJ(MH(sx*33,0,15));                                    // Ry 베어링 보스
+      s+=`<circle cx="${q.x.toFixed(1)}" cy="${q.y.toFixed(1)}" r="8" fill="url(#gSteel)" stroke="#5B6470" stroke-width="1.2"/>`;
+      s+=`<circle cx="${q.x.toFixed(1)}" cy="${q.y.toFixed(1)}" r="3" fill="#4E8CC9"/>`; });
+    s+=boxGen(MH,-16,16,-13,13,-6,-14,'url(#gCam)','url(#gCase)','#20262E',1);          // Rx 서보(상부)
+    s+=boxGen(MH,-10,10,-11,11,27,33,'url(#gSteel)','url(#gAluF)','#5B6470',1.1);       // 렌즈 경통
+    { const q=PJ(MH(0,0,33));
+      s+=`<ellipse cx="${q.x.toFixed(1)}" cy="${q.y.toFixed(1)}" rx="12" ry="4.6" fill="url(#gAluT)" stroke="#7C8896"/>`; }
+    { const q=P(ax,ay,az);
+      s+=`<circle cx="${q.x.toFixed(1)}" cy="${q.y.toFixed(1)}" r="6" fill="#4E8CC9" opacity=".9"/>`;
+      s+=`<text x="${(q.x+62).toFixed(1)}" y="${(q.y-2).toFixed(1)}" font-size="11" font-weight="900" fill="#2D5C99" paint-order="stroke" stroke="#FFFFFF" stroke-width="3" stroke-linejoin="round">Rx·Ry축</text>`; }
+    // ── 돔 조명(링) ──
+    { const DR=24, N=28, out=[], inn=[];
+      for(let i=0;i<N;i++){ const a=2*Math.PI*i/N;
+        out.push(PJ(MH(DR*Math.cos(a),DR*Math.sin(a),HEAD-1)));
+        inn.push(PJ(MH(10.5*Math.cos(a),10.5*Math.sin(a),HEAD-4))); }
+      s+=`<path d="M${out.map(pt).join(' L')} Z M${inn.slice().reverse().map(pt).join(' L')} Z" fill="${lightOn?'url(#gDomeOn)':'url(#gDomeOff)'}" fill-rule="evenodd" stroke="#B99B34" stroke-width="1.2"${lightOn?' filter="url(#fGlow)"':''}/>`;
+      for(let i=0;i<N;i+=2){ const a=2*Math.PI*i/N;
+        const q1=PJ(MH(22*Math.cos(a),22*Math.sin(a),HEAD-1.4)), q2=PJ(MH(13.5*Math.cos(a),13.5*Math.sin(a),HEAD-2.6));
+        s+=`<line x1="${q1.x.toFixed(1)}" y1="${q1.y.toFixed(1)}" x2="${q2.x.toFixed(1)}" y2="${q2.y.toFixed(1)}" stroke="${lightOn?'#FFF3C4':'#C9C2A8'}" stroke-width="2.2" opacity=".9"/>`; }
+      s+=`<circle cx="${pL.x.toFixed(1)}" cy="${pL.y.toFixed(1)}" r="8.5" fill="#12161B" stroke="#3C4652" stroke-width="1.4"/>`;
       s+=`<circle cx="${(pL.x-2.6).toFixed(1)}" cy="${(pL.y-2.6).toFixed(1)}" r="3.2" fill="#7FB4E6" opacity=".85"/>`;
     }
 
@@ -669,7 +687,7 @@
   $('btnSide').addEventListener('click',()=>setYaw(90));
 
   draw(); renderSteps(); updateSigBtns();
-  addLog('3축(Z·Rx·Ry) 헤드 비전 검사 시뮬레이터 v1.1 준비 완료.');
+  addLog('3축(Z·Rx·Ry) 헤드 비전 검사 시뮬레이터 v1.2 준비 완료.');
 </script>
 
 <script>
