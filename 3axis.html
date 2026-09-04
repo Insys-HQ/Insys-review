@@ -132,7 +132,7 @@
           </div>
         </div>
 
-        <svg viewBox="118 -16 386 466" id="scene"></svg>
+        <svg viewBox="118 -14 386 518" id="scene"></svg>
         <div class="row" style="margin-top:4px;gap:6px;flex-wrap:nowrap;">
           <span style="font-size:12px;color:var(--text-light);white-space:nowrap;">시점 <b id="yawVal" style="color:var(--navy-dark);">35°</b></span>
           <input type="range" id="viewYaw" min="0" max="90" value="35" style="flex:0 1 140px;min-width:70px;">
@@ -185,7 +185,7 @@
   </section>
 </main>
 
-<footer>인시스 AI혁신 연구개발실 · ys.kim@in-sys.co.kr · v1.6</footer>
+<footer>인시스 AI혁신 연구개발실 · ys.kim@in-sys.co.kr · v1.7</footer>
 
 <script>
   // ===== 3D 월드 (X:컨베이어, Y:깊이, Z:높이) · 90 unit ≙ 300mm =====
@@ -196,10 +196,10 @@
   const TB_TH=9;                                             // 상판 두께 30mm
   const HX0=BELT_X0-9, HX1=BELT_X1+9, HY0=BELT_Y0-12, HY1=BELT_Y1+12;   // 개구부
   const WX0=HX0-29, WX1=HX1+29, WY0=HY0-37, WY1=HY1+37;                 // 상판 외형 1700×700
-  const SKIRT_Z=BELT_Z-TB_TH-60;                             // 스커트 하단 (200mm)
+  const SKIRT_Z=20;                                          // 캐비닛 하단 (다리 없음, 아래는 걸레받이)
   const INSPECT_X=340, PCB_Z=BELT_Z+3, PCB_YC=(BELT_Y0+BELT_Y1)/2;
   const FOCUS=90, FOCUS_MM=300;          // 초점거리 300mm
-  const BRIDGE_Z=BELT_Z+150;             // 컨베이어 위 500mm
+  const BRIDGE_Z=BELT_Z+206;             // Z 액추에이터가 짐벌 위에 오도록 상향
   const ZS=3;                            // Z축 유효 스트로크 = 10mm
   const GY_F=-34, GY_B=140;              // 갠트리 레일 Y(앞/뒤)
   const GX0=BELT_X0-6, GX1=BELT_X1+6;    // 레일 X 범위
@@ -210,7 +210,7 @@
   const XZ=13;                           // 이동 브릿지 높이(X레일 위)
   const HOME={ax:INSPECT_X, ay:PCB_YC+17, az:PCB_Z+FOCUS+HEAD, th:0, ph:0};   // ax·ay 고정(3축) · Z는 초점 +10mm 대기
   const VIEW={yaw:35, pitch:22};
-  const VCX=350, VCY=376, VOX=340, VOY=56;
+  const VCX=350, VCY=428, VOX=340, VOY=56;
   function P(X,Y,Z){
     const ty=VIEW.yaw*Math.PI/180, tp=VIEW.pitch*Math.PI/180;
     const x0=X-VOX, y0=Y-VOY;
@@ -402,12 +402,15 @@
     s+=solid(MT,WX0,WX1,WY0,HY0,BELT_Z-TB_TH,BELT_Z,MAT.alu);
     s+=quad(P(WX0,WY0,BELT_Z-TB_TH),P(WX1,WY0,BELT_Z-TB_TH),P(WX1,WY0,SKIRT_Z),P(WX0,WY0,SKIRT_Z),'url(#gAluF)','#78838F',1);
     s+=quad(P(WX0,WY0,BELT_Z-TB_TH),P(WX0,WY1,BELT_Z-TB_TH),P(WX0,WY1,SKIRT_Z),P(WX0,WY0,SKIRT_Z),'url(#gAluB)','#78838F',1);
-    [[WX0+22,WY0+16],[WX1-22,WY0+16],[WX0+22,WY1-16],[WX1-22,WY1-16]].forEach(([lx,ly])=>{
-      const t=P(lx,ly,SKIRT_Z), b=P(lx,ly,0);
-      s+=`<rect x="${(t.x-6.5).toFixed(1)}" y="${t.y.toFixed(1)}" width="13" height="${(b.y-t.y).toFixed(1)}" fill="url(#gAluF)" stroke="#7E8996" stroke-width=".8"/>`;
-      s+=`<ellipse cx="${b.x.toFixed(1)}" cy="${b.y.toFixed(1)}" rx="12" ry="4.5" fill="url(#gAluT)" stroke="#8A94A1"/>`; });
-    { const q=P(WX0+72,WY0,BELT_Z-TB_TH-26);
-      s+=`<text x="${q.x.toFixed(1)}" y="${q.y.toFixed(1)}" text-anchor="middle" font-size="9.5" font-weight="700" fill="#6C7684">작업대 H700</text>`; }
+    // 도어 분할선 + 손잡이 (캐비닛 전면)
+    { const dm=(WX0+WX1)/2;
+      const d1=P(dm,WY0-.6,BELT_Z-TB_TH-4), d2=P(dm,WY0-.6,SKIRT_Z+6);
+      s+=`<line x1="${d1.x.toFixed(1)}" y1="${d1.y.toFixed(1)}" x2="${d2.x.toFixed(1)}" y2="${d2.y.toFixed(1)}" stroke="rgba(90,100,114,.45)" stroke-width="1.2"/>`;
+      [-14,14].forEach(dx=>{ const a=P(dm+dx,WY0-3,(BELT_Z-TB_TH+SKIRT_Z)/2+12), b=P(dm+dx,WY0-3,(BELT_Z-TB_TH+SKIRT_Z)/2-12);
+        s+=bar(a,b,4,'url(#gSteel)','#5A6470'); }); }
+    // 걸레받이 (인셋 플린스)
+    s+=quad(P(WX0+10,WY0+8,SKIRT_Z),P(WX1-10,WY0+8,SKIRT_Z),P(WX1-10,WY0+8,0),P(WX0+10,WY0+8,0),'url(#gAluB)','#6E7885',1);
+    s+=quad(P(WX0+10,WY0+8,SKIRT_Z),P(WX0+10,WY1-8,SKIRT_Z),P(WX0+10,WY1-8,0),P(WX0+10,WY0+8,0),'url(#gAluB)','#6E7885',1);
 
     const lb=P(INSPECT_X-118,BELT_Y0-34,BELT_Z+10);
     s+=`<text x="${lb.x.toFixed(1)}" y="${lb.y.toFixed(1)}" text-anchor="middle" font-size="9.5" font-weight="700" fill="#5B6472" paint-order="stroke" stroke="#FFFFFF" stroke-width="3" stroke-linejoin="round">검사위치</text>`;
@@ -473,13 +476,11 @@
     s+=beamY(BRIDGE_X,GY_F+8,GY_B,BRIDGE_Z+XZ,7,7);
     { const q=P(BRIDGE_X,GY_B,BRIDGE_Z+XZ);
       s+=`<rect x="${(q.x-12).toFixed(1)}" y="${(q.y-12).toFixed(1)}" width="24" height="24" rx="4" fill="url(#gSteel)" stroke="#7C8896"/>`; }
-    { const bl=P(BRIDGE_X-GXS,GY_B,BRIDGE_Z);
-      s+=`<text x="${(bl.x-26).toFixed(1)}" y="${(bl.y-12).toFixed(1)}" text-anchor="middle" font-size="9.5" font-weight="900" fill="#2D5C99">고정 브릿지</text>`; }
     // 헤드 마운트 블록
     { const q=P(ax,ay,BRIDGE_Z+XZ);
       s+=`<rect x="${(q.x-22).toFixed(1)}" y="${(q.y-17).toFixed(1)}" width="44" height="30" rx="6" fill="url(#gSteel)" stroke="#77838F" stroke-width="1.4"/>`;
       s+=`<rect x="${(q.x-17).toFixed(1)}" y="${(q.y-13).toFixed(1)}" width="10" height="21" rx="4" fill="#FFFFFF" opacity=".5"/>`;
-      s+=`<text x="${(q.x-34).toFixed(1)}" y="${(q.y-16).toFixed(1)}" text-anchor="end" font-size="9.5" font-weight="900" fill="#2D5C99">헤드 마운트</text>`; }
+      }
 
     // ── 위치확인 카메라 (X캐리지에 고정, 수직 하향) ──
     const pcTop=P(ax+34,ay,BRIDGE_Z+XZ-10), pcBot=P(ax+34,ay,BRIDGE_Z+XZ-40);
@@ -513,8 +514,6 @@
         const q=P(ax+bx,ay+by,zTopZ+6.4);
         s+=`<circle cx="${q.x.toFixed(1)}" cy="${q.y.toFixed(1)}" r="2" fill="rgb(126,136,150)" stroke="rgb(88,97,109)" stroke-width=".6"/>`; }); }
     s+=solid(MW,-9.5,9.5,-9.5,9.5,az+14,zHousB+2,MAT.steel);             // 승강 램
-    { const zl=P(ax-58,ay-58,zHousB-4);
-      s+=`<text x="${(zl.x-14).toFixed(1)}" y="${zl.y.toFixed(1)}" text-anchor="end" font-size="9.5" font-weight="900" fill="#2D5C99" paint-order="stroke" stroke="#FFFFFF" stroke-width="3" stroke-linejoin="round">Z축 (승강 10mm)</text>`; }
 
     // ── Rx·Ry 2축 짐벌 + 비전 카메라 ──
     const MH=(u,v,n)=>({X:ax+B.u.X*u+B.v.X*v-B.n.X*n, Y:ay+B.u.Y*u+B.v.Y*v-B.n.Y*n, Z:az+B.u.Z*u+B.v.Z*v-B.n.Z*n});
@@ -522,15 +521,17 @@
     { const ti=PJ(MH(0,0,44)), vr=P(ax,ay,az-44);                        // 수직 기준 / 광축
       s+=`<line x1="${pv.x.toFixed(1)}" y1="${pv.y.toFixed(1)}" x2="${vr.x.toFixed(1)}" y2="${vr.y.toFixed(1)}" stroke="#9AA6B4" stroke-width="1" stroke-dasharray="3 3"/>`;
       s+=`<line x1="${pv.x.toFixed(1)}" y1="${pv.y.toFixed(1)}" x2="${ti.x.toFixed(1)}" y2="${ti.y.toFixed(1)}" stroke="#E5484D" stroke-width="1.4" opacity=".4"/>`; }
-    s+=solid(MH,-14,14,-14,14,-17,-9,MAT.steel);                         // 램 결합 플랜지
-    s+=solid(MH,-10,10,-16,16,-11,-3,MAT.black);                         // Rx 감속기 하우징
-    s+=solid(MH,-32,32,-13,13,-5,2,MAT.alu);                             // Rx 요크 상단 바
-    [-1,1].forEach(sx=>{ s+=solid(MH,sx*23,sx*32,-13,13,2,26,MAT.alu); });  // Rx 요크 암
-    [-1,1].forEach(sx=>{ s+=solid(MH,sx*24,sx*31,-14.5,14.5,12,19,MAT.steel); });  // Ry 베어링 시트
-    s+=solid(MH,-21,21,-16,16,3,24,MAT.dark);                            // 카메라 본체
-    { for(let k=0;k<6;k++){ const a=PJ(MH(-15,-16.3,7+k*3.4)), b=PJ(MH(15,-16.3,7+k*3.4));   // 방열핀
+    // 피벗 위쪽(비틸트) : Z 램에 직결 — 항상 수직
+    s+=solid(MW,-13,13,-13,13,az+4,az+19,MAT.steel);                     // 램 결합 플랜지
+    s+=solid(MW,-16,16,-11,11,az+1,az+9,MAT.black);                      // Rx 구동 하우징
+    // 피벗 아래쪽(틸트) : Rx·Ry로 회전
+    s+=solid(MH,-30,30,-12,12,0,5,MAT.alu);                              // Rx 요크 상단 바
+    [-1,1].forEach(sx=>{ s+=solid(MH,sx*22,sx*30,-12,12,5,26,MAT.alu); });  // Rx 요크 암
+    [-1,1].forEach(sx=>{ s+=solid(MH,sx*23,sx*29,-13.5,13.5,13,19,MAT.steel); });  // Ry 베어링 시트
+    s+=solid(MH,-20,20,-15,15,4,24,MAT.dark);                            // 카메라 본체
+    { for(let k=0;k<6;k++){ const a=PJ(MH(-14,-15.3,8+k*2.9)), b=PJ(MH(14,-15.3,8+k*2.9));   // 방열핀
         s+=`<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="rgba(120,132,148,.5)" stroke-width="1"/>`; }
-      const idp=PJ(MH(-9,-16.4,5.2)), idp2=PJ(MH(9,-16.4,5.2));          // 명판
+      const idp=PJ(MH(-9,-15.4,6.2)), idp2=PJ(MH(9,-15.4,6.2));          // 명판
       s+=`<line x1="${idp.x.toFixed(1)}" y1="${idp.y.toFixed(1)}" x2="${idp2.x.toFixed(1)}" y2="${idp2.y.toFixed(1)}" stroke="rgb(150,160,174)" stroke-width="2.6" opacity=".55"/>`; }
     s+=solid(MH,-11.5,11.5,-11.5,11.5,24,28.5,MAT.steel);                // 렌즈 마운트
     s+=solid(MH,-8.5,8.5,-8.5,8.5,28.5,33,MAT.black);                    // 렌즈 경통
@@ -739,7 +740,7 @@
   $('btnSide').addEventListener('click',()=>setYaw(90));
 
   draw(); renderSteps(); updateSigBtns();
-  addLog('3축(Z·Rx·Ry) 헤드 비전 검사 시뮬레이터 v1.6 준비 완료.');
+  addLog('3축(Z·Rx·Ry) 헤드 비전 검사 시뮬레이터 v1.7 준비 완료.');
 </script>
 
 <script>
