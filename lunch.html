@@ -6,7 +6,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>인시스 점심주문관리 v10.0</title>
+<title>인시스 점심주문관리 v10.1</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -754,7 +754,7 @@ body.season-warm {
   <div class="hd-inner">
     <div class="hd-left" style="display:flex;align-items:center;gap:10px">
       <h1>인시스 점심주문관리</h1>
-      <span class="ver-badge">v10.0</span>
+      <span class="ver-badge">v10.1</span>
       <button id="settingBtn" title="설정" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">⚙️</button>
     </div>
     <div class="hd-right">
@@ -1002,7 +1002,7 @@ body.season-warm {
     <div id="restaurantAdminList"></div>
   </div>
 
-  <div class="footer-info">점심주문관리 시스템 v10.0</div>
+  <div class="footer-info">점심주문관리 시스템 v10.1</div>
 
   <!-- ══ AI 추천 모달 ══ -->
   <div id="aiModal" class="modal-overlay hidden">
@@ -1129,6 +1129,16 @@ const MEMBERS = [
   '정채윤','조선아','조승현','최진이','하봉군','황혜선'
 ];
 
+// 설정에서 직접 등록한 추가 직원 (Firebase member_list 동기화, 실패 시 localStorage)
+const EXTRA_KEY = 'insys_extra_members';
+let extraMembers = [];
+let memberDbOk   = true;
+try { extraMembers = JSON.parse(localStorage.getItem(EXTRA_KEY) || '[]'); } catch(e) { extraMembers = []; }
+
+function allMembers() {
+  return [...new Set([...MEMBERS, ...extraMembers])].sort((a,b)=>a.localeCompare(b,'ko'));
+}
+
 const DEFAULT_RESTAURANTS = [
   { name:'목화식당',       phone:'', deadline:'', menus:['돌솥비빔밥','육개장','김치찌개','된장찌개','순두부찌개','두루치기정식','돼지두루치기','비빔밥','오징어덮밥','만두국밥','계란후라이국수'] },
   { name:'대박밀면',       phone:'', deadline:'', menus:['물비빔밀면정식(쉐어)','물비빔밀면(매운맛)','제육덮밥','등심돈까스'] },
@@ -1211,16 +1221,64 @@ if (myName) {
 
 // ── 이름 목록 채우기 ──────────────────────────────────
 function populateNames() {
+  const list = allMembers();
   ['nameSelect','inputOrderName'].forEach(id => {
     const sel = $(id); if (!sel) return;
-    if (id==='inputOrderName') {
-      const def=document.createElement('option'); def.value=''; def.textContent='이름 선택'; sel.appendChild(def);
-    }
-    MEMBERS.forEach(n => {
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">이름 선택</option>';
+    list.forEach(n => {
       const o=document.createElement('option'); o.value=n; o.textContent=n; sel.appendChild(o);
     });
+    if (prev && list.includes(prev)) sel.value = prev;
   });
 }
+
+// ── 직원 명단 실시간 구독 (member_list) ──────────────
+function subscribeMembers() {
+  try {
+    onSnapshot(collection(db,'member_list'), snap => {
+      memberDbOk = true;
+      extraMembers = snap.docs.map(d => (d.data().name || d.id)).filter(Boolean);
+      localStorage.setItem(EXTRA_KEY, JSON.stringify(extraMembers));
+      populateNames();
+      if (typeof window.renderMemberList === 'function') window.renderMemberList();
+    }, err => {
+      memberDbOk = false;
+      console.warn('member_list 구독 실패(보안규칙 확인 필요):', err.code);
+    });
+  } catch(e) { memberDbOk = false; }
+}
+subscribeMembers();
+
+// ── 설정 모달에서 호출하는 직원 등록 API ──────────────
+window.getMemberData = () => ({ base: MEMBERS.slice(), extra: extraMembers.slice(), dbOk: memberDbOk });
+
+window.registerMember = async function(name) {
+  name = (name||'').trim().replace(/\s+/g,'');
+  if (!name)                       return { ok:false, msg:'이름을 입력해 주세요' };
+  if (name.length < 2 || name.length > 10) return { ok:false, msg:'이름은 2~10자로 입력해 주세요' };
+  if (allMembers().includes(name)) return { ok:false, msg:'이미 등록된 이름입니다' };
+  try {
+    await setDoc(doc(db,'member_list',name), { name, addedAt: serverTimestamp() });
+    return { ok:true, msg:name+' 등록 완료' };
+  } catch(e) {
+    extraMembers = [...new Set([...extraMembers, name])];
+    localStorage.setItem(EXTRA_KEY, JSON.stringify(extraMembers));
+    populateNames();
+    return { ok:true, local:true, msg:name+' 등록 (이 기기에만 저장됨)' };
+  }
+};
+
+window.removeMember = async function(name) {
+  if (MEMBERS.includes(name)) return { ok:false, msg:'기본 명단은 삭제할 수 없습니다' };
+  try {
+    await deleteDoc(doc(db,'member_list',name));
+  } catch(e) { /* 아래 로컬 정리로 처리 */ }
+  extraMembers = extraMembers.filter(n => n !== name);
+  localStorage.setItem(EXTRA_KEY, JSON.stringify(extraMembers));
+  populateNames();
+  return { ok:true, msg:name+' 삭제 완료' };
+};
 
 // ── 앱 시작 ───────────────────────────────────────────
 function startApp() {
@@ -3497,6 +3555,7 @@ async function spinReel(reel, finalItem, items, duration) {
       time.value    = s.time || '10:40';
       updateToggleUI(!!s.enabled);
       if(saved) saved.style.display = 'none';
+      if(typeof window.renderMemberList === 'function') window.renderMemberList();
       modal.style.display = 'flex';
     });
 
@@ -3530,15 +3589,69 @@ async function spinReel(reel, finalItem, items, duration) {
     });
   }
 
+  // ── 직원 등록 UI ──
+  function showMemberMsg(text, ok) {
+    var el = document.getElementById('memberMsg');
+    if(!el) return;
+    el.textContent = text;
+    el.style.color = ok ? '#065f46' : '#b91c1c';
+    el.style.display = 'block';
+    setTimeout(function(){ el.style.display='none'; }, 2600);
+  }
+
+  window.renderMemberList = function() {
+    var wrap = document.getElementById('memberAddedWrap');
+    var box  = document.getElementById('memberAddedList');
+    if(!wrap || !box || typeof window.getMemberData !== 'function') return;
+    var extra = window.getMemberData().extra;
+    box.innerHTML = '';
+    if(!extra.length) { wrap.style.display='none'; return; }
+    wrap.style.display = 'block';
+    extra.forEach(function(n) {
+      var chip = document.createElement('span');
+      chip.style.cssText = 'display:inline-flex;align-items:center;gap:5px;background:#e0f2f1;color:#00474f;border-radius:14px;padding:4px 8px 4px 10px;font-size:12px;font-weight:700;';
+      chip.appendChild(document.createTextNode(n));
+      var del = document.createElement('button');
+      del.textContent = '✕';
+      del.style.cssText = 'background:none;border:none;color:#00838f;font-size:12px;cursor:pointer;padding:0;line-height:1;';
+      del.addEventListener('click', function() {
+        if(!confirm(n + ' 님을 명단에서 삭제할까요?')) return;
+        window.removeMember(n).then(function(r) {
+          showMemberMsg(r.msg, r.ok);
+          window.renderMemberList();
+        });
+      });
+      chip.appendChild(del);
+      box.appendChild(chip);
+    });
+  };
+
+  function initMemberUI() {
+    var input = document.getElementById('memberNewName');
+    var addBtn = document.getElementById('memberAddBtn');
+    if(!input || !addBtn) return;
+    function doAdd() {
+      if(typeof window.registerMember !== 'function') { showMemberMsg('잠시 후 다시 시도해 주세요', false); return; }
+      addBtn.disabled = true;
+      window.registerMember(input.value).then(function(r) {
+        addBtn.disabled = false;
+        showMemberMsg(r.msg, r.ok);
+        if(r.ok) { input.value = ''; window.renderMemberList(); }
+      });
+    }
+    addBtn.addEventListener('click', doAdd);
+    input.addEventListener('keydown', function(e) { if(e.key === 'Enter') doAdd(); });
+  }
+
   // 초기 설정 로드 및 스케줄
   var initS = loadSetting();
   if(initS.enabled) scheduleAutoOpen(initS);
 
   // DOMContentLoaded 보장
   if(document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initSetting);
+    document.addEventListener('DOMContentLoaded', function(){ initSetting(); initMemberUI(); });
   } else {
-    initSetting();
+    initSetting(); initMemberUI();
   }
 })();
 
@@ -3680,6 +3793,23 @@ async function removeDupOnce() {
           style="width:100%;border:1.5px solid #d1d5db;border-radius:8px;padding:9px 12px;font-size:15px;font-family:inherit;outline:none;">
         <div style="font-size:11px;color:#9ca3af;margin-top:6px;">※ 브라우저 알림 권한 필요 · 앱이 열려있어야 작동</div>
       </div>
+    </div>
+
+    <!-- 직원 등록 -->
+    <div style="background:#f8fafc;border-radius:12px;padding:16px;margin-bottom:16px;">
+      <div style="font-size:14px;font-weight:700;color:#1a3a5c;">👤 직원 등록</div>
+      <div style="font-size:12px;color:#6b7280;margin-top:2px;margin-bottom:10px;">명단에 없는 신규 입사자는 여기서 직접 등록하세요</div>
+      <div style="display:flex;gap:6px;">
+        <input type="text" id="memberNewName" placeholder="이름 입력 (예: 홍길동)" maxlength="10"
+          style="flex:1;border:1.5px solid #d1d5db;border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit;outline:none;">
+        <button id="memberAddBtn" style="background:#006064;color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap;">등록</button>
+      </div>
+      <div id="memberMsg" style="display:none;font-size:12px;font-weight:700;margin-top:8px;"></div>
+      <div id="memberAddedWrap" style="display:none;margin-top:10px;">
+        <div style="font-size:12px;font-weight:700;color:#374151;margin-bottom:6px;">추가 등록된 직원</div>
+        <div id="memberAddedList" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+      </div>
+      <div style="font-size:11px;color:#9ca3af;margin-top:8px;">※ 등록 즉시 로그인 화면·주문자 목록에 표시됩니다</div>
     </div>
 
     <!-- 저장 버튼 -->
