@@ -6,7 +6,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>인시스 점심주문관리 v10.1</title>
+<title>인시스 점심주문관리 v10.2</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -754,7 +754,7 @@ body.season-warm {
   <div class="hd-inner">
     <div class="hd-left" style="display:flex;align-items:center;gap:10px">
       <h1>인시스 점심주문관리</h1>
-      <span class="ver-badge">v10.1</span>
+      <span class="ver-badge">v10.2</span>
       <button id="settingBtn" title="설정" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">⚙️</button>
     </div>
     <div class="hd-right">
@@ -1131,12 +1131,24 @@ const MEMBERS = [
 
 // 설정에서 직접 등록한 추가 직원 (Firebase member_list 동기화, 실패 시 localStorage)
 const EXTRA_KEY = 'insys_extra_members';
+const HIDDEN_KEY = 'insys_hidden_members';
 let extraMembers = [];
+let hiddenMembers = [];
 let memberDbOk   = true;
 try { extraMembers = JSON.parse(localStorage.getItem(EXTRA_KEY) || '[]'); } catch(e) { extraMembers = []; }
+try { hiddenMembers = JSON.parse(localStorage.getItem(HIDDEN_KEY) || '[]'); if(!Array.isArray(hiddenMembers)) hiddenMembers = []; } catch(e) { hiddenMembers = []; }
 
 function allMembers() {
-  return [...new Set([...MEMBERS, ...extraMembers])].sort((a,b)=>a.localeCompare(b,'ko'));
+  const merged = [...new Set([...MEMBERS, ...extraMembers])];
+  const visible = merged.filter(n => !hiddenMembers.includes(n));
+  return visible.sort((a,b)=>a.localeCompare(b,'ko'));
+}
+
+function allMembersWithStatus() {
+  const result = [];
+  MEMBERS.forEach(n => result.push({ name:n, type:'base', hidden: hiddenMembers.includes(n) }));
+  extraMembers.forEach(n => result.push({ name:n, type:'extra', hidden: hiddenMembers.includes(n) }));
+  return result.sort((a,b)=>a.name.localeCompare(b.name,'ko'));
 }
 
 const DEFAULT_RESTAURANTS = [
@@ -1251,7 +1263,7 @@ function subscribeMembers() {
 subscribeMembers();
 
 // ── 설정 모달에서 호출하는 직원 등록 API ──────────────
-window.getMemberData = () => ({ base: MEMBERS.slice(), extra: extraMembers.slice(), dbOk: memberDbOk });
+window.getMemberData = () => ({ base: MEMBERS.slice(), extra: extraMembers.slice(), hidden: hiddenMembers.slice(), dbOk: memberDbOk, all: allMembersWithStatus() });
 
 window.registerMember = async function(name) {
   name = (name||'').trim().replace(/\s+/g,'');
@@ -1270,14 +1282,30 @@ window.registerMember = async function(name) {
 };
 
 window.removeMember = async function(name) {
-  if (MEMBERS.includes(name)) return { ok:false, msg:'기본 명단은 삭제할 수 없습니다' };
+  if (MEMBERS.includes(name)) {
+    if(!hiddenMembers.includes(name)) {
+      hiddenMembers.push(name);
+      localStorage.setItem(HIDDEN_KEY, JSON.stringify(hiddenMembers));
+    }
+    populateNames();
+    return { ok:true, msg:name+' 명단에서 숨김 (설정에서 복원 가능)' };
+  }
   try {
     await deleteDoc(doc(db,'member_list',name));
   } catch(e) { /* 아래 로컬 정리로 처리 */ }
   extraMembers = extraMembers.filter(n => n !== name);
   localStorage.setItem(EXTRA_KEY, JSON.stringify(extraMembers));
+  hiddenMembers = hiddenMembers.filter(n => n !== name);
+  localStorage.setItem(HIDDEN_KEY, JSON.stringify(hiddenMembers));
   populateNames();
   return { ok:true, msg:name+' 삭제 완료' };
+};
+
+window.restoreMember = function(name) {
+  hiddenMembers = hiddenMembers.filter(n => n !== name);
+  localStorage.setItem(HIDDEN_KEY, JSON.stringify(hiddenMembers));
+  populateNames();
+  return { ok:true, msg:name+' 복원 완료' };
 };
 
 // ── 앱 시작 ───────────────────────────────────────────
@@ -3726,6 +3754,84 @@ async function removeDupOnce() {
   } catch(e){ console.warn('중복삭제 오류:',e); }
 }
 
+// ── 전체 명단 관리 UI ───────────────────────────────────
+window.renderFullMemberList = function() {
+  var box = document.getElementById('memberFullList');
+  var hiddenWrap = document.getElementById('memberHiddenWrap');
+  var hiddenBox = document.getElementById('memberHiddenList');
+  if(!box) return;
+  if(typeof window.getMemberData !== 'function') return;
+  var data = window.getMemberData();
+  var all = data.all || [];
+  var hidden = data.hidden || [];
+  box.innerHTML = '';
+  all.forEach(function(m) {
+    if(m.hidden) return;
+    var chip = document.createElement('span');
+    var bg = m.type === 'base' ? '#e0f7fa' : '#fff3e0';
+    var color = m.type === 'base' ? '#006064' : '#e65100';
+    chip.style.cssText = 'display:inline-flex;align-items:center;gap:4px;background:'+bg+';color:'+color+';border-radius:12px;padding:3px 6px 3px 9px;font-size:11px;font-weight:700;';
+    chip.appendChild(document.createTextNode(m.name));
+    var del = document.createElement('button');
+    del.textContent = '✕';
+    del.style.cssText = 'background:none;border:none;color:'+color+';font-size:11px;cursor:pointer;padding:0;line-height:1;';
+    del.addEventListener('click', function() {
+      var msg = m.type === 'base' 
+        ? m.name + ' 님을 명단에서 숨길까요? (복원 가능)'
+        : m.name + ' 님을 명단에서 완전 삭제할까요?';
+      if(!confirm(msg)) return;
+      window.removeMember(m.name).then(function(r) {
+        if(typeof showMemberMsg === 'function') showMemberMsg(r.msg, r.ok);
+        window.renderFullMemberList();
+        if(typeof window.renderMemberList === 'function') window.renderMemberList();
+      });
+    });
+    chip.appendChild(del);
+    box.appendChild(chip);
+  });
+  hiddenBox.innerHTML = '';
+  if(hidden.length > 0) {
+    hiddenWrap.style.display = 'block';
+    hidden.forEach(function(name) {
+      var chip = document.createElement('span');
+      chip.style.cssText = 'display:inline-flex;align-items:center;gap:4px;background:#fef2f2;color:#991b1b;border-radius:12px;padding:3px 6px 3px 9px;font-size:11px;font-weight:700;';
+      chip.appendChild(document.createTextNode(name));
+      var btn = document.createElement('button');
+      btn.textContent = '↺';
+      btn.title = '복원';
+      btn.style.cssText = 'background:none;border:none;color:#991b1b;font-size:12px;cursor:pointer;padding:0;line-height:1;font-weight:700;';
+      btn.addEventListener('click', function() {
+        var r = window.restoreMember(name);
+        if(typeof showMemberMsg === 'function') showMemberMsg(r.msg, true);
+        window.renderFullMemberList();
+      });
+      chip.appendChild(btn);
+      hiddenBox.appendChild(chip);
+    });
+  } else {
+    hiddenWrap.style.display = 'none';
+  }
+};
+
+(function(){
+  function initManageToggle() {
+    var btn = document.getElementById('toggleMemberManage');
+    var panel = document.getElementById('memberManagePanel');
+    if(!btn || !panel) return;
+    btn.addEventListener('click', function() {
+      var isOpen = panel.style.display === 'block';
+      panel.style.display = isOpen ? 'none' : 'block';
+      btn.textContent = isOpen ? '열기' : '닫기';
+      if(!isOpen) window.renderFullMemberList();
+    });
+  }
+  if(document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initManageToggle);
+  } else {
+    initManageToggle();
+  }
+})();
+
 // ── 자동 알림 안내 팝업 ─────────────────────────────────
 (function() {
   const DISMISS_KEY = 'insys_notice_autoalert_dismissed';
@@ -3810,6 +3916,22 @@ async function removeDupOnce() {
         <div id="memberAddedList" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
       </div>
       <div style="font-size:11px;color:#9ca3af;margin-top:8px;">※ 등록 즉시 로그인 화면·주문자 목록에 표시됩니다</div>
+
+      <!-- 전체 명단 관리 (삭제/복원) -->
+      <div style="margin-top:14px;border-top:1px solid #e5e7eb;padding-top:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <div style="font-size:12px;font-weight:700;color:#374151;">전체 명단 관리</div>
+          <button id="toggleMemberManage" style="background:#f3f4f6;color:#374151;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;">열기</button>
+        </div>
+        <div id="memberManagePanel" style="display:none;">
+          <div style="font-size:11px;color:#6b7280;margin-bottom:8px;">삭제 시 로그인·주문자 목록에서 숨겨집니다 (복원 가능)</div>
+          <div id="memberFullList" style="display:flex;flex-wrap:wrap;gap:5px;max-height:220px;overflow-y:auto;padding:6px;background:#f9fafb;border-radius:8px;"></div>
+          <div id="memberHiddenWrap" style="display:none;margin-top:10px;">
+            <div style="font-size:11px;font-weight:700;color:#991b1b;margin-bottom:4px;">숨김 처리된 직원</div>
+            <div id="memberHiddenList" style="display:flex;flex-wrap:wrap;gap:5px;"></div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 저장 버튼 -->
